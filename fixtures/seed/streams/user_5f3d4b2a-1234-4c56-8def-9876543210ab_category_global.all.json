@@ -1,0 +1,1002 @@
+{
+  "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/global.all",
+  "updated": 1789718400000,
+  "continuation": "c-dXNlci81ZjNk",
+  "items": [
+    {
+      "id": "news-0029",
+      "originId": "http://example-news.test/articles/29",
+      "fingerprint": "fp-news-29",
+      "title": "Chipmaker unveils next generation of low-power silicon",
+      "author": "Example News staff",
+      "published": 1789717200000,
+      "crawled": 1789717260000,
+      "updated": 1789717260000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-news.test/rss",
+        "title": "Example News",
+        "htmlUrl": "http://example-news.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-news.test/articles/29",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-news.test/articles/29",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-news.test/articles/29",
+      "content": {
+        "content": "<p>Lead paragraph summarizing the story from example-news.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-news.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://picsum.photos/seed/news-0029-body/1200/700\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+        "direction": "ltr"
+      },
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-news.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "fullContent": "<p>Lead paragraph summarizing the story from example-news.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-news.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://example-cdn.test/img/example-news.test.jpg\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+      "keywords": ["news", "world"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/news-0029/700/1000",
+        "width": 700,
+        "height": 1000,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "design-0030",
+      "originId": "http://example-design.test/articles/30",
+      "fingerprint": "fp-design-30",
+      "title": "Case study: rebuilding a checkout flow from scratch",
+      "author": "Example Design Weekly staff",
+      "published": 1789713000000,
+      "crawled": 1789713060000,
+      "updated": 1789713060000,
+      "unread": false,
+      "origin": {
+        "streamId": "feed/http://example-design.test/atom",
+        "title": "Example Design Weekly",
+        "htmlUrl": "http://example-design.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-design.test/articles/30",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-design.test/articles/30",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-design.test/articles/30",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-design.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "visual": {
+        "url": "https://picsum.photos/seed/design-0030/900/900",
+        "width": 900,
+        "height": 900,
+        "contentType": "image/jpeg"
+      },
+      "engagement": 130,
+      "engagementRate": 0.01,
+      "keywords": ["design"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+          "label": "Design"
+        }
+      ]
+    },
+    {
+      "id": "longform-0031",
+      "originId": "http://example-longform.test/articles/31",
+      "fingerprint": "fp-longform-31",
+      "title": "Longform: a decade of watching newsrooms rebuild trust, one small correction and one uncomfortable retraction at a time",
+      "author": "Example Longform staff",
+      "published": 1789708800000,
+      "crawled": 1789708860000,
+      "updated": 1789708860000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-longform.test/rss",
+        "title": "Example Longform",
+        "htmlUrl": "http://example-longform.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-longform.test/articles/31",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-longform.test/articles/31",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-longform.test/articles/31",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-longform.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "keywords": ["longform", "essays"],
+      "categories": [],
+      "visual": {
+        "url": "https://picsum.photos/seed/longform-0031/800/1000",
+        "width": 800,
+        "height": 1000,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "longform-0052",
+      "originId": "http://example-longform.test/articles/52",
+      "fingerprint": "fp-longform-52",
+      "title": "نموذج تجريبي: نص عربي لاختبار الاتجاه من اليمين إلى اليسار",
+      "author": "هيئة تحرير تجريبية",
+      "published": 1789705800000,
+      "crawled": 1789705860000,
+      "updated": 1789705860000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-longform.test/rss",
+        "title": "Example Longform",
+        "htmlUrl": "http://example-longform.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-longform.test/articles/52",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-longform.test/articles/52",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-longform.test/articles/52",
+      "content": {
+        "content": "\n<p>لوريم إيبسوم دولار سيت أميت، كونسيكتيتور أديبيسينج إليايت. هذا نص تجريبي فقط ولا يحمل أي معنى.</p>\n<h2>عنوان تجريبي أول</h2>\n<p>سيد دو إيوسمود تيمبور إنسيديدونت أوت لابوري إت دولوري ماجنا أليكوا. أوت إنيم أد مينيم فينيام، كويس نوستْرود إكسيرسيتاسيون أولامكو لابوريس نيسي أوت أليكويب إكس إيا كومودو كونسيكوات.</p>\n<p>دويس أوتي إيروري دولور إن ريبريهينديريت إن فولوبتاتي فيليت إيسي كيلوم دولوري إيو فوجيات نولا باريتور. إكسسيبتيور سينت أوكايكات كوبيداتات نون بروإيدينت.</p>\n<h3>عنوان تجريبي ثانٍ</h3>\n<ul><li>عنصر قائمة تجريبي أول</li><li>عنصر قائمة تجريبي ثانٍ</li><li>عنصر قائمة تجريبي ثالث</li></ul>\n<blockquote><p>اقتباس تجريبي لاختبار الاتجاه من اليمين إلى اليسار داخل صفحة إنجليزية.</p></blockquote>\n<p>سونت إن كولبا كي أوفيسيا ديسيرونت موليت أنيم إد إست لابوروم. نص عنصر نائب — placeholder text.</p>\n",
+        "direction": "rtl"
+      },
+      "summary": {
+        "content": "<p>نص تجريبي بالكامل — عنصر نائب لاختبار عرض المحتوى من اليمين إلى اليسار.</p>",
+        "direction": "rtl"
+      },
+      "engagement": 7,
+      "engagementRate": 0.002,
+      "keywords": ["longform", "essays"],
+      "categories": []
+    },
+    {
+      "id": "news-0032",
+      "originId": "http://example-news.test/articles/32",
+      "fingerprint": "fp-news-32",
+      "title": "Regulators open inquiry into app store fees",
+      "author": "Example News staff",
+      "published": 1789704600000,
+      "crawled": 1789704660000,
+      "updated": 1789704660000,
+      "unread": false,
+      "origin": {
+        "streamId": "feed/http://example-news.test/rss",
+        "title": "Example News",
+        "htmlUrl": "http://example-news.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-news.test/articles/32",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-news.test/articles/32",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-news.test/articles/32",
+      "content": {
+        "content": "<p>Lead paragraph summarizing the story from example-news.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-news.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://picsum.photos/seed/news-0032-body/1200/700\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+        "direction": "ltr"
+      },
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-news.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "fullContent": "<p>Lead paragraph summarizing the story from example-news.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-news.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://example-cdn.test/img/example-news.test.jpg\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+      "engagement": 136,
+      "engagementRate": 0.018,
+      "keywords": ["news", "world"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/news-0032/900/900",
+        "width": 900,
+        "height": 900,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "typeface-0033",
+      "originId": "http://example-typeface.test/articles/33",
+      "fingerprint": "fp-typeface-33",
+      "title": "Typeface foundry releases a variable font family",
+      "author": "Example Typeface Journal staff",
+      "published": 1789700400000,
+      "crawled": 1789700460000,
+      "updated": 1789700460000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-typeface.test/rss",
+        "title": "Example Typeface Journal",
+        "htmlUrl": "http://example-typeface.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-typeface.test/articles/33",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-typeface.test/articles/33",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-typeface.test/articles/33",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-typeface.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "keywords": ["typography"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+          "label": "Design"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/typeface-0033/800/1000",
+        "width": 800,
+        "height": 1000,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "science-0034",
+      "originId": "http://example-science.test/articles/34",
+      "fingerprint": "fp-science-34",
+      "title": "This report has been translated for a right-to-left audience",
+      "author": "Example Science Weekly staff",
+      "published": 1789696200000,
+      "crawled": 1789696260000,
+      "updated": 1789696260000,
+      "unread": false,
+      "origin": {
+        "streamId": "feed/http://example-science.test/feed",
+        "title": "Example Science Weekly",
+        "htmlUrl": "http://example-science.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-science.test/articles/34",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-science.test/articles/34",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-science.test/articles/34",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-science.test — just enough to decide whether to read on.</p>",
+        "direction": "rtl"
+      },
+      "visual": {
+        "url": "https://picsum.photos/seed/science-0034/800/1000",
+        "width": 800,
+        "height": 1000,
+        "contentType": "image/jpeg"
+      },
+      "engagement": 142,
+      "engagementRate": 0.026,
+      "keywords": ["science"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ]
+    },
+    {
+      "id": "tech-0035",
+      "originId": "http://example-tech.test/articles/35",
+      "fingerprint": "fp-tech-35",
+      "title": "Battery breakthrough claims longer laptop runtime",
+      "author": "Example Tech Daily staff",
+      "published": 1789692000000,
+      "crawled": 1789692060000,
+      "updated": 1789692060000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-tech.test/feed",
+        "title": "Example Tech Daily",
+        "htmlUrl": "http://example-tech.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-tech.test/articles/35",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-tech.test/articles/35",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-tech.test/articles/35",
+      "content": {
+        "content": "<p>Lead paragraph summarizing the story from example-tech.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-tech.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://picsum.photos/seed/tech-0035-body/1200/700\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+        "direction": "ltr"
+      },
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-tech.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "fullContent": "<p>Lead paragraph summarizing the story from example-tech.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-tech.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://example-cdn.test/img/example-tech.test.jpg\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+      "keywords": ["technology"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/tech-0035/900/900",
+        "width": 900,
+        "height": 900,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "ux-0036",
+      "originId": "http://example-ux.test/articles/36",
+      "fingerprint": "fp-ux-36",
+      "title": "How one team reduced onboarding drop-off",
+      "author": "Example UX Notes staff",
+      "published": 1789687800000,
+      "crawled": 1789687860000,
+      "updated": 1789687860000,
+      "unread": false,
+      "origin": {
+        "streamId": "feed/http://example-ux.test/feed",
+        "title": "Example UX Notes",
+        "htmlUrl": "http://example-ux.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-ux.test/articles/36",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-ux.test/articles/36",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-ux.test/articles/36",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-ux.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "engagement": 148,
+      "engagementRate": 0.014,
+      "keywords": ["ux", "design"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+          "label": "Design"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/ux-0036/800/1000",
+        "width": 800,
+        "height": 1000,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "longform-0037",
+      "originId": "http://example-longform.test/articles/37",
+      "fingerprint": "fp-longform-37",
+      "title": "Essay: what slow journalism owes its readers",
+      "author": "Example Longform staff",
+      "published": 1789683600000,
+      "crawled": 1789683660000,
+      "updated": 1789683660000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-longform.test/rss",
+        "title": "Example Longform",
+        "htmlUrl": "http://example-longform.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-longform.test/articles/37",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-longform.test/articles/37",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-longform.test/articles/37",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-longform.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "tags": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/tag/global.saved",
+          "label": "Saved"
+        }
+      ],
+      "keywords": ["longform", "essays"],
+      "categories": [],
+      "visual": {
+        "url": "https://picsum.photos/seed/longform-0037/900/900",
+        "width": 900,
+        "height": 900,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "gadgets-0038",
+      "originId": "http://example-gadgets.test/articles/38",
+      "fingerprint": "fp-gadgets-38",
+      "title": "Weekly roundup: the gadgets worth your attention",
+      "author": "Example Gadgets Weekly staff",
+      "published": 1789679400000,
+      "crawled": 1789679460000,
+      "updated": 1789679460000,
+      "unread": false,
+      "origin": {
+        "streamId": "feed/http://example-gadgets.test/rss.xml",
+        "title": "Example Gadgets Weekly",
+        "htmlUrl": "http://example-gadgets.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-gadgets.test/articles/38",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-gadgets.test/articles/38",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-gadgets.test/articles/38",
+      "content": {
+        "content": "<p>Lead paragraph summarizing the story from example-gadgets.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-gadgets.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://picsum.photos/seed/gadgets-0038-body/1200/700\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+        "direction": "ltr"
+      },
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-gadgets.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "fullContent": "<p>Lead paragraph summarizing the story from example-gadgets.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-gadgets.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://example-cdn.test/img/example-gadgets.test.jpg\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+      "visual": {
+        "url": "https://picsum.photos/seed/gadgets-0038/800/1000",
+        "width": 800,
+        "height": 1000,
+        "contentType": "image/jpeg"
+      },
+      "engagement": 154,
+      "engagementRate": 0.022,
+      "keywords": ["gadgets", "reviews"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ]
+    },
+    {
+      "id": "design-0039",
+      "originId": "http://example-design.test/articles/39",
+      "fingerprint": "fp-design-39",
+      "title": "Grid systems for responsive dashboards",
+      "author": "Example Design Weekly staff",
+      "published": 1789675200000,
+      "crawled": 1789675260000,
+      "updated": 1789675260000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-design.test/atom",
+        "title": "Example Design Weekly",
+        "htmlUrl": "http://example-design.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-design.test/articles/39",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-design.test/articles/39",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-design.test/articles/39",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-design.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "keywords": ["design"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+          "label": "Design"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/design-0039/800/1000",
+        "width": 800,
+        "height": 1000,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "science-0040",
+      "originId": "http://example-science.test/articles/40",
+      "fingerprint": "fp-science-40",
+      "title": "Security researchers disclose flaw in router firmware",
+      "author": "Example Science Weekly staff",
+      "published": 1789671000000,
+      "crawled": 1789671060000,
+      "updated": 1789671060000,
+      "unread": false,
+      "origin": {
+        "streamId": "feed/http://example-science.test/feed",
+        "title": "Example Science Weekly",
+        "htmlUrl": "http://example-science.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-science.test/articles/40",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-science.test/articles/40",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-science.test/articles/40",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-science.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "engagement": 160,
+      "engagementRate": 0.01,
+      "keywords": ["science"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/science-0040/700/1000",
+        "width": 700,
+        "height": 1000,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "ux-0041",
+      "originId": "http://example-ux.test/articles/41",
+      "fingerprint": "fp-ux-41",
+      "title": "Icon set redesign: process and lessons learned",
+      "author": "Example UX Notes staff",
+      "published": 1789666800000,
+      "crawled": 1789666860000,
+      "updated": 1789666860000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-ux.test/feed",
+        "title": "Example UX Notes",
+        "htmlUrl": "http://example-ux.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-ux.test/articles/41",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-ux.test/articles/41",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-ux.test/articles/41",
+      "content": {
+        "content": "<p>Lead paragraph summarizing the story from example-ux.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-ux.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://picsum.photos/seed/ux-0041-body/1200/700\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+        "direction": "ltr"
+      },
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-ux.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "fullContent": "<p>Lead paragraph summarizing the story from example-ux.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-ux.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://example-cdn.test/img/example-ux.test.jpg\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+      "keywords": ["ux", "design"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+          "label": "Design"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/ux-0041/900/900",
+        "width": 900,
+        "height": 900,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "longform-0042",
+      "originId": "http://example-longform.test/articles/42",
+      "fingerprint": "fp-longform-42",
+      "title": "Long read: rebuilding a small newsroom after a buyout",
+      "author": "Example Longform staff",
+      "published": 1789662600000,
+      "crawled": 1789662660000,
+      "updated": 1789662660000,
+      "unread": false,
+      "origin": {
+        "streamId": "feed/http://example-longform.test/rss",
+        "title": "Example Longform",
+        "htmlUrl": "http://example-longform.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-longform.test/articles/42",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-longform.test/articles/42",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-longform.test/articles/42",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-longform.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "engagement": 166,
+      "engagementRate": 0.018,
+      "keywords": ["longform", "essays"],
+      "categories": []
+    },
+    {
+      "id": "tech-0043",
+      "originId": "http://example-tech.test/articles/43",
+      "fingerprint": "fp-tech-43",
+      "title": "Robotics lab demonstrates warehouse picking arm",
+      "author": "Example Tech Daily staff",
+      "published": 1789658400000,
+      "crawled": 1789658460000,
+      "updated": 1789658460000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-tech.test/feed",
+        "title": "Example Tech Daily",
+        "htmlUrl": "http://example-tech.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-tech.test/articles/43",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-tech.test/articles/43",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-tech.test/articles/43",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-tech.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "keywords": ["technology"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/tech-0043/800/1000",
+        "width": 800,
+        "height": 1000,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "design-0044",
+      "originId": "http://example-design.test/articles/44",
+      "fingerprint": "fp-design-44",
+      "title": "Prototyping tools roundup for late 2026",
+      "author": "Example Design Weekly staff",
+      "published": 1789654200000,
+      "crawled": 1789654260000,
+      "updated": 1789654260000,
+      "unread": false,
+      "origin": {
+        "streamId": "feed/http://example-design.test/atom",
+        "title": "Example Design Weekly",
+        "htmlUrl": "http://example-design.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-design.test/articles/44",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-design.test/articles/44",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-design.test/articles/44",
+      "content": {
+        "content": "<p>Lead paragraph summarizing the story from example-design.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-design.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://picsum.photos/seed/design-0044-body/1200/700\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+        "direction": "ltr"
+      },
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-design.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "fullContent": "<p>Lead paragraph summarizing the story from example-design.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-design.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://example-cdn.test/img/example-design.test.jpg\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+      "engagement": 172,
+      "engagementRate": 0.026,
+      "keywords": ["design"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+          "label": "Design"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/design-0044/900/900",
+        "width": 900,
+        "height": 900,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "tech-0045",
+      "originId": "http://example-tech.test/articles/45",
+      "fingerprint": "fp-tech-45",
+      "title": "Streaming service adds offline download limits",
+      "author": "Example Tech Daily staff",
+      "published": 1789650000000,
+      "crawled": 1789650060000,
+      "updated": 1789650060000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-tech.test/feed",
+        "title": "Example Tech Daily",
+        "htmlUrl": "http://example-tech.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-tech.test/articles/45",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-tech.test/articles/45",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-tech.test/articles/45",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-tech.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "keywords": ["technology"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/tech-0045/700/1000",
+        "width": 700,
+        "height": 1000,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "ux-0046",
+      "originId": "http://example-ux.test/articles/46",
+      "fingerprint": "fp-ux-46",
+      "title": "Why empty states deserve more design time",
+      "author": "Example UX Notes staff",
+      "published": 1789645800000,
+      "crawled": 1789645860000,
+      "updated": 1789645860000,
+      "unread": false,
+      "origin": {
+        "streamId": "feed/http://example-ux.test/feed",
+        "title": "Example UX Notes",
+        "htmlUrl": "http://example-ux.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-ux.test/articles/46",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-ux.test/articles/46",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-ux.test/articles/46",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-ux.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "visual": {
+        "url": "https://picsum.photos/seed/ux-0046/900/900",
+        "width": 900,
+        "height": 900,
+        "contentType": "image/jpeg"
+      },
+      "engagement": 178,
+      "engagementRate": 0.014,
+      "keywords": ["ux", "design"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+          "label": "Design"
+        }
+      ]
+    },
+    {
+      "id": "gadgets-0047",
+      "originId": "http://example-gadgets.test/articles/47",
+      "fingerprint": "fp-gadgets-47",
+      "title": "Analysts debate slowing smartphone upgrade cycles",
+      "author": "Example Gadgets Weekly staff",
+      "published": 1789641600000,
+      "crawled": 1789641660000,
+      "updated": 1789641660000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-gadgets.test/rss.xml",
+        "title": "Example Gadgets Weekly",
+        "htmlUrl": "http://example-gadgets.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-gadgets.test/articles/47",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-gadgets.test/articles/47",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-gadgets.test/articles/47",
+      "content": {
+        "content": "<p>Lead paragraph summarizing the story from example-gadgets.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-gadgets.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://picsum.photos/seed/gadgets-0047-body/1200/700\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+        "direction": "ltr"
+      },
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-gadgets.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "fullContent": "<p>Lead paragraph summarizing the story from example-gadgets.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-gadgets.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://example-cdn.test/img/example-gadgets.test.jpg\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+      "keywords": ["gadgets", "reviews"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/gadgets-0047/800/1000",
+        "width": 800,
+        "height": 1000,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "news-0048",
+      "originId": "http://example-news.test/articles/48",
+      "fingerprint": "fp-news-48",
+      "title": "The one about the very very very long headline that keeps going and going and going just to see where the layout actually breaks, if it ever does, in the reader's card view",
+      "author": "Example News staff",
+      "published": 1789637400000,
+      "crawled": 1789637460000,
+      "updated": 1789637460000,
+      "unread": false,
+      "origin": {
+        "streamId": "feed/http://example-news.test/rss",
+        "title": "Example News",
+        "htmlUrl": "http://example-news.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-news.test/articles/48",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-news.test/articles/48",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-news.test/articles/48",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-news.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "engagement": 184,
+      "engagementRate": 0.022,
+      "keywords": ["news", "world"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ]
+    }
+  ]
+}

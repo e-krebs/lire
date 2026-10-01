@@ -1,0 +1,834 @@
+{
+  "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+  "updated": 1789718400000,
+  "continuation": "c-dXNlci81ZjNk",
+  "items": [
+    {
+      "id": "news-0001",
+      "originId": "http://example-news.test/articles/1",
+      "fingerprint": "fp-news-1",
+      "title": "Chipmaker unveils next generation of low-power silicon",
+      "author": "Example News staff",
+      "published": 1789716600000,
+      "crawled": 1789716660000,
+      "updated": 1789716660000,
+      "unread": false,
+      "origin": {
+        "streamId": "feed/http://example-news.test/rss",
+        "title": "Example News",
+        "htmlUrl": "http://example-news.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-news.test/articles/1",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-news.test/articles/1",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-news.test/articles/1",
+      "content": {
+        "content": "<p>Lead paragraph summarizing the story from example-news.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-news.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://picsum.photos/seed/news-0001-body/1200/700\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+        "direction": "ltr"
+      },
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-news.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "fullContent": "<p>Lead paragraph summarizing the story from example-news.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-news.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://example-cdn.test/img/example-news.test.jpg\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+      "engagement": 43,
+      "engagementRate": 0.014,
+      "keywords": ["news", "world"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/news-0001/700/1000",
+        "width": 700,
+        "height": 1000,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "tech-0049",
+      "originId": "http://example-tech.test/articles/49",
+      "fingerprint": "fp-tech-49",
+      "title": "How a three-person team rebuilt their distributed build cache after a six-day outage nobody noticed, and what the rest of us can borrow from it",
+      "author": "Marguerite Delacroix-Hale",
+      "published": 1789713000000,
+      "crawled": 1789713060000,
+      "updated": 1789713060000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-tech.test/feed",
+        "title": "Example Tech Daily",
+        "htmlUrl": "http://example-tech.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-tech.test/articles/49",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-tech.test/articles/49",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-tech.test/articles/49",
+      "content": {
+        "content": "\n<p>For six days in the spring of the year the build farm at Vellum Works answered every request with the same unhelpful sentence: cache unavailable, falling back to local compilation. Nothing was down, exactly. The object store kept accepting writes, the coordinator kept reporting healthy, and the dashboards on the wall of the third-floor office stayed a serene green the entire time. What had stopped working was the agreement between those two halves of the system about what a cache key means, and because nobody had written that agreement down anywhere except in code, it took the better part of a week to notice that the two halves had quietly drifted apart.</p>\n<p>The team that fixed it was three people. They were not the team that built the original cache, which matters, because most of the story is about reading someone else's design under pressure and deciding which parts of it to keep. Their postmortem, published in full on <a href=\"https://example-tech.test/2026/build-cache-rebuild/appendix\">the engineering blog appendix</a>, is unusually candid about how long they spent looking in the wrong place. It is also the rare postmortem that ends with a working system rather than a list of action items, so it is worth walking through slowly.</p>\n\n<h2>The outage, in one paragraph</h2>\n<p>A routine dependency bump changed the default serialisation of one compiler flag from a boolean to a string. The flag was part of the cache key. Every build produced after the bump therefore hashed to a key that no previous build had ever written, and every build produced before it hashed to a key that no new build would ever read. The cache did not fail; it simply became a write-only archive of a universe nobody lived in any more. Hit rate fell from ninety-one per cent to under two, the build queue grew from four minutes to fifty-one, and the alert that should have caught it was wired to cache availability rather than cache effectiveness.</p>\n<p>That last detail is the one the team keeps returning to. Availability is easy to measure and almost never the thing that hurts you. Effectiveness is harder to measure, changes shape as the system grows, and is where the damage actually accumulates. An object store that answers every request correctly and usefully serves nobody is indistinguishable, from the outside, from an object store that answers every request correctly and usefully serves everybody.</p>\n\n<h2>What the old cache actually did</h2>\n<p>The original design was a perfectly reasonable one for the size of the company at the time it was written. A coordinator process watched the build graph, computed a key for each node, and asked a shared object store whether it had seen that key before. If it had, the coordinator downloaded the artefact and skipped the work. If it had not, the coordinator ran the work and uploaded the result. The whole thing was about nine hundred lines of code, most of them concerned with retries and partial uploads rather than with caching as such.</p>\n\n<h3>Key computation</h3>\n<p>Keys were computed by walking the node's inputs in declaration order and feeding each one into a running hash: source file contents, the resolved version of every dependency, the compiler binary's own hash, and a bag of flags serialised with the language's default encoder. Three of those four inputs were stable and explicit. The fourth was the bag of flags, and it was stable only for as long as nobody changed how the encoder handled any of the values inside it. Nobody had changed that in four years, which is exactly the kind of track record that makes a fragile dependency look sturdy.</p>\n\n<h3>Storage and eviction</h3>\n<p>Artefacts lived in a flat namespace with a thirty-day time-to-live and no tiering. This worked because the working set was small and because the team had never had a reason to care about the difference between a cold artefact and a warm one. It also meant that when the keys shifted, the old artefacts were not migrated or reconciled; they simply aged out over the following month while the new universe of keys filled up beside them. By the time anyone understood the problem, a third of the storage bill was being spent on objects that could never be read again.</p>\n\n<figure><img src=\"https://picsum.photos/seed/vellum-cache-rebuild/1200/700\" alt=\"\"><figcaption>The build queue during the six days, reconstructed from coordinator logs after the fact.</figcaption></figure>\n\n<h2>Reading the postmortem backwards</h2>\n<p>The team's first instinct was to look at the object store, because that is where the bytes are and because the storage graphs were the only ones that had visibly changed. They spent two days there. They checked consistency guarantees, they checked the client library's retry behaviour, they checked whether a recent region migration had split traffic across two buckets. All of it was fine. What finally broke the investigation open was an engineer diffing two cache keys by hand, one from a build in February and one from a build that morning, and noticing that the two strings were the same length but differed in the middle.</p>\n<blockquote><p>We had spent forty-eight hours asking whether the cache was working. The useful question was much smaller and much more embarrassing: are we asking it for the same things we used to ask it for? Once somebody said that out loud the fix took an afternoon. Understanding why we had not said it out loud took considerably longer.</p></blockquote>\n<p>What they concluded is that the cache had no notion of its own schema. A key was whatever the current code happened to produce, and there was no artefact anywhere in the system that recorded what the current code was supposed to produce. Two versions of the coordinator could disagree completely about key computation and neither would ever find out, because a miss looks exactly like a first-time build. The failure mode was not a bug in any one component; it was the absence of a contract between components that were free to evolve independently.</p>\n\n<h2>The rewrite</h2>\n<p>The rewrite took five weeks and touched about half the original code. The organising idea was that a cache key should be a value the system can reason about rather than an opaque digest, and that the recipe for producing it should be versioned as deliberately as any wire protocol.</p>\n\n<h3>Content addressing first</h3>\n<p>Inputs are now described by a manifest, the manifest is canonicalised, and the key is the digest of the canonical form. The canonicalisation is the whole point: flags are sorted, values are coerced to a single representation with an explicit function rather than a default encoder, and the manifest carries the version of the schema that produced it. A coordinator that encounters a manifest version it does not recognise refuses to serve from it instead of silently missing.</p>\n<pre><code>manifest_version: 3\ntarget: //render/engine:glyphs\ninputs:\n  sources:\n    - path: render/engine/glyphs.cc\n      digest: sha256:4f21c8a0de91\n    - path: render/engine/glyphs.h\n      digest: sha256:9b0ea7714c33\n  toolchain:\n    compiler: sha256:1d77fe30ab52\n    stdlib: sha256:c0a4be9812ff\n  flags:\n    - key: opt_level\n      value: \"2\"\n      encoded_as: string\n    - key: lto\n      value: \"true\"\n      encoded_as: string\nkey: sha256:aa3f92c17e4b8d05</code></pre>\n<p>Writing <code>encoded_as</code> next to every value looks like clutter until you remember what the outage was. It is the smallest possible record of the decision that broke, placed where anyone diffing two manifests will see it. The team's rule now is that any value which crosses into a cache key carries its own encoding with it, and a value that cannot say how it was encoded cannot be part of a key at all.</p>\n<p>The other structural change was to stop treating a miss as an ordinary event. The coordinator now distinguishes four outcomes, and each one is counted separately:</p>\n<ul>\n<li><strong>Hit</strong> — the manifest matched, the artefact was present, and the digest of the downloaded bytes matched what the manifest claimed.</li>\n<li><strong>Cold miss</strong> — no manifest with this key has ever been written, which is the expected outcome for genuinely new work.</li>\n<li><strong>Stale miss</strong> — a manifest with a compatible schema exists but one input digest differs, which is the expected outcome after an edit.</li>\n<li><strong>Incoherent miss</strong> — the key is absent and no compatible manifest exists anywhere in the recent history of this target, which should be rare and is now paged on.</li>\n</ul>\n<p>That fourth bucket is the alert the team did not have. During the outage every single lookup would have landed in it, and the page would have fired inside ten minutes rather than six days. The bucket is cheap to compute because the coordinator already knows the recent manifest history of each target, and it is the only new metric the rewrite introduced.</p>\n\n<h2>Measuring it</h2>\n<p>The numbers below are from the four weeks after the cutover, compared with the four weeks before the outage. They are not a benchmark and the team is careful to say so: the build graph grew by about eleven per cent over the same period, and two of the heaviest targets were split, which flatters the cold-build figure.</p>\n<table>\n<thead><tr><th>Metric</th><th>Before the outage</th><th>After the rewrite</th></tr></thead>\n<tbody>\n<tr><td>Cache hit rate, median build</td><td>91.4%</td><td>93.8%</td></tr>\n<tr><td>Median queue time</td><td>4m 10s</td><td>3m 32s</td></tr>\n<tr><td>Ninety-ninth percentile queue time</td><td>27m 45s</td><td>9m 18s</td></tr>\n<tr><td>Storage spent on unreadable objects</td><td>31%</td><td>under 1%</td></tr>\n<tr><td>Time to detect a key-space shift</td><td>six days</td><td>eight minutes</td></tr>\n</tbody>\n</table>\n<p>The row that matters is the last one. Everything above it is a pleasant consequence of having rewritten a four-year-old component with four more years of knowledge about the workload; any competent team would have got similar numbers. The detection time is the part that generalises, and it came from a single new metric rather than from the rewrite as a whole.</p>\n\n<h2>What broke anyway</h2>\n<p>Five weeks of careful work did not produce a clean cutover. The team ran the old and new coordinators side by side for nine days, comparing keys rather than trusting them, and the comparison surfaced four problems in roughly this order:</p>\n<ol>\n<li>Path canonicalisation disagreed on case-insensitive file systems, so two developers on different laptops produced different manifests for byte-identical inputs. Fixed by lowercasing nothing and instead refusing to build from a path whose on-disk spelling differs from its declared spelling.</li>\n<li>The toolchain digest included the compiler's build timestamp, which meant every toolchain rebuild invalidated the world. Nobody had noticed under the old scheme because toolchain rebuilds were rare and the resulting cold week was attributed to other causes.</li>\n<li>Manifest canonicalisation was quadratic in the number of inputs, which was invisible until it met a generated target with eleven thousand source files and added ninety seconds to every lookup.</li>\n<li>The new incoherent-miss alert fired twice on its first day, both times correctly, both times for a target that a since-departed colleague had configured to disable caching entirely. The alert was right and the configuration was wrong, which is the best possible outcome for a new alert and also the most annoying.</li>\n</ol>\n<p>None of these were surprising in hindsight and all of them were cheap to fix while the two systems ran in parallel. The team's strong recommendation is that the parallel period is the deliverable, not the overhead: a rewrite you cannot diff against the thing it replaces is a rewrite you are shipping on faith.</p>\n\n<h2>Borrowing from it</h2>\n<p>Most teams reading this do not have a build farm and will never write a distributed cache. The transferable parts are smaller and more general than the architecture, and the team listed them in the order they think they matter:</p>\n<ul>\n<li>Any derived key deserves a version number, and the version number belongs next to the key, not in a comment.</li>\n<li>If a component can silently disagree with an older version of itself, arrange for the disagreement to be loud instead. The absence of a contract is not neutrality; it is a contract that says anything goes.</li>\n<li>Alert on effectiveness, not availability. A system that is up and useless will not page anyone, and it is the failure mode you will actually experience.</li>\n<li>Default encoders are a dependency. Treat them like one: pin them, or replace them with a function you own.</li>\n<li>A miss, a timeout and a refusal are three different events. Counting them together destroys exactly the information you need when something goes wrong.</li>\n</ul>\n<p>The protocol description is public, which is unusual for something this specific to one company's build graph, and the schema notes at <a href=\"https://example-docs.test/cache-protocol/manifests\">the manifest reference</a> are readable on their own. The reference implementation on <a href=\"https://example-forge.test/vellum/cache\">the project's forge page</a> is less useful unless you happen to share their toolchain, but the manifest canonicalisation routine is about two hundred lines and is worth reading as a piece of defensive design.</p>\n\n<h2>The parts they left alone</h2>\n<p>It is worth recording what the rewrite did not touch, because a five-week project that changed half a component could easily have changed all of it. The object store stayed exactly as it was, flat namespace and thirty-day expiry included, on the grounds that nothing about the outage implicated it and that a tiered store would have added a second thing to understand during the parallel period. The retry and partial-upload code, which was the bulk of the original nine hundred lines, was moved across essentially verbatim; it had been quietly correct for four years and there was no evidence against it. The coordinator's scheduling logic was likewise untouched.</p>\n<p>The team describes this as the hardest discipline of the project: once you have permission to rewrite a component, every irritation you have ever had with it presents itself as in scope. Their heuristic was to require a line in the postmortem for every change, and the flat namespace is still there.</p>\n\n<h2>Where this leaves the tooling</h2>\n<p>There is a broader argument underneath the postmortem that the team mostly declines to make, so it is worth making on their behalf. Build systems have spent a decade getting very good at describing what depends on what, and comparatively little effort on describing how those descriptions are turned into identities. The dependency graph is a first-class, inspectable, testable artefact in every serious build tool. The key-derivation function usually is not. It is a private implementation detail, which is another way of saying that it is the part of the system nobody can reason about from the outside.</p>\n<p>That asymmetry explains why this class of outage keeps happening, and why it keeps taking days to diagnose. When the graph is wrong you can look at the graph. When the keys are wrong there is nothing to look at, only behaviour to infer from. Making the manifest a real artefact — one you can print, diff, store and diff again six months later — converts a class of invisible failure into an ordinary debugging session. That is not an architectural advance. It is just moving a decision out of the code and into the data, which is usually where decisions want to live.</p>\n<p>The team has since had one more key-space shift, caused by a deliberate toolchain upgrade. It was detected in eight minutes, the incoherent-miss counter told them exactly which targets were affected, and the fix was a one-line schema version bump plus a documented note that the next month's storage bill would be higher than usual. Nobody wrote a postmortem, because nothing had gone wrong. That, more than any of the numbers in the table above, is what the five weeks bought.</p>\n<p>Comments on the original are open, and the follow-up thread about case-insensitive file systems at <a href=\"https://example-tech.test/2026/build-cache-rebuild/comments\">the discussion page</a> has turned into a better survey of that problem than anything in the article itself.</p>\n",
+        "direction": "ltr"
+      },
+      "summary": {
+        "content": "<p>Six days of silent cache misses, one compiler flag that changed shape, and the five-week rewrite that turned an invisible failure into an eight-minute alert.</p>",
+        "direction": "ltr"
+      },
+      "fullContent": "\n<p>For six days in the spring of the year the build farm at Vellum Works answered every request with the same unhelpful sentence: cache unavailable, falling back to local compilation. Nothing was down, exactly. The object store kept accepting writes, the coordinator kept reporting healthy, and the dashboards on the wall of the third-floor office stayed a serene green the entire time. What had stopped working was the agreement between those two halves of the system about what a cache key means, and because nobody had written that agreement down anywhere except in code, it took the better part of a week to notice that the two halves had quietly drifted apart.</p>\n<p>The team that fixed it was three people. They were not the team that built the original cache, which matters, because most of the story is about reading someone else's design under pressure and deciding which parts of it to keep. Their postmortem, published in full on <a href=\"https://example-tech.test/2026/build-cache-rebuild/appendix\">the engineering blog appendix</a>, is unusually candid about how long they spent looking in the wrong place. It is also the rare postmortem that ends with a working system rather than a list of action items, so it is worth walking through slowly.</p>\n\n<h2>The outage, in one paragraph</h2>\n<p>A routine dependency bump changed the default serialisation of one compiler flag from a boolean to a string. The flag was part of the cache key. Every build produced after the bump therefore hashed to a key that no previous build had ever written, and every build produced before it hashed to a key that no new build would ever read. The cache did not fail; it simply became a write-only archive of a universe nobody lived in any more. Hit rate fell from ninety-one per cent to under two, the build queue grew from four minutes to fifty-one, and the alert that should have caught it was wired to cache availability rather than cache effectiveness.</p>\n<p>That last detail is the one the team keeps returning to. Availability is easy to measure and almost never the thing that hurts you. Effectiveness is harder to measure, changes shape as the system grows, and is where the damage actually accumulates. An object store that answers every request correctly and usefully serves nobody is indistinguishable, from the outside, from an object store that answers every request correctly and usefully serves everybody.</p>\n\n<h2>What the old cache actually did</h2>\n<p>The original design was a perfectly reasonable one for the size of the company at the time it was written. A coordinator process watched the build graph, computed a key for each node, and asked a shared object store whether it had seen that key before. If it had, the coordinator downloaded the artefact and skipped the work. If it had not, the coordinator ran the work and uploaded the result. The whole thing was about nine hundred lines of code, most of them concerned with retries and partial uploads rather than with caching as such.</p>\n\n<h3>Key computation</h3>\n<p>Keys were computed by walking the node's inputs in declaration order and feeding each one into a running hash: source file contents, the resolved version of every dependency, the compiler binary's own hash, and a bag of flags serialised with the language's default encoder. Three of those four inputs were stable and explicit. The fourth was the bag of flags, and it was stable only for as long as nobody changed how the encoder handled any of the values inside it. Nobody had changed that in four years, which is exactly the kind of track record that makes a fragile dependency look sturdy.</p>\n\n<h3>Storage and eviction</h3>\n<p>Artefacts lived in a flat namespace with a thirty-day time-to-live and no tiering. This worked because the working set was small and because the team had never had a reason to care about the difference between a cold artefact and a warm one. It also meant that when the keys shifted, the old artefacts were not migrated or reconciled; they simply aged out over the following month while the new universe of keys filled up beside them. By the time anyone understood the problem, a third of the storage bill was being spent on objects that could never be read again.</p>\n\n<figure><img src=\"https://picsum.photos/seed/vellum-cache-rebuild/1200/700\" alt=\"\"><figcaption>The build queue during the six days, reconstructed from coordinator logs after the fact.</figcaption></figure>\n\n<h2>Reading the postmortem backwards</h2>\n<p>The team's first instinct was to look at the object store, because that is where the bytes are and because the storage graphs were the only ones that had visibly changed. They spent two days there. They checked consistency guarantees, they checked the client library's retry behaviour, they checked whether a recent region migration had split traffic across two buckets. All of it was fine. What finally broke the investigation open was an engineer diffing two cache keys by hand, one from a build in February and one from a build that morning, and noticing that the two strings were the same length but differed in the middle.</p>\n<blockquote><p>We had spent forty-eight hours asking whether the cache was working. The useful question was much smaller and much more embarrassing: are we asking it for the same things we used to ask it for? Once somebody said that out loud the fix took an afternoon. Understanding why we had not said it out loud took considerably longer.</p></blockquote>\n<p>What they concluded is that the cache had no notion of its own schema. A key was whatever the current code happened to produce, and there was no artefact anywhere in the system that recorded what the current code was supposed to produce. Two versions of the coordinator could disagree completely about key computation and neither would ever find out, because a miss looks exactly like a first-time build. The failure mode was not a bug in any one component; it was the absence of a contract between components that were free to evolve independently.</p>\n\n<h2>The rewrite</h2>\n<p>The rewrite took five weeks and touched about half the original code. The organising idea was that a cache key should be a value the system can reason about rather than an opaque digest, and that the recipe for producing it should be versioned as deliberately as any wire protocol.</p>\n\n<h3>Content addressing first</h3>\n<p>Inputs are now described by a manifest, the manifest is canonicalised, and the key is the digest of the canonical form. The canonicalisation is the whole point: flags are sorted, values are coerced to a single representation with an explicit function rather than a default encoder, and the manifest carries the version of the schema that produced it. A coordinator that encounters a manifest version it does not recognise refuses to serve from it instead of silently missing.</p>\n<pre><code>manifest_version: 3\ntarget: //render/engine:glyphs\ninputs:\n  sources:\n    - path: render/engine/glyphs.cc\n      digest: sha256:4f21c8a0de91\n    - path: render/engine/glyphs.h\n      digest: sha256:9b0ea7714c33\n  toolchain:\n    compiler: sha256:1d77fe30ab52\n    stdlib: sha256:c0a4be9812ff\n  flags:\n    - key: opt_level\n      value: \"2\"\n      encoded_as: string\n    - key: lto\n      value: \"true\"\n      encoded_as: string\nkey: sha256:aa3f92c17e4b8d05</code></pre>\n<p>Writing <code>encoded_as</code> next to every value looks like clutter until you remember what the outage was. It is the smallest possible record of the decision that broke, placed where anyone diffing two manifests will see it. The team's rule now is that any value which crosses into a cache key carries its own encoding with it, and a value that cannot say how it was encoded cannot be part of a key at all.</p>\n<p>The other structural change was to stop treating a miss as an ordinary event. The coordinator now distinguishes four outcomes, and each one is counted separately:</p>\n<ul>\n<li><strong>Hit</strong> — the manifest matched, the artefact was present, and the digest of the downloaded bytes matched what the manifest claimed.</li>\n<li><strong>Cold miss</strong> — no manifest with this key has ever been written, which is the expected outcome for genuinely new work.</li>\n<li><strong>Stale miss</strong> — a manifest with a compatible schema exists but one input digest differs, which is the expected outcome after an edit.</li>\n<li><strong>Incoherent miss</strong> — the key is absent and no compatible manifest exists anywhere in the recent history of this target, which should be rare and is now paged on.</li>\n</ul>\n<p>That fourth bucket is the alert the team did not have. During the outage every single lookup would have landed in it, and the page would have fired inside ten minutes rather than six days. The bucket is cheap to compute because the coordinator already knows the recent manifest history of each target, and it is the only new metric the rewrite introduced.</p>\n\n<h2>Measuring it</h2>\n<p>The numbers below are from the four weeks after the cutover, compared with the four weeks before the outage. They are not a benchmark and the team is careful to say so: the build graph grew by about eleven per cent over the same period, and two of the heaviest targets were split, which flatters the cold-build figure.</p>\n<table>\n<thead><tr><th>Metric</th><th>Before the outage</th><th>After the rewrite</th></tr></thead>\n<tbody>\n<tr><td>Cache hit rate, median build</td><td>91.4%</td><td>93.8%</td></tr>\n<tr><td>Median queue time</td><td>4m 10s</td><td>3m 32s</td></tr>\n<tr><td>Ninety-ninth percentile queue time</td><td>27m 45s</td><td>9m 18s</td></tr>\n<tr><td>Storage spent on unreadable objects</td><td>31%</td><td>under 1%</td></tr>\n<tr><td>Time to detect a key-space shift</td><td>six days</td><td>eight minutes</td></tr>\n</tbody>\n</table>\n<p>The row that matters is the last one. Everything above it is a pleasant consequence of having rewritten a four-year-old component with four more years of knowledge about the workload; any competent team would have got similar numbers. The detection time is the part that generalises, and it came from a single new metric rather than from the rewrite as a whole.</p>\n\n<h2>What broke anyway</h2>\n<p>Five weeks of careful work did not produce a clean cutover. The team ran the old and new coordinators side by side for nine days, comparing keys rather than trusting them, and the comparison surfaced four problems in roughly this order:</p>\n<ol>\n<li>Path canonicalisation disagreed on case-insensitive file systems, so two developers on different laptops produced different manifests for byte-identical inputs. Fixed by lowercasing nothing and instead refusing to build from a path whose on-disk spelling differs from its declared spelling.</li>\n<li>The toolchain digest included the compiler's build timestamp, which meant every toolchain rebuild invalidated the world. Nobody had noticed under the old scheme because toolchain rebuilds were rare and the resulting cold week was attributed to other causes.</li>\n<li>Manifest canonicalisation was quadratic in the number of inputs, which was invisible until it met a generated target with eleven thousand source files and added ninety seconds to every lookup.</li>\n<li>The new incoherent-miss alert fired twice on its first day, both times correctly, both times for a target that a since-departed colleague had configured to disable caching entirely. The alert was right and the configuration was wrong, which is the best possible outcome for a new alert and also the most annoying.</li>\n</ol>\n<p>None of these were surprising in hindsight and all of them were cheap to fix while the two systems ran in parallel. The team's strong recommendation is that the parallel period is the deliverable, not the overhead: a rewrite you cannot diff against the thing it replaces is a rewrite you are shipping on faith.</p>\n\n<h2>Borrowing from it</h2>\n<p>Most teams reading this do not have a build farm and will never write a distributed cache. The transferable parts are smaller and more general than the architecture, and the team listed them in the order they think they matter:</p>\n<ul>\n<li>Any derived key deserves a version number, and the version number belongs next to the key, not in a comment.</li>\n<li>If a component can silently disagree with an older version of itself, arrange for the disagreement to be loud instead. The absence of a contract is not neutrality; it is a contract that says anything goes.</li>\n<li>Alert on effectiveness, not availability. A system that is up and useless will not page anyone, and it is the failure mode you will actually experience.</li>\n<li>Default encoders are a dependency. Treat them like one: pin them, or replace them with a function you own.</li>\n<li>A miss, a timeout and a refusal are three different events. Counting them together destroys exactly the information you need when something goes wrong.</li>\n</ul>\n<p>The protocol description is public, which is unusual for something this specific to one company's build graph, and the schema notes at <a href=\"https://example-docs.test/cache-protocol/manifests\">the manifest reference</a> are readable on their own. The reference implementation on <a href=\"https://example-forge.test/vellum/cache\">the project's forge page</a> is less useful unless you happen to share their toolchain, but the manifest canonicalisation routine is about two hundred lines and is worth reading as a piece of defensive design.</p>\n\n<h2>The parts they left alone</h2>\n<p>It is worth recording what the rewrite did not touch, because a five-week project that changed half a component could easily have changed all of it. The object store stayed exactly as it was, flat namespace and thirty-day expiry included, on the grounds that nothing about the outage implicated it and that a tiered store would have added a second thing to understand during the parallel period. The retry and partial-upload code, which was the bulk of the original nine hundred lines, was moved across essentially verbatim; it had been quietly correct for four years and there was no evidence against it. The coordinator's scheduling logic was likewise untouched.</p>\n<p>The team describes this as the hardest discipline of the project: once you have permission to rewrite a component, every irritation you have ever had with it presents itself as in scope. Their heuristic was to require a line in the postmortem for every change, and the flat namespace is still there.</p>\n\n<h2>Where this leaves the tooling</h2>\n<p>There is a broader argument underneath the postmortem that the team mostly declines to make, so it is worth making on their behalf. Build systems have spent a decade getting very good at describing what depends on what, and comparatively little effort on describing how those descriptions are turned into identities. The dependency graph is a first-class, inspectable, testable artefact in every serious build tool. The key-derivation function usually is not. It is a private implementation detail, which is another way of saying that it is the part of the system nobody can reason about from the outside.</p>\n<p>That asymmetry explains why this class of outage keeps happening, and why it keeps taking days to diagnose. When the graph is wrong you can look at the graph. When the keys are wrong there is nothing to look at, only behaviour to infer from. Making the manifest a real artefact — one you can print, diff, store and diff again six months later — converts a class of invisible failure into an ordinary debugging session. That is not an architectural advance. It is just moving a decision out of the code and into the data, which is usually where decisions want to live.</p>\n<p>The team has since had one more key-space shift, caused by a deliberate toolchain upgrade. It was detected in eight minutes, the incoherent-miss counter told them exactly which targets were affected, and the fix was a one-line schema version bump plus a documented note that the next month's storage bill would be higher than usual. Nobody wrote a postmortem, because nothing had gone wrong. That, more than any of the numbers in the table above, is what the five weeks bought.</p>\n<p>Comments on the original are open, and the follow-up thread about case-insensitive file systems at <a href=\"https://example-tech.test/2026/build-cache-rebuild/comments\">the discussion page</a> has turned into a better survey of that problem than anything in the article itself.</p>\n",
+      "engagement": 312,
+      "engagementRate": 0.041,
+      "keywords": ["technology", "build systems"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/tech-0049/1200/700",
+        "width": 1200,
+        "height": 700,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "tech-0002",
+      "originId": "http://example-tech.test/articles/2",
+      "fingerprint": "fp-tech-2",
+      "title": "Startup raises funding round to expand cloud tooling",
+      "author": "Example Tech Daily staff",
+      "published": 1789710900000,
+      "crawled": 1789710960000,
+      "updated": 1789710960000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-tech.test/feed",
+        "title": "Example Tech Daily",
+        "htmlUrl": "http://example-tech.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-tech.test/articles/2",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-tech.test/articles/2",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-tech.test/articles/2",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-tech.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "visual": {
+        "url": "https://picsum.photos/seed/tech-0002/800/1000",
+        "width": 800,
+        "height": 1000,
+        "contentType": "image/jpeg"
+      },
+      "keywords": ["technology"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ]
+    },
+    {
+      "id": "tech-0050",
+      "originId": "http://example-tech.test/articles/50",
+      "fingerprint": "fp-tech-50",
+      "title": "The quiet cost of retry storms in clusters too small to have a capacity problem",
+      "author": "Ibrahim Osei-Lundqvist",
+      "published": 1789709400000,
+      "crawled": 1789709460000,
+      "updated": 1789709460000,
+      "actionTimestamp": 1789717200000,
+      "unread": false,
+      "origin": {
+        "streamId": "feed/http://example-tech.test/feed",
+        "title": "Example Tech Daily",
+        "htmlUrl": "http://example-tech.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-tech.test/articles/50",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-tech.test/articles/50",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-tech.test/articles/50",
+      "content": {
+        "content": "\n<p>Retry logic is the most widely copied and least frequently measured code in most services. It is three lines long, it is obviously correct, and in a cluster of six machines it will happily convert a two-second hiccup into a nine-minute outage. The mechanism is well documented at large scale, where it has a name and a graph in every reliability textbook, but the small-cluster version is different in ways that matter, and it tends to surprise teams who believed they were too small to have this problem.</p>\n\n<h2>The shape of a small storm</h2>\n<p>At large scale a retry storm is a capacity story: a fraction of requests fail, each failure multiplies into several more requests, aggregate load crosses a threshold, and the system settles into a stable overloaded state that persists long after the original trigger is gone. The fix is well known — cap the multiplier, add jitter, shed load at the edge — and the maths is comforting because it involves large numbers behaving predictably.</p>\n<p>In a cluster of half a dozen machines none of those large numbers exist. What you get instead is synchronisation. Six clients that all failed at the same moment, all backing off with the same schedule, will come back at the same moment, and they will keep coming back together for as long as the schedule lasts. Load does not rise smoothly; it arrives in spikes separated by silence, and the spikes are tall enough to re-trigger the failure that caused them. A graph of a small retry storm looks less like a plateau and more like a metronome.</p>\n\n<h3>Why jitter is not optional at six machines</h3>\n<p>The usual advice about jitter is presented as a refinement, something you add once the basic exponential schedule is in place. In a small cluster it is the load-bearing part. Without it, six clients are effectively one client with six times the burst, and no amount of tuning the base delay will fix that, because the problem is not the average rate but the shape of the distribution. Full jitter — picking uniformly between zero and the current ceiling rather than scaling a fixed delay — costs nothing, is two extra tokens of code, and turns the metronome into something the server can absorb.</p>\n\n<figure><img src=\"https://picsum.photos/seed/retry-storms-small-clusters/1200/700\" alt=\"\"><figcaption>Request arrivals during a synchronised backoff, sampled at one-second resolution.</figcaption></figure>\n\n<h2>An example with numbers</h2>\n<p>Consider a service with six workers, each maintaining a pool of four connections to a shared store. The store takes about two hundred milliseconds to fail over between replicas, during which it refuses connections. Every client sees the refusal, every client retries three times with a doubling delay starting at one hundred milliseconds, and every client gives up after the third attempt.</p>\n<pre><code>attempt 1  t = 0ms     24 requests   refused\nattempt 2  t = 100ms   24 requests   refused\nattempt 3  t = 300ms   24 requests   accepted, but queue depth 24\n           t = 700ms   failover complete\n</code></pre>\n<p>Twenty-four requests is nothing. The problem is that all twenty-four arrive inside a window narrower than the store's own scheduling quantum, so the store sees a queue rather than a stream, and the tail latency of that third attempt is not two hundred milliseconds but closer to two seconds. If the client timeout is one second — a very ordinary choice — then the third attempt times out, the request fails upward, and the caller above starts its own retry schedule against a store that is now healthy but busy. That is the whole storm, and it happened with twenty-four requests and no capacity problem at all.</p>\n<p>The instructive part is that every individual component behaved correctly. The store failed over within its published window. The client retried a bounded number of times with exponential delay. The caller above surfaced an error rather than hanging. Nothing in this system is misconfigured in a way that would show up in review, and the failure is entirely a property of how the pieces compose.</p>\n\n<h2>What to measure</h2>\n<p>Most teams have a counter for request failures and a histogram for latency, and neither of them shows a storm clearly. Failures show the trigger but not the amplification; latency shows the symptom but not the cause. Three cheaper measurements are far more diagnostic, and the table below is roughly the order in which they pay off.</p>\n<table>\n<thead><tr><th>Measurement</th><th>What it reveals</th><th>Cost to add</th></tr></thead>\n<tbody>\n<tr><td>Attempts per logical request</td><td>Amplification factor, directly</td><td>One counter, one label</td></tr>\n<tr><td>Arrival inter-spacing at the server</td><td>Synchronisation, before it hurts</td><td>Histogram on an existing timestamp</td></tr>\n<tr><td>Retries in flight, cluster-wide</td><td>Whether backoff is actually bounded</td><td>One gauge, incremented and decremented</td></tr>\n</tbody>\n</table>\n<p>The first of these is the one nobody has and everybody should. A ratio of attempts to logical requests is a single number that sits near one when things are healthy and climbs immediately when they are not, and unlike a failure rate it keeps climbing while the failures are still being successfully absorbed. It is the earliest available signal and it costs a label on a counter you have already written.</p>\n\n<h2>Fixes, in order of how much they help</h2>\n<ol>\n<li>Add full jitter to every backoff schedule in the codebase. This is the single highest-value change and it is mechanical.</li>\n<li>Budget retries per logical request rather than per hop, so a three-deep call chain cannot turn three retries into twenty-seven.</li>\n<li>Make the client's total deadline shorter than the caller's, and enforce it, so a retry schedule cannot outlive the request it serves.</li>\n<li>Stop retrying anything the server told you not to retry. A refusal with a reason is information; treating it identically to a timeout throws that information away.</li>\n<li>Only then consider a circuit breaker. Breakers are useful, but in a six-machine cluster they trip and reset in lockstep unless their thresholds are jittered too, which reintroduces the original problem one layer up.</li>\n</ol>\n<p>The ordering is deliberate and the last point is the one that gets argued about. Circuit breakers are the fashionable answer to this problem and they do work, but they are a coordination mechanism, and coordination mechanisms in small clusters synchronise unless you go out of your way to stop them. A breaker with a fixed failure threshold and a fixed cooldown, deployed identically on six machines, is a device for ensuring that all six machines stop and start together. That may still be better than the storm it replaces. It is not the simple win it is usually presented as.</p>\n\n<h2>A note on libraries</h2>\n<p>Almost every language ecosystem has a retry library, and almost all of them default to no jitter, because the default was chosen to be predictable for tests rather than safe in production. It is worth reading the defaults of whatever you are using rather than trusting that a well-maintained package has made the safe choice; the survey at <a href=\"https://example-docs.test/retry-defaults\">this comparison of retry defaults</a> covers about twenty of them and the results are not encouraging. If your library does not expose a jitter strategy at all, wrapping it is nine lines of code and worth doing today.</p>\n<ul>\n<li>Check whether the delay is computed per attempt or per schedule; the latter cannot be jittered usefully.</li>\n<li>Check whether the maximum applies to the delay or to the total elapsed time. Both are reasonable, only one of them bounds your deadline.</li>\n<li>Check what the library does with a cancelled context mid-sleep. A retry that ignores cancellation will happily outlive the request.</li>\n</ul>\n<blockquote><p>The three-line retry helper is the most expensive code I have ever reviewed and approved. It was correct. It was also the proximate cause of four of our last six incidents, and none of the reviews that waved it through, including mine, asked what six copies of it would do at the same time.</p></blockquote>\n<p>That quote is from an internal write-up the author has since published in redacted form, and it is a fair summary of why this failure mode persists. Retry code reads as local and behaves as global. Review catches local mistakes. Further reading on the large-scale version of the problem is collected at <a href=\"https://example-tech.test/topics/overload\">the overload topic page</a>, and the small-cluster measurements above are reproduced from a test harness available at <a href=\"https://example-forge.test/osei/storm-lab\">the storm-lab repository</a>.</p>\n",
+        "direction": "ltr"
+      },
+      "summary": {
+        "content": "<p>Twenty-four requests, no capacity problem, and a nine-minute outage: why retry amplification bites hardest in clusters small enough to synchronise.</p>",
+        "direction": "ltr"
+      },
+      "fullContent": "\n<p>Retry logic is the most widely copied and least frequently measured code in most services. It is three lines long, it is obviously correct, and in a cluster of six machines it will happily convert a two-second hiccup into a nine-minute outage. The mechanism is well documented at large scale, where it has a name and a graph in every reliability textbook, but the small-cluster version is different in ways that matter, and it tends to surprise teams who believed they were too small to have this problem.</p>\n\n<h2>The shape of a small storm</h2>\n<p>At large scale a retry storm is a capacity story: a fraction of requests fail, each failure multiplies into several more requests, aggregate load crosses a threshold, and the system settles into a stable overloaded state that persists long after the original trigger is gone. The fix is well known — cap the multiplier, add jitter, shed load at the edge — and the maths is comforting because it involves large numbers behaving predictably.</p>\n<p>In a cluster of half a dozen machines none of those large numbers exist. What you get instead is synchronisation. Six clients that all failed at the same moment, all backing off with the same schedule, will come back at the same moment, and they will keep coming back together for as long as the schedule lasts. Load does not rise smoothly; it arrives in spikes separated by silence, and the spikes are tall enough to re-trigger the failure that caused them. A graph of a small retry storm looks less like a plateau and more like a metronome.</p>\n\n<h3>Why jitter is not optional at six machines</h3>\n<p>The usual advice about jitter is presented as a refinement, something you add once the basic exponential schedule is in place. In a small cluster it is the load-bearing part. Without it, six clients are effectively one client with six times the burst, and no amount of tuning the base delay will fix that, because the problem is not the average rate but the shape of the distribution. Full jitter — picking uniformly between zero and the current ceiling rather than scaling a fixed delay — costs nothing, is two extra tokens of code, and turns the metronome into something the server can absorb.</p>\n\n<figure><img src=\"https://picsum.photos/seed/retry-storms-small-clusters/1200/700\" alt=\"\"><figcaption>Request arrivals during a synchronised backoff, sampled at one-second resolution.</figcaption></figure>\n\n<h2>An example with numbers</h2>\n<p>Consider a service with six workers, each maintaining a pool of four connections to a shared store. The store takes about two hundred milliseconds to fail over between replicas, during which it refuses connections. Every client sees the refusal, every client retries three times with a doubling delay starting at one hundred milliseconds, and every client gives up after the third attempt.</p>\n<pre><code>attempt 1  t = 0ms     24 requests   refused\nattempt 2  t = 100ms   24 requests   refused\nattempt 3  t = 300ms   24 requests   accepted, but queue depth 24\n           t = 700ms   failover complete\n</code></pre>\n<p>Twenty-four requests is nothing. The problem is that all twenty-four arrive inside a window narrower than the store's own scheduling quantum, so the store sees a queue rather than a stream, and the tail latency of that third attempt is not two hundred milliseconds but closer to two seconds. If the client timeout is one second — a very ordinary choice — then the third attempt times out, the request fails upward, and the caller above starts its own retry schedule against a store that is now healthy but busy. That is the whole storm, and it happened with twenty-four requests and no capacity problem at all.</p>\n<p>The instructive part is that every individual component behaved correctly. The store failed over within its published window. The client retried a bounded number of times with exponential delay. The caller above surfaced an error rather than hanging. Nothing in this system is misconfigured in a way that would show up in review, and the failure is entirely a property of how the pieces compose.</p>\n\n<h2>What to measure</h2>\n<p>Most teams have a counter for request failures and a histogram for latency, and neither of them shows a storm clearly. Failures show the trigger but not the amplification; latency shows the symptom but not the cause. Three cheaper measurements are far more diagnostic, and the table below is roughly the order in which they pay off.</p>\n<table>\n<thead><tr><th>Measurement</th><th>What it reveals</th><th>Cost to add</th></tr></thead>\n<tbody>\n<tr><td>Attempts per logical request</td><td>Amplification factor, directly</td><td>One counter, one label</td></tr>\n<tr><td>Arrival inter-spacing at the server</td><td>Synchronisation, before it hurts</td><td>Histogram on an existing timestamp</td></tr>\n<tr><td>Retries in flight, cluster-wide</td><td>Whether backoff is actually bounded</td><td>One gauge, incremented and decremented</td></tr>\n</tbody>\n</table>\n<p>The first of these is the one nobody has and everybody should. A ratio of attempts to logical requests is a single number that sits near one when things are healthy and climbs immediately when they are not, and unlike a failure rate it keeps climbing while the failures are still being successfully absorbed. It is the earliest available signal and it costs a label on a counter you have already written.</p>\n\n<h2>Fixes, in order of how much they help</h2>\n<ol>\n<li>Add full jitter to every backoff schedule in the codebase. This is the single highest-value change and it is mechanical.</li>\n<li>Budget retries per logical request rather than per hop, so a three-deep call chain cannot turn three retries into twenty-seven.</li>\n<li>Make the client's total deadline shorter than the caller's, and enforce it, so a retry schedule cannot outlive the request it serves.</li>\n<li>Stop retrying anything the server told you not to retry. A refusal with a reason is information; treating it identically to a timeout throws that information away.</li>\n<li>Only then consider a circuit breaker. Breakers are useful, but in a six-machine cluster they trip and reset in lockstep unless their thresholds are jittered too, which reintroduces the original problem one layer up.</li>\n</ol>\n<p>The ordering is deliberate and the last point is the one that gets argued about. Circuit breakers are the fashionable answer to this problem and they do work, but they are a coordination mechanism, and coordination mechanisms in small clusters synchronise unless you go out of your way to stop them. A breaker with a fixed failure threshold and a fixed cooldown, deployed identically on six machines, is a device for ensuring that all six machines stop and start together. That may still be better than the storm it replaces. It is not the simple win it is usually presented as.</p>\n\n<h2>A note on libraries</h2>\n<p>Almost every language ecosystem has a retry library, and almost all of them default to no jitter, because the default was chosen to be predictable for tests rather than safe in production. It is worth reading the defaults of whatever you are using rather than trusting that a well-maintained package has made the safe choice; the survey at <a href=\"https://example-docs.test/retry-defaults\">this comparison of retry defaults</a> covers about twenty of them and the results are not encouraging. If your library does not expose a jitter strategy at all, wrapping it is nine lines of code and worth doing today.</p>\n<ul>\n<li>Check whether the delay is computed per attempt or per schedule; the latter cannot be jittered usefully.</li>\n<li>Check whether the maximum applies to the delay or to the total elapsed time. Both are reasonable, only one of them bounds your deadline.</li>\n<li>Check what the library does with a cancelled context mid-sleep. A retry that ignores cancellation will happily outlive the request.</li>\n</ul>\n<blockquote><p>The three-line retry helper is the most expensive code I have ever reviewed and approved. It was correct. It was also the proximate cause of four of our last six incidents, and none of the reviews that waved it through, including mine, asked what six copies of it would do at the same time.</p></blockquote>\n<p>That quote is from an internal write-up the author has since published in redacted form, and it is a fair summary of why this failure mode persists. Retry code reads as local and behaves as global. Review catches local mistakes. Further reading on the large-scale version of the problem is collected at <a href=\"https://example-tech.test/topics/overload\">the overload topic page</a>, and the small-cluster measurements above are reproduced from a test harness available at <a href=\"https://example-forge.test/osei/storm-lab\">the storm-lab repository</a>.</p>\n",
+      "engagement": 148,
+      "engagementRate": 0.019,
+      "keywords": ["technology", "reliability"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/tech-0050/700/1000",
+        "width": 700,
+        "height": 1000,
+        "contentType": "image/jpeg"
+      },
+      "tags": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/tag/global.read",
+          "label": ""
+        }
+      ]
+    },
+    {
+      "id": "gadgets-0003",
+      "originId": "http://example-gadgets.test/articles/3",
+      "fingerprint": "fp-gadgets-3",
+      "title": "Regulators open inquiry into app store fees",
+      "author": "Example Gadgets Weekly staff",
+      "published": 1789705200000,
+      "crawled": 1789705260000,
+      "updated": 1789705260000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-gadgets.test/rss.xml",
+        "title": "Example Gadgets Weekly",
+        "htmlUrl": "http://example-gadgets.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-gadgets.test/articles/3",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-gadgets.test/articles/3",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-gadgets.test/articles/3",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-gadgets.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "engagement": 49,
+      "engagementRate": 0.022,
+      "keywords": ["gadgets", "reviews"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/gadgets-0003/700/1000",
+        "width": 700,
+        "height": 1000,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "science-0004",
+      "originId": "http://example-science.test/articles/4",
+      "fingerprint": "fp-science-4",
+      "title": "New browser engine promises faster page loads",
+      "author": "Example Science Weekly staff",
+      "published": 1789699500000,
+      "crawled": 1789699560000,
+      "updated": 1789699560000,
+      "unread": false,
+      "origin": {
+        "streamId": "feed/http://example-science.test/feed",
+        "title": "Example Science Weekly",
+        "htmlUrl": "http://example-science.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-science.test/articles/4",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-science.test/articles/4",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-science.test/articles/4",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-science.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "keywords": ["science"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/science-0004/700/1000",
+        "width": 700,
+        "height": 1000,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "tech-0005",
+      "originId": "http://example-tech.test/articles/5",
+      "fingerprint": "fp-tech-5",
+      "title": "Satellite network adds coverage over rural regions",
+      "author": "Example Tech Daily staff",
+      "published": 1789693800000,
+      "crawled": 1789693860000,
+      "updated": 1789693860000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-tech.test/feed",
+        "title": "Example Tech Daily",
+        "htmlUrl": "http://example-tech.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-tech.test/articles/5",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-tech.test/articles/5",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-tech.test/articles/5",
+      "content": {
+        "content": "<p>Lead paragraph summarizing the story from example-tech.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-tech.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://picsum.photos/seed/tech-0005-body/1200/700\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+        "direction": "ltr"
+      },
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-tech.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "fullContent": "<p>Lead paragraph summarizing the story from example-tech.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-tech.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://example-cdn.test/img/example-tech.test.jpg\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+      "engagement": 55,
+      "engagementRate": 0.01,
+      "tags": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/tag/global.saved",
+          "label": "Saved"
+        }
+      ],
+      "keywords": ["technology"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ]
+    },
+    {
+      "id": "news-0006",
+      "originId": "http://example-news.test/articles/6",
+      "fingerprint": "fp-news-6",
+      "title": "Battery breakthrough claims longer laptop runtime",
+      "author": "Example News staff",
+      "published": 1789688100000,
+      "crawled": 1789688160000,
+      "updated": 1789688160000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-news.test/rss",
+        "title": "Example News",
+        "htmlUrl": "http://example-news.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-news.test/articles/6",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-news.test/articles/6",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-news.test/articles/6",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-news.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "keywords": ["news", "world"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ]
+    },
+    {
+      "id": "news-0007",
+      "originId": "http://example-news.test/articles/7",
+      "fingerprint": "fp-news-7",
+      "title": "Open-source project hits a major release milestone",
+      "author": "Example News staff",
+      "published": 1789682400000,
+      "crawled": 1789682460000,
+      "updated": 1789682460000,
+      "unread": false,
+      "origin": {
+        "streamId": "feed/http://example-news.test/rss",
+        "title": "Example News",
+        "htmlUrl": "http://example-news.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-news.test/articles/7",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-news.test/articles/7",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-news.test/articles/7",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-news.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "engagement": 61,
+      "engagementRate": 0.018,
+      "keywords": ["news", "world"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/news-0007/1000/700",
+        "width": 1000,
+        "height": 700,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "tech-0008",
+      "originId": "http://example-tech.test/articles/8",
+      "fingerprint": "fp-tech-8",
+      "title": "City pilots sensor network for traffic management",
+      "author": "Example Tech Daily staff",
+      "published": 1789676700000,
+      "crawled": 1789676760000,
+      "updated": 1789676760000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-tech.test/feed",
+        "title": "Example Tech Daily",
+        "htmlUrl": "http://example-tech.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-tech.test/articles/8",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-tech.test/articles/8",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-tech.test/articles/8",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-tech.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "visual": {
+        "url": "https://picsum.photos/seed/tech-0008/900/900",
+        "width": 900,
+        "height": 900,
+        "contentType": "image/jpeg"
+      },
+      "keywords": ["technology"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ]
+    },
+    {
+      "id": "gadgets-0009",
+      "originId": "http://example-gadgets.test/articles/9",
+      "fingerprint": "fp-gadgets-9",
+      "title": "Review: the latest budget noise-cancelling headphones",
+      "author": "Example Gadgets Weekly staff",
+      "published": 1789671000000,
+      "crawled": 1789671060000,
+      "updated": 1789671060000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-gadgets.test/rss.xml",
+        "title": "Example Gadgets Weekly",
+        "htmlUrl": "http://example-gadgets.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-gadgets.test/articles/9",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-gadgets.test/articles/9",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-gadgets.test/articles/9",
+      "content": {
+        "content": "<p>Lead paragraph summarizing the story from example-gadgets.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-gadgets.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://picsum.photos/seed/gadgets-0009-body/1200/700\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+        "direction": "ltr"
+      },
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-gadgets.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "fullContent": "<p>Lead paragraph summarizing the story from example-gadgets.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-gadgets.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://example-cdn.test/img/example-gadgets.test.jpg\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+      "engagement": 67,
+      "engagementRate": 0.026,
+      "keywords": ["gadgets", "reviews"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/gadgets-0009/1000/700",
+        "width": 1000,
+        "height": 700,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "science-0010",
+      "originId": "http://example-science.test/articles/10",
+      "fingerprint": "fp-science-10",
+      "title": "Security researchers disclose flaw in router firmware",
+      "author": "Example Science Weekly staff",
+      "published": 1789665300000,
+      "crawled": 1789665360000,
+      "updated": 1789665360000,
+      "unread": false,
+      "origin": {
+        "streamId": "feed/http://example-science.test/feed",
+        "title": "Example Science Weekly",
+        "htmlUrl": "http://example-science.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-science.test/articles/10",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-science.test/articles/10",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-science.test/articles/10",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-science.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "keywords": ["science"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/science-0010/900/600",
+        "width": 900,
+        "height": 600,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "tech-0011",
+      "originId": "http://example-tech.test/articles/11",
+      "fingerprint": "fp-tech-11",
+      "title": "Robotics lab demonstrates warehouse picking arm",
+      "author": "Example Tech Daily staff",
+      "published": 1789659600000,
+      "crawled": 1789659660000,
+      "updated": 1789659660000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-tech.test/feed",
+        "title": "Example Tech Daily",
+        "htmlUrl": "http://example-tech.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-tech.test/articles/11",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-tech.test/articles/11",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-tech.test/articles/11",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-tech.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "visual": {
+        "url": "https://picsum.photos/seed/tech-0011/800/1000",
+        "width": 800,
+        "height": 1000,
+        "contentType": "image/jpeg"
+      },
+      "engagement": 73,
+      "engagementRate": 0.014,
+      "keywords": ["technology"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ]
+    },
+    {
+      "id": "news-0012",
+      "originId": "http://example-news.test/articles/12",
+      "fingerprint": "fp-news-12",
+      "title": "Streaming service adds offline download limits",
+      "author": "Example News staff",
+      "published": 1789653900000,
+      "crawled": 1789653960000,
+      "updated": 1789653960000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-news.test/rss",
+        "title": "Example News",
+        "htmlUrl": "http://example-news.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-news.test/articles/12",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-news.test/articles/12",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-news.test/articles/12",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-news.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "keywords": ["news", "world"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/news-0012/900/600",
+        "width": 900,
+        "height": 600,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "news-0013",
+      "originId": "http://example-news.test/articles/13",
+      "fingerprint": "fp-news-13",
+      "title": "Analysts debate slowing smartphone upgrade cycles",
+      "author": "Example News staff",
+      "published": 1789648200000,
+      "crawled": 1789648260000,
+      "updated": 1789648260000,
+      "unread": false,
+      "origin": {
+        "streamId": "feed/http://example-news.test/rss",
+        "title": "Example News",
+        "htmlUrl": "http://example-news.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-news.test/articles/13",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-news.test/articles/13",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-news.test/articles/13",
+      "content": {
+        "content": "<p>Lead paragraph summarizing the story from example-news.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-news.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://picsum.photos/seed/news-0013-body/1200/700\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+        "direction": "ltr"
+      },
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-news.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "fullContent": "<p>Lead paragraph summarizing the story from example-news.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-news.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://example-cdn.test/img/example-news.test.jpg\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+      "engagement": 79,
+      "engagementRate": 0.022,
+      "keywords": ["news", "world"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ]
+    },
+    {
+      "id": "tech-0014",
+      "originId": "http://example-tech.test/articles/14",
+      "fingerprint": "fp-tech-14",
+      "title": "Lab-grown display panels promise thinner devices",
+      "author": "Example Tech Daily staff",
+      "published": 1789642500000,
+      "crawled": 1789642560000,
+      "updated": 1789642560000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-tech.test/feed",
+        "title": "Example Tech Daily",
+        "htmlUrl": "http://example-tech.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-tech.test/articles/14",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-tech.test/articles/14",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-tech.test/articles/14",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-tech.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "visual": {
+        "url": "https://picsum.photos/seed/tech-0014/1000/700",
+        "width": 1000,
+        "height": 700,
+        "contentType": "image/jpeg"
+      },
+      "keywords": ["technology"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ]
+    },
+    {
+      "id": "gadgets-0015",
+      "originId": "http://example-gadgets.test/articles/15",
+      "fingerprint": "fp-gadgets-15",
+      "title": "Weekly roundup: the gadgets worth your attention",
+      "author": "Example Gadgets Weekly staff",
+      "published": 1789636800000,
+      "crawled": 1789636860000,
+      "updated": 1789636860000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-gadgets.test/rss.xml",
+        "title": "Example Gadgets Weekly",
+        "htmlUrl": "http://example-gadgets.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-gadgets.test/articles/15",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-gadgets.test/articles/15",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-gadgets.test/articles/15",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-gadgets.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "engagement": 85,
+      "engagementRate": 0.01,
+      "keywords": ["gadgets", "reviews"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+          "label": "Tech News"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/gadgets-0015/800/1000",
+        "width": 800,
+        "height": 1000,
+        "contentType": "image/jpeg"
+      }
+    }
+  ]
+}

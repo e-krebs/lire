@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Lire icon preview (dev only)</title>
+    <style>
+      body { margin: 0; font-family: system-ui, sans-serif; background: #333; color: #eee; }
+      h1 { padding: 16px 24px 0; font-size: 18px; }
+      .row { display: flex; gap: 24px; padding: 0 24px 32px; align-items: flex-end; }
+      .swatch { padding: 16px; border-radius: 8px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+      .swatch.on-white { background: #ffffff; }
+      .swatch.on-dark { background: #111111; }
+      .swatch span { font-size: 12px; color: #888; }
+      .swatch.on-white span { color: #666; }
+    </style>
+  </head>
+  <body>
+    <h1>favicon-light.svg</h1>
+    <div class="row">
+      <div class="swatch on-white"><img src="favicon-light.svg" width="16" height="16" /><span>16 on white</span></div>
+      <div class="swatch on-white"><img src="favicon-light.svg" width="48" height="48" /><span>48 on white</span></div>
+      <div class="swatch on-white"><img src="favicon-light.svg" width="192" height="192" /><span>192 on white</span></div>
+      <div class="swatch on-white"><img src="favicon-light.svg" width="512" height="512" /><span>512 on white</span></div>
+      <div class="swatch on-dark"><img src="favicon-light.svg" width="16" height="16" /><span>16 on #111</span></div>
+      <div class="swatch on-dark"><img src="favicon-light.svg" width="48" height="48" /><span>48 on #111</span></div>
+      <div class="swatch on-dark"><img src="favicon-light.svg" width="192" height="192" /><span>192 on #111</span></div>
+      <div class="swatch on-dark"><img src="favicon-light.svg" width="512" height="512" /><span>512 on #111</span></div>
+    </div>
+    <h1>favicon-dark.svg</h1>
+    <div class="row">
+      <div class="swatch on-white"><img src="favicon-dark.svg" width="16" height="16" /><span>16 on white</span></div>
+      <div class="swatch on-white"><img src="favicon-dark.svg" width="48" height="48" /><span>48 on white</span></div>
+      <div class="swatch on-white"><img src="favicon-dark.svg" width="192" height="192" /><span>192 on white</span></div>
+      <div class="swatch on-white"><img src="favicon-dark.svg" width="512" height="512" /><span>512 on white</span></div>
+      <div class="swatch on-dark"><img src="favicon-dark.svg" width="16" height="16" /><span>16 on #111</span></div>
+      <div class="swatch on-dark"><img src="favicon-dark.svg" width="48" height="48" /><span>48 on #111</span></div>
+      <div class="swatch on-dark"><img src="favicon-dark.svg" width="192" height="192" /><span>192 on #111</span></div>
+      <div class="swatch on-dark"><img src="favicon-dark.svg" width="512" height="512" /><span>512 on #111</span></div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,1085 @@
+@import "tailwindcss";
+
+/* The app bar sits at the bottom when <html data-bar="bottom"> (barPosition.ts): a per-device
+   choice for thumbs on a phone. Anything that hangs off the bar mirrors itself under this variant. */
+@custom-variant bar-bottom (&:where([data-bar="bottom"], [data-bar="bottom"] *));
+
+/* coche family: butter accent on Material neutrals, light default with an OS-driven dark mode. */
+@theme {
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+
+  --color-canvas: #f1f3f4;
+  --color-surface: #ffffff;
+  --color-surface-2: #f1f3f4;
+  --color-card: #ffffff; /* a text card: lifts off the canvas in both schemes */
+  --color-ink: #1f1f1f;
+  --color-muted: #5f6368;
+  --color-faint: #6a6f74; /* 4.56:1 on the canvas, 5.07:1 on the surface */
+  --color-hairline: #e3e6ea;
+  --color-hairline-image: rgb(0 0 0 / 8%);
+
+  --color-accent: #fcd34d;
+  --color-on-accent: #1f1f1f;
+  --color-accent-text: #96631a; /* ochre, dark enough for text on the canvas */
+  --color-accent-soft: #fefbe8;
+
+  --color-danger: #c5221f;
+  --color-danger-soft: #fce8e6;
+
+  /* Scrim over media, so it stays black in both modes: no dark override below. */
+  --color-scrim: #000000;
+  --color-on-scrim: #ffffff;
+
+  /* Breakpoints double as the three device tiers: phone < sm, tablet sm..lg, desktop >= lg. */
+  --breakpoint-sm: 40rem;
+  --breakpoint-lg: 64rem;
+
+  /* Shell geometry, shared by AppShell and the panes. */
+  --sidebar-w: 17rem;
+  --list-w: 24rem;
+  --bottom-nav-h: 3.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-canvas: #1f1f1f;
+    --color-surface: #1f1f1f;
+    --color-surface-2: #2d2e31;
+    --color-card: #2d2e31;
+    --color-ink: #e3e3e3;
+    --color-muted: #9aa0a6;
+    --color-faint: #8a8f94; /* 5.05:1 on the canvas and the surface */
+    --color-hairline: #3c4043;
+    --color-hairline-image: rgb(255 255 255 / 8%);
+
+    --color-accent-text: #fcd34d; /* dark ochre vanishes on dark, use the butter itself */
+    --color-accent-soft: #38341f;
+
+    --color-danger: #f28b82;
+    --color-danger-soft: #4a1f1c;
+  }
+}
+
+/* Every token flips at once when the OS scheme does, so transitions would cross-fade the whole
+   app one property at a time; main.tsx sets this attribute for the flip's two frames. */
+[data-theme-switching],
+[data-theme-switching] * {
+  transition: none !important;
+}
+
+/* Tailwind v4 dropped the pointer cursor on buttons; every clickable control gets it back. */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a[href],
+  label[for],
+  select:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+}
+
+html {
+  /* Native scrollbars, form controls and the canvas behind overscroll follow the OS scheme. */
+  color-scheme: light dark;
+  /* Pull-to-refresh and rubber-banding would fight the list's own scroll and the swipe gestures. */
+  overscroll-behavior-y: contain;
+  /* `clip` rather than `hidden` so no scroll container is created and sticky headers keep sticking. */
+  overflow-x: clip;
+  background: var(--color-canvas);
+}
+
+body {
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Installed on a phone the shell owns the viewport, so the body never scrolls: each pane does. */
+  height: 100dvh;
+  overflow: hidden;
+}
+
+#root {
+  height: 100%;
+}
+
+/* Safe-area insets as utilities: the shell pads the bottom nav on a phone and the sidebar's top on
+   an iPad in windowed mode, where the window controls overlap the page top. */
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@utility pl-safe {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+@utility pr-safe {
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Reader body copy: the article HTML is untrusted markup sanitized upstream, so the styling has to
+   come from a wrapper, not from classes in the content. */
+.prose-reader {
+  font-family: var(--font-sans);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  max-width: 68ch;
+  overflow-wrap: break-word;
+}
+.prose-reader :is(p, ul, ol, blockquote, pre, figure) {
+  margin-block: 1em;
+}
+.prose-reader :is(h1, h2, h3, h4) {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  line-height: 1.25;
+  margin-block: 1.5em 0.5em;
+  text-wrap: balance;
+}
+.prose-reader a {
+  color: var(--color-accent-text);
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  text-underline-position: from-font;
+  text-decoration-skip-ink: auto;
+}
+/* Capped height with the ratio kept: `width: auto` lets the cap shrink the width along, and
+   `object-fit` covers author markup that fixes the width inline. */
+.prose-reader :is(img, video, iframe) {
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 60vh;
+  object-fit: contain;
+  border-radius: 0.375rem;
+  outline: 1px solid var(--color-hairline-image);
+  outline-offset: -1px;
+}
+.prose-reader pre {
+  font-size: 0.875em;
+  overflow-x: auto;
+  padding: 0.75em 1em;
+  background: var(--color-surface-2);
+  border-radius: 0.375rem;
+}
+.prose-reader blockquote {
+  border-left: 3px solid var(--color-hairline);
+  padding-left: 1em;
+  color: var(--color-muted);
+}
+.prose-reader :is(ul, ol) {
+  padding-left: 1.5em;
+}
+.prose-reader ul {
+  list-style: disc;
+}
+.prose-reader ol {
+  list-style: decimal;
+}
+/* Newsletters ship table layouts with hard-coded widths; the panel is narrower than the mail
+   client they were built for, so the tables give up their widths rather than overflow. */
+.prose-reader table {
+  width: 100% !important;
+  max-width: 100% !important;
+  /* Fixed layout is what makes the cap hold: under auto layout a `width="600"` image sets the
+     column's minimum and the table grows past the panel however narrow it is told to be. */
+  table-layout: fixed;
+  border-collapse: collapse;
+}
+.prose-reader :is(td, th) {
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+.prose-reader table img {
+  width: auto !important;
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+/* Opening and closing the reader is a view transition (the tile link and the panel's exits ask
+   for one). The card grows into the panel and the panel shrinks back into it: both carry the
+   name `reader`, the card only while no reader is open (`data-reading` on the panes), which keeps
+   the name unique once the panel holds it, since a duplicate would skip the whole transition. The
+   title and feed name travel on their own, on the same clock, and the rest cross-fades briefly. */
+/* No root snapshot: capturing the whole page, glass mastheads included, is what a phone felt as
+   lag. The page swaps at once and only the named pieces animate over it. */
+:root {
+  view-transition-name: none;
+}
+.panes:not([data-reading]) [data-opening] {
+  view-transition-name: reader;
+}
+.panes:not([data-reading]) [data-opening] .tile-title {
+  view-transition-name: entry-title;
+}
+.panes:not([data-reading]) [data-opening] .tile-feed {
+  view-transition-name: entry-feed;
+}
+.reader-panel {
+  view-transition-name: reader;
+}
+.reader-scrim {
+  view-transition-name: reader-scrim;
+}
+.reader-title {
+  view-transition-name: entry-title;
+}
+.reader-feed-name {
+  view-transition-name: entry-feed;
+}
+/* Card and panel differ in shape, so both snapshots fill the morphing box instead of keeping
+   their own height and spilling out of it. */
+::view-transition-old(reader),
+::view-transition-new(reader) {
+  block-size: 100%;
+  object-fit: cover;
+}
+::view-transition-group(reader),
+::view-transition-group(entry-title),
+::view-transition-group(entry-feed) {
+  animation-duration: 160ms;
+  animation-timing-function: ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
+/* The navigator is the app's most opened surface, so it opens instantly and only animates out:
+   no `@starting-style`, which is what keeps the entrance unanimated, and `allow-discrete` so
+   `display` (and the dialog's `overlay`) hold until the exit finishes. */
+@media (prefers-reduced-motion: no-preference) {
+  dialog.navigator,
+  div.navigator-popover {
+    opacity: 0;
+    transition-property: opacity, transform, display, overlay;
+    transition-duration: 150ms;
+    transition-timing-function: ease-out;
+    transition-behavior: allow-discrete;
+  }
+  /* Shrink back towards the trigger: the sheet to the screen's bottom edge, the popover to the
+     location bar above it — and the other way around once the bar is at the bottom. */
+  dialog.navigator {
+    transform: translateY(8px) scale(0.98);
+    transform-origin: bottom center;
+  }
+  div.navigator-popover {
+    transform: translateY(8px) scale(0.98);
+    transform-origin: top center;
+  }
+  [data-bar="bottom"] dialog.navigator {
+    transform: translateY(-8px) scale(0.98);
+    transform-origin: top center;
+  }
+  [data-bar="bottom"] div.navigator-popover {
+    transform: translateY(-8px) scale(0.98);
+    transform-origin: bottom center;
+  }
+  dialog.navigator[open],
+  div.navigator-popover[data-open] {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The account menu hangs off the cog: anchor positioning where the browser has it, a fixed
+   right-aligned panel under the bar where it does not. */
+.account-menu {
+  position: fixed;
+  inset: auto;
+  margin: 0.25rem 0 0;
+  position-anchor: --account;
+  top: anchor(bottom);
+  right: anchor(right);
+}
+[data-bar="bottom"] .account-menu {
+  margin: 0 0 0.25rem;
+  top: auto;
+  bottom: anchor(top);
+}
+@supports not (anchor-name: --a) {
+  .account-menu {
+    top: calc(env(safe-area-inset-top, 0px) + 3.5rem);
+    right: 0.5rem;
+  }
+  [data-bar="bottom"] .account-menu {
+    top: auto;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 3.5rem);
+  }
+}
+
+/* The add-sources menu hangs off its trigger: each instance sets its own anchor name inline.
+   Without anchor positioning the browser centres the popover. */
+@supports (anchor-name: --a) {
+  .add-sources-menu {
+    position: fixed;
+    inset: auto;
+    margin: 0.25rem 0 0;
+    top: anchor(bottom);
+    right: anchor(right);
+  }
+}
+
+/* Opened rarely enough to earn an entrance, so it grows out of the cog it hangs from. */
+@media (prefers-reduced-motion: no-preference) {
+  div.account-menu[popover] {
+    opacity: 0;
+    transform: translateY(4px);
+    transform-origin: top right;
+    transition-property: opacity, transform, display, overlay;
+    transition-duration: 150ms;
+    transition-timing-function: ease-out;
+    transition-behavior: allow-discrete;
+  }
+  [data-bar="bottom"] div.account-menu[popover] {
+    transform: translateY(-4px);
+    transform-origin: bottom right;
+  }
+  div.account-menu[popover]:popover-open {
+    opacity: 1;
+    transform: none;
+  }
+  @starting-style {
+    div.account-menu[popover]:popover-open {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    [data-bar="bottom"] div.account-menu[popover]:popover-open {
+      transform: translateY(-4px);
+    }
+  }
+}
+
+/* Results-grid card. `--hue` is the feed's hue, set inline by the tile; every colour below
+   derives from it, and `light-dark()` follows `color-scheme` on <html>. */
+.tile-card {
+  /* One clip for photo and glass together: the glass paints on its own compositor layer and
+     snaps to whole pixels, so an `overflow: hidden` rounded corner leaked a row of photo. */
+  isolation: isolate;
+  clip-path: inset(0 round 0.75rem);
+}
+/* The ring keeps a pale card off a pale canvas and a dark one off a dark canvas. */
+.tile-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  border-radius: 0.75rem;
+  box-shadow: inset 0 0 0 1px light-dark(rgb(0 0 0 / 18%), rgb(255 255 255 / 14%));
+  pointer-events: none;
+}
+/* Frosted masthead over the photo's bottom; it overhangs the clip by 1px so no photo row
+   survives under its edge, and the padding gives that pixel back. */
+[data-has-image] .tile-glass {
+  position: absolute;
+  inset: auto -1px -1px;
+  padding: 0.75rem 13px 13px;
+  background: light-dark(oklch(0.97 0.02 var(--hue) / 86%), oklch(0.22 0.03 var(--hue) / 78%));
+  backdrop-filter: blur(32px) saturate(1.7);
+  --tile-label: light-dark(oklch(0.38 0.15 var(--hue)), oklch(0.85 0.15 var(--hue)));
+}
+/* The no-image card: the card surface in light, a solid block of the feed's hue in dark. The
+   light lightness is 0.46, not 0.5: cyan around hue 200 only clears 4.5:1 on the white card from
+   there down, and the label is 11px. */
+[data-entry-id]:not([data-has-image]) .tile-card {
+  background: light-dark(var(--color-card), oklch(0.35 0.08 var(--hue)));
+  --tile-label: light-dark(oklch(0.4 0.17 var(--hue)), oklch(0.85 0.15 var(--hue)));
+}
+/* A read text card goes nearly grayscale, keeping only a trace of its hue. */
+[data-read] [data-entry-id]:not([data-has-image]) .tile-card {
+  background: light-dark(oklch(0.94 0.006 var(--hue)), oklch(0.27 0.012 var(--hue)));
+  --tile-label: light-dark(oklch(0.5 0.05 var(--hue)), oklch(0.75 0.05 var(--hue)));
+}
+.tile-label {
+  color: var(--tile-label);
+}
+.tile-rule {
+  background: var(--tile-label);
+}
+/* The swipe's action panel under the card. `--reveal` is the finger's progress to the commit
+   threshold, registered so the snap back can ease it (and the tint with it) back to 0. */
+@property --reveal {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+.tile-action {
+  background: color-mix(
+    in oklab,
+    var(--color-surface-2),
+    var(--color-accent) calc(var(--reveal) * 100%)
+  );
+  color: color-mix(in oklab, var(--color-ink), var(--color-on-accent) calc(var(--reveal) * 100%));
+  transition: --reveal 200ms ease-out;
+}
+.tile-action-indicator {
+  opacity: var(--reveal);
+  scale: calc(0.7 + 0.3 * var(--reveal));
+}
+/* Past the threshold the icon pops, the one cue that letting go will commit. */
+.tile-action-indicator > svg {
+  transition: scale 200ms ease-out;
+}
+[data-armed] .tile-action-indicator > svg {
+  scale: 1.2;
+}
+.tile-title {
+  color: light-dark(#1f1f1f, #ffffff);
+}
+
+/* The undo strip that replaces a card marked read in an unread-only view. `--undo-p` runs from 1
+   to 0 over the delay; the animation is the clock, so hover and focus pause the countdown itself
+   and the grid commits the read on its `animationend`. It therefore runs under
+   `prefers-reduced-motion: reduce` too, where it is a timer rather than motion, and the bar it
+   drives only sweeps once. */
+@property --undo-p {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
+@keyframes undo-tick {
+  from {
+    --undo-p: 1;
+  }
+  to {
+    --undo-p: 0;
+  }
+}
+.undo-strip {
+  box-shadow: inset 0 0 0 1px var(--color-hairline);
+  animation: undo-tick var(--undo-ms) linear forwards;
+}
+/* Focus on Undo, where the strip puts it, does not pause: the countdown still runs out. A leaving
+   strip pauses so a late `animationend` cannot confirm it a second time mid-fade. */
+.undo-strip:hover,
+.undo-strip:has(.undo-confirm:focus),
+.undo-strip[data-leaving] {
+  animation-play-state: paused;
+}
+.undo-bar {
+  position: absolute;
+  inset: auto 0 0;
+  height: 3px;
+  background: var(--color-accent);
+  transform-origin: left;
+  scale: var(--undo-p) 1;
+}
+
+/* A scroll pane always shows its scrollbar, so the layout never shifts when content grows past
+   the fold. Setting `scrollbar-color` also makes Chromium draw a classic (non-overlay) bar on
+   macOS, which is what keeps it permanently visible there. */
+.scroll-pane {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-ink) 28%, transparent) transparent;
+}
+
+/* The shared tooltip (TooltipLayer): one `popover="manual"` in the top layer, anchored by CSS to
+   the trigger that holds `anchor-name: --tip`. `data-side` is the side asked for, `data-placed`
+   the one the browser chose after `position-try-fallbacks`; the beak follows the latter, because
+   a pseudo-element cannot read the chosen fallback. `margin` on all four sides gives the 6px gap
+   whichever side wins. Inverted so it separates from every surface; the ring and shadow keep it
+   off a photo. Hidden without anchor positioning: every trigger keeps its own aria-label. */
+.tooltip {
+  --tooltip-arrow: 11px;
+  --tooltip-ring: light-dark(rgb(255 255 255 / 14%), rgb(0 0 0 / 12%));
+  --tooltip-shift: 0 -2px;
+  position: fixed;
+  inset: auto;
+  margin: 6px;
+  position-anchor: --tip;
+  position-area: block-end;
+  justify-self: anchor-center;
+  position-try-fallbacks: flip-block;
+  align-items: baseline;
+  gap: 6px;
+  width: max-content;
+  max-width: 16rem;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: light-dark(#1f1f1f, #f4f4f4);
+  color: light-dark(#ffffff, #1f1f1f);
+  box-shadow:
+    inset 0 0 0 1px var(--tooltip-ring),
+    0 4px 12px light-dark(rgb(0 0 0 / 28%), rgb(0 0 0 / 50%));
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  overflow: visible;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+  pointer-events: none;
+}
+.tooltip[data-side="top"] {
+  --tooltip-shift: 0 2px;
+  position-area: block-start;
+}
+.tooltip[data-side="left"],
+.tooltip[data-side="right"] {
+  justify-self: auto;
+  align-self: anchor-center;
+  position-try-fallbacks: flip-inline;
+}
+.tooltip[data-side="left"] {
+  --tooltip-shift: 2px 0;
+  position-area: inline-start;
+}
+.tooltip[data-side="right"] {
+  --tooltip-shift: -2px 0;
+  position-area: inline-end;
+}
+/* `line-height: 1` and symmetric padding keep the key cap's box centred on its own glyphs, so
+   baseline alignment puts them on the label's baseline. */
+.tooltip kbd {
+  flex: none;
+  min-width: 18px;
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: light-dark(rgb(255 255 255 / 18%), rgb(0 0 0 / 12%));
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+}
+/* The beak: a rotated square, half outside the pill and 1px into it, in the pill's own colour.
+   It carries the ring on the two edges that face out after the turn. `--tooltip-beak` is the
+   trigger's centre along the edge, measured by the layer, because `anchor-center` shifts the
+   pill inwards at a viewport edge. */
+.tooltip::after {
+  content: "";
+  position: absolute;
+  width: var(--tooltip-arrow);
+  height: var(--tooltip-arrow);
+  rotate: 45deg;
+  background: inherit;
+  border: 0 solid var(--tooltip-ring);
+}
+.tooltip[data-placed="bottom"]::after {
+  left: calc(var(--tooltip-beak, 50%) - var(--tooltip-arrow) / 2);
+  top: calc(var(--tooltip-arrow) / -2 + 1px);
+  border-width: 1px 0 0 1px;
+}
+.tooltip[data-placed="top"]::after {
+  left: calc(var(--tooltip-beak, 50%) - var(--tooltip-arrow) / 2);
+  bottom: calc(var(--tooltip-arrow) / -2 + 1px);
+  border-width: 0 1px 1px 0;
+}
+.tooltip[data-placed="right"]::after {
+  top: calc(var(--tooltip-beak, 50%) - var(--tooltip-arrow) / 2);
+  left: calc(var(--tooltip-arrow) / -2 + 1px);
+  border-width: 0 0 1px 1px;
+}
+.tooltip[data-placed="left"]::after {
+  top: calc(var(--tooltip-beak, 50%) - var(--tooltip-arrow) / 2);
+  right: calc(var(--tooltip-arrow) / -2 + 1px);
+  border-width: 1px 1px 0 0;
+}
+.tooltip[popover] {
+  opacity: 0;
+}
+/* Only the open state sets `display`: the base rule must leave the UA's `display: none` alone,
+   or a closed popover would still take part in layout. */
+.tooltip[popover]:popover-open {
+  display: flex;
+  opacity: 1;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tooltip[popover] {
+    translate: var(--tooltip-shift);
+    transition-property: opacity, translate, display, overlay;
+    transition-duration: 150ms;
+    transition-timing-function: ease-out;
+    transition-behavior: allow-discrete;
+  }
+  .tooltip[popover]:popover-open {
+    translate: 0 0;
+  }
+  @starting-style {
+    .tooltip[popover]:popover-open {
+      opacity: 0;
+      translate: var(--tooltip-shift);
+    }
+  }
+}
+@supports not (anchor-name: --a) {
+  .tooltip {
+    display: none !important;
+  }
+}
+
+/* ==================================================================
+   The reader panel (Reader.tsx, ReaderHeader.tsx, useResizablePanel.ts).
+   Appended block: everything below belongs to the reader.
+   ================================================================== */
+
+/* Below `lg` the panel is the one visible pane and fills its grid cell. At `lg`+ it leaves the
+   flow and floats over the results grid, right-aligned, the full height of the main area, with
+   the shadow on its left edge doing the lifting. */
+.reader-panel {
+  position: relative;
+  background: var(--color-surface);
+}
+@media (width >= 64rem) {
+  .reader-panel {
+    position: absolute;
+    inset-block: 0;
+    right: 0;
+    z-index: 10;
+    width: var(--reader-w);
+    box-shadow: -14px 0 34px light-dark(rgb(0 0 0 / 18%), rgb(0 0 0 / 45%));
+  }
+}
+
+/* The scrim dims the grid and carries the click that marks and closes. No scrim below `lg`,
+   where there is nothing behind the panel to dim. */
+.reader-scrim {
+  display: none;
+}
+@media (width >= 64rem) {
+  .reader-scrim {
+    display: block;
+    position: absolute;
+    inset: 0;
+    z-index: 9;
+    background: light-dark(rgb(0 0 0 / 35%), rgb(0 0 0 / 55%));
+    /* A click here marks and closes, so the pointer says so, like the label does. */
+    cursor: pointer;
+  }
+}
+
+/* The scrim says what a click on it does, centred on the strip left of the panel rather than on
+   the whole area. The tooltip skin, so it reads as the same voice — but it never moves and never
+   takes a pointer, so the click lands on the scrim under it. */
+.reader-scrim-label {
+  position: absolute;
+  top: 50%;
+  left: calc((100% - var(--reader-w)) / 2);
+  translate: -50% -50%;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  width: max-content;
+  max-width: max(0px, calc(100% - var(--reader-w) - 24px));
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: light-dark(#1f1f1f, #f4f4f4);
+  color: light-dark(#ffffff, #1f1f1f);
+  box-shadow:
+    inset 0 0 0 1px light-dark(rgb(255 255 255 / 14%), rgb(0 0 0 / 12%)),
+    0 4px 12px light-dark(rgb(0 0 0 / 28%), rgb(0 0 0 / 50%));
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  text-wrap: pretty;
+  pointer-events: none;
+}
+.reader-scrim-label kbd {
+  flex: none;
+  min-width: 18px;
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: light-dark(rgb(255 255 255 / 18%), rgb(0 0 0 / 12%));
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* A 10px hit strip on the panel's left edge showing a 4px accent bar while it is live. Keyboard
+   users get the same bar from `:focus-visible`, since the handle is a focusable separator. */
+.reader-resize {
+  display: none;
+}
+@media (width >= 64rem) {
+  .reader-resize {
+    display: block;
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    /* Above the sticky header (z 3), so the bar runs the panel's full height. */
+    z-index: 4;
+    width: 10px;
+    cursor: col-resize;
+    touch-action: none;
+  }
+  .reader-resize::after {
+    content: "";
+    position: absolute;
+    inset-block: 0;
+    left: 3px;
+    width: 4px;
+    background: var(--color-accent);
+    opacity: 0;
+  }
+  .reader-resize:is([data-dragging], :focus-visible)::after {
+    opacity: 1;
+  }
+  @media (hover: hover) {
+    .reader-resize:hover::after {
+      opacity: 1;
+    }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .reader-resize::after {
+      transition: opacity 150ms ease;
+    }
+  }
+}
+
+/* The sticky block, inside the panel's one scroll pane. `--reader-feed` is the feed's hue, the
+   same recipe as the text tile's masthead, so the panel says the colour the tile did. */
+.reader-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: 8px 16px 10px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-hairline);
+  --reader-feed: light-dark(oklch(0.46 0.19 var(--hue)), oklch(0.85 0.15 var(--hue)));
+}
+/* The condense trigger: a sticky element cannot observe its own stuck state, so an
+   IntersectionObserver watches this box instead. Its 40px are given straight back, so it costs
+   no layout and the opaque header paints over it. */
+.reader-sentinel {
+  height: 40px;
+  margin-bottom: -40px;
+}
+.reader-feed-name {
+  display: block;
+  color: var(--reader-feed);
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.reader-feed-rule {
+  display: block;
+  width: 1.75rem;
+  height: 2px;
+  margin-top: 4px;
+  border-radius: 1px;
+  background: var(--reader-feed);
+}
+.reader-meta {
+  flex: none;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+.reader-title-row {
+  margin-top: 2px;
+}
+/* The title wraps freely; the clamp is a safety net for a pathological headline, not a design.
+   Condensing relayouts the pane once, early — the one thing in the block that moves. */
+.reader-title {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--color-ink);
+  font-size: 18px;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  text-decoration: none;
+  text-wrap: pretty;
+}
+.reader-head[data-condensed] .reader-title {
+  font-size: 15px;
+  line-height: 1.4;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .reader-title {
+    transition: font-size 150ms ease;
+  }
+}
+.reader-arrow {
+  margin-left: 0.18em;
+  font-size: 0.8em;
+  color: var(--color-faint);
+}
+@media (hover: hover) {
+  a.reader-title:hover .reader-arrow {
+    color: var(--color-accent-text);
+  }
+}
+
+/* The two exits: 40px round buttons, 20px icons. The butter one is the action, the grey one the
+   way out that changes nothing. */
+.reader-btn {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 9999px;
+  background: var(--color-surface-2);
+  color: var(--color-ink);
+}
+.reader-btn svg {
+  width: 20px;
+  height: 20px;
+}
+.reader-btn[data-accent] {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+@media (hover: hover) {
+  .reader-btn:not([data-accent]):hover {
+    background: color-mix(in srgb, var(--color-ink) 8%, var(--color-surface-2));
+  }
+  .reader-btn[data-accent]:hover {
+    background: color-mix(in srgb, var(--color-on-accent) 10%, var(--color-accent));
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .reader-btn {
+    transition:
+      background-color 150ms ease,
+      color 150ms ease;
+  }
+}
+
+/* Pull to refresh (usePullToRefresh + PullIndicator): a 40px disc that rides the finger inside the
+   results' `relative` frame. Absolute, not sticky, because that frame is far taller than the pane,
+   so a sticky disc would sit wherever the scroll happens to be. `--pull` is the damped distance and
+   `--pull-turn` the icon's rotation, both set inline on every move, so the disc tracks the finger
+   1:1 — hence no transition until the finger lets go. Only the release animates: the disc snaps to
+   its parked spot, and the icon spins on the one keyframe that earns its place here, since nothing
+   about a network round trip is finger-driven. */
+.pull-indicator {
+  position: absolute;
+  left: 50%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  outline: 1px solid var(--color-hairline);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 18%);
+  pointer-events: none;
+}
+/* Top: slides down from above the first row. Bottom: up from below the last one. */
+.pull-indicator[data-edge="top"] {
+  top: 0;
+  translate: -50% calc(var(--pull) - 100%);
+}
+.pull-indicator[data-edge="bottom"] {
+  bottom: 0;
+  translate: -50% calc(100% - var(--pull));
+}
+.pull-indicator svg {
+  rotate: var(--pull-turn);
+}
+/* Armed: the same butter pair as the reader's action button, so release reads as "this will act". */
+.pull-indicator[data-armed] {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+@keyframes pull-spin {
+  to {
+    rotate: 1turn;
+  }
+}
+/* The rows ride along (MosaicGrid sets `--pull` and the same data attributes on this wrapper), so
+   the disc sits in the gap they leave rather than over the first card. */
+.pull-content {
+  translate: 0 var(--pull, 0px);
+}
+.pull-content[data-edge="bottom"] {
+  translate: 0 calc(-1 * var(--pull, 0px));
+}
+/* Only once the finger is gone: the snap to the parked spot and the slide back to 0. Same 200ms
+   as RETRACT_MS in usePullToRefresh. */
+@media (prefers-reduced-motion: no-preference) {
+  /* The butter arrives over a few frames, not on the one pixel that crosses the threshold. */
+  .pull-indicator {
+    transition:
+      background-color 150ms ease,
+      color 150ms ease;
+  }
+  .pull-indicator[data-refreshing],
+  .pull-indicator[data-released],
+  .pull-content[data-refreshing],
+  .pull-content[data-released] {
+    transition:
+      translate 200ms ease,
+      background-color 150ms ease,
+      color 150ms ease;
+  }
+  .pull-indicator[data-refreshing] svg {
+    animation: pull-spin 1s linear infinite;
+  }
+}
+
+/* ==================================================================
+   The subscriptions page's panel and modal (components/subscriptions/).
+   ================================================================== */
+
+/* From `sm` up the panel floats over the list like the reader does at `lg`, with no scrim so the
+   next row stays clickable. Below `sm` SidePanel renders the bottom sheet instead. */
+.side-panel {
+  position: absolute;
+  inset-block: 0;
+  right: 0;
+  z-index: 10;
+  width: 340px;
+  box-shadow: -14px 0 34px light-dark(rgb(0 0 0 / 18%), rgb(0 0 0 / 45%));
+}
+@media (width >= 64rem) {
+  .side-panel {
+    width: 372px;
+  }
+}
+
+/* Each surface grows from its trigger's side (rule #7) and leaves the same way: the panel by the
+   right edge, the sheet by the bottom edge, the modal from the control that opened it
+   (ConfirmDialog sets the origin). Exits are shorter. The panel's owner keeps it mounted through
+   its exit (`data-closing`, SidePanel's PanelExitContext). */
+@media (prefers-reduced-motion: no-preference) {
+  .side-panel {
+    transition-property: opacity, translate;
+    transition-duration: 180ms;
+    transition-timing-function: ease-out;
+  }
+  @starting-style {
+    .side-panel {
+      opacity: 0;
+      translate: 24px 0;
+    }
+  }
+  .side-panel[data-closing] {
+    opacity: 0;
+    translate: 24px 0;
+    transition-duration: 150ms;
+    transition-timing-function: ease-in;
+  }
+  dialog.side-sheet,
+  dialog.confirm-dialog {
+    opacity: 0;
+    transition-property: opacity, translate, scale, display, overlay;
+    transition-duration: 150ms;
+    transition-timing-function: ease-out;
+    transition-behavior: allow-discrete;
+  }
+  dialog.side-sheet {
+    translate: 0 32px;
+  }
+  dialog.side-sheet[open],
+  dialog.confirm-dialog[open] {
+    opacity: 1;
+    translate: none;
+    transition-duration: 200ms;
+  }
+  @starting-style {
+    dialog.side-sheet[open] {
+      opacity: 0;
+      translate: 0 32px;
+    }
+    dialog.confirm-dialog[open] {
+      opacity: 0;
+      scale: 0.96;
+    }
+  }
+}
+
+/* A row's name morphs into the panel heading on open and back on close, on the reader's clock.
+   The row that opened the panel carries `data-panel-origin` (SidePanel's markPanelOrigin), and it
+   holds the name only while no panel is up, or while it sits in the panel that is up. The heading
+   holds it the rest of the time, so the name stays unique, since a duplicate skips the whole
+   transition. The exit slide plays under the morph, with its own copies hidden so none is drawn
+   twice. */
+.subscriptions:not(:has([data-side-panel]:not([data-closing])))
+  [data-panel-origin]:not([data-side-panel] *)
+  .morph-name,
+[data-side-panel]:not([data-closing]) [data-panel-origin] .morph-name,
+[data-side-panel]:not([data-closing]):not(:has([data-panel-origin])) .side-panel-title {
+  view-transition-name: panel-title;
+}
+/* The line under it pairs the same way: the row's host or feed count with the panel's subtitle.
+   A subtitle that says more than the row names only its .morph-detail part; the rest fades. */
+.subscriptions:not(:has([data-side-panel]:not([data-closing])))
+  [data-panel-origin]:not([data-side-panel] *)
+  .morph-detail,
+[data-side-panel]:not([data-closing]) [data-panel-origin] .morph-detail,
+[data-side-panel]:not([data-closing]):not(:has([data-panel-origin]))
+  .side-panel-subtitle:not(:has(.morph-detail)),
+[data-side-panel]:not([data-closing]):not(:has([data-panel-origin]))
+  .side-panel-subtitle
+  .morph-detail {
+  view-transition-name: panel-subtitle;
+}
+/* And a feed's hue dot, from its row to the feed panel's header. */
+.subscriptions:not(:has([data-side-panel]:not([data-closing])))
+  [data-panel-origin]:not([data-side-panel] *)
+  .morph-dot,
+[data-side-panel]:not([data-closing]) [data-panel-origin] .morph-dot,
+[data-side-panel]:not([data-closing]):not(:has([data-panel-origin])) header .morph-dot {
+  view-transition-name: panel-dot;
+}
+:active-view-transition
+  [data-side-panel][data-closing]
+  :is(
+    .side-panel-title,
+    .side-panel-subtitle:not(:has(.morph-detail)),
+    .side-panel-subtitle .morph-detail,
+    header .morph-dot
+  ) {
+  visibility: hidden;
+}
+::view-transition-group(panel-title),
+::view-transition-group(panel-subtitle),
+::view-transition-group(panel-dot) {
+  animation-duration: 160ms;
+  animation-timing-function: ease-out;
+}
+
+/* Copy button: the label and the check share one grid cell, so the swap never shifts the button. */
+.copy-swap {
+  display: inline-grid;
+  place-items: center;
+}
+.copy-swap > * {
+  grid-area: 1 / 1;
+}
+.copy-swap-check {
+  opacity: 0;
+  scale: 0.25;
+}
+.copy-swap[data-copied] .copy-swap-check {
+  opacity: 1;
+  scale: 1;
+}
+.copy-swap[data-copied] .copy-swap-label {
+  opacity: 0;
+  scale: 0.25;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .copy-swap-label,
+  .copy-swap-check {
+    transition-property: opacity, scale;
+    transition-duration: 150ms;
+    transition-timing-function: ease-out;
+  }
+}

@@ -1,0 +1,681 @@
+{
+  "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+  "updated": 1789718400000,
+  "continuation": "c-dXNlci81ZjNk",
+  "items": [
+    {
+      "id": "design-0016",
+      "originId": "http://example-design.test/articles/16",
+      "fingerprint": "fp-design-16",
+      "title": "Design system tokens get a versioning scheme",
+      "author": "Example Design Weekly staff",
+      "published": 1789715700000,
+      "crawled": 1789715760000,
+      "updated": 1789715760000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-design.test/atom",
+        "title": "Example Design Weekly",
+        "htmlUrl": "http://example-design.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-design.test/articles/16",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-design.test/articles/16",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-design.test/articles/16",
+      "content": {
+        "content": "<p>Lead paragraph summarizing the story from example-design.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-design.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://picsum.photos/seed/design-0016-body/1200/700\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+        "direction": "ltr"
+      },
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-design.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "fullContent": "<p>Lead paragraph summarizing the story from example-design.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-design.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://example-cdn.test/img/example-design.test.jpg\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+      "visual": {
+        "url": "https://picsum.photos/seed/design-0016/800/1000",
+        "width": 800,
+        "height": 1000,
+        "contentType": "image/jpeg"
+      },
+      "keywords": ["design"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+          "label": "Design"
+        }
+      ]
+    },
+    {
+      "id": "ux-0017",
+      "originId": "http://example-ux.test/articles/17",
+      "fingerprint": "fp-ux-17",
+      "title": "Case study: rebuilding a checkout flow from scratch",
+      "author": "Example UX Notes staff",
+      "published": 1789709100000,
+      "crawled": 1789709160000,
+      "updated": 1789709160000,
+      "unread": false,
+      "origin": {
+        "streamId": "feed/http://example-ux.test/feed",
+        "title": "Example UX Notes",
+        "htmlUrl": "http://example-ux.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-ux.test/articles/17",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-ux.test/articles/17",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-ux.test/articles/17",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-ux.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "engagement": 91,
+      "engagementRate": 0.018,
+      "keywords": ["ux", "design"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+          "label": "Design"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/ux-0017/900/600",
+        "width": 900,
+        "height": 600,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "design-0051",
+      "originId": "http://example-design.test/articles/51",
+      "fingerprint": "fp-design-51",
+      "title": "Designing a reading surface that survives the article you have not seen yet",
+      "author": "Solveig Marchetti",
+      "published": 1789707600000,
+      "crawled": 1789707660000,
+      "updated": 1789707660000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-design.test/atom",
+        "title": "Example Design Weekly",
+        "htmlUrl": "http://example-design.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-design.test/articles/51",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-design.test/articles/51",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-design.test/articles/51",
+      "content": {
+        "content": "\n<p>A reading surface is easy to design for the article you have in front of you and hard to design for the article you have not seen yet. The one you have not seen is forty thousand characters long, has eleven headings at three levels, contains a table that does not fit, and was written by someone who used a blockquote where they meant an aside. Everything below comes from redesigning one such surface twice, getting it wrong the first time in an interesting way, and eventually arriving at a set of rules that survive content nobody vetted.</p>\n\n<h2>The first attempt, and why it failed</h2>\n<p>The first version was designed against a corpus of about forty articles, hand-picked because they rendered well. It looked excellent. It shipped, and within a day the support queue had three complaints that all turned out to be the same complaint: long articles were exhausting to read, in a way short ones were not, and nobody could say why. The measurements were unhelpful. Line length was within the recommended range, contrast passed, the scroll performance was fine, and the leading was generous.</p>\n<p>What was wrong was that the page offered no sense of position. In a two-thousand-word article the scrollbar is a sufficient progress indicator and the reader's memory of the headings is sufficient structure. In a nine-thousand-word article neither holds. Readers reported losing their place after switching tabs, re-reading paragraphs they had already read, and — most tellingly — abandoning pieces they described as interesting. The surface was pleasant and unnavigable, and because every individual measurement was within range, no individual measurement could reveal it.</p>\n\n<h3>What the corpus was hiding</h3>\n<p>Hand-picking the corpus was the root cause. Forty articles that render well are forty articles that agree with your assumptions, and the whole difficulty of a reading surface is the content that does not. The second attempt started from a corpus assembled by a rule instead of by taste: the longest two hundred items in the archive, plus every item containing a table, plus every item whose markup used a tag the design had no opinion about. About a third of that corpus looked broken on the first version, which is roughly the proportion you should expect and considerably more than anyone predicted.</p>\n\n<p>The rule that assembled the second corpus was three clauses long, and writing it down was most of the work:</p>\n<ul>\n<li>The two hundred longest items in the archive, by character count of the rendered body rather than by word count, because markup-heavy items are the ones that break.</li>\n<li>Every item containing a table, a code block, an embedded frame or a definition list, regardless of length.</li>\n<li>Every item whose markup used an element the surface had no declared opinion about — which, on the first pass, was fourteen different elements including three we had to look up.</li>\n</ul>\n\n<figure><img src=\"https://picsum.photos/seed/reading-surface-long-articles/1200/700\" alt=\"\"><figcaption>The second corpus, sorted by length. The right-hand tail is where the design decisions actually get made.</figcaption></figure>\n\n<h2>Rules that survived</h2>\n<p>Five rules came out of the second attempt. They are ordered by how much argument they caused, ascending, which is also roughly inverse to how obvious they look written down.</p>\n\n<h3>One measure, chosen for the worst case</h3>\n<p>The comfortable range for a line of body text is wide, and the temptation is to sit in the middle of it. For long articles the right choice is the narrow end. A measure that is pleasant for eight hundred words is tiring for eight thousand, because the cost of the return sweep is paid once per line and there are ten times as many lines. Settling at the narrow end of the range costs nothing on short pieces and is the single biggest comfort improvement on long ones. It also leaves room in the margin for the position indicator that turned out to be necessary.</p>\n\n<h3>Headings are navigation, so they need to behave like it</h3>\n<p>Once an article has more than about six headings, readers use them to move rather than to read. That changes what they need to be: distinguishable at a glance at three levels, stable enough to recognise on a second pass, and present in some persistent form so the reader can see where they are without scrolling. A sticky current-heading strip solved the lost-my-place complaint almost entirely, and cost one line of layout and a scroll listener. The awkward part is that headings in real content are not short. A heading of a hundred and seventy characters is not a design failure to be truncated away; it is a normal thing that writers do, and the strip has to wrap to two lines gracefully rather than clip.</p>\n\n<h3>Figures get to be wider than the text</h3>\n<p>Constraining every image to the measure is the obvious choice and the wrong one. A photograph at the measure of a narrow column is too small to carry information, and readers stop looking at images entirely once the first few are too small to be worth the glance. Letting figures break out to a wider column, with the caption staying at the text measure, fixed that. Tables are the same problem with a worse answer: a three-column table can live at the measure, a six-column one cannot, and the honest solution is a horizontally scrollable region with a visible edge rather than a clever reflow that destroys the relationship between the columns.</p>\n\n<h3>Code blocks are not body text and should stop pretending</h3>\n<p>The rules that survived are short enough to state as the stylesheet fragment they became, which is also the only place in the surface where a value is allowed to ignore the spacing scale:</p>\n<pre><code>.prose pre {\n  max-width: var(--measure-wide);\n  background: var(--surface-raised);\n  border: 1px solid var(--rule);\n  font-family: var(--mono);\n  line-height: 1.5;      /* not the body rhythm, on purpose */\n  overflow-x: auto;\n  white-space: pre;      /* never wrap; a wrapped line is a wrong line */\n  tab-size: 2;\n}</code></pre>\n<p>Every version of this design started by trying to make code blocks harmonise with the surrounding prose and ended by making them louder. Code is scanned, not read; it needs a monospaced face, a background that separates it from the prose unambiguously, no wrapping, and its own scroll region. Attempts to soften it — tinting the background barely, matching the line height to the body rhythm — made it harder to use without making the page more pleasant. The version that works treats a code block as a foreign object embedded in the page, and readers report that as an improvement rather than a jarring one.</p>\n\n<h3>Vertical rhythm matters less than spacing hierarchy</h3>\n<p>This is the one that caused the argument. A strict baseline grid across a whole article is expensive to maintain, breaks the moment content includes an element you did not anticipate, and buys less than it costs. What readers actually respond to is whether the spacing above a heading is clearly larger than the spacing between paragraphs, and whether that relationship holds at every level. Get the hierarchy of gaps right and nobody notices the grid is absent. Get the grid right and a single unexpected element still makes the page look broken.</p>\n\n<h2>Token choices</h2>\n<p>The whole surface runs on nine tokens, which is fewer than the first attempt used and considerably fewer than the design system it was extracted from. The reduction was not a goal; it happened because every token that existed only to handle one case turned out to be a case the rules above had eliminated.</p>\n<table>\n<thead><tr><th>Token</th><th>Role</th><th>Notes</th></tr></thead>\n<tbody>\n<tr><td>measure</td><td>Body text column width</td><td>Narrow end of the comfortable range</td></tr>\n<tr><td>measure-wide</td><td>Figures, tables, code</td><td>Breaks out of the text column</td></tr>\n<tr><td>gap-paragraph</td><td>Space between paragraphs</td><td>Base unit for everything below</td></tr>\n<tr><td>gap-section</td><td>Space above a heading</td><td>Must read as clearly larger</td></tr>\n<tr><td>gap-figure</td><td>Space around a breakout element</td><td>Between the two above</td></tr>\n<tr><td>ink</td><td>Body text colour</td><td>One value, both themes via redefinition</td></tr>\n<tr><td>ink-quiet</td><td>Captions, metadata, the heading strip</td><td>Never used for body text</td></tr>\n<tr><td>rule</td><td>Hairlines and code-block edges</td><td>The only border colour in the surface</td></tr>\n<tr><td>surface-raised</td><td>Code block and table backgrounds</td><td>Deliberately distinguishable, not subtle</td></tr>\n</tbody>\n</table>\n<p>Two tokens from the first attempt are conspicuously absent. There is no accent colour in the reading surface at all — links are underlined and inherit the body colour — and there is no separate heading colour, because three distinguishable heading levels turned out to be achievable with size and weight alone. Both removals were resisted and both survived testing, which is the usual pattern for removals.</p>\n\n<h2>What is still unresolved</h2>\n<p>Three problems remain open, and it seems more useful to name them than to pretend the design is finished.</p>\n<ol>\n<li>Right-to-left content inside a predominantly left-to-right page. Per-element direction works, mixed-direction paragraphs mostly work, and the position of the sticky heading strip is still wrong in a way nobody has found a principled fix for.</li>\n<li>Footnotes. Real content uses them inconsistently — sometimes as links to an end section, sometimes as parenthetical asides, sometimes as both in one article — and no single treatment has looked right across the corpus.</li>\n<li>Embedded media. Anything that arrives as an iframe has its own ideas about width, and the choice between letting it be wrong and constraining it into uselessness has not been made.</li>\n</ol>\n<blockquote><p>The version people liked was not the version that photographed well. It was the one where you could leave in the middle of a long piece, come back an hour later, and find your place in under two seconds. We spent five weeks on the surface and one afternoon on that, and the afternoon is what the feedback was about.</p></blockquote>\n<p>The full corpus methodology, including the rule used to assemble it and the counts of how many items broke under each version, is written up at <a href=\"https://example-design.test/notes/reading-surface-corpus\">the corpus notes</a>. The token definitions and the two removals are listed with their before-and-after screenshots at <a href=\"https://example-design.test/notes/nine-tokens\">the token inventory</a>, and the sticky heading strip, which is the only genuinely novel part of any of this, is described in enough detail to reimplement at <a href=\"https://example-ux.test/patterns/heading-strip\">the pattern library entry</a>.</p>\n<p>The advice that generalises is smaller than the design. Assemble the corpus by rule and not by taste; the content you did not choose is the content that determines whether the surface works. Everything else in this piece is downstream of getting that one thing right on the second attempt rather than the first.</p>\n",
+        "direction": "ltr"
+      },
+      "summary": {
+        "content": "<p>A reading surface redesigned twice: what changed once the test corpus was assembled by rule instead of by taste, and the nine tokens left standing afterwards.</p>",
+        "direction": "ltr"
+      },
+      "fullContent": "\n<p>A reading surface is easy to design for the article you have in front of you and hard to design for the article you have not seen yet. The one you have not seen is forty thousand characters long, has eleven headings at three levels, contains a table that does not fit, and was written by someone who used a blockquote where they meant an aside. Everything below comes from redesigning one such surface twice, getting it wrong the first time in an interesting way, and eventually arriving at a set of rules that survive content nobody vetted.</p>\n\n<h2>The first attempt, and why it failed</h2>\n<p>The first version was designed against a corpus of about forty articles, hand-picked because they rendered well. It looked excellent. It shipped, and within a day the support queue had three complaints that all turned out to be the same complaint: long articles were exhausting to read, in a way short ones were not, and nobody could say why. The measurements were unhelpful. Line length was within the recommended range, contrast passed, the scroll performance was fine, and the leading was generous.</p>\n<p>What was wrong was that the page offered no sense of position. In a two-thousand-word article the scrollbar is a sufficient progress indicator and the reader's memory of the headings is sufficient structure. In a nine-thousand-word article neither holds. Readers reported losing their place after switching tabs, re-reading paragraphs they had already read, and — most tellingly — abandoning pieces they described as interesting. The surface was pleasant and unnavigable, and because every individual measurement was within range, no individual measurement could reveal it.</p>\n\n<h3>What the corpus was hiding</h3>\n<p>Hand-picking the corpus was the root cause. Forty articles that render well are forty articles that agree with your assumptions, and the whole difficulty of a reading surface is the content that does not. The second attempt started from a corpus assembled by a rule instead of by taste: the longest two hundred items in the archive, plus every item containing a table, plus every item whose markup used a tag the design had no opinion about. About a third of that corpus looked broken on the first version, which is roughly the proportion you should expect and considerably more than anyone predicted.</p>\n\n<p>The rule that assembled the second corpus was three clauses long, and writing it down was most of the work:</p>\n<ul>\n<li>The two hundred longest items in the archive, by character count of the rendered body rather than by word count, because markup-heavy items are the ones that break.</li>\n<li>Every item containing a table, a code block, an embedded frame or a definition list, regardless of length.</li>\n<li>Every item whose markup used an element the surface had no declared opinion about — which, on the first pass, was fourteen different elements including three we had to look up.</li>\n</ul>\n\n<figure><img src=\"https://picsum.photos/seed/reading-surface-long-articles/1200/700\" alt=\"\"><figcaption>The second corpus, sorted by length. The right-hand tail is where the design decisions actually get made.</figcaption></figure>\n\n<h2>Rules that survived</h2>\n<p>Five rules came out of the second attempt. They are ordered by how much argument they caused, ascending, which is also roughly inverse to how obvious they look written down.</p>\n\n<h3>One measure, chosen for the worst case</h3>\n<p>The comfortable range for a line of body text is wide, and the temptation is to sit in the middle of it. For long articles the right choice is the narrow end. A measure that is pleasant for eight hundred words is tiring for eight thousand, because the cost of the return sweep is paid once per line and there are ten times as many lines. Settling at the narrow end of the range costs nothing on short pieces and is the single biggest comfort improvement on long ones. It also leaves room in the margin for the position indicator that turned out to be necessary.</p>\n\n<h3>Headings are navigation, so they need to behave like it</h3>\n<p>Once an article has more than about six headings, readers use them to move rather than to read. That changes what they need to be: distinguishable at a glance at three levels, stable enough to recognise on a second pass, and present in some persistent form so the reader can see where they are without scrolling. A sticky current-heading strip solved the lost-my-place complaint almost entirely, and cost one line of layout and a scroll listener. The awkward part is that headings in real content are not short. A heading of a hundred and seventy characters is not a design failure to be truncated away; it is a normal thing that writers do, and the strip has to wrap to two lines gracefully rather than clip.</p>\n\n<h3>Figures get to be wider than the text</h3>\n<p>Constraining every image to the measure is the obvious choice and the wrong one. A photograph at the measure of a narrow column is too small to carry information, and readers stop looking at images entirely once the first few are too small to be worth the glance. Letting figures break out to a wider column, with the caption staying at the text measure, fixed that. Tables are the same problem with a worse answer: a three-column table can live at the measure, a six-column one cannot, and the honest solution is a horizontally scrollable region with a visible edge rather than a clever reflow that destroys the relationship between the columns.</p>\n\n<h3>Code blocks are not body text and should stop pretending</h3>\n<p>The rules that survived are short enough to state as the stylesheet fragment they became, which is also the only place in the surface where a value is allowed to ignore the spacing scale:</p>\n<pre><code>.prose pre {\n  max-width: var(--measure-wide);\n  background: var(--surface-raised);\n  border: 1px solid var(--rule);\n  font-family: var(--mono);\n  line-height: 1.5;      /* not the body rhythm, on purpose */\n  overflow-x: auto;\n  white-space: pre;      /* never wrap; a wrapped line is a wrong line */\n  tab-size: 2;\n}</code></pre>\n<p>Every version of this design started by trying to make code blocks harmonise with the surrounding prose and ended by making them louder. Code is scanned, not read; it needs a monospaced face, a background that separates it from the prose unambiguously, no wrapping, and its own scroll region. Attempts to soften it — tinting the background barely, matching the line height to the body rhythm — made it harder to use without making the page more pleasant. The version that works treats a code block as a foreign object embedded in the page, and readers report that as an improvement rather than a jarring one.</p>\n\n<h3>Vertical rhythm matters less than spacing hierarchy</h3>\n<p>This is the one that caused the argument. A strict baseline grid across a whole article is expensive to maintain, breaks the moment content includes an element you did not anticipate, and buys less than it costs. What readers actually respond to is whether the spacing above a heading is clearly larger than the spacing between paragraphs, and whether that relationship holds at every level. Get the hierarchy of gaps right and nobody notices the grid is absent. Get the grid right and a single unexpected element still makes the page look broken.</p>\n\n<h2>Token choices</h2>\n<p>The whole surface runs on nine tokens, which is fewer than the first attempt used and considerably fewer than the design system it was extracted from. The reduction was not a goal; it happened because every token that existed only to handle one case turned out to be a case the rules above had eliminated.</p>\n<table>\n<thead><tr><th>Token</th><th>Role</th><th>Notes</th></tr></thead>\n<tbody>\n<tr><td>measure</td><td>Body text column width</td><td>Narrow end of the comfortable range</td></tr>\n<tr><td>measure-wide</td><td>Figures, tables, code</td><td>Breaks out of the text column</td></tr>\n<tr><td>gap-paragraph</td><td>Space between paragraphs</td><td>Base unit for everything below</td></tr>\n<tr><td>gap-section</td><td>Space above a heading</td><td>Must read as clearly larger</td></tr>\n<tr><td>gap-figure</td><td>Space around a breakout element</td><td>Between the two above</td></tr>\n<tr><td>ink</td><td>Body text colour</td><td>One value, both themes via redefinition</td></tr>\n<tr><td>ink-quiet</td><td>Captions, metadata, the heading strip</td><td>Never used for body text</td></tr>\n<tr><td>rule</td><td>Hairlines and code-block edges</td><td>The only border colour in the surface</td></tr>\n<tr><td>surface-raised</td><td>Code block and table backgrounds</td><td>Deliberately distinguishable, not subtle</td></tr>\n</tbody>\n</table>\n<p>Two tokens from the first attempt are conspicuously absent. There is no accent colour in the reading surface at all — links are underlined and inherit the body colour — and there is no separate heading colour, because three distinguishable heading levels turned out to be achievable with size and weight alone. Both removals were resisted and both survived testing, which is the usual pattern for removals.</p>\n\n<h2>What is still unresolved</h2>\n<p>Three problems remain open, and it seems more useful to name them than to pretend the design is finished.</p>\n<ol>\n<li>Right-to-left content inside a predominantly left-to-right page. Per-element direction works, mixed-direction paragraphs mostly work, and the position of the sticky heading strip is still wrong in a way nobody has found a principled fix for.</li>\n<li>Footnotes. Real content uses them inconsistently — sometimes as links to an end section, sometimes as parenthetical asides, sometimes as both in one article — and no single treatment has looked right across the corpus.</li>\n<li>Embedded media. Anything that arrives as an iframe has its own ideas about width, and the choice between letting it be wrong and constraining it into uselessness has not been made.</li>\n</ol>\n<blockquote><p>The version people liked was not the version that photographed well. It was the one where you could leave in the middle of a long piece, come back an hour later, and find your place in under two seconds. We spent five weeks on the surface and one afternoon on that, and the afternoon is what the feedback was about.</p></blockquote>\n<p>The full corpus methodology, including the rule used to assemble it and the counts of how many items broke under each version, is written up at <a href=\"https://example-design.test/notes/reading-surface-corpus\">the corpus notes</a>. The token definitions and the two removals are listed with their before-and-after screenshots at <a href=\"https://example-design.test/notes/nine-tokens\">the token inventory</a>, and the sticky heading strip, which is the only genuinely novel part of any of this, is described in enough detail to reimplement at <a href=\"https://example-ux.test/patterns/heading-strip\">the pattern library entry</a>.</p>\n<p>The advice that generalises is smaller than the design. Assemble the corpus by rule and not by taste; the content you did not choose is the content that determines whether the surface works. Everything else in this piece is downstream of getting that one thing right on the second attempt rather than the first.</p>\n",
+      "engagement": 96,
+      "engagementRate": 0.013,
+      "keywords": ["design", "reading"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+          "label": "Design"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/design-0051/1200/700",
+        "width": 1200,
+        "height": 700,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "typeface-0018",
+      "originId": "http://example-typeface.test/articles/18",
+      "fingerprint": "fp-typeface-18",
+      "title": "Typeface foundry releases a variable font family",
+      "author": "Example Typeface Journal staff",
+      "published": 1789702500000,
+      "crawled": 1789702560000,
+      "updated": 1789702560000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-typeface.test/rss",
+        "title": "Example Typeface Journal",
+        "htmlUrl": "http://example-typeface.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-typeface.test/articles/18",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-typeface.test/articles/18",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-typeface.test/articles/18",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-typeface.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "keywords": ["typography"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+          "label": "Design"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/typeface-0018/1000/700",
+        "width": 1000,
+        "height": 700,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "design-0019",
+      "originId": "http://example-design.test/articles/19",
+      "fingerprint": "fp-design-19",
+      "title": "Accessible color contrast tools compared",
+      "author": "Example Design Weekly staff",
+      "published": 1789695900000,
+      "crawled": 1789695960000,
+      "updated": 1789695960000,
+      "unread": false,
+      "origin": {
+        "streamId": "feed/http://example-design.test/atom",
+        "title": "Example Design Weekly",
+        "htmlUrl": "http://example-design.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-design.test/articles/19",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-design.test/articles/19",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-design.test/articles/19",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-design.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "visual": {
+        "url": "https://picsum.photos/seed/design-0019/1000/700",
+        "width": 1000,
+        "height": 700,
+        "contentType": "image/jpeg"
+      },
+      "keywords": ["design"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+          "label": "Design"
+        }
+      ]
+    },
+    {
+      "id": "ux-0020",
+      "originId": "http://example-ux.test/articles/20",
+      "fingerprint": "fp-ux-20",
+      "title": "How one team reduced onboarding drop-off",
+      "author": "Example UX Notes staff",
+      "published": 1789689300000,
+      "crawled": 1789689360000,
+      "updated": 1789689360000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-ux.test/feed",
+        "title": "Example UX Notes",
+        "htmlUrl": "http://example-ux.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-ux.test/articles/20",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-ux.test/articles/20",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-ux.test/articles/20",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-ux.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "engagement": 100,
+      "engagementRate": 0.01,
+      "keywords": ["ux", "design"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+          "label": "Design"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/ux-0020/1000/700",
+        "width": 1000,
+        "height": 700,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "design-0021",
+      "originId": "http://example-design.test/articles/21",
+      "fingerprint": "fp-design-21",
+      "title": "Grid systems for responsive dashboards",
+      "author": "Example Design Weekly staff",
+      "published": 1789682700000,
+      "crawled": 1789682760000,
+      "updated": 1789682760000,
+      "unread": false,
+      "origin": {
+        "streamId": "feed/http://example-design.test/atom",
+        "title": "Example Design Weekly",
+        "htmlUrl": "http://example-design.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-design.test/articles/21",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-design.test/articles/21",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-design.test/articles/21",
+      "content": {
+        "content": "<p>Lead paragraph summarizing the story from example-design.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-design.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://picsum.photos/seed/design-0021-body/1200/700\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+        "direction": "ltr"
+      },
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-design.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "fullContent": "<p>Lead paragraph summarizing the story from example-design.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-design.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://example-cdn.test/img/example-design.test.jpg\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+      "keywords": ["design"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+          "label": "Design"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/design-0021/900/900",
+        "width": 900,
+        "height": 900,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "ux-0022",
+      "originId": "http://example-ux.test/articles/22",
+      "fingerprint": "fp-ux-22",
+      "title": "Motion design principles for loading states",
+      "author": "Example UX Notes staff",
+      "published": 1789676100000,
+      "crawled": 1789676160000,
+      "updated": 1789676160000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-ux.test/feed",
+        "title": "Example UX Notes",
+        "htmlUrl": "http://example-ux.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-ux.test/articles/22",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-ux.test/articles/22",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-ux.test/articles/22",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-ux.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "visual": {
+        "url": "https://picsum.photos/seed/ux-0022/800/1000",
+        "width": 800,
+        "height": 1000,
+        "contentType": "image/jpeg"
+      },
+      "keywords": ["ux", "design"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+          "label": "Design"
+        }
+      ]
+    },
+    {
+      "id": "typeface-0023",
+      "originId": "http://example-typeface.test/articles/23",
+      "fingerprint": "fp-typeface-23",
+      "title": "Interview with a design lead on cross-team rituals",
+      "author": "Example Typeface Journal staff",
+      "published": 1789669500000,
+      "crawled": 1789669560000,
+      "updated": 1789669560000,
+      "unread": false,
+      "origin": {
+        "streamId": "feed/http://example-typeface.test/rss",
+        "title": "Example Typeface Journal",
+        "htmlUrl": "http://example-typeface.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-typeface.test/articles/23",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-typeface.test/articles/23",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-typeface.test/articles/23",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-typeface.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "engagement": 109,
+      "engagementRate": 0.022,
+      "keywords": ["typography"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+          "label": "Design"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/typeface-0023/900/600",
+        "width": 900,
+        "height": 600,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "design-0024",
+      "originId": "http://example-design.test/articles/24",
+      "fingerprint": "fp-design-24",
+      "title": "Icon set redesign: process and lessons learned",
+      "author": "Example Design Weekly staff",
+      "published": 1789662900000,
+      "crawled": 1789662960000,
+      "updated": 1789662960000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-design.test/atom",
+        "title": "Example Design Weekly",
+        "htmlUrl": "http://example-design.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-design.test/articles/24",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-design.test/articles/24",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-design.test/articles/24",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-design.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "keywords": ["design"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+          "label": "Design"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/design-0024/900/600",
+        "width": 900,
+        "height": 600,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "ux-0025",
+      "originId": "http://example-ux.test/articles/25",
+      "fingerprint": "fp-ux-25",
+      "title": "Prototyping tools roundup for late 2026",
+      "author": "Example UX Notes staff",
+      "published": 1789656300000,
+      "crawled": 1789656360000,
+      "updated": 1789656360000,
+      "unread": false,
+      "origin": {
+        "streamId": "feed/http://example-ux.test/feed",
+        "title": "Example UX Notes",
+        "htmlUrl": "http://example-ux.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-ux.test/articles/25",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-ux.test/articles/25",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-ux.test/articles/25",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-ux.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "visual": {
+        "url": "https://picsum.photos/seed/ux-0025/1000/700",
+        "width": 1000,
+        "height": 700,
+        "contentType": "image/jpeg"
+      },
+      "keywords": ["ux", "design"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+          "label": "Design"
+        }
+      ]
+    },
+    {
+      "id": "design-0026",
+      "originId": "http://example-design.test/articles/26",
+      "fingerprint": "fp-design-26",
+      "title": "Why empty states deserve more design time",
+      "author": "Example Design Weekly staff",
+      "published": 1789649700000,
+      "crawled": 1789649760000,
+      "updated": 1789649760000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-design.test/atom",
+        "title": "Example Design Weekly",
+        "htmlUrl": "http://example-design.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-design.test/articles/26",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-design.test/articles/26",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-design.test/articles/26",
+      "content": {
+        "content": "<p>Lead paragraph summarizing the story from example-design.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-design.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://picsum.photos/seed/design-0026-body/1200/700\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+        "direction": "ltr"
+      },
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-design.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "fullContent": "<p>Lead paragraph summarizing the story from example-design.test, with enough detail to set up the rest of the piece.</p><p>Second paragraph goes deeper, and links back to the <a href=\"https://example-design.test/sources\">original source</a> for readers who want more.</p><p><img src=\"https://example-cdn.test/img/example-design.test.jpg\" alt=\"illustrative photo for the article\" /></p><p>Closing paragraph wraps up the takeaway.</p>",
+      "engagement": 118,
+      "engagementRate": 0.014,
+      "keywords": ["design"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+          "label": "Design"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/design-0026/900/900",
+        "width": 900,
+        "height": 900,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "ux-0027",
+      "originId": "http://example-ux.test/articles/27",
+      "fingerprint": "fp-ux-27",
+      "title": "Building a component library that survives a rebrand",
+      "author": "Example UX Notes staff",
+      "published": 1789643100000,
+      "crawled": 1789643160000,
+      "updated": 1789643160000,
+      "unread": false,
+      "origin": {
+        "streamId": "feed/http://example-ux.test/feed",
+        "title": "Example UX Notes",
+        "htmlUrl": "http://example-ux.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-ux.test/articles/27",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-ux.test/articles/27",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-ux.test/articles/27",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-ux.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "keywords": ["ux", "design"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+          "label": "Design"
+        }
+      ],
+      "visual": {
+        "url": "https://picsum.photos/seed/ux-0027/800/1000",
+        "width": 800,
+        "height": 1000,
+        "contentType": "image/jpeg"
+      }
+    },
+    {
+      "id": "typeface-0028",
+      "originId": "http://example-typeface.test/articles/28",
+      "fingerprint": "fp-typeface-28",
+      "title": "Reading list: five essays on product design critique",
+      "author": "Example Typeface Journal staff",
+      "published": 1789636500000,
+      "crawled": 1789636560000,
+      "updated": 1789636560000,
+      "unread": true,
+      "origin": {
+        "streamId": "feed/http://example-typeface.test/rss",
+        "title": "Example Typeface Journal",
+        "htmlUrl": "http://example-typeface.test"
+      },
+      "alternate": [
+        {
+          "href": "http://example-typeface.test/articles/28",
+          "type": "text/html"
+        }
+      ],
+      "canonical": [
+        {
+          "href": "http://example-typeface.test/articles/28",
+          "type": "text/html"
+        }
+      ],
+      "canonicalUrl": "http://example-typeface.test/articles/28",
+      "summary": {
+        "content": "<p>Short teaser for a piece from example-typeface.test — just enough to decide whether to read on.</p>",
+        "direction": "ltr"
+      },
+      "visual": {
+        "url": "https://picsum.photos/seed/typeface-0028/900/600",
+        "width": 900,
+        "height": 600,
+        "contentType": "image/jpeg"
+      },
+      "keywords": ["typography"],
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+          "label": "Design"
+        }
+      ]
+    }
+  ]
+}

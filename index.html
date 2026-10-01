@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- resizes-content: the keyboard shrinks the layout viewport on Android, so a bottom-anchored
+      sheet and its field stay above the keys; iOS ignores the key and Navigator.tsx fits by hand. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
+    />
+    <link
+      rel="icon"
+      href="/favicon-light.svg"
+      type="image/svg+xml"
+      media="(prefers-color-scheme: light)"
+    />
+    <link
+      rel="icon"
+      href="/favicon-dark.svg"
+      type="image/svg+xml"
+      media="(prefers-color-scheme: dark)"
+    />
+    <meta name="theme-color" content="#f1f3f4" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1f1f1f" media="(prefers-color-scheme: dark)" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <title>Lire</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/client/main.tsx"></script>
+  </body>
+</html>

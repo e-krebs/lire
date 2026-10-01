@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Lire">
+  <!-- Lire icon — light theme. A drop-cap L over a paragraph: three short lines beside it, two full lines under it. The L is geometry, not text, so no font is needed. -->
+  <circle cx="256" cy="256" r="256" fill="#ffffff"/>
+  <path fill="#1f1f1f" d="M106 142 H150 V267 H240 V300 H106 Z"/>
+  <g stroke="#1f1f1f" stroke-width="22" stroke-linecap="round" fill="none">
+    <path d="M276 152 L406 152"/>
+    <path d="M276 212 L406 212"/>
+    <path d="M276 272 L386 272"/>
+    <path d="M106 344 L406 344"/>
+    <path d="M106 404 L326 404"/>
+  </g>
+</svg>

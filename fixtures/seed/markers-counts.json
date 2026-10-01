@@ -1,0 +1,75 @@
+{
+  "unreadcounts": [
+    {
+      "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/global.all",
+      "count": 12,
+      "updated": 1789718400000
+    },
+    {
+      "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+      "count": 10,
+      "updated": 1789718400000
+    },
+    {
+      "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+      "count": 7,
+      "updated": 1789718400000
+    },
+    {
+      "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/2c84f0d1-5e7b-4a93-8b61-3d29ac6f4e07",
+      "count": 2,
+      "updated": 1789718400000
+    },
+    {
+      "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/3d71e2b8-4c9a-4e58-9f30-6a18b7d5c2e9",
+      "count": 2,
+      "updated": 1789718400000
+    },
+    {
+      "id": "feed/http://example-news.test/rss",
+      "count": 3,
+      "updated": 1789718400000
+    },
+    {
+      "id": "feed/http://example-tech.test/feed",
+      "count": 8,
+      "updated": 1789718400000
+    },
+    {
+      "id": "feed/http://example-gadgets.test/rss.xml",
+      "count": 4,
+      "updated": 1789718400000
+    },
+    {
+      "id": "feed/http://example-science.test/feed",
+      "count": 0,
+      "updated": 1789718400000
+    },
+    {
+      "id": "feed/http://example-design.test/atom",
+      "count": 4,
+      "updated": 1789718400000
+    },
+    {
+      "id": "feed/http://example-typeface.test/rss",
+      "count": 3,
+      "updated": 1789718400000
+    },
+    {
+      "id": "feed/http://example-ux.test/feed",
+      "count": 3,
+      "updated": 1789718400000
+    },
+    {
+      "id": "feed/https://letters.example.com/example-letter-a1b2c3d4",
+      "count": 2,
+      "updated": 1789718400000
+    },
+    {
+      "id": "feed/http://example-longform.test/rss",
+      "count": 2,
+      "updated": 1789718400000
+    }
+  ],
+  "updated": 1789718400000
+}

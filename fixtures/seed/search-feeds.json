@@ -1,0 +1,23 @@
+{
+  "results": [
+    {
+      "feedId": "feed/http://example-news.test/rss",
+      "title": "Example News",
+      "website": "http://example-news.test",
+      "iconUrl": "https://example-cdn.test/icons/example-news.png",
+      "subscribers": 15234,
+      "description": "Breaking coverage and daily news roundups.",
+      "language": "en"
+    },
+    {
+      "feedId": "feed/http://example-news.test/world/rss",
+      "title": "Example News — World Desk",
+      "website": "http://example-news.test/world",
+      "subscribers": 4110,
+      "description": "International coverage from the Example News world desk.",
+      "language": "en"
+    }
+  ],
+  "hint": "http://example-news.test/rss",
+  "related": ["example-tech.test", "example-gadgets.test"]
+}

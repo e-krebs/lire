@@ -1,0 +1,12 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": ["src/client/routeTree.gen.ts!"],
+  "project": [
+    "src/**/*.{ts,tsx,css}!",
+    "!src/test/**!",
+    "!src/**/__stories__/**!",
+    "scripts/**/*.ts",
+    "e2e/**/*.ts"
+  ],
+  "ignoreDependencies": ["cloudflare", "@vitest/expect"]
+}

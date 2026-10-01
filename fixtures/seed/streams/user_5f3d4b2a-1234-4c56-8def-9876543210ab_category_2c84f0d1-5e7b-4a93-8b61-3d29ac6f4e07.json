@@ -1,0 +1,175 @@
+{
+  "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/2c84f0d1-5e7b-4a93-8b61-3d29ac6f4e07",
+  "updated": 1789718400000,
+  "items": [
+    {
+      "id": "letter-0003",
+      "originId": "6f1c2d3e-0003-4a5b-8c9d-000000000003",
+      "fingerprint": "",
+      "title": "Weekly Letter #3: what shipped, what slipped",
+      "author": "Example Weekly Letter",
+      "crawled": 1789716000000,
+      "unread": true,
+      "readTime": 0,
+      "language": "en",
+      "origin": {
+        "streamId": "feed/https://letters.example.com/example-letter-a1b2c3d4",
+        "title": "Example Weekly Letter"
+      },
+      "content": {
+        "content": "<div class=\"webfeeds--newsletter\"><div lang=\"en\" dir=\"ltr\"><p>Hello again. This week the team shipped the new navigator and slipped the sync work by a week.</p><p><img src=\"https://picsum.photos/seed/letter-0003/1200/700\" alt=\"illustrative photo for the letter\" /></p><p>Reply to this email to tell us what to cover next.</p></div></div>"
+      },
+      "visual": {
+        "url": "https://picsum.photos/seed/letter-0003/1200/700",
+        "width": 1200,
+        "height": 700,
+        "contentType": "image/jpeg",
+        "processor": "nikon-v3.1"
+      },
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/2c84f0d1-5e7b-4a93-8b61-3d29ac6f4e07",
+          "label": "Newsletters"
+        }
+      ],
+      "tags": []
+    },
+    {
+      "id": "letter-0004",
+      "originId": "6f1c2d3e-0004-4a5b-8c9d-000000000004",
+      "fingerprint": "",
+      "title": "Weekly Letter #4: what we learned from reading our own archive end to end",
+      "author": "Example Weekly Letter",
+      "crawled": 1789714200000,
+      "unread": true,
+      "readTime": 0,
+      "language": "en",
+      "origin": {
+        "streamId": "feed/https://letters.example.com/example-letter-a1b2c3d4",
+        "title": "Example Weekly Letter"
+      },
+      "content": {
+        "content": "<div class=\"webfeeds--newsletter\"><div lang=\"en\" dir=\"ltr\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" bgcolor=\"#f4f4f2\" style=\"width:100%;background-color:#f4f4f2\"><tr><td align=\"center\" style=\"padding:24px 12px\"><table width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" bgcolor=\"#ffffff\" style=\"width:600px;max-width:600px;background-color:#ffffff;border:1px solid #e3e3df\"><tr><td style=\"padding:0\"><img src=\"https://picsum.photos/seed/letter-0004-header/1200/400\" alt=\"\" width=\"600\" height=\"200\" style=\"display:block;width:600px;max-width:600px;height:auto;border:0\"></td></tr>\n<tr><td style=\"padding:32px 32px 8px\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%\"><tr><td style=\"font-family:Helvetica,Arial,sans-serif;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#9a9a94;padding-bottom:6px\">Issue four &middot; the long one</td></tr><tr><td style=\"font-family:Georgia,serif;font-size:28px;line-height:36px;color:#1a1a18;padding-bottom:18px\">What we learned from reading our own archive end to end</td></tr></table></td></tr>\n<tr><td style=\"padding:0 32px\">\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">Good morning. Over the winter break two of us did something slightly unhinged: we read every issue of this letter from the beginning, in order, in one sitting, with a shared document open to write down anything that made us wince. There were a hundred and six issues. The document ran to nine pages. This issue is the readable half of it, and if you only take one thing away, take the third item — it is the one that changed how we plan the letter rather than just how we write it.</p>\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">Before anything else: the archive is now open, permanently, with no wall and no address required. It lives at <a href=\"https://example-letter.test/archive\" style=\"color:#2b2b28\">the archive index</a> and it is sorted newest first, which several of you asked for and which took embarrassingly long to ship.</p>\n<h2 style=\"font-family:Helvetica,Arial,sans-serif;font-size:20px;line-height:28px;color:#1a1a18;margin:0 0 14px\">1. We wrote too many issues about writing the letter</h2>\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">Eleven of the hundred and six were, in some form, about the letter itself: a redesign, a schedule change, an apology for a schedule change, a survey, the results of a survey. That is roughly one in ten, and it is far too many. Housekeeping is not content. Our rule going forward is that operational notes go in a two-line block at the bottom, under the rule, and never take the headline slot. This issue is a deliberate exception and the last one for a while.</p>\n<h2 style=\"font-family:Helvetica,Arial,sans-serif;font-size:20px;line-height:28px;color:#1a1a18;margin:0 0 14px\">2. The middle third is the weakest, every time</h2>\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">Read in sequence, a pattern appears that is invisible issue by issue. The opening is usually sharp because it was the thing we actually wanted to say. The closing is usually fine because it is short. The middle is where we put the material we felt obliged to include — the link nobody asked for, the second example that makes the same point as the first, the paragraph of context that a reader who has been here a year does not need. Cutting the middle third of a draft made almost every issue we tested it on better, and made none of them worse.</p>\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">We are not going to claim this generalises to your writing. We will claim that reading a year of your own work in one sitting is the only way we have found to see a pattern that operates at that timescale. Nothing about a single draft reveals it, and no amount of editing one issue harder fixes it.</p>\n</td></tr>\n<tr><td style=\"padding:8px 32px 24px\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%\"><tr>\n<td width=\"268\" valign=\"top\" style=\"width:268px;padding-right:32px\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%\"><tr><td style=\"font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:#9a9a94;padding-bottom:8px\">What worked</td></tr><tr><td style=\"font-family:Georgia,serif;font-size:15px;line-height:24px;color:#2b2b28\">The issues with exactly one idea in them. Fourteen of the hundred and six had a single argument and no links section, and those fourteen are, by a wide margin, the ones readers have written to us about since. Two of them are barely four hundred words long.</td></tr></table></td>\n<td width=\"268\" valign=\"top\" style=\"width:268px\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%\"><tr><td style=\"font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:#9a9a94;padding-bottom:8px\">What did not</td></tr><tr><td style=\"font-family:Georgia,serif;font-size:15px;line-height:24px;color:#2b2b28\">Round-ups. Every round-up we have sent reads, in retrospect, like a list of things we had not finished thinking about. They are the easiest issue to write and the only format we have never once been glad to have sent.</td></tr></table></td>\n</tr></table></td></tr>\n<tr><td style=\"padding:0 32px\">\n<h2 style=\"font-family:Helvetica,Arial,sans-serif;font-size:20px;line-height:28px;color:#1a1a18;margin:0 0 14px\">3. Readers remember the corrections</h2>\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">This is the item that changed our planning. We have issued nine corrections in a hundred and six issues. When we asked, informally, in a reply thread last autumn, what people remembered from the letter, four separate readers brought up a correction — and all four brought it up approvingly, as the reason they trusted the rest of it. None of them mentioned the issue that had been wrong. They mentioned that we said so.</p>\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">So corrections get promoted. They go at the top, above the fold, in the same size as everything else, with a plain sentence about what was wrong and what is true instead. No strikethrough theatre and no footnote. If we were wrong about something last week, that is the most interesting thing we can tell you this week.</p>\n<h2 style=\"font-family:Helvetica,Arial,sans-serif;font-size:20px;line-height:28px;color:#1a1a18;margin:0 0 14px\">4. The schedule is the product</h2>\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">Of the hundred and six issues, ninety-one went out on a Sunday. The other fifteen went out on some other day, usually because the Sunday one was not ready, and the open rate on those fifteen is about forty per cent lower. We do not think the day is magic. We think a letter that arrives when you expect it gets read and one that arrives whenever gets triaged. The practical consequence is that we would now rather send a short issue on time than a good one late, which is not a trade we would have agreed to two years ago.</p>\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">Related, and slightly painful: the two longest gaps in the archive are both three weeks, and in both cases the subscriber count fell for the following month. It recovered. It would have been simpler not to have to recover.</p>\n<h2 style=\"font-family:Helvetica,Arial,sans-serif;font-size:20px;line-height:28px;color:#1a1a18;margin:0 0 14px\">5. Nobody clicks the third link</h2>\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">We have link statistics for the last sixty issues and the shape is the same every time. The first link gets most of the clicks, the second gets a third of that, the third gets almost nothing, and links four and beyond may as well not be there. This is not news to anyone who has run a newsletter, but seeing it hold across sixty issues with no exceptions was bracing enough that we have stopped including more than two. If a third thing is worth your time it is worth its own issue.</p>\n</td></tr>\n<tr><td style=\"padding:16px 32px 8px\" align=\"center\"><table cellpadding=\"0\" cellspacing=\"0\" border=\"0\" align=\"center\"><tr><td bgcolor=\"#1f5f4a\" align=\"center\" style=\"background-color:#1f5f4a;padding:14px 28px;border-radius:2px\"><a href=\"https://example-letter.test/archive\" style=\"font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;display:inline-block\">Read the full archive</a></td></tr></table></td></tr>\n<tr><td style=\"padding:8px 32px 24px\" align=\"center\"><table cellpadding=\"0\" cellspacing=\"0\" border=\"0\" align=\"center\"><tr><td bgcolor=\"#6b6b66\" align=\"center\" style=\"background-color:#6b6b66;padding:14px 28px;border-radius:2px\"><a href=\"https://example-letter.test/reply\" style=\"font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;display:inline-block\">Tell us what to cut</a></td></tr></table></td></tr>\n<tr><td style=\"padding:0 32px 24px\">\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">One housekeeping note, in its proper place at the bottom: we have moved the archive off the old domain, so any bookmark you have saved from before the spring will redirect once and then stop working sometime next year. The <a href=\"https://example-letter.test/archive\" style=\"color:#2b2b28\">new index</a> is the one to keep. Everything in this letter is fictional and exists to make a reader interface look plausible.</p>\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">Next week: a short one, on time, about why we keep the word count in the subject line even though three of you have asked us to stop.</p>\n</td></tr>\n<tr><td bgcolor=\"#f4f4f2\" style=\"padding:24px 32px;background-color:#f4f4f2;border-top:1px solid #e3e3df\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%\"><tr><td align=\"center\" style=\"font-family:Georgia,serif;font-size:12px;line-height:20px;color:#6b6b66;padding-bottom:8px\">You are receiving this because you asked for it at <a href=\"https://example-letter.test/subscribe\" style=\"color:#6b6b66\">example-letter.test</a>. Nothing here is real.</td></tr><tr><td align=\"center\" style=\"font-family:Georgia,serif;font-size:12px;line-height:20px;color:#6b6b66;padding-bottom:8px\"><a href=\"https://example-letter.test/unsubscribe?t=0004\" style=\"color:#6b6b66\">Unsubscribe</a> &nbsp;&middot;&nbsp; <a href=\"https://example-letter.test/preferences?t=0004\" style=\"color:#6b6b66\">Email preferences</a> &nbsp;&middot;&nbsp; <a href=\"https://example-letter.test/privacy\" style=\"color:#6b6b66\">Privacy notice</a></td></tr><tr><td align=\"center\" style=\"font-family:Georgia,serif;font-size:12px;line-height:20px;color:#9a9a94\">Example Weekly Letter &middot; 44 Placeholder Row &middot; Nowhere</td></tr></table></td></tr></table></td></tr></table></div></div>"
+      },
+      "visual": {
+        "url": "https://picsum.photos/seed/letter-0004/1200/700",
+        "width": 1200,
+        "height": 700,
+        "contentType": "image/jpeg",
+        "processor": "nikon-v3.1"
+      },
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/2c84f0d1-5e7b-4a93-8b61-3d29ac6f4e07",
+          "label": "Newsletters"
+        }
+      ],
+      "tags": []
+    },
+    {
+      "id": "letter-0005",
+      "originId": "6f1c2d3e-0005-4a5b-8c9d-000000000005",
+      "fingerprint": "",
+      "title": "Weekly Letter #5: three readers, three completely different letters",
+      "author": "Example Weekly Letter",
+      "crawled": 1789712400000,
+      "unread": true,
+      "readTime": 0,
+      "language": "en",
+      "origin": {
+        "streamId": "feed/https://letters.example.com/example-letter-a1b2c3d4",
+        "title": "Example Weekly Letter"
+      },
+      "content": {
+        "content": "<div class=\"webfeeds--newsletter\"><div lang=\"en\" dir=\"ltr\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" bgcolor=\"#f4f4f2\" style=\"width:100%;background-color:#f4f4f2\"><tr><td align=\"center\" style=\"padding:24px 12px\"><table width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" bgcolor=\"#ffffff\" style=\"width:600px;max-width:600px;background-color:#ffffff;border:1px solid #e3e3df\"><tr><td style=\"padding:0\"><img src=\"https://picsum.photos/seed/letter-0005-header/1200/400\" alt=\"\" width=\"600\" height=\"200\" style=\"display:block;width:600px;max-width:600px;height:auto;border:0\"></td></tr>\n<tr><td style=\"padding:32px 32px 8px\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%\"><tr><td style=\"font-family:Helvetica,Arial,sans-serif;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#9a9a94;padding-bottom:6px\">Issue five</td></tr><tr><td style=\"font-family:Georgia,serif;font-size:28px;line-height:36px;color:#1a1a18;padding-bottom:18px\">Three readers, three completely different letters</td></tr></table></td></tr>\n<tr><td style=\"padding:0 32px\">\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">A correction first, because we said last week that corrections go at the top and it would be a poor start to break that rule in the very next issue. Issue four said the archive contained a hundred and six issues. It contains a hundred and four; two of the entries were drafts that were never sent and should not have been counted. The argument in that issue does not change, but the number was wrong and it was our number to get right.</p>\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">On to this week. We spent an afternoon on the phone with three long-time readers, chosen because their reading habits looked nothing alike in the statistics, and asked them to describe the letter back to us. The three descriptions were so different that we are no longer confident we are writing one publication.</p>\n<h2 style=\"font-family:Helvetica,Arial,sans-serif;font-size:20px;line-height:28px;color:#1a1a18;margin:0 0 14px\">The skimmer</h2>\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">The first reader opens the letter on a phone within about ten minutes of it arriving, reads the first two paragraphs, and archives it. She has been subscribed for two years. She has clicked four links in that time. Asked what the letter is about, she said it is about whether anything happened this week that she needs to know, and that the answer is usually no, and that this is fine and in fact the point. She described the opening paragraph as the whole product and everything after it as optional.</p>\n<h2 style=\"font-family:Helvetica,Arial,sans-serif;font-size:20px;line-height:28px;color:#1a1a18;margin:0 0 14px\">The archivist</h2>\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">The second reader does not read the letter when it arrives at all. He files it, and roughly once a month he reads four or five issues in one sitting, on a laptop, with a notes application open. He is the reason the archive got unwalled. Asked the same question, he said the letter is a running record of how our thinking on a handful of topics has changed, and that reading it in sequence is the only way that record is legible. He could name the three topics. We could not, immediately, which was uncomfortable.</p>\n<h2 style=\"font-family:Helvetica,Arial,sans-serif;font-size:20px;line-height:28px;color:#1a1a18;margin:0 0 14px\">The forwarder</h2>\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">The third reader reads it properly, on the day, start to finish, and then forwards about one issue in five to a colleague with a one-line note on top. Her description was the most instrumental of the three: the letter is a way of saying something to someone at work without having to be the person saying it. What she needs from us is a clean, quotable paragraph she can put at the top of a forward, and an article that will not embarrass her when the colleague opens it.</p>\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">What none of the three wanted, when we asked directly, was more frequency. The skimmer would archive a second issue unread, the archivist would file it and never notice, and the forwarder said flatly that two a week would make her stop forwarding any of them, because the whole value of a forward is that it is rare enough to mean something. We had been quietly assuming that sending more often was the obvious growth lever available to us whenever we wanted it. Three out of three readers said it was the one change that would cost them something, which is the clearest answer we have had to a question we had not thought to ask.</p>\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">Three readers is not research. We are aware. But three readers whose needs point in three different directions is enough to notice that the things we have argued about internally — length, link count, how much recap to include — are all arguments where each side is optimising for a different one of these three, and nobody has been saying which.</p>\n</td></tr>\n<tr><td style=\"padding:8px 32px 24px\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%\"><tr>\n<td width=\"268\" valign=\"top\" style=\"width:268px;padding-right:32px\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%\"><tr><td style=\"font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:#9a9a94;padding-bottom:8px\">What this changes</td></tr><tr><td style=\"font-family:Georgia,serif;font-size:15px;line-height:24px;color:#2b2b28\">The first paragraph now has to stand alone completely. No setup, no throat-clearing, no reference to last week that a new reader would not follow. If you read nothing else you should still have got something.</td></tr></table></td>\n<td width=\"268\" valign=\"top\" style=\"width:268px\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%\"><tr><td style=\"font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:#9a9a94;padding-bottom:8px\">What it does not</td></tr><tr><td style=\"font-family:Georgia,serif;font-size:15px;line-height:24px;color:#2b2b28\">We are not shortening the letter. The archivist is a real reader with a real use, and cutting the body to serve the skimmer would take the letter apart to make its first paragraph marginally better.</td></tr></table></td>\n</tr></table></td></tr>\n<tr><td style=\"padding:0 32px\">\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">There is a version of this conclusion that ends with us launching three editions, and we want to say plainly that we are not going to do that. Two of us write this letter in evenings. A publication that splits into variants to serve segments is a publication with an operations problem, and we have seen enough of those from the inside to know how they end. What we can do is be honest about which reader each part of the letter is for, and stop arguing about length as though it were one question.</p>\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">If you recognised yourself in one of the three, or in none of them, the reply address works and we read everything. The three conversations that produced this issue each took under twenty minutes and were more useful than the survey we ran last year, which had four hundred responses and told us almost nothing we could act on.</p>\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">Everything in this letter is invented for testing purposes, including the readers, who are composites, and the statistics, which are not statistics.</p>\n</td></tr>\n<tr><td style=\"padding:8px 32px 24px\" align=\"center\"><table cellpadding=\"0\" cellspacing=\"0\" border=\"0\" align=\"center\"><tr><td bgcolor=\"#1f5f4a\" align=\"center\" style=\"background-color:#1f5f4a;padding:14px 28px;border-radius:2px\"><a href=\"https://example-letter.test/reply\" style=\"font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;display:inline-block\">Reply and tell us which one you are</a></td></tr></table></td></tr>\n<tr><td bgcolor=\"#f4f4f2\" style=\"padding:24px 32px;background-color:#f4f4f2;border-top:1px solid #e3e3df\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%\"><tr><td align=\"center\" style=\"font-family:Georgia,serif;font-size:12px;line-height:20px;color:#6b6b66;padding-bottom:8px\">You are receiving this because you asked for it at <a href=\"https://example-letter.test/subscribe\" style=\"color:#6b6b66\">example-letter.test</a>. Nothing here is real.</td></tr><tr><td align=\"center\" style=\"font-family:Georgia,serif;font-size:12px;line-height:20px;color:#6b6b66;padding-bottom:8px\"><a href=\"https://example-letter.test/unsubscribe?t=0005\" style=\"color:#6b6b66\">Unsubscribe</a> &nbsp;&middot;&nbsp; <a href=\"https://example-letter.test/preferences?t=0005\" style=\"color:#6b6b66\">Email preferences</a> &nbsp;&middot;&nbsp; <a href=\"https://example-letter.test/privacy\" style=\"color:#6b6b66\">Privacy notice</a></td></tr><tr><td align=\"center\" style=\"font-family:Georgia,serif;font-size:12px;line-height:20px;color:#9a9a94\">Example Weekly Letter &middot; 44 Placeholder Row &middot; Nowhere</td></tr></table></td></tr></table></td></tr></table></div></div>"
+      },
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/2c84f0d1-5e7b-4a93-8b61-3d29ac6f4e07",
+          "label": "Newsletters"
+        }
+      ],
+      "tags": []
+    },
+    {
+      "id": "letter-0006",
+      "originId": "6f1c2d3e-0006-4a5b-8c9d-000000000006",
+      "fingerprint": "",
+      "author": "Example Weekly Letter",
+      "crawled": 1789710600000,
+      "unread": true,
+      "readTime": 0,
+      "language": "en",
+      "origin": {
+        "streamId": "feed/https://letters.example.com/example-letter-a1b2c3d4",
+        "title": "Example Weekly Letter"
+      },
+      "content": {
+        "content": "<div class=\"webfeeds--newsletter\"><div lang=\"en\" dir=\"ltr\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" bgcolor=\"#f4f4f2\" style=\"width:100%;background-color:#f4f4f2\"><tr><td align=\"center\" style=\"padding:24px 12px\"><table width=\"600\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" bgcolor=\"#ffffff\" style=\"width:600px;max-width:600px;background-color:#ffffff;border:1px solid #e3e3df\"><tr><td style=\"padding:32px 32px 8px\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%\"><tr><td style=\"font-family:Helvetica,Arial,sans-serif;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#9a9a94;padding-bottom:6px\">A note between issues</td></tr></table></td></tr>\n<tr><td style=\"padding:0 32px\">\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">No subject line on this one, which is deliberate and also an accident: the send went out before the field was filled in, and rather than recall it we are leaving it as a small monument to the schedule note in issue four.</p>\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">Two things. The archive redirect from the old domain is live and will stay up for a year. And the reply address changed, so if you wrote to us in the last fortnight and heard nothing, that is why, and the messages were not lost — they are queued and we are working through them.</p>\n<p style=\"font-family:Georgia,serif;font-size:16px;line-height:26px;color:#2b2b28;margin:0 0 18px\">Normal service on Sunday. Nothing in this message is real.</p>\n</td></tr>\n<tr><td style=\"padding:8px 32px 24px\" align=\"center\"><table cellpadding=\"0\" cellspacing=\"0\" border=\"0\" align=\"center\"><tr><td bgcolor=\"#6b6b66\" align=\"center\" style=\"background-color:#6b6b66;padding:14px 28px;border-radius:2px\"><a href=\"https://example-letter.test/archive\" style=\"font-family:Helvetica,Arial,sans-serif;font-size:15px;font-weight:bold;color:#ffffff;text-decoration:none;display:inline-block\">Open the archive</a></td></tr></table></td></tr>\n<tr><td bgcolor=\"#f4f4f2\" style=\"padding:24px 32px;background-color:#f4f4f2;border-top:1px solid #e3e3df\"><table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" border=\"0\" style=\"width:100%\"><tr><td align=\"center\" style=\"font-family:Georgia,serif;font-size:12px;line-height:20px;color:#6b6b66;padding-bottom:8px\">You are receiving this because you asked for it at <a href=\"https://example-letter.test/subscribe\" style=\"color:#6b6b66\">example-letter.test</a>. Nothing here is real.</td></tr><tr><td align=\"center\" style=\"font-family:Georgia,serif;font-size:12px;line-height:20px;color:#6b6b66;padding-bottom:8px\"><a href=\"https://example-letter.test/unsubscribe?t=0006\" style=\"color:#6b6b66\">Unsubscribe</a> &nbsp;&middot;&nbsp; <a href=\"https://example-letter.test/preferences?t=0006\" style=\"color:#6b6b66\">Email preferences</a> &nbsp;&middot;&nbsp; <a href=\"https://example-letter.test/privacy\" style=\"color:#6b6b66\">Privacy notice</a></td></tr><tr><td align=\"center\" style=\"font-family:Georgia,serif;font-size:12px;line-height:20px;color:#9a9a94\">Example Weekly Letter &middot; 44 Placeholder Row &middot; Nowhere</td></tr></table></td></tr></table></td></tr></table></div></div>"
+      },
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/2c84f0d1-5e7b-4a93-8b61-3d29ac6f4e07",
+          "label": "Newsletters"
+        }
+      ],
+      "tags": []
+    },
+    {
+      "id": "letter-0002",
+      "originId": "6f1c2d3e-0002-4a5b-8c9d-000000000002",
+      "fingerprint": "",
+      "title": "Weekly Letter #2: reading habits, by the numbers",
+      "author": "Example Weekly Letter",
+      "crawled": 1789111200000,
+      "unread": true,
+      "readTime": 0,
+      "language": "en",
+      "origin": {
+        "streamId": "feed/https://letters.example.com/example-letter-a1b2c3d4",
+        "title": "Example Weekly Letter"
+      },
+      "content": {
+        "content": "<div class=\"webfeeds--newsletter\"><div lang=\"en\" dir=\"ltr\"><p>Most readers open the letter on Sunday evening, and a third read it on a phone.</p><p>Next week: the redesign.</p></div></div>"
+      },
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/2c84f0d1-5e7b-4a93-8b61-3d29ac6f4e07",
+          "label": "Newsletters"
+        }
+      ],
+      "tags": []
+    },
+    {
+      "id": "letter-0001",
+      "originId": "6f1c2d3e-0001-4a5b-8c9d-000000000001",
+      "fingerprint": "",
+      "title": "Weekly Letter #1: welcome aboard",
+      "author": "Example Weekly Letter",
+      "crawled": 1788506400000,
+      "unread": false,
+      "actionTimestamp": 1788520000000,
+      "readTime": 0,
+      "language": "en",
+      "origin": {
+        "streamId": "feed/https://letters.example.com/example-letter-a1b2c3d4",
+        "title": "Example Weekly Letter"
+      },
+      "content": {
+        "content": "<div class=\"webfeeds--newsletter\"><div lang=\"en\" dir=\"ltr\"><p>Thanks for subscribing. Every week: three links, one idea, no fluff.</p></div></div>"
+      },
+      "categories": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/2c84f0d1-5e7b-4a93-8b61-3d29ac6f4e07",
+          "label": "Newsletters"
+        }
+      ],
+      "tags": [
+        {
+          "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/tag/global.read",
+          "label": ""
+        }
+      ]
+    }
+  ]
+}

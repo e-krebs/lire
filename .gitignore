@@ -1,0 +1,81 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Diagnostic reports (https://nodejs.org/api/report.html)
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Dependencies
+node_modules/
+.yarn
+.pnp.*
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Coverage
+coverage
+*.lcov
+
+# Optional caches
+.npm
+.cache
+.parcel-cache
+
+# Output of 'npm pack'
+*.tgz
+
+# dotenv environment variable files. Globbed rather than enumerated: `.env.<mode>.local` is where a
+# contributor's own keys go for every mode, including ones this repo doesn't have yet.
+.env
+.env*.local
+.env.development
+.env.production
+
+# wrangler dev-vars — glob, not the bare name: .dev.vars.production and .dev.vars.local are
+# wrangler's own per-environment convention and carry the same secrets.
+.dev.vars*
+
+# Vite / Pages build output
+dist
+dist-e2e
+
+# vite-plugin-pwa devOptions.enabled dev-mode service worker
+dev-dist
+
+# TanStack Router plugin scratch dir
+.tanstack/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# wrangler local state (DO SQLite for `wrangler dev`)
+.wrangler/
+
+# Claude Code per-machine settings (.claude/settings.json is tracked; the .local override isn't)
+.claude/settings.local.json
+
+# macOS
+.DS_Store
+
+# Feeds API fixtures recorded from a real account — personal data, never for the public repo
+/fixtures/real/
+/fixtures/real.tmp/
+/fixtures/real-raw/
+
+# Local-only secrets (feeds API dev token) for scripts/record-fixtures.ts — already covered by
+# .env*.local above, kept explicit since it's the one contributors reach for by name.
+.env.local
+
+# Storybook
+storybook-static
+
+# Personal work list, kept local
+/BACKLOG.md

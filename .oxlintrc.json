@@ -1,0 +1,132 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc"],
+  "jsPlugins": ["./scripts/oxlint/test-conventions.js", "./scripts/oxlint/code-conventions.js"],
+  "ignorePatterns": ["src/client/routeTree.gen.ts"],
+  "options": { "typeAware": true },
+  "categories": { "correctness": "error" },
+  "overrides": [
+    {
+      "files": ["src/client/**/*.{ts,tsx}"],
+      "plugins": ["react", "jsx-a11y"],
+      "rules": {
+        "react/button-has-type": "error",
+        "jsx-a11y/prefer-tag-over-role": "off",
+        "jsx-a11y/no-autofocus": "off",
+        "jsx-a11y/no-noninteractive-element-interactions": "off",
+        "react/no-unstable-nested-components": "error",
+        "code-conventions/hook-file-name": "error",
+        "code-conventions/no-render-helper": "error",
+        "code-conventions/barrel-needs-several-exports": "error",
+        "react-hooks/rules-of-hooks": "error",
+        "react-hooks/exhaustive-deps": "error"
+      }
+    },
+    {
+      "files": ["src/**/*.{ts,tsx}", "e2e/**/*.ts"],
+      "rules": {
+        "typescript/consistent-return": "error",
+        "typescript/consistent-type-exports": "error",
+        "typescript/dot-notation": "error",
+        "typescript/no-confusing-void-expression": "error",
+        "typescript/no-deprecated": "error",
+        "typescript/no-misused-promises": "error",
+        "typescript/no-mixed-enums": "error",
+        "typescript/no-unnecessary-boolean-literal-compare": "error",
+        "typescript/no-unnecessary-condition": "error",
+        "typescript/no-unnecessary-qualifier": "error",
+        "typescript/no-unnecessary-template-expression": "error",
+        "typescript/no-unnecessary-type-arguments": "error",
+        "typescript/no-unnecessary-type-assertion": "error",
+        "typescript/no-unnecessary-type-conversion": "error",
+        "typescript/no-unnecessary-type-parameters": "error",
+        "typescript/no-unsafe-argument": "error",
+        "typescript/no-unsafe-assignment": "error",
+        "typescript/no-unsafe-call": "error",
+        "typescript/no-unsafe-enum-comparison": "error",
+        "typescript/no-unsafe-member-access": "error",
+        "typescript/no-unsafe-return": "error",
+        "typescript/no-unsafe-type-assertion": "error",
+        "typescript/prefer-find": "error",
+        "typescript/prefer-includes": "error",
+        "typescript/prefer-nullish-coalescing": [
+          "error",
+          { "ignorePrimitives": { "boolean": true } }
+        ],
+        "typescript/prefer-optional-chain": "error",
+        "typescript/prefer-promise-reject-errors": "error",
+        "typescript/prefer-readonly": "error",
+        "typescript/prefer-reduce-type-parameter": "error",
+        "typescript/prefer-regexp-exec": "error",
+        "typescript/prefer-return-this-type": "error",
+        "typescript/prefer-string-starts-ends-with": "error",
+        "typescript/promise-function-async": "error",
+        "typescript/related-getter-setter-pairs": "error",
+        "typescript/require-await": "error",
+        "typescript/restrict-plus-operands": "error",
+        "typescript/return-await": "error"
+      }
+    },
+    {
+      "files": ["src/**/*.{ts,tsx}", "e2e/**/*.ts"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "regex": "^\\.\\./",
+                "message": "Import through an alias (client/, server/, shared/, test/, fixtures/, e2e/) or from a sibling (./x)."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/**/__tests__/**", "src/**/*.test.{ts,tsx}"],
+      "plugins": ["vitest"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "regex": "^\\.\\./\\.\\./",
+                "message": "A test may import its parent folder (../x), nothing higher. Use an alias."
+              }
+            ]
+          }
+        ],
+        "vitest/no-restricted-vi-methods": [
+          "error",
+          {
+            "mock": "Module mocks are banned, see docs/reference/testing.md.",
+            "doMock": "Module mocks are banned, see docs/reference/testing.md.",
+            "unmock": "Module mocks are banned, see docs/reference/testing.md.",
+            "doUnmock": "Module mocks are banned, see docs/reference/testing.md.",
+            "mocked": "Module mocks are banned, see docs/reference/testing.md.",
+            "importMock": "Module mocks are banned, see docs/reference/testing.md.",
+            "hoisted": "Module mocks are banned, see docs/reference/testing.md.",
+            "spyOn": "Spies are banned, see docs/reference/testing.md."
+          }
+        ],
+        "vitest/consistent-test-it": ["error", { "fn": "it", "withinDescribe": "it" }],
+        "vitest/require-top-level-describe": ["error", { "maxNumberOfTopLevelDescribes": 1 }],
+        "test-conventions/nested-describe-when": "error",
+        "test-conventions/queries-in-getters": "error"
+      }
+    },
+    {
+      "files": ["src/**/__tests__/**", "src/**/__stories__/**"],
+      "rules": { "code-conventions/no-render-helper": "off" }
+    },
+    {
+      "files": ["e2e/**/*.spec.ts"],
+      "rules": {
+        "test-conventions/nested-describe-when": "error",
+        "test-conventions/queries-in-getters": "error"
+      }
+    }
+  ]
+}

@@ -1,0 +1,146 @@
+[
+  {
+    "id": "feed/http://example-news.test/rss",
+    "title": "Example News",
+    "website": "http://example-news.test",
+    "iconUrl": "https://example-cdn.test/icons/example-news.png",
+    "subscribers": 15234,
+    "updated": 1789714800000,
+    "velocity": 12.4,
+    "topics": ["news", "world"],
+    "categories": [
+      {
+        "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+        "label": "Tech News"
+      }
+    ]
+  },
+  {
+    "id": "feed/http://example-tech.test/feed",
+    "title": "Example Tech Daily",
+    "website": "http://example-tech.test",
+    "iconUrl": "https://example-cdn.test/icons/example-tech.png",
+    "visualUrl": "https://example-cdn.test/visuals/example-tech.png",
+    "subscribers": 48210,
+    "updated": 1789714800000,
+    "velocity": 30.1,
+    "topics": ["technology"],
+    "categories": [
+      {
+        "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+        "label": "Tech News"
+      }
+    ]
+  },
+  {
+    "id": "feed/http://example-gadgets.test/rss.xml",
+    "title": "Example Gadgets Weekly",
+    "website": "http://example-gadgets.test",
+    "iconUrl": "https://example-cdn.test/icons/example-gadgets.png",
+    "subscribers": 9021,
+    "updated": 1789714800000,
+    "velocity": 4.7,
+    "topics": ["gadgets", "reviews"],
+    "categories": [
+      {
+        "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+        "label": "Tech News"
+      }
+    ]
+  },
+  {
+    "id": "feed/http://example-science.test/feed",
+    "title": "Example Science Weekly",
+    "website": "http://example-science.test",
+    "subscribers": 22110,
+    "updated": 1789714800000,
+    "velocity": 6.3,
+    "topics": ["science"],
+    "categories": [
+      {
+        "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054",
+        "label": "Tech News"
+      }
+    ]
+  },
+  {
+    "id": "feed/http://example-design.test/atom",
+    "title": "Example Design Weekly",
+    "website": "http://example-design.test",
+    "iconUrl": "https://example-cdn.test/icons/example-design.png",
+    "subscribers": 7300,
+    "updated": 1789714800000,
+    "velocity": 3.2,
+    "topics": ["design"],
+    "categories": [
+      {
+        "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+        "label": "Design"
+      }
+    ]
+  },
+  {
+    "id": "feed/http://example-typeface.test/rss",
+    "title": "Example Typeface Journal",
+    "website": "http://example-typeface.test",
+    "subscribers": 2110,
+    "updated": 1789714800000,
+    "velocity": 1.1,
+    "topics": ["typography"],
+    "categories": [
+      {
+        "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+        "label": "Design"
+      }
+    ]
+  },
+  {
+    "id": "feed/http://example-ux.test/feed",
+    "title": "Example UX Notes",
+    "website": "http://example-ux.test",
+    "iconUrl": "https://example-cdn.test/icons/example-ux.png",
+    "visualUrl": "https://example-cdn.test/visuals/example-ux.png",
+    "subscribers": 5400,
+    "updated": 1789714800000,
+    "velocity": 2.8,
+    "topics": ["ux", "design"],
+    "categories": [
+      {
+        "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3",
+        "label": "Design"
+      }
+    ]
+  },
+  {
+    "id": "feed/https://letters.example.com/example-letter-a1b2c3d4",
+    "title": "Example Weekly Letter",
+    "iconUrl": "https://example-cdn.test/icons/example-letter.png",
+    "subscribers": 1,
+    "updated": 1789714800000,
+    "velocity": 1.0,
+    "partial": false,
+    "categories": [
+      {
+        "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/2c84f0d1-5e7b-4a93-8b61-3d29ac6f4e07",
+        "label": "Newsletters"
+      }
+    ]
+  },
+  {
+    "id": "feed/http://example-longform.test/rss",
+    "title": "Example Longform",
+    "website": "http://example-longform.test",
+    "subscribers": 3050,
+    "updated": 1789714800000,
+    "velocity": 0,
+    "partial": true,
+    "state": "dead.stale",
+    "topics": ["longform", "essays"],
+    "categories": [
+      {
+        "id": "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/3d71e2b8-4c9a-4e58-9f30-6a18b7d5c2e9",
+        "label": "Archive"
+      }
+    ]
+  }
+]

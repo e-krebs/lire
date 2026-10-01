@@ -1,0 +1,85 @@
+import { defineConfig } from "vitest/config";
+import react from "@vitejs/plugin-react";
+import { cloudflareTest } from "@cloudflare/vitest-pool-workers";
+import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
+import tailwindcss from "@tailwindcss/vite";
+import { playwright } from "@vitest/browser-playwright";
+
+export default defineConfig({
+  test: {
+    coverage: {
+      reporter: ["text-summary", "json", "json-summary", "html"],
+      reportOnFailure: true,
+      exclude: [
+        "src/**/__tests__/**",
+        "src/test/**",
+        "**/*.d.ts",
+        "src/client/main.tsx",
+        "src/client/router.tsx",
+        "src/client/routeTree.gen.ts",
+        "src/client/styles.css",
+        "src/**/__stories__/**",
+      ],
+      thresholds: {
+        perFile: true,
+        statements: 80,
+        lines: 80,
+        functions: 80,
+        "src/server/**": {
+          statements: 100,
+          lines: 100,
+          functions: 100,
+          branches: 100,
+        },
+      },
+    },
+    projects: [
+      {
+        plugins: [react()],
+        resolve: { tsconfigPaths: true },
+        test: {
+          name: "client",
+          include: ["src/{client,shared}/**/__tests__/**/*.test.{ts,tsx}"],
+          environment: "jsdom",
+          setupFiles: ["./src/test/setup.ts"],
+          css: false,
+          // Tests assert seed IDs and counts, so a complete fixtures/real/ recording must not win.
+          // A fixed near-zero fixture delay, so no response lands in a later test.
+          env: { VITE_FIXTURES: "seed", VITE_FIXTURE_LATENCY_MS: "0" },
+        },
+      },
+      {
+        plugins: [
+          cloudflareTest({
+            wrangler: { configPath: "./wrangler.toml" },
+            // The owner pin is a secret, absent from wrangler.toml; the tests need it set to cover the check.
+            miniflare: {
+              bindings: { ACCESS_ALLOWED_EMAIL: "owner@example.com" },
+            },
+          }),
+        ],
+        resolve: { tsconfigPaths: true },
+        test: {
+          name: "server",
+          include: ["src/server/**/__tests__/**/*.test.ts"],
+        },
+      },
+      {
+        // storybookTest does not load the Tailwind plugin, so the theme variables would be missing.
+        plugins: [tailwindcss(), storybookTest({ configDir: ".storybook" })],
+        resolve: { tsconfigPaths: true },
+        test: {
+          name: "storybook",
+          // Parallel pages starve each other on a loaded machine and stories time out.
+          maxWorkers: 2,
+          browser: {
+            enabled: true,
+            headless: true,
+            provider: playwright(),
+            instances: [{ browser: "chromium" }],
+          },
+        },
+      },
+    ],
+  },
+});
