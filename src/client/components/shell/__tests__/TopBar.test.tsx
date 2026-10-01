@@ -14,7 +14,6 @@ import { resetFixtureState } from "client/api/adapters/fixture";
 import { useOverlay } from "client/hooks/useOverlay";
 import { toStreamKey } from "shared/feedsApi/streamKey";
 import { seedCategoryId, seedCategoryKey } from "test/seedCategories";
-import { VIEW_PREFS_STORAGE_KEY } from "client/utils/viewPrefs";
 import { TopBar } from "../TopBar";
 
 const ui = {
@@ -403,7 +402,7 @@ describe("TopBar", () => {
 
     expect(unread).toHaveAttribute("aria-pressed", "false");
     expect(oldest).toHaveAttribute("aria-pressed", "true");
-    expect(JSON.parse(window.localStorage.getItem(VIEW_PREFS_STORAGE_KEY) ?? "null")).toEqual({
+    expect(JSON.parse(window.localStorage.getItem("lire.view") ?? "null")).toEqual({
       unread: false,
       ranked: "oldest",
     });

@@ -9,7 +9,7 @@ export interface ViewPrefs {
   ranked: Ranked;
 }
 
-export const VIEW_PREFS_STORAGE_KEY = "lire.view";
+const VIEW_PREFS_STORAGE_KEY = "lire.view";
 
 const DEFAULTS: ViewPrefs = { unread: true, ranked: "newest" };
 
@@ -58,9 +58,3 @@ export const useViewPrefs = (): ViewPrefs =>
     () => prefs,
     () => DEFAULTS,
   );
-
-// Tests only: the module state outlives a cleared localStorage.
-export const reloadViewPrefs = (): void => {
-  prefs = load();
-  for (const listener of listeners) listener();
-};

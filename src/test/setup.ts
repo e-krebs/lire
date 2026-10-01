@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, vi } from "vitest";
-import { reloadViewPrefs } from "client/utils/viewPrefs";
+import { setViewPrefs } from "client/utils/viewPrefs";
 import { server } from "./msw";
 
 // Snapshots of what a test may stub, restored after every test so no file restores its own.
@@ -34,8 +34,9 @@ afterEach(() => {
   restoreHtmlElementPrototype();
   if (localStorageDescriptor) Object.defineProperty(window, "localStorage", localStorageDescriptor);
   else Reflect.deleteProperty(window, "localStorage");
+  // The store outlives the cleared storage, so put its defaults back first.
+  setViewPrefs({ unread: true, ranked: "newest" });
   window.localStorage.clear();
-  reloadViewPrefs();
 });
 
 afterAll(() => {
