@@ -21,15 +21,6 @@ export const Default: Story = {
   },
 };
 
-export const OldestFirst: Story = {
-  args: { search: { unread: false, ranked: "oldest" } },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: "Unread only" }));
-    await userEvent.click(canvas.getByRole("button", { name: "Oldest first" }));
-  },
-};
-
 export const Searching: Story = {
   args: { search: { q: "rss" } },
   play: async ({ canvasElement }) => {

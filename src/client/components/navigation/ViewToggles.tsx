@@ -1,9 +1,7 @@
-import { useNavigate } from "@tanstack/react-router";
-import { toStreamKey } from "shared/feedsApi/streamKey";
 import type { StreamSearch } from "client/routes/stream.$streamKey";
 import { Icon } from "client/components/ui/icons";
 import { tip } from "client/utils/tooltip";
-import { saveViewPrefs } from "client/utils/viewPrefs";
+import { setViewPrefs, useViewPrefs } from "client/utils/viewPrefs";
 
 interface ViewTogglesProps {
   /** Full id of the stream the toggles act on. */
@@ -29,26 +27,13 @@ const controlClassName = `
 // The unread filter and the sort order as two direct toggles at the pill's right end: one tap
 // each, and the icon itself carries the state so the fill is never the only signal.
 export const ViewToggles = ({ streamId, search }: ViewTogglesProps) => {
-  const navigate = useNavigate();
+  const prefs = useViewPrefs();
 
   // A search is always newest first. Clearing the search itself belongs to the location bar's
   // field, not here.
   const searching = search.q !== undefined;
-  const unreadOnly = search.unread ?? true;
-  const oldestFirst = search.ranked === "oldest";
-
-  const apply = (next: Partial<StreamSearch>): void => {
-    const merged = { ...search, ...next };
-    saveViewPrefs({
-      unread: merged.unread ?? true,
-      ranked: merged.ranked === "oldest" ? "oldest" : "newest",
-    });
-    void navigate({
-      to: "/stream/$streamKey",
-      params: { streamKey: toStreamKey(streamId) },
-      search: { ...search, ...next },
-    });
-  };
+  const unreadOnly = prefs.unread;
+  const oldestFirst = prefs.ranked === "oldest";
 
   return (
     <div role="group" aria-label="View" className="flex h-9 flex-none items-center gap-0.5">
@@ -58,7 +43,7 @@ export const ViewToggles = ({ streamId, search }: ViewTogglesProps) => {
         {...tip({ label: "Unread only" })}
         data-tip={unreadOnly ? "Show all articles" : "Show unread only"}
         onClick={() => {
-          apply({ unread: !unreadOnly });
+          setViewPrefs({ unread: !unreadOnly });
         }}
         className={controlClassName}
       >
@@ -82,7 +67,7 @@ export const ViewToggles = ({ streamId, search }: ViewTogglesProps) => {
         aria-disabled={searching || undefined}
         onClick={() => {
           if (searching) return;
-          apply({ ranked: oldestFirst ? "newest" : "oldest" });
+          setViewPrefs({ ranked: oldestFirst ? "newest" : "oldest" });
         }}
         className={controlClassName}
       >

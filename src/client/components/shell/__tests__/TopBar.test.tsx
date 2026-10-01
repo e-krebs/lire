@@ -390,7 +390,7 @@ describe("TopBar", () => {
     });
   });
 
-  it("toggles the unread filter and the sort order through the route", async () => {
+  it("toggles the unread filter and the sort order, kept on the device and out of the URL", async () => {
     const view = setup({ path: TECH_NEWS_PATH });
     const user = userEvent.setup();
     const unread = await ui.unreadButton;
@@ -401,21 +401,16 @@ describe("TopBar", () => {
     await user.click(unread);
     await user.click(oldest);
 
-    await waitFor(() => {
-      expect(view.router.state.location.search).toMatchObject({ unread: false, ranked: "oldest" });
-    });
     expect(unread).toHaveAttribute("aria-pressed", "false");
     expect(oldest).toHaveAttribute("aria-pressed", "true");
     expect(JSON.parse(window.localStorage.getItem(VIEW_PREFS_STORAGE_KEY) ?? "null")).toEqual({
       unread: false,
       ranked: "oldest",
     });
+    expect(view.router.state.location.search).toEqual({});
 
     await user.click(oldest);
-    await waitFor(() => {
-      expect(oldest).toHaveAttribute("aria-pressed", "false");
-    });
-    expect(view.router.state.location.search).toMatchObject({ ranked: "newest" });
+    expect(oldest).toHaveAttribute("aria-pressed", "false");
   });
 
   describe("when searching", () => {

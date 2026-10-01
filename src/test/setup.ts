@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, vi } from "vitest";
+import { reloadViewPrefs } from "client/utils/viewPrefs";
 import { server } from "./msw";
 
 // Snapshots of what a test may stub, restored after every test so no file restores its own.
@@ -34,6 +35,7 @@ afterEach(() => {
   if (localStorageDescriptor) Object.defineProperty(window, "localStorage", localStorageDescriptor);
   else Reflect.deleteProperty(window, "localStorage");
   window.localStorage.clear();
+  reloadViewPrefs();
 });
 
 afterAll(() => {

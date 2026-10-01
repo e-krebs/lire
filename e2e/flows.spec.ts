@@ -113,7 +113,6 @@ test.describe("flows", () => {
 
     await expect(pageUi.unreadOnlyToggle).toHaveAttribute("aria-pressed", "true");
     await pageUi.unreadOnlyToggle.click();
-    await expect(page).toHaveURL(/[?&]unread=false/);
     await expect(pageUi.unreadOnlyToggle).toHaveAttribute("aria-pressed", "false");
     await expect(pageUi.tiles.first()).toBeVisible();
 
@@ -122,8 +121,6 @@ test.describe("flows", () => {
 
     await expect(pageUi.oldestFirstToggle).toHaveAttribute("aria-pressed", "false");
     await pageUi.oldestFirstToggle.click();
-    await expect(page).toHaveURL(/[?&]ranked=oldest/);
-    await expect(page).toHaveURL(/[?&]unread=false/);
     await expect(pageUi.oldestFirstToggle).toHaveAttribute("aria-pressed", "true");
     await expect
       .poll(async () => {
@@ -133,9 +130,9 @@ test.describe("flows", () => {
       .toBe(true);
 
     await pageUi.oldestFirstToggle.click();
-    await expect(page).not.toHaveURL(/ranked=/);
+    await expect(pageUi.oldestFirstToggle).toHaveAttribute("aria-pressed", "false");
     await pageUi.unreadOnlyToggle.click();
-    await expect(page).not.toHaveURL(/unread=false/);
+    await expect(pageUi.unreadOnlyToggle).toHaveAttribute("aria-pressed", "true");
   });
 
   test("a feed subscribed in the manager shows in the Navigator until unsubscribed", async ({

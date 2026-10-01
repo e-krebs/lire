@@ -37,9 +37,9 @@ styles, and Zod to parse every response against the schemas in
 `dist/`, and every data call goes through one module,
 [src/client/api/client.ts](../../src/client/api/client.ts).
 
-The unread filter and the sort order live in the stream route's search params. When the URL leaves
-one out, the route falls back to the device's last toggle, kept in `localStorage` under
-`lire.view` ([viewPrefs.ts](../../src/client/utils/viewPrefs.ts)). It is per device, not per account.
+The unread filter and the sort order are per device, not per account, and never in the URL. They
+live in `localStorage` under `lire.view` ([viewPrefs.ts](../../src/client/utils/viewPrefs.ts)),
+behind a small store that the stream route, the view toggles and the Navigator all read.
 
 That module sits on a transport seam ([transport.ts](../../src/client/api/transport.ts)). The
 HTTP transport ([adapters/http.ts](../../src/client/api/adapters/http.ts)) is a same-origin

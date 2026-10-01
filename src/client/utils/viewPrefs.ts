@@ -1,7 +1,8 @@
-// The unread filter and the sort order, remembered per device so a stream opened without them in
-// its URL comes back the way the last toggle left it.
+// The unread filter and the sort order, remembered per device in localStorage, never in the URL.
 
-export type Ranked = "newest" | "oldest";
+import { useSyncExternalStore } from "react";
+
+type Ranked = "newest" | "oldest";
 
 export interface ViewPrefs {
   unread: boolean;
@@ -12,7 +13,7 @@ export const VIEW_PREFS_STORAGE_KEY = "lire.view";
 
 const DEFAULTS: ViewPrefs = { unread: true, ranked: "newest" };
 
-export const loadViewPrefs = (): ViewPrefs => {
+const load = (): ViewPrefs => {
   try {
     const raw = window.localStorage.getItem(VIEW_PREFS_STORAGE_KEY);
     const parsed: unknown = raw === null ? null : JSON.parse(raw);
@@ -26,10 +27,40 @@ export const loadViewPrefs = (): ViewPrefs => {
   }
 };
 
-export const saveViewPrefs = (prefs: ViewPrefs): void => {
+const save = (prefs: ViewPrefs): void => {
   try {
     window.localStorage.setItem(VIEW_PREFS_STORAGE_KEY, JSON.stringify(prefs));
   } catch {
     // A private window or a full quota: the choice still holds for this session.
   }
+};
+
+let prefs = load();
+
+const listeners = new Set<() => void>();
+
+const subscribe = (onChange: () => void): (() => void) => {
+  listeners.add(onChange);
+  return () => {
+    listeners.delete(onChange);
+  };
+};
+
+export const setViewPrefs = (next: Partial<ViewPrefs>): void => {
+  prefs = { ...prefs, ...next };
+  save(prefs);
+  for (const listener of listeners) listener();
+};
+
+export const useViewPrefs = (): ViewPrefs =>
+  useSyncExternalStore(
+    subscribe,
+    () => prefs,
+    () => DEFAULTS,
+  );
+
+// Tests only: the module state outlives a cleared localStorage.
+export const reloadViewPrefs = (): void => {
+  prefs = load();
+  for (const listener of listeners) listener();
 };

@@ -24,7 +24,7 @@ test.describe("the undo strip", () => {
     page,
   }) => {
     const pageUi = ui(page);
-    await page.goto("/stream/all?unread=true");
+    await page.goto("/stream/all");
     await pageUi.entriesRegion.waitFor();
     await pageUi.tiles.first().waitFor();
     const before = await pageUi.tiles.count();
