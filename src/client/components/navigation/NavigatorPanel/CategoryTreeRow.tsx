@@ -69,9 +69,11 @@ export const CategoryTreeRow = ({
       >
         {collection.label}
       </span>
-      <span aria-hidden="true" className={countBadgeClassName}>
-        {count}
-      </span>
+      {count > 0 ? (
+        <span aria-hidden="true" className={countBadgeClassName}>
+          {count}
+        </span>
+      ) : null}
       {selected ? (
         <span aria-hidden="true" className={enterHintClassName}>
           ↵
