@@ -25,6 +25,7 @@ Code touched → doc to check (update if the change is user- or reader-visible):
 | `package.json` scripts | how-to; tutorial | [docs/how-to/run-the-tests.md](docs/how-to/run-the-tests.md); [docs/how-to/deploy.md](docs/how-to/deploy.md); [docs/tutorials/getting-started.md](docs/tutorials/getting-started.md) |
 | `.oxlintrc.json`, `.oxfmtrc.json`, `scripts/oxlint/**` — lint and format rules | explanation; reference | [docs/explanation/tooling.md](docs/explanation/tooling.md); [docs/reference/conventions.md](docs/reference/conventions.md); [docs/reference/testing.md](docs/reference/testing.md) |
 | `scripts/check-*.ts` — what a gate checks, or a new one | explanation; how-to | [docs/explanation/tooling.md](docs/explanation/tooling.md); [docs/how-to/deploy.md](docs/how-to/deploy.md) |
+| `android/**`, `public/.well-known/**` (the TWA, its asset links) | explanation; how-to | [docs/explanation/architecture.md](docs/explanation/architecture.md); [docs/how-to/deploy.md](docs/how-to/deploy.md) |
 | `wrangler.toml`, `.github/workflows/**` | how-to; reference | [docs/how-to/deploy.md](docs/how-to/deploy.md); [docs/reference/api.md](docs/reference/api.md) |
 | `.claude/skills/**`, `.claude/hooks/**` — a convention restated for agents | — | keep in step with the `docs/` page it points at; a rule that moves in one has to move in both |
 | README's Status / Documentation sections | — | keep in step with `docs/` (don't let them contradict) |
