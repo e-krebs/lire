@@ -17,6 +17,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
       - run: corepack enable
       - run: yarn install --immutable
       - name: Docs link gate
@@ -56,6 +57,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
       - run: corepack enable
       - run: yarn install --immutable
       - run: yarn playwright install --with-deps chromium webkit
@@ -74,6 +76,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
       - run: corepack enable
       - run: yarn install --immutable
       - run: yarn playwright install --with-deps chromium
@@ -118,6 +121,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
       - run: corepack enable
       - run: yarn install --immutable
       - name: Access config check
@@ -141,6 +145,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
       - run: corepack enable
       - run: yarn install --immutable
       # Builds in real mode and runs the secret gate before it deploys.
@@ -160,6 +165,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
       - run: corepack enable
       - run: yarn install --immutable
       - name: Deploy demo
@@ -181,6 +187,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
       - run: corepack enable
       - run: yarn install --immutable
       - name: Deploy Storybook
@@ -212,6 +219,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
       - run: corepack enable
       - run: yarn install --immutable
       - name: Write Worker secrets file
@@ -229,5 +237,6 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
+          package-manager-cache: false
       - name: Live check
         run: node scripts/check-live.ts
