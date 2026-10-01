@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { Link, useNavigate, useParams, useSearch } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { useViewPrefs } from "client/utils/viewPrefs";
 import { fromStreamKey, toStreamKey } from "shared/feedsApi/streamKey";
 import {
   globalAllStreamId,
@@ -72,9 +73,7 @@ export const NavigatorPanel = forwardRef<NavigatorPanelHandle, NavigatorPanelPro
   ({ query, onClose, scopeKey, scopeLabel }, ref) => {
     const navigate = useNavigate();
     const params = useParams({ strict: false });
-    const routeSearch = useSearch({ strict: false });
-    // Same default as the stream route: unread only unless the URL says otherwise.
-    const unreadOnly = routeSearch.unread ?? true;
+    const unreadOnly = useViewPrefs().unread;
 
     const profile = useProfile();
     const { collections: collectionList, ready: collectionsReady } = useOrderedCollections();

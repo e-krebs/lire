@@ -6,7 +6,6 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
-  useSearch,
 } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { InfiniteData } from "@tanstack/react-query";
@@ -18,6 +17,7 @@ import { resetFixtureState } from "client/api/adapters/fixture";
 import { getStream } from "client/api/client";
 import { keys, useMarkRead } from "client/api/queries";
 import profile from "fixtures/seed/profile.json";
+import { setViewPrefs, useViewPrefs } from "client/utils/viewPrefs";
 import { MosaicGrid } from "../MosaicGrid";
 
 const GLOBAL_ALL = globalAllStreamId(profile.id);
@@ -68,19 +68,9 @@ const setup = ({
   const streamRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: "/",
-    validateSearch: (search: Record<string, unknown>): { unread?: boolean } => ({
-      unread: typeof search.unread === "boolean" ? search.unread : undefined,
-    }),
     component: function StreamView() {
-      const { unread } = useSearch({ strict: false });
-      return (
-        <MosaicGrid
-          streamId={GLOBAL_ALL}
-          unreadOnly={unread ?? true}
-          ranked="newest"
-          query={query}
-        />
-      );
+      const { unread } = useViewPrefs();
+      return <MosaicGrid streamId={GLOBAL_ALL} unreadOnly={unread} ranked="newest" query={query} />;
     },
   });
   const router = createRouter({
@@ -223,13 +213,13 @@ describe("MosaicGrid", () => {
     resetFixtureState();
     const client = newQueryClient();
 
-    const { view, strip, card, router } = setup({ client });
+    const { view, strip, card } = setup({ client });
     const { toggle, entryId } = await firstUnreadCard(view);
     fireEvent.click(toggle);
     await findStrip(strip);
 
-    await act(async () => {
-      await router.navigate({ to: "/", search: { unread: false } });
+    act(() => {
+      setViewPrefs({ unread: false });
     });
     await waitFor(() => {
       expect(card(entryId)).not.toBeNull();

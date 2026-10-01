@@ -7,22 +7,13 @@ const meta = {
   title: "Components/ViewToggles",
   component: ViewToggles,
   decorators: [withRouter],
-  args: { streamId: "user/1/category/global.all", search: {} },
+  args: { search: {} },
 } satisfies Meta<typeof ViewToggles>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByRole("button", { name: "Unread only" }));
-    await userEvent.click(canvas.getByRole("button", { name: "Oldest first" }));
-  },
-};
-
-export const OldestFirst: Story = {
-  args: { search: { unread: false, ranked: "oldest" } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole("button", { name: "Unread only" }));

@@ -62,17 +62,13 @@ describe("/stream/$streamKey", () => {
       });
     });
 
-    it("drops search values it does not know", async () => {
-      const { router } = setup({ url: "/stream/all?unread=yes&ranked=random&q=%20" });
+    it("drops a blank search", async () => {
+      const { router } = setup({ url: "/stream/all?q=%20" });
 
       await waitFor(() => {
         expect(leafMatch(router)?.routeId).toBe("/stream/$streamKey");
       });
-      expect(leafMatch(router)?.search).toEqual({
-        unread: undefined,
-        ranked: undefined,
-        q: undefined,
-      });
+      expect(leafMatch(router)?.search).toEqual({ q: undefined });
     });
   });
 

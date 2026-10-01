@@ -209,7 +209,7 @@ export const TopBar = () => {
                 undefined ? (
                 <ViewTogglesSkeleton />
               ) : isReadStreamId(scopeStreamId) ? undefined : (
-                <ViewToggles streamId={scopeStreamId} search={search} />
+                <ViewToggles search={search} />
               )
             }
           />
