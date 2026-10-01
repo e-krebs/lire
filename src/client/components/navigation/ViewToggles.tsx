@@ -1,6 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
 import { toStreamKey } from "shared/feedsApi/streamKey";
-import { isReadStreamId } from "shared/feedsApi/streams";
 import type { StreamSearch } from "client/routes/stream.$streamKey";
 import { Icon } from "client/components/ui/icons";
 import { tip } from "client/utils/tooltip";
@@ -31,9 +30,8 @@ const controlClassName = `
 export const ViewToggles = ({ streamId, search }: ViewTogglesProps) => {
   const navigate = useNavigate();
 
-  // The recently-read stream has no unread filter to offer, and a search is always newest first.
-  // Clearing the search itself belongs to the location bar's field, not here.
-  const readStream = isReadStreamId(streamId);
+  // A search is always newest first. Clearing the search itself belongs to the location bar's
+  // field, not here.
   const searching = search.q !== undefined;
   const unreadOnly = search.unread ?? true;
   const oldestFirst = search.ranked === "oldest";
@@ -48,24 +46,22 @@ export const ViewToggles = ({ streamId, search }: ViewTogglesProps) => {
 
   return (
     <div role="group" aria-label="View" className="flex h-9 flex-none items-center gap-0.5">
-      {readStream ? null : (
-        <button
-          type="button"
-          aria-pressed={unreadOnly}
-          {...tip({ label: "Unread only" })}
-          data-tip={unreadOnly ? "Show all articles" : "Show unread only"}
-          onClick={() => {
-            apply({ unread: !unreadOnly });
-          }}
-          className={controlClassName}
-        >
-          {unreadOnly ? (
-            <Icon name="unread-only" className="size-5" />
-          ) : (
-            <Icon name="everything" className="size-5" />
-          )}
-        </button>
-      )}
+      <button
+        type="button"
+        aria-pressed={unreadOnly}
+        {...tip({ label: "Unread only" })}
+        data-tip={unreadOnly ? "Show all articles" : "Show unread only"}
+        onClick={() => {
+          apply({ unread: !unreadOnly });
+        }}
+        className={controlClassName}
+      >
+        {unreadOnly ? (
+          <Icon name="unread-only" className="size-5" />
+        ) : (
+          <Icon name="everything" className="size-5" />
+        )}
+      </button>
       <button
         type="button"
         aria-pressed={oldestFirst}
@@ -95,15 +91,15 @@ export const ViewToggles = ({ streamId, search }: ViewTogglesProps) => {
 };
 
 // Same footprint as the toggles while the profile is still loading, so the pill's right end and
-// its divider don't pop in later. The recently-read stream has one control, every other two.
-export const ViewTogglesSkeleton = ({ streamKey }: { streamKey: string }) => (
+// its divider don't pop in later.
+export const ViewTogglesSkeleton = () => (
   <div
     role="group"
     aria-label="View"
     aria-busy="true"
     className="flex h-9 flex-none items-center gap-0.5"
   >
-    {Array.from({ length: streamKey === "read" ? 1 : 2 }, (_, index) => (
+    {Array.from({ length: 2 }, (_, index) => (
       <span key={index} className="inline-flex h-9 w-10 items-center justify-center">
         <span
           aria-hidden="true"

@@ -39,12 +39,3 @@ export const Searching: Story = {
     await expect(sort).toHaveAttribute("aria-disabled", "true");
   },
 };
-
-export const ReadStream: Story = {
-  args: { streamId: "user/1/tag/global.read" },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-    await expect(canvas.queryByRole("button", { name: "Unread only" })).not.toBeInTheDocument();
-    await userEvent.click(canvas.getByRole("button", { name: "Oldest first" }));
-  },
-};
