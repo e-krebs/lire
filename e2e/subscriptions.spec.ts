@@ -139,7 +139,7 @@ test.describe("Subscriptions manager", () => {
     const panel = pageUi.panel({ phone, title: "Add a newsletter" });
     await expect(panel).toBeVisible();
     await panel.getByRole("button", { name: "Generate address" }).click();
-    await expect(panel.getByText(/@feedly\.email/)).toBeVisible();
+    await expect(panel.getByText(/@newsletters\.example/)).toBeVisible();
     await panel.getByLabel("Name").fill(name);
     await panel.getByRole("checkbox", { name: "Design", exact: true }).check();
     await panel.getByRole("button", { name: "Subscribe" }).click();
