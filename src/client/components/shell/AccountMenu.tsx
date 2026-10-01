@@ -138,6 +138,8 @@ export const AccountMenu = () => {
 
         <hr className="my-2 border-hairline" />
 
+        <Row label="Version">{import.meta.env.VITE_APP_VERSION ?? "dev"}</Row>
+
         <Link
           to="/subscriptions"
           onClick={close}

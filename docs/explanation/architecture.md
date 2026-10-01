@@ -133,6 +133,10 @@ fixtures, which the gate checks rather than assumes.
 fallback denylists `/api/`, because the Worker serves `/api/auth/login` as an HTML page: if the
 service worker answered that navigation with the SPA shell, the login form would never appear.
 
+The build bakes the short git commit into `VITE_APP_VERSION`
+([vite.config.ts](../../vite.config.ts)), and the account menu shows it as Version. After a deploy, it
+tells the reader whether the installed app runs the new service worker.
+
 ## Design & UX
 
 ### Three tiers, owned by CSS

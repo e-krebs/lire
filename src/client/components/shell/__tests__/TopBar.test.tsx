@@ -56,6 +56,9 @@ const ui = {
   get bottomCheckbox() {
     return screen.getByRole("checkbox", { name: "Bar at the bottom", hidden: true });
   },
+  get versionRow() {
+    return screen.getByText("Version", { ignore: "button" });
+  },
   get manageSubscriptionsLink() {
     return screen.getByRole("link", { name: "Manage subscriptions", hidden: true });
   },
@@ -217,6 +220,13 @@ describe("TopBar", () => {
 
       await user.click(bottom);
       expect(document.documentElement.dataset.bar).toBeUndefined();
+    });
+
+    it("shows the app version", async () => {
+      const view = setup({ path: TECH_NEWS_PATH });
+      await openMenu(view);
+
+      expect(ui.versionRow.nextElementSibling).toHaveTextContent(/\S/);
     });
 
     it("closes the menu when it opens Subscriptions", async () => {
