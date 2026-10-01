@@ -127,3 +127,10 @@ brand gate after the demo build. The `e2e` and `storybook` jobs run the browser 
 Storybook and Worker follow once their dependencies pass, and `check-live` runs after all four.
 Every Cloudflare job is skipped when the gate finds no secrets. [ADR 0008](../adr/0008-ci-owns-cloudflare-setup.md)
 records why CI owns this setup.
+
+## Dependency updates
+
+[dependabot.yml](../../.github/dependabot.yml) opens a weekly PR for the npm packages and one for
+the GitHub Actions. The npm PR groups minor and patch updates. A major update gets its own PR. Each
+PR runs the full CI, so the gates above decide whether it is safe to merge. Nothing merges on its
+own.
