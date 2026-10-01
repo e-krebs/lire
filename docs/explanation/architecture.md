@@ -41,10 +41,9 @@ The unread filter and the sort order are per device, not per account, and never 
 live in `localStorage` under `lire.view` ([viewPrefs.ts](../../src/client/utils/viewPrefs.ts)),
 behind a small store that the stream route, the view toggles and the Navigator all read.
 
-In an installed Android PWA, a click on a link to another site goes through an `intent://` URL so
-the default browser opens it, not an in-app Custom Tab
-([androidExternalLinks.ts](../../src/client/utils/androidExternalLinks.ts)). The page itself is the
-fallback if no app takes the intent.
+An installed PWA cannot open an external link in the default browser. Android Chrome opens it in a
+Custom Tab and iOS in an in-app Safari view. An `intent://` rewrite was tried on Android and changed
+nothing, so the app leaves links alone.
 
 That module sits on a transport seam ([transport.ts](../../src/client/api/transport.ts)). The
 HTTP transport ([adapters/http.ts](../../src/client/api/adapters/http.ts)) is a same-origin
