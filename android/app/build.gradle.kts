@@ -8,7 +8,7 @@ val keystoreFile: String? = System.getenv("LIRE_KEYSTORE_FILE")
 
 android {
     namespace = "tech.krebs.lire"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "tech.krebs.lire"
