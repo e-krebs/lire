@@ -46,9 +46,11 @@ export const CategoryResultRow = ({
       >
         {highlightMatch({ text: collection.label, query: matchQuery })}
       </span>
-      <span aria-hidden="true" className={countBadgeClassName}>
-        {count}
-      </span>
+      {count > 0 ? (
+        <span aria-hidden="true" className={countBadgeClassName}>
+          {count}
+        </span>
+      ) : null}
       {selected ? (
         <span aria-hidden="true" className={enterHintClassName}>
           ↵

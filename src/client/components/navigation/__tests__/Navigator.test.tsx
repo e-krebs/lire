@@ -345,8 +345,9 @@ describe("Navigator", () => {
     it("renders the browse tree with unread counts", async () => {
       const { user } = setup();
 
-      await waitFor(() => expect(ui.allArticles).toBeInTheDocument());
-      expect(ui.allArticles!.textContent).toMatch(/\d+/);
+      await waitFor(() => {
+        expect(ui.allArticles?.textContent).toMatch(/\d+/);
+      });
 
       await waitFor(() => expect(ui.queryButton("Tech News")).toBeInTheDocument());
       // Groups start collapsed: the feed shows only after its category is expanded.

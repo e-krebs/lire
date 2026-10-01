@@ -57,9 +57,11 @@ export const FeedRow = ({
           ? highlightMatch({ text: subscription.title, query: matchQuery })
           : subscription.title}
       </span>
-      <span aria-hidden="true" className={countBadgeClassName}>
-        {count}
-      </span>
+      {count > 0 ? (
+        <span aria-hidden="true" className={countBadgeClassName}>
+          {count}
+        </span>
+      ) : null}
       {selected ? (
         <span aria-hidden="true" className={enterHintClassName}>
           ↵

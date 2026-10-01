@@ -356,7 +356,7 @@ export const NavigatorPanel = forwardRef<NavigatorPanelHandle, NavigatorPanelPro
           >
             All articles
           </span>
-          <span className={countBadgeClassName}>{globalCount}</span>
+          {globalCount > 0 ? <span className={countBadgeClassName}>{globalCount}</span> : null}
         </button>
         <button
           type="button"
