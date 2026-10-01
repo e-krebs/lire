@@ -70,14 +70,14 @@ their own convention and location (see `docs/adr/0001-adopt-diataxis.md`).
 - **Wrap prose at ~100 columns**, matching the existing docs.
 - Relative links: from a quadrant dir, repo files are `../../src/...`, sibling quadrants
   `../explanation/…`, ADRs `../adr/…`.
-- **`BACKLOG.md` and `FIRST-DEPLOY.md` are outside Diátaxis.** These repo-root working lists are
-  not docs: the rules above do not apply to them, and no doc under `docs/` links them.
+- **`BACKLOG.md` is outside Diátaxis.** This repo-root working list is not a doc: the rules above
+  do not apply to it, and no doc under `docs/` links it.
 
 ## Renames and moves
 
 If you rename a heading or move/rename a doc, grep the **whole repo** for links to the old slug or
 path — not just `docs/`. Inbound links also live in `CLAUDE.md` (the doc-sync table), `README.md`,
-`FIRST-DEPLOY.md`, `BACKLOG.md`, the `.oxlintrc.json` messages and the `scripts/oxlint/*.js`
+`BACKLOG.md`, the `.oxlintrc.json` messages and the `scripts/oxlint/*.js`
 messages. Fix every hit; anchor fragments (`#slug`) break silently, so check those too.
 
 - `yarn check:links` never scans the gitignored `BACKLOG.md`, so a rename needs a manual grep
