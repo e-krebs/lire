@@ -41,9 +41,30 @@ The unread filter and the sort order are per device, not per account, and never 
 live in `localStorage` under `lire.view` ([viewPrefs.ts](../../src/client/utils/viewPrefs.ts)),
 behind a small store that the stream route, the view toggles and the Navigator all read.
 
-An installed PWA cannot open an external link in the default browser. Android Chrome opens it in a
-Custom Tab and iOS in an in-app Safari view. An `intent://` rewrite was tried on Android and changed
-nothing, so the app leaves links alone.
+An installed PWA opens an external link in an in-app view: a Safari view on iOS, a Custom Tab on
+Android Chrome. One document click listener sends the link to a browser the user picks in the
+account menu instead ([externalLinks.ts](../../src/client/utils/externalLinks.ts)). The choice is
+per device, in `localStorage` under `lire.externalBrowser`, and "This app" turns it off. The listener
+skips same-origin and non-http links, sign-in hosts, downloads, modified clicks, clicks a component
+already handled, and any link with `data-open-in-app`. `/dev/external-links` is an unlinked page to
+test each target on a device.
+
+On iOS, the link goes through the browser's own scheme (`x-safari-https://`, `googlechromes://`).
+iOS fails an unknown scheme silently. So if the app still has focus 2 s later, as when Chrome is not
+installed, the link opens in the app after all.
+
+On Android, the installed PWA has no such escape. An installed Chrome app turns every `intent://` URL
+back to Chrome into a Custom Tab, with or without an explicit package, task flags or a component,
+and it ignores `googlechrome://`. So Android gets a Trusted Web Activity (TWA), a small native app
+in [android/](../../android/) that shows the site full screen through Chrome. The page knows it runs
+there from its launch URL, `/?source=twa`, which it keeps in `sessionStorage`. The marker survives a
+Cloudflare Access login, which drops the `android-app://tech.krebs.lire` referrer. A link
+becomes an intent to the app's own `OpenInBrowserActivity`
+([OpenInBrowserActivity.kt](../../android/app/src/main/kotlin/tech/krebs/lire/OpenInBrowserActivity.kt)),
+which opens it in the named browser as a plain tab. A missing browser falls back to the default
+one. Chrome hides its address bar only when
+[assetlinks.json](../../public/.well-known/assetlinks.json) lists the app's signing key. How the
+app ships is in [deploy.md](../how-to/deploy.md#android-app).
 
 That module sits on a transport seam ([transport.ts](../../src/client/api/transport.ts)). The
 HTTP transport ([adapters/http.ts](../../src/client/api/adapters/http.ts)) is a same-origin

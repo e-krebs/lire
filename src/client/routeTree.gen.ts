@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SubscriptionsRouteImport } from './routes/subscriptions'
+import { Route as DevExternalLinksRouteImport } from './routes/dev.external-links'
 import { Route as StreamStreamKeyRouteImport } from './routes/stream.$streamKey'
 import { Route as StreamStreamKeyEntryEntryIdRouteImport } from './routes/stream.$streamKey.entry.$entryId'
 
@@ -22,6 +23,11 @@ const IndexRoute = IndexRouteImport.update({
 const SubscriptionsRoute = SubscriptionsRouteImport.update({
   id: '/subscriptions',
   path: '/subscriptions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevExternalLinksRoute = DevExternalLinksRouteImport.update({
+  id: '/dev/external-links',
+  path: '/dev/external-links',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StreamStreamKeyRoute = StreamStreamKeyRouteImport.update({
@@ -39,12 +45,14 @@ const StreamStreamKeyEntryEntryIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/subscriptions': typeof SubscriptionsRoute
+  '/dev/external-links': typeof DevExternalLinksRoute
   '/stream/$streamKey': typeof StreamStreamKeyRouteWithChildren
   '/stream/$streamKey/entry/$entryId': typeof StreamStreamKeyEntryEntryIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/subscriptions': typeof SubscriptionsRoute
+  '/dev/external-links': typeof DevExternalLinksRoute
   '/stream/$streamKey': typeof StreamStreamKeyRouteWithChildren
   '/stream/$streamKey/entry/$entryId': typeof StreamStreamKeyEntryEntryIdRoute
 }
@@ -52,6 +60,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/subscriptions': typeof SubscriptionsRoute
+  '/dev/external-links': typeof DevExternalLinksRoute
   '/stream/$streamKey': typeof StreamStreamKeyRouteWithChildren
   '/stream/$streamKey/entry/$entryId': typeof StreamStreamKeyEntryEntryIdRoute
 }
@@ -60,18 +69,21 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/subscriptions'
+    | '/dev/external-links'
     | '/stream/$streamKey'
     | '/stream/$streamKey/entry/$entryId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/subscriptions'
+    | '/dev/external-links'
     | '/stream/$streamKey'
     | '/stream/$streamKey/entry/$entryId'
   id:
     | '__root__'
     | '/'
     | '/subscriptions'
+    | '/dev/external-links'
     | '/stream/$streamKey'
     | '/stream/$streamKey/entry/$entryId'
   fileRoutesById: FileRoutesById
@@ -79,6 +91,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SubscriptionsRoute: typeof SubscriptionsRoute
+  DevExternalLinksRoute: typeof DevExternalLinksRoute
   StreamStreamKeyRoute: typeof StreamStreamKeyRouteWithChildren
 }
 
@@ -96,6 +109,13 @@ declare module '@tanstack/react-router' {
       path: '/subscriptions'
       fullPath: '/subscriptions'
       preLoaderRoute: typeof SubscriptionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dev/external-links': {
+      id: '/dev/external-links'
+      path: '/dev/external-links'
+      fullPath: '/dev/external-links'
+      preLoaderRoute: typeof DevExternalLinksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/stream/$streamKey': {
@@ -130,6 +150,7 @@ const StreamStreamKeyRouteWithChildren = StreamStreamKeyRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SubscriptionsRoute: SubscriptionsRoute,
+  DevExternalLinksRoute: DevExternalLinksRoute,
   StreamStreamKeyRoute: StreamStreamKeyRouteWithChildren,
 }
 export const routeTree = rootRouteImport

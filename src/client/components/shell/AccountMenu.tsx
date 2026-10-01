@@ -10,6 +10,12 @@ import { Switch } from "client/components/ui/Switch";
 import { swallowNextClick } from "client/utils/swallowNextClick";
 import { tip } from "client/utils/tooltip";
 import { useOverlay } from "client/hooks/useOverlay";
+import {
+  browserChoices,
+  getPreferredBrowser,
+  setPreferredBrowser,
+  type BrowserId,
+} from "client/utils/externalLinks";
 
 const triggerClassName = `
   inline-flex size-10 flex-none items-center justify-center rounded-full text-muted
@@ -22,6 +28,41 @@ const triggerClassName = `
 const rowClassName = `
   flex min-h-9 items-center justify-between gap-3 px-3 text-sm
 `;
+
+// Only an installed iOS app or the Android TWA has a browser to pick, so elsewhere the row is absent.
+const ExternalBrowserSelect = () => {
+  const [choices] = useState(browserChoices);
+  const [browser, setBrowser] = useState(getPreferredBrowser);
+  if (choices.length === 0) return null;
+  const options: { id: BrowserId; label: string }[] = [
+    ...choices,
+    { id: "none", label: "This app" },
+  ];
+  return (
+    <label className={rowClassName}>
+      <span className="flex-none text-muted">Open external links in</span>
+      <select
+        value={browser ?? "none"}
+        onChange={(event) => {
+          const next = options.find(({ id }) => id === event.target.value)?.id;
+          if (next === undefined) return;
+          setPreferredBrowser(next);
+          setBrowser(next);
+        }}
+        className={`
+          h-8 min-w-0 rounded-lg border border-hairline bg-surface px-2 text-ink
+          focus-visible:outline-2 focus-visible:outline-accent
+        `}
+      >
+        {options.map(({ id, label }) => (
+          <option key={id} value={id}>
+            {label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+};
 
 const Row = ({ label, children }: { label: string; children: ReactNode }) => (
   <div className={rowClassName}>
@@ -135,6 +176,7 @@ export const AccountMenu = () => {
         >
           Bar at the bottom
         </Switch>
+        <ExternalBrowserSelect />
 
         <hr className="my-2 border-hairline" />
 
