@@ -4,8 +4,8 @@ import { isReadStreamId } from "shared/feedsApi/streams";
 import { useProfile } from "client/api/queries";
 import { Panes } from "client/components/shell/AppShell";
 import { MosaicGrid, MosaicSkeleton } from "client/components/articles/MosaicGrid";
-
-type Ranked = "newest" | "oldest";
+import { loadViewPrefs } from "client/utils/viewPrefs";
+import type { Ranked } from "client/utils/viewPrefs";
 
 export interface StreamSearch {
   unread?: boolean;
@@ -15,11 +15,16 @@ export interface StreamSearch {
 }
 
 export const Route = createFileRoute("/stream/$streamKey")({
-  validateSearch: (search: Record<string, unknown>): StreamSearch => ({
-    unread: typeof search.unread === "boolean" ? search.unread : undefined,
-    ranked: search.ranked === "oldest" ? "oldest" : undefined,
-    q: typeof search.q === "string" && search.q.trim() !== "" ? search.q : undefined,
-  }),
+  // A param the URL leaves out falls back to the device's last choice.
+  validateSearch: (search: Record<string, unknown>): StreamSearch => {
+    const prefs = loadViewPrefs();
+    return {
+      unread: typeof search.unread === "boolean" ? search.unread : prefs.unread,
+      ranked:
+        search.ranked === "oldest" || search.ranked === "newest" ? search.ranked : prefs.ranked,
+      q: typeof search.q === "string" && search.q.trim() !== "" ? search.q : undefined,
+    };
+  },
   component: StreamLayout,
 });
 

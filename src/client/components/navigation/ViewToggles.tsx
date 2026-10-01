@@ -3,6 +3,7 @@ import { toStreamKey } from "shared/feedsApi/streamKey";
 import type { StreamSearch } from "client/routes/stream.$streamKey";
 import { Icon } from "client/components/ui/icons";
 import { tip } from "client/utils/tooltip";
+import { saveViewPrefs } from "client/utils/viewPrefs";
 
 interface ViewTogglesProps {
   /** Full id of the stream the toggles act on. */
@@ -37,6 +38,11 @@ export const ViewToggles = ({ streamId, search }: ViewTogglesProps) => {
   const oldestFirst = search.ranked === "oldest";
 
   const apply = (next: Partial<StreamSearch>): void => {
+    const merged = { ...search, ...next };
+    saveViewPrefs({
+      unread: merged.unread ?? true,
+      ranked: merged.ranked === "oldest" ? "oldest" : "newest",
+    });
     void navigate({
       to: "/stream/$streamKey",
       params: { streamKey: toStreamKey(streamId) },
@@ -76,7 +82,7 @@ export const ViewToggles = ({ streamId, search }: ViewTogglesProps) => {
         aria-disabled={searching || undefined}
         onClick={() => {
           if (searching) return;
-          apply({ ranked: oldestFirst ? undefined : "oldest" });
+          apply({ ranked: oldestFirst ? "newest" : "oldest" });
         }}
         className={controlClassName}
       >

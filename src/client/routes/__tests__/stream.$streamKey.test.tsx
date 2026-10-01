@@ -5,6 +5,7 @@ import { resetFixtureState } from "client/api/adapters/fixture";
 import { getProfile } from "client/api/client";
 import { keys } from "client/api/queries";
 import { renderApp } from "test/renderApp";
+import { VIEW_PREFS_STORAGE_KEY } from "client/utils/viewPrefs";
 
 const ui = {
   get loadingArticles() {
@@ -69,10 +70,36 @@ describe("/stream/$streamKey", () => {
         expect(leafMatch(router)?.routeId).toBe("/stream/$streamKey");
       });
       expect(leafMatch(router)?.search).toEqual({
-        unread: undefined,
-        ranked: undefined,
+        unread: true,
+        ranked: "newest",
         q: undefined,
       });
+    });
+
+    it("falls back to the device's remembered filter and sort order", async () => {
+      window.localStorage.setItem(
+        VIEW_PREFS_STORAGE_KEY,
+        JSON.stringify({ unread: false, ranked: "oldest" }),
+      );
+      const { router } = setup({ url: "/stream/all" });
+
+      await waitFor(() => {
+        expect(leafMatch(router)?.routeId).toBe("/stream/$streamKey");
+      });
+      expect(leafMatch(router)?.search).toMatchObject({ unread: false, ranked: "oldest" });
+    });
+
+    it("lets the URL override the remembered sort order", async () => {
+      window.localStorage.setItem(
+        VIEW_PREFS_STORAGE_KEY,
+        JSON.stringify({ unread: true, ranked: "oldest" }),
+      );
+      const { router } = setup({ url: "/stream/all?ranked=newest&unread=false" });
+
+      await waitFor(() => {
+        expect(leafMatch(router)?.routeId).toBe("/stream/$streamKey");
+      });
+      expect(leafMatch(router)?.search).toMatchObject({ unread: false, ranked: "newest" });
     });
   });
 
