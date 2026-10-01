@@ -43,9 +43,10 @@ const TWA_BROWSERS: Browser[] = [
   { id: "brave", label: "Brave", open: twaIntent("com.brave.browser") },
 ];
 
-// Sign-in hops that must come back to the app. Today they start same-origin at /api/auth/login
-// and redirect server side, so this only guards a direct link to one of them.
-const IN_APP_HOSTS = ["feedly.com", "cloudflareaccess.com"];
+// The Access login must come back to the app. The upstream OAuth needs no entry: it starts
+// same-origin at /api/auth/login and redirects server side, and its name must stay out of the
+// bundle for the demo brand gate.
+const IN_APP_HOSTS = ["cloudflareaccess.com"];
 
 // iPadOS reports itself as a Mac, so touch support tells them apart.
 const isIOS = (): boolean =>

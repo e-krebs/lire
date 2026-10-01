@@ -45,7 +45,7 @@ An installed PWA opens an external link in an in-app view: a Safari view on iOS,
 Android Chrome. One document click listener sends the link to a browser the user picks in the
 account menu instead ([externalLinks.ts](../../src/client/utils/externalLinks.ts)). The choice is
 per device, in `localStorage` under `lire.externalBrowser`, and "This app" turns it off. The listener
-skips same-origin and non-http links, sign-in hosts, downloads, modified clicks, clicks a component
+skips same-origin and non-http links, the Access login host, downloads, modified clicks, clicks a component
 already handled, and any link with `data-open-in-app`. `/dev/external-links` is an unlinked page to
 test each target on a device.
 

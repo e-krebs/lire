@@ -222,7 +222,6 @@ describe("externalLinks", () => {
     expect(click(linkTo(url, "download")).defaultPrevented).toBe(false);
     expect(click(linkTo(`${window.location.origin}/stream/all`)).defaultPrevented).toBe(false);
     expect(click(linkTo("mailto:someone@example.com")).defaultPrevented).toBe(false);
-    expect(click(linkTo("https://cloud.feedly.com/v3/auth")).defaultPrevented).toBe(false);
     expect(click(linkTo("https://team.cloudflareaccess.com/")).defaultPrevented).toBe(false);
     expect(assign).not.toHaveBeenCalled();
 
