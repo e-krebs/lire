@@ -59,7 +59,14 @@ const stubPlatform = ({
     assign,
   });
   // jsdom never reports focus.
-  vi.spyOn(document, "hasFocus").mockReturnValue(true);
+  stubDocument({ hasFocus: () => true });
+};
+
+// Own properties shadow the Document.prototype ones, and afterEach deletes them.
+const stubDocument = (props: { hasFocus?: () => boolean; referrer?: string }): void => {
+  for (const [key, value] of Object.entries(props)) {
+    Object.defineProperty(document, key, { configurable: true, value });
+  }
 };
 
 describe("externalLinks", () => {
@@ -72,7 +79,8 @@ describe("externalLinks", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.useRealTimers();
-    vi.restoreAllMocks();
+    Reflect.deleteProperty(document, "hasFocus");
+    Reflect.deleteProperty(document, "referrer");
     assign.mockReset();
     document.body.innerHTML = "";
   });
@@ -110,12 +118,10 @@ describe("externalLinks", () => {
 
   it("falls back to the default when storage throws", () => {
     stubPlatform({ device: IPAD, installed: true });
-    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+    const blocked = (): never => {
       throw new Error("blocked");
-    });
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
-      throw new Error("blocked");
-    });
+    };
+    vi.stubGlobal("localStorage", { getItem: blocked, setItem: blocked });
     expect(() => {
       setPreferredBrowser("chrome");
     }).not.toThrow();
@@ -145,7 +151,7 @@ describe("externalLinks", () => {
 
     // Split View: the app stays visible but loses focus to the browser beside it.
     openExternal({ url: "https://example.com/a", browser: "safari" });
-    vi.spyOn(document, "hasFocus").mockReturnValue(false);
+    stubDocument({ hasFocus: () => false });
     vi.advanceTimersByTime(2000);
     expect(assign).toHaveBeenCalledTimes(5);
 
@@ -156,7 +162,7 @@ describe("externalLinks", () => {
 
   it("hands links to the Android app's activity only inside the TWA", () => {
     stubPlatform({ device: ANDROID, installed: true });
-    vi.spyOn(document, "referrer", "get").mockReturnValue("android-app://tech.krebs.lire/");
+    stubDocument({ referrer: "android-app://tech.krebs.lire/" });
     expect(browserChoices().map(({ id }) => id)).toEqual([
       "default",
       "chrome",
@@ -168,7 +174,7 @@ describe("externalLinks", () => {
     expect(getPreferredBrowser()).toBe("default");
 
     // Later pages of the session lose the referrer.
-    vi.spyOn(document, "referrer", "get").mockReturnValue("");
+    stubDocument({ referrer: "" });
     const url = "https://example.com/a?x=1&y=2";
     expect(openExternal({ url, browser: "firefox" })).toBe(true);
     expect(assign).toHaveBeenLastCalledWith(
