@@ -57,6 +57,14 @@ covers `lire.krebs.tech`, `lire-6s2.pages.dev` and
 differs from `ACCESS_ALLOWED_EMAIL`, or when the team domain or AUD differ from `ACCESS_TEAM_DOMAIN`
 and `ACCESS_AUD` in wrangler.toml. See [Auth](../explanation/auth.md).
 
+A second Access application, "Lire public icons", holds a Bypass policy for Everyone on three paths
+of `lire.krebs.tech`: `/apple-touch-icon.png`, `/icon-*.png` and `/manifest.webmanifest`. Without
+it, iPad Chrome fetches the home-screen icon without the session cookie and gets the Access login
+redirect, so the icon is blank. Access picks the most specific path, so the rest of the host stays
+closed. `yarn check:access` finds the main application by its AUD and ignores this one. To check the
+bypass, run `curl -sI https://lire.krebs.tech/apple-touch-icon.png`. It must return `200` with an
+image type.
+
 ## Pages projects and domains
 
 `yarn provision:pages` creates any missing Pages project, custom domain and DNS record. It never
