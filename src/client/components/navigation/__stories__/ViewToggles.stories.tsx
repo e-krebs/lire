@@ -7,7 +7,7 @@ const meta = {
   title: "Components/ViewToggles",
   component: ViewToggles,
   decorators: [withRouter],
-  args: { streamId: "user/1/category/global.all", search: {} },
+  args: { search: {} },
 } satisfies Meta<typeof ViewToggles>;
 
 export default meta;

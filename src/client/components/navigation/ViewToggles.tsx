@@ -4,8 +4,6 @@ import { tip } from "client/utils/tooltip";
 import { setViewPrefs, useViewPrefs } from "client/utils/viewPrefs";
 
 interface ViewTogglesProps {
-  /** Full id of the stream the toggles act on. */
-  streamId: string;
   /** Current route search params, which hold the filter and sort state. */
   search: StreamSearch;
 }
@@ -26,7 +24,7 @@ const controlClassName = `
 
 // The unread filter and the sort order as two direct toggles at the pill's right end: one tap
 // each, and the icon itself carries the state so the fill is never the only signal.
-export const ViewToggles = ({ streamId, search }: ViewTogglesProps) => {
+export const ViewToggles = ({ search }: ViewTogglesProps) => {
   const prefs = useViewPrefs();
 
   // A search is always newest first. Clearing the search itself belongs to the location bar's

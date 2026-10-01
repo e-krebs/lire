@@ -41,7 +41,7 @@ const meta: Meta<Args> = {
     onSearchKeyDown: fn(),
     onClearScope: fn(),
     onClearText: fn(),
-    viewControls: <ViewToggles streamId="user/1/category/global.all" search={{}} />,
+    viewControls: <ViewToggles search={{}} />,
   },
   render: function Render({ tier: _tier, ...args }) {
     const [, updateArgs] = useArgs();
