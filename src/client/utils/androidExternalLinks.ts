@@ -5,7 +5,7 @@
 const isAndroidApp = (): boolean =>
   /android/i.test(navigator.userAgent) && window.matchMedia("(display-mode: standalone)").matches;
 
-export const androidIntentUrl = (href: string): string | undefined => {
+const androidIntentUrl = (href: string): string | undefined => {
   let url: URL;
   try {
     url = new URL(href);
