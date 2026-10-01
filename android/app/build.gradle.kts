@@ -1,6 +1,5 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
 }
 
 // Signing comes from the environment: CI decodes the keystore secret, a local build sources it
@@ -9,11 +8,11 @@ val keystoreFile: String? = System.getenv("LIRE_KEYSTORE_FILE")
 
 android {
     namespace = "tech.krebs.lire"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "tech.krebs.lire"
-        minSdk = 21
+        minSdk = 23
         targetSdk = 35
         // Every update must raise it, so CI passes its run number.
         versionCode = System.getenv("LIRE_VERSION_CODE")?.toInt() ?: 1
@@ -42,12 +41,8 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-
-    kotlinOptions {
-        jvmTarget = "17"
-    }
 }
 
 dependencies {
-    implementation("com.google.androidbrowserhelper:androidbrowserhelper:2.5.0")
+    implementation("com.google.androidbrowserhelper:androidbrowserhelper:2.7.3")
 }
