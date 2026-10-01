@@ -22,7 +22,7 @@ import { useActiveOverlay } from "client/hooks/useOverlay";
 import { streamLabel } from "client/utils/streamLabel";
 import type { StreamLabel } from "client/utils/streamLabel";
 import { panelSearch } from "client/utils/subscriptionsSearch";
-import { isGlobalUncategorizedStreamId } from "shared/feedsApi/streams";
+import { isGlobalUncategorizedStreamId, isReadStreamId } from "shared/feedsApi/streams";
 
 // "Category › Feed" for a feed, the plain name otherwise.
 const scopeLabelOf = (named: StreamLabel): string =>
@@ -204,9 +204,11 @@ export const TopBar = () => {
             onClearText={clearText}
             edit={edit}
             viewControls={
-              streamKey === undefined ? undefined : scopeStreamId === undefined ? (
-                <ViewTogglesSkeleton streamKey={streamKey} />
-              ) : (
+              // The recently-read stream is read entries, newest first: nothing to filter or sort.
+              streamKey === undefined || streamKey === "read" ? undefined : scopeStreamId ===
+                undefined ? (
+                <ViewTogglesSkeleton />
+              ) : isReadStreamId(scopeStreamId) ? undefined : (
                 <ViewToggles streamId={scopeStreamId} search={search} />
               )
             }

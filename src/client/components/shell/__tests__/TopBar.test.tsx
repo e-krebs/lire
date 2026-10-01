@@ -32,6 +32,9 @@ const ui = {
   get backButton() {
     return screen.findByRole("button", { name: "Go back" });
   },
+  get noViewGroup() {
+    return screen.queryByRole("group", { name: "View" });
+  },
   get unreadButton() {
     return screen.findByRole("button", { name: "Unread only" });
   },
@@ -277,10 +280,17 @@ describe("TopBar", () => {
     async (streamKey) => {
       setup({ path: `/stream/${streamKey}` });
 
-      await ui.oldestButton;
+      await ui.homeLink;
       expect(ui.editLinks).toHaveLength(0);
     },
   );
+
+  it("shows no filter or sort control on the recently-read stream", async () => {
+    setup({ path: "/stream/read" });
+
+    await ui.homeLink;
+    expect(ui.noViewGroup).not.toBeInTheDocument();
+  });
 
   describe("when on a phone", () => {
     it("sits the edit link beside the pill's button, not inside it", async () => {

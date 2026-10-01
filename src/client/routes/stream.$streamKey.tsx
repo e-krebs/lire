@@ -37,9 +37,10 @@ function StreamLayout() {
   }
 
   const streamId = fromStreamKey({ key: streamKey, userId });
-  // The recently-read stream is read entries by definition.
-  const unreadOnly = isReadStreamId(streamId) ? false : (search.unread ?? true);
-  const ranked = search.ranked ?? "newest";
+  // The recently-read stream is read entries by definition, always newest first.
+  const readStream = isReadStreamId(streamId);
+  const unreadOnly = readStream ? false : (search.unread ?? true);
+  const ranked = readStream ? "newest" : (search.ranked ?? "newest");
   const readerOpen = childMatches.length > 0;
 
   return (
