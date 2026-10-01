@@ -11,6 +11,7 @@ push to `main`.
 | Demo | `yarn deploy:demo` | CI, push to `main` | `lire-demo` |
 | Storybook | `yarn deploy:storybook` | CI, push to `main` | `lire-storybook` |
 | Worker | `yarn worker:deploy` | CI, push to `main` | `lire-api` |
+| Android app | `./gradlew assembleRelease` in `android/` | CI, push to `main` that touches `android/` | A GitHub Release |
 
 
 ## CI gates
@@ -37,6 +38,8 @@ uploads.
 | `ACCESS_TEAM_DOMAIN` | `[vars]` in [wrangler.toml](../../wrangler.toml) | Access team domain |
 | `ACCESS_AUD` | `[vars]` in wrangler.toml | Access application audience |
 | `FEEDLY_HOST`, `FEEDLY_CLIENT_ID` | `[vars]` in wrangler.toml | Upstream API |
+| `LIRE_KEYSTORE_BASE64` | GitHub repo secret | Android signing keystore, base64 |
+| `LIRE_KEYSTORE_PASSWORD` | GitHub repo secret | Password of that keystore and its `lire` key |
 
 The API token carries these scopes:
 
@@ -57,13 +60,37 @@ covers `lire.krebs.tech`, `lire-6s2.pages.dev` and
 differs from `ACCESS_ALLOWED_EMAIL`, or when the team domain or AUD differ from `ACCESS_TEAM_DOMAIN`
 and `ACCESS_AUD` in wrangler.toml. See [Auth](../explanation/auth.md).
 
-A second Access application, "Lire public icons", holds a Bypass policy for Everyone on three paths
-of `lire.krebs.tech`: `/apple-touch-icon.png`, `/icon-*.png` and `/manifest.webmanifest`. Without
-it, iPad Chrome fetches the home-screen icon without the session cookie and gets the Access login
-redirect, so the icon is blank. Access picks the most specific path, so the rest of the host stays
+A second Access application, "Lire public icons", holds a Bypass policy for Everyone on four paths
+of `lire.krebs.tech`: `/apple-touch-icon.png`, `/icon-*.png`, `/manifest.webmanifest` and
+`/.well-known/assetlinks.json`. Without it, iPad Chrome fetches the home-screen icon without the
+session cookie and gets the Access login redirect, so the icon is blank. Android cannot verify the
+app's asset links either, so the Android app shows an address bar. Access picks the most specific path, so the rest of the host stays
 closed. `yarn check:access` finds the main application by its AUD and ignores this one. To check the
 bypass, run `curl -sI https://lire.krebs.tech/apple-touch-icon.png`. It must return `200` with an
 image type.
+
+## Android app
+
+[.github/workflows/android.yml](../../.github/workflows/android.yml) builds the Trusted Web Activity
+in [android/](../../android/) on every push to `main` that touches it or the workflow. It signs the APK with the
+keystore secrets and attaches it to a new GitHub Release named `android-1.<run number>`. A pull
+request only builds the debug APK, without the secrets. To ship a release without an Android
+change, run the workflow by hand from the Actions tab.
+
+To install or update the app, open the latest `android-*` release on the phone, download the APK
+and open it. Android asks once to allow installs from the browser.
+
+The keystore and its password live in the owner's password manager. The CI secrets are copies of
+them. Lose the keystore and the next APK cannot update the installed app: uninstall it first, then
+change the fingerprint in [assetlinks.json](../../public/.well-known/assetlinks.json). To print the
+fingerprint of a keystore, run:
+
+```sh
+keytool -list -v -keystore lire.keystore -alias lire | grep SHA256
+```
+
+To build a signed APK locally, set `LIRE_KEYSTORE_FILE` and `LIRE_KEYSTORE_PASSWORD`, then run
+`./gradlew assembleRelease` in `android/` with JDK 17 and the Android SDK.
 
 ## Pages projects and domains
 

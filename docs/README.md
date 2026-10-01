@@ -13,7 +13,7 @@ these docs live in the `diataxis-docs` skill (`.claude/skills/diataxis-docs/SKIL
 ## How-to guides: tasks
 
 - [how-to/deploy.md](how-to/deploy.md) - deploy the Worker and the Pages site, and the demo, with the
-  secrets and re-auth they need.
+  secrets and re-auth they need, and release and install the Android app.
 - [how-to/record-fixtures.md](how-to/record-fixtures.md) - record your own feeds into `fixtures/real/`.
 - [how-to/run-the-tests.md](how-to/run-the-tests.md) - commands and setup for every test tier.
 

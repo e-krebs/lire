@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "tech.krebs.lire",
+      "sha256_cert_fingerprints": [
+        "3E:67:C2:6A:08:04:20:62:3A:17:08:92:D8:29:9A:C6:D9:05:7A:37:6C:FD:B1:7C:4B:D1:E9:A6:C3:D2:9C:DF"
+      ]
+    }
+  }
+]
