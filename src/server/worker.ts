@@ -188,6 +188,9 @@ const probe = async ({ request, env }: { request: Request; env: Env }): Promise<
     xff: { "X-Forwarded-For": ip },
     realIp: { "X-Real-IP": ip },
     both: { "X-Forwarded-For": ip, "X-Real-IP": ip },
+    cfWorker: { "CF-Worker": ip },
+    cfConnecting: { "CF-Connecting-IP": ip },
+    trueClient: { "True-Client-IP": ip },
   };
   const results: Record<string, unknown> = {};
   for (const [name, extra] of Object.entries(variants)) {
@@ -197,7 +200,15 @@ const probe = async ({ request, env }: { request: Request; env: Env }): Promise<
     results[name] = { status: response.status, body: (await response.text()).slice(0, 120) };
   }
   const echo = await fetch("https://httpbin.org/headers");
-  return json({ body: { ip, results, echo: await echo.text() } });
+  const durable = feedlyAuth(env);
+  const viaDo = {
+    feedly: await durable.probeFetch({
+      url: `${env.FEEDLY_HOST}/v3/markers/counts`,
+      headers: { Authorization: `OAuth ${auth.token}` },
+    }),
+    echo: await durable.probeFetch({ url: "https://httpbin.org/headers", headers: {} }),
+  };
+  return json({ body: { ip, results, echo: await echo.text(), viaDo } });
 };
 
 const route = async ({ request, env }: { request: Request; env: Env }): Promise<Response> => {
