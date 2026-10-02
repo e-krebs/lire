@@ -44,6 +44,15 @@ const ui = {
   bodyImages(view: RenderResult) {
     return [...view.container.querySelectorAll("article img")];
   },
+  frame(view: RenderResult) {
+    return view.container.querySelector("iframe");
+  },
+  frameDocument(view: RenderResult) {
+    return new DOMParser().parseFromString(
+      ui.frame(view)?.getAttribute("srcdoc") ?? "",
+      "text/html",
+    );
+  },
 };
 
 // The read state as the adapter holds it, which is what the mutation actually changes.
@@ -124,7 +133,7 @@ describe("Reader", () => {
     const repeated = setup({ entryId: NEWSLETTER_ID });
     await ui.heading(repeated.view, { name: NEWSLETTER_TITLE });
     expect(hero(repeated.view)).toHaveLength(0);
-    expect(repeated.view.container.querySelectorAll("article img")).toHaveLength(1);
+    expect(ui.frameDocument(repeated.view).images).toHaveLength(1);
     repeated.view.unmount();
 
     const distinct = setup({ entryId: UNREAD_ID });
@@ -173,6 +182,27 @@ describe("Reader", () => {
     expect(heading).toHaveTextContent(NEWSLETTER_TITLE);
     const links = ui.links(view);
     expect(links.some((link) => link.textContent.includes(NEWSLETTER_TITLE))).toBe(false);
+  });
+
+  it("renders a newsletter body in a sandboxed iframe", async () => {
+    const { view } = setup({ entryId: NEWSLETTER_ID });
+    await ui.heading(view, { level: 1 });
+
+    expect(view.container.querySelectorAll("iframe")).toHaveLength(1);
+    expect(ui.frame(view)).toHaveAttribute(
+      "sandbox",
+      "allow-same-origin allow-popups allow-popups-to-escape-sandbox",
+    );
+    expect(ui.frameDocument(view).body.textContent.trim()).not.toBe("");
+    expect(view.container.querySelector(".prose-reader")).toBeNull();
+  });
+
+  it("keeps a blog post inline, with no iframe", async () => {
+    const { view } = setup({ entryId: UNREAD_ID });
+    await ui.link(view, TITLE);
+
+    expect(ui.frame(view)).toBeNull();
+    expect(view.container.querySelector("article.prose-reader")).not.toBeNull();
   });
 
   it("leaves the entry alone when Keep closes the panel", async () => {

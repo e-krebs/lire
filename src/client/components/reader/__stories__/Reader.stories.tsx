@@ -70,6 +70,76 @@ export const EscapeAndScrim: Story = {
   },
 };
 
+const frameOf = (iframe: HTMLIFrameElement): { root: HTMLElement; win: Window } => {
+  const root = iframe.contentDocument?.documentElement;
+  const win = iframe.contentWindow;
+  if (!root || !win) throw new Error("newsletter frame has no document");
+  return { root, win };
+};
+
+// The frame adds the horizontal scrollbar to the content height, so the check does too.
+const expectFrameFitsContent = async (iframe: HTMLIFrameElement): Promise<void> => {
+  const { root, win } = frameOf(iframe);
+  const scrollbar = Math.max(0, win.innerHeight - root.clientHeight);
+  const content = root.getBoundingClientRect().height + scrollbar;
+  await expect(Math.abs(iframe.getBoundingClientRect().height - content)).toBeLessThanOrEqual(2);
+};
+
+export const Newsletter: Story = {
+  args: { entryId: "letter-0004" },
+  parameters: { url: "/stream/all/letter-0004" },
+  // Below 64rem the reader panel fills its parent, so this relies on the 414px default viewport.
+  decorators: [
+    (Story) => (
+      <div data-testid="newsletter-width" style={{ width: "390px" }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement }) => {
+    const iframe = await waitFor(() => {
+      const found = canvasElement.querySelector('iframe[title="Newsletter"]');
+      if (!(found instanceof HTMLIFrameElement)) throw new Error("no newsletter frame yet");
+      return found;
+    }, LOADED);
+
+    // Not `readyState`: the seed images come from the live picsum.photos and may never settle.
+    await waitFor(async () => {
+      await expect(iframe.getBoundingClientRect().height).toBeGreaterThan(300);
+      await expectFrameFitsContent(iframe);
+    }, LOADED);
+
+    // A newsletter wider than the panel must scroll inside the frame, not clip.
+    const { root, win } = frameOf(iframe);
+    await expect(
+      root.scrollWidth <= root.clientWidth || win.getComputedStyle(root).overflowX === "auto",
+      `frame scrollWidth ${root.scrollWidth}, clientWidth ${root.clientWidth}`,
+    ).toBe(true);
+
+    const wrapper = within(canvasElement).getByTestId("newsletter-width");
+
+    wrapper.style.width = "700px";
+    await waitFor(async () => {
+      await expectFrameFitsContent(iframe);
+    }, LOADED);
+
+    // Last: the forwarded Escape closes the reader and marks the entry read.
+    const seen: string[] = [];
+    const listener = (event: KeyboardEvent) => {
+      seen.push(event.key);
+    };
+    document.addEventListener("keydown", listener);
+    try {
+      root.ownerDocument.body.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+      await expect(seen).toContain("Escape");
+    } finally {
+      document.removeEventListener("keydown", listener);
+    }
+  },
+};
+
 export const NotFound: Story = {
   args: { entryId: "missing-entry" },
   play: async ({ canvasElement }) => {

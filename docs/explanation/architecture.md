@@ -37,13 +37,20 @@ styles, and Zod to parse every response against the schemas in
 `dist/`, and every data call goes through one module,
 [src/client/api/client.ts](../../src/client/api/client.ts).
 
+The reader sanitizes every article body with DOMPurify. A blog post renders inline under
+`.prose-reader`. A newsletter, recognized by the `webfeeds--newsletter` wrapper Feedly adds, renders
+in a sandboxed `srcdoc` iframe on a white card, so the sender's own layout and colors apply and the
+app's article styles cannot break it. The parent sizes the frame to its content and forwards key
+presses out of it. The reasons and limits are in
+[ADR 0009](../adr/0009-newsletter-iframe.md).
+
 The unread filter and the sort order are per device, not per account, and never in the URL. They
 live in `localStorage` under `lire.view` ([viewPrefs.ts](../../src/client/utils/viewPrefs.ts)),
 behind a small store that the stream route, the view toggles and the Navigator all read.
 
 An installed PWA opens an external link in an in-app view: a Safari view on iOS, a Custom Tab on
-Android Chrome. One document click listener sends the link to a browser the user picks in the
-account menu instead ([externalLinks.ts](../../src/client/utils/externalLinks.ts)). The choice is
+Android Chrome. One click listener on the document, and one on each newsletter frame's document,
+sends the link to a browser the user picks in the account menu instead ([externalLinks.ts](../../src/client/utils/externalLinks.ts)). The choice is
 per device, in `localStorage` under `lire.externalBrowser`, and "This app" turns it off. The listener
 skips same-origin and non-http links, the Access login host, downloads, modified clicks, clicks a component
 already handled, and any link with `data-open-in-app`. `/dev/external-links` is an unlinked page to

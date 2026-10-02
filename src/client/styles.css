@@ -119,6 +119,16 @@ body {
   padding-right: env(safe-area-inset-right, 0px);
 }
 
+/* Newsletter bodies: emails assume a white page, so the card stays white in both themes. */
+.newsletter-frame {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 0.75rem;
+  background: #fff;
+  color-scheme: light;
+}
+
 /* Reader body copy: the article HTML is untrusted markup sanitized upstream, so the styling has to
    come from a wrapper, not from classes in the content. */
 .prose-reader {
@@ -177,25 +187,6 @@ body {
 }
 .prose-reader ol {
   list-style: decimal;
-}
-/* Newsletters ship table layouts with hard-coded widths; the panel is narrower than the mail
-   client they were built for, so the tables give up their widths rather than overflow. */
-.prose-reader table {
-  width: 100% !important;
-  max-width: 100% !important;
-  /* Fixed layout is what makes the cap hold: under auto layout a `width="600"` image sets the
-     column's minimum and the table grows past the panel however narrow it is told to be. */
-  table-layout: fixed;
-  border-collapse: collapse;
-}
-.prose-reader :is(td, th) {
-  min-width: 0;
-  overflow-wrap: break-word;
-}
-.prose-reader table img {
-  width: auto !important;
-  max-width: 100% !important;
-  height: auto !important;
 }
 
 /* Opening and closing the reader is a view transition (the tile link and the panel's exits ask

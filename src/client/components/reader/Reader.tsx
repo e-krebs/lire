@@ -3,6 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 import DOMPurify from "dompurify";
 import { useNavigate } from "@tanstack/react-router";
 import { useEntry, useMarkRead } from "client/api/queries";
+import { NewsletterFrame } from "client/components/reader/NewsletterFrame";
 import { ReaderHeader } from "client/components/reader/ReaderHeader";
 import { readingTime } from "client/utils/readingTime";
 import { replaceBrokenImage } from "client/utils/brokenImage";
@@ -49,6 +50,11 @@ const bodyHasImage = ({ html, url }: { html: string; url: string }): boolean => 
     }
   });
 };
+
+// Feedly wraps every email feed body in this class.
+const isNewsletter = (html: string): boolean =>
+  new DOMParser().parseFromString(html, "text/html").querySelector(".webfeeds--newsletter") !==
+  null;
 
 const isTypingTarget = (target: EventTarget | null): boolean =>
   target instanceof HTMLInputElement ||
@@ -110,6 +116,7 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
   const bodyHtml = data?.fullContent ?? data?.content?.content ?? data?.summary?.content ?? "";
   const html = useMemo(() => (bodyHtml === "" ? "" : sanitize(bodyHtml)), [bodyHtml]);
   const minutes = useMemo(() => (html === "" ? 0 : readingTime(bodyText(html))), [html]);
+  const newsletter = useMemo(() => html !== "" && isNewsletter(html), [html]);
   const heroUrl = data?.visual?.url;
   const heroInBody = useMemo(
     () => heroUrl !== undefined && html !== "" && bodyHasImage({ html, url: heroUrl }),
@@ -129,6 +136,8 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
       article.removeEventListener("error", onError, true);
     };
   }, []);
+
+  const dir = (data?.content?.direction ?? data?.summary?.direction) === "rtl" ? "rtl" : "ltr";
 
   let body: ReactNode;
   if (data === undefined) {
@@ -166,12 +175,18 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
               className="mx-auto mt-3 mb-5 block h-auto max-h-[45vh] w-auto max-w-full rounded-xl outline outline-hairline-image -outline-offset-1"
             />
           ) : null}
-          <article
-            ref={watchBodyImages}
-            className="prose-reader mt-4"
-            dir={data.content?.direction ?? data.summary?.direction ?? "ltr"}
-            dangerouslySetInnerHTML={{ __html: html }}
-          />
+          {newsletter ? (
+            <article className="mt-4">
+              <NewsletterFrame html={html} dir={dir} />
+            </article>
+          ) : (
+            <article
+              ref={watchBodyImages}
+              className="prose-reader mt-4"
+              dir={dir}
+              dangerouslySetInnerHTML={{ __html: html }}
+            />
+          )}
         </div>
       </>
     );

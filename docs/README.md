@@ -54,3 +54,5 @@ Architecture decision records sit outside the four quadrants as their own genre 
   gates before deploy
 - [adr/0008-ci-owns-cloudflare-setup.md](adr/0008-ci-owns-cloudflare-setup.md) - CI deploys the Worker
   and owns the Cloudflare setup
+- [adr/0009-newsletter-iframe.md](adr/0009-newsletter-iframe.md) - Render newsletters in a
+  sandboxed iframe, posts stay inline
