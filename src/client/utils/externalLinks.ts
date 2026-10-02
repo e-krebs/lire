@@ -175,25 +175,36 @@ const isExternal = (url: URL): boolean =>
   url.origin !== window.location.origin &&
   !IN_APP_HOSTS.some((host) => url.hostname === host || url.hostname.endsWith(`.${host}`));
 
-// One listener for every link, including the ones inside sanitized article HTML. It runs after the
-// components' own handlers, so a click they already handled is left alone. A link opts out with
-// data-open-in-app. SVG links are left alone too.
-export const installExternalLinks = (): void => {
-  if (installedPlatform() === undefined) return;
-  document.addEventListener("click", (event) => {
-    if (event.defaultPrevented || event.button !== 0) return;
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    if (!(event.target instanceof Element)) return;
-    const link = event.target.closest("a[href]");
-    if (!(link instanceof HTMLAnchorElement)) return;
-    if (link.hasAttribute("download") || link.hasAttribute("data-open-in-app")) return;
-    let url: URL;
-    try {
-      url = new URL(link.href);
-    } catch {
-      return;
-    }
-    if (!isExternal(url)) return;
-    if (openExternal({ url: url.href })) event.preventDefault();
-  });
+const XHTML = "http://www.w3.org/1999/xhtml";
+
+// `instanceof` fails for a newsletter frame's elements, which come from another realm.
+const isElement = (target: EventTarget | null): target is Element =>
+  !!target && "nodeType" in target && target.nodeType === Node.ELEMENT_NODE;
+
+const onClick = (event: MouseEvent): void => {
+  if (event.defaultPrevented || event.button !== 0) return;
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  if (!isElement(event.target)) return;
+  const link = event.target.closest("a[href]");
+  if (link === null || link.namespaceURI !== XHTML) return;
+  if (link.hasAttribute("download") || link.hasAttribute("data-open-in-app")) return;
+  let url: URL;
+  try {
+    url = new URL(link.getAttribute("href") ?? "", link.baseURI);
+  } catch {
+    return;
+  }
+  if (!isExternal(url)) return;
+  if (openExternal({ url: url.href })) event.preventDefault();
+};
+
+// One listener for every link of a document, including the ones inside sanitized article HTML. It
+// runs after the components' own handlers, so a click they already handled is left alone. A link
+// opts out with data-open-in-app. SVG links are left alone too.
+export const installExternalLinks = (doc: Document = document): (() => void) => {
+  if (installedPlatform() === undefined) return () => {};
+  doc.addEventListener("click", onClick);
+  return () => {
+    doc.removeEventListener("click", onClick);
+  };
 };

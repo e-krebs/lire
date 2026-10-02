@@ -228,4 +228,36 @@ describe("externalLinks", () => {
     setPreferredBrowser("none");
     expect(click(linkTo(url)).defaultPrevented).toBe(false);
   });
+
+  it("reroutes clicks inside another realm's document until removed", () => {
+    vi.useFakeTimers();
+    stubPlatform({ device: IPAD, installed: true });
+    const frame = document.createElement("iframe");
+    document.body.append(frame);
+    const doc = frame.contentDocument!;
+    const remove = installExternalLinks(doc);
+    const link = doc.createElement("a");
+    link.setAttribute("href", "https://example.com/a");
+    doc.body.append(link);
+
+    expect(click(link).defaultPrevented).toBe(true);
+    expect(assign).toHaveBeenCalledWith("x-safari-https://example.com/a");
+    vi.advanceTimersByTime(2000);
+
+    remove();
+    expect(click(link).defaultPrevented).toBe(false);
+  });
+
+  it("leaves SVG links alone", () => {
+    stubPlatform({ device: IPAD, installed: true });
+    const remove = installExternalLinks();
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const link = document.createElementNS("http://www.w3.org/2000/svg", "a");
+    link.setAttribute("href", "https://example.com/a");
+    svg.append(link);
+    document.body.append(svg);
+
+    expect(click(link).defaultPrevented).toBe(false);
+    remove();
+  });
 });
