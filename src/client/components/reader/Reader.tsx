@@ -5,6 +5,8 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEntry, useMarkRead } from "client/api/queries";
 import { ReaderHeader } from "client/components/reader/ReaderHeader";
 import { readingTime } from "client/utils/readingTime";
+import { replaceBrokenImage } from "client/utils/brokenImage";
+import { useImageFallback } from "client/hooks/useImageFallback";
 import { useResizablePanel } from "client/hooks/useResizablePanel";
 import { noViewTransitionRunning } from "client/utils/viewTransition";
 
@@ -114,6 +116,20 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
     [html, heroUrl],
   );
 
+  const hero = useImageFallback({ url: heroUrl, fallbackUrl: data?.visual?.edgeCacheUrl });
+
+  // `error` does not bubble, so it is caught in the capture phase on the article.
+  const watchBodyImages = useCallback((article: HTMLElement) => {
+    const onError = (event: Event): void => {
+      const { target } = event;
+      if (target instanceof Element) replaceBrokenImage(target);
+    };
+    article.addEventListener("error", onError, true);
+    return () => {
+      article.removeEventListener("error", onError, true);
+    };
+  }, []);
+
   let body: ReactNode;
   if (data === undefined) {
     body = entry.isError ? (
@@ -140,16 +156,18 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
         />
         <div className="px-4 pt-3 pb-16 sm:px-6">
           {data.author ? <p className="text-[13px] text-muted">{data.author}</p> : null}
-          {data.visual?.url && !heroInBody ? (
+          {hero.src && data.visual && !heroInBody ? (
             <img
-              src={data.visual.url}
+              src={hero.src}
               alt=""
               width={data.visual.width}
               height={data.visual.height}
+              onError={hero.onError}
               className="mx-auto mt-3 mb-5 block h-auto max-h-[45vh] w-auto max-w-full rounded-xl outline outline-hairline-image -outline-offset-1"
             />
           ) : null}
           <article
+            ref={watchBodyImages}
             className="prose-reader mt-4"
             dir={data.content?.direction ?? data.summary?.direction ?? "ltr"}
             dangerouslySetInnerHTML={{ __html: html }}

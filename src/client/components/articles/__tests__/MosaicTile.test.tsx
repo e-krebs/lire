@@ -154,6 +154,20 @@ describe("MosaicTile", () => {
     expect(await ui.titleText()).toBeInTheDocument();
   });
 
+  it("falls back to the edge cache URL, then drops the image", async () => {
+    const url = "https://example.test/photo.jpg";
+    const edgeCacheUrl = "https://proxy.test/photo.jpg";
+    const { ui } = setup({ entry: makeEntry({ visual: { url, edgeCacheUrl } }) });
+    const wrapper = await ui.wrapper();
+    const img = wrapper.querySelector("img");
+    expect(img).toHaveAttribute("src", url);
+    fireEvent.error(img!);
+    expect(wrapper.querySelector("img")).toHaveAttribute("src", edgeCacheUrl);
+    fireEvent.error(wrapper.querySelector("img")!);
+    expect(wrapper.querySelector("img")).toBeNull();
+    expect(wrapper).not.toHaveAttribute("data-has-image");
+  });
+
   it("renders a text tile when the entry has no visual", async () => {
     const { ui } = setup({ entry: makeEntry() });
     const wrapper = await ui.wrapper();
