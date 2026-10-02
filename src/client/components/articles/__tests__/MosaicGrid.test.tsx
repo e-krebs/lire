@@ -10,6 +10,7 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { InfiniteData } from "@tanstack/react-query";
 import type { ReactNode } from "react";
+import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { globalAllStreamId } from "shared/feedsApi/streams";
 import type { StreamContents } from "shared/feedsApi/types";
@@ -17,6 +18,8 @@ import { resetFixtureState } from "client/api/adapters/fixture";
 import { getStream } from "client/api/client";
 import { keys, useMarkRead } from "client/api/queries";
 import profile from "fixtures/seed/profile.json";
+import { fixtureBackend } from "test/fixtureBackend";
+import { server } from "test/msw";
 import { setViewPrefs, useViewPrefs } from "client/utils/viewPrefs";
 import { MosaicGrid } from "../MosaicGrid";
 
@@ -175,6 +178,33 @@ describe("MosaicGrid", () => {
 
     fireEvent.click(toggle);
     fireEvent.click(await ui.undoButton(view));
+
+    await waitFor(() => {
+      expect(card(entryId)).not.toBeNull();
+    });
+    expect(strip()).toBeNull();
+  });
+
+  it("keeps the card when the request to mark it read fails", async () => {
+    vi.stubEnv("VITE_API_MODE", "real");
+    let release = (): void => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    server.use(fixtureBackend);
+    server.use(
+      http.post("/api/v3/markers", async () => {
+        await held;
+        return HttpResponse.json({ error: "boom" }, { status: 500 });
+      }),
+    );
+    resetFixtureState();
+    const { view, strip, card } = setup({ client: newQueryClient() });
+    const { toggle, entryId } = await firstUnreadCard(view);
+
+    fireEvent.click(toggle);
+    await findStrip(strip);
+    release();
 
     await waitFor(() => {
       expect(card(entryId)).not.toBeNull();
