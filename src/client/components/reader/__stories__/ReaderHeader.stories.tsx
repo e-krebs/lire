@@ -3,10 +3,12 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
 import { ReaderHeader } from "client/components/reader/ReaderHeader";
 import { ENTRY } from "stories/fixtures";
+import { withQueryClient } from "stories/decorators";
 
 const meta = {
   title: "Components/ReaderHeader",
   component: ReaderHeader,
+  decorators: [withQueryClient],
   parameters: { layout: "fullscreen" },
   argTypes: { paneRef: { control: false } },
   args: {
