@@ -370,6 +370,19 @@ describe("worker", () => {
       ]);
     });
 
+    it("forwards the client IP to the feeds API when Cloudflare provides one", async () => {
+      await setup();
+      upstream = () => tokenReply("access-1");
+      await signIn();
+      upstream = () => Response.json({});
+
+      await authed("/api/v3/profile", { headers: { "CF-Connecting-IP": "203.0.113.7" } });
+
+      const [call] = apiCalls();
+      expect(call.headers.get("X-Forwarded-For")).toBe("203.0.113.7");
+      expect(call.headers.get("X-Real-IP")).toBe("203.0.113.7");
+    });
+
     it("exposes upstream diagnostic headers on an error answer only", async () => {
       await setup();
       upstream = () => tokenReply("access-1");
