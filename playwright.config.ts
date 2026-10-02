@@ -42,6 +42,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: CI,
   retries: CI ? 2 : 0,
+  // Ends the run with a report before the e2e job timeout cancels it and skips the upload.
+  globalTimeout: CI ? 10 * 60_000 : undefined,
   // The 2-vCPU private-repo runner resolves the 50% default to one worker.
   workers: CI ? 2 : undefined,
   // Mock mode loads the fixture transport as its own chunk, one more round trip before the first
