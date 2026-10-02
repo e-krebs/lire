@@ -127,7 +127,10 @@ brand gate after the demo build. The `e2e` and `storybook` jobs run the browser 
 Storybook and Worker follow once their dependencies pass, and `check-live` runs after all four.
 Every job that installs dependencies uses the shared [setup action](../../.github/actions/setup/action.yml),
 which restores the Yarn cache. The `e2e` and `storybook` jobs also cache the Playwright browsers,
-keyed on the Playwright version. Every Cloudflare job is skipped when the gate finds no secrets. [ADR 0008](../adr/0008-ci-owns-cloudflare-setup.md)
+keyed on the Playwright version. Every job sets `timeout-minutes`, about three times its normal duration, so a hung step fails in
+minutes. The Playwright install steps have their own 5-minute limit, because a slow download once
+held the `e2e` job for 14 minutes. Playwright's `globalTimeout` ends a stuck run before the job
+limit, so the report still uploads. Every Cloudflare job is skipped when the gate finds no secrets. [ADR 0008](../adr/0008-ci-owns-cloudflare-setup.md)
 records why CI owns this setup.
 
 ## Dependency updates

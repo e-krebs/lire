@@ -12,6 +12,7 @@ concurrency:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
@@ -47,6 +48,7 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
@@ -59,7 +61,9 @@ jobs:
           key: playwright-${{ runner.os }}-chromium-webkit-${{ steps.playwright.outputs.version }}
       # install-deps always runs: apt packages are not in the browser cache.
       - run: yarn playwright install-deps chromium webkit
+        timeout-minutes: 5
       - run: yarn playwright install chromium webkit
+        timeout-minutes: 5
       - run: yarn test:e2e
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
@@ -70,6 +74,7 @@ jobs:
 
   storybook:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
@@ -82,7 +87,9 @@ jobs:
           key: playwright-${{ runner.os }}-chromium-${{ steps.playwright.outputs.version }}
       # install-deps always runs: apt packages are not in the browser cache.
       - run: yarn playwright install-deps chromium
+        timeout-minutes: 5
       - run: yarn playwright install chromium
+        timeout-minutes: 5
       - run: yarn test:storybook
       - run: yarn build:storybook
       - run: yarn check:demo storybook-static
@@ -91,6 +98,7 @@ jobs:
   cloudflare-gate:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 2
     outputs:
       enabled: ${{ steps.gate.outputs.enabled }}
     steps:
@@ -112,6 +120,7 @@ jobs:
     needs: [cloudflare-gate]
     if: needs.cloudflare-gate.outputs.enabled == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     concurrency:
       group: preflight
       cancel-in-progress: false
@@ -132,6 +141,7 @@ jobs:
     needs: [cloudflare-gate, verify, e2e, preflight]
     if: needs.cloudflare-gate.outputs.enabled == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     concurrency:
       group: deploy-production
       cancel-in-progress: false
@@ -150,6 +160,7 @@ jobs:
     needs: [cloudflare-gate, verify, e2e, preflight]
     if: needs.cloudflare-gate.outputs.enabled == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     concurrency:
       group: deploy-demo
       cancel-in-progress: false
@@ -167,6 +178,7 @@ jobs:
     needs: [cloudflare-gate, storybook, preflight]
     if: needs.cloudflare-gate.outputs.enabled == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     concurrency:
       group: deploy-storybook
       cancel-in-progress: false
@@ -184,6 +196,7 @@ jobs:
     needs: [cloudflare-gate, verify, e2e, preflight]
     if: needs.cloudflare-gate.outputs.enabled == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     concurrency:
       group: deploy-worker
       cancel-in-progress: false
@@ -210,6 +223,7 @@ jobs:
     needs: [cloudflare-gate, deploy, deploy-demo, deploy-storybook, deploy-worker]
     if: needs.cloudflare-gate.outputs.enabled == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
