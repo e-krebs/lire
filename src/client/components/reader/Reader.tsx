@@ -181,7 +181,7 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
             />
           ) : null}
           {newsletter ? (
-            <article className="mt-4">
+            <article className="-mx-4 mt-4 sm:-mx-6">
               <NewsletterFrame html={html} dir={dir} />
             </article>
           ) : (

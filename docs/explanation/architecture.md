@@ -39,8 +39,8 @@ styles, and Zod to parse every response against the schemas in
 
 The reader sanitizes every article body with DOMPurify. A blog post renders inline under
 `.prose-reader`. A newsletter, recognized by the `webfeeds--newsletter` wrapper Feedly adds, renders
-in a sandboxed `srcdoc` iframe on a white card, so the sender's own layout and colors apply and the
-app's article styles cannot break it. The parent sizes the frame to its content and forwards key
+in a sandboxed `srcdoc` iframe on a full-width white band, so the sender's own layout and colors
+apply and the app's article styles cannot break it. The parent sizes the frame to its content and forwards key
 presses out of it. The reasons and limits are in
 [ADR 0009](../adr/0009-newsletter-iframe.md).
 
