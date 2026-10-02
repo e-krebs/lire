@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { CSSProperties, RefObject } from "react";
 import type { Entry } from "shared/feedsApi/types";
 import { feedHue } from "client/utils/feedHue";
+import { decodeEntities } from "client/utils/html";
 import { Icon } from "client/components/ui/icons";
 import { useLocale } from "client/i18n/locale";
 import { useT } from "client/i18n/useT";
@@ -63,7 +64,7 @@ export const ReaderHeader = ({
 
   const t = useT();
   const originTitle = entry.origin.title ?? entry.origin.streamId;
-  const title = entry.title ?? t.articles.untitled;
+  const title = entry.title ? decodeEntities(entry.title) : t.articles.untitled;
   const href = entry.alternate?.[0]?.href;
   const timestamp = entry.published ?? entry.crawled;
   const locale = useLocale();
