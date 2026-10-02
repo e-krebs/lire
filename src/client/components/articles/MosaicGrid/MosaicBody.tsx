@@ -295,6 +295,19 @@ export const MosaicBody = ({
         return next;
       });
     }
+    // A failed request rolls the entry back to unread: whatever state it was in, it is a card again.
+    const revived = entries.filter(
+      (entry) =>
+        entry.unread &&
+        !undone.has(entry.id) &&
+        (pending.has(entry.id) || leaving.has(entry.id) || gone.has(entry.id)),
+    );
+    if (revived.length > 0) {
+      const ids = new Set(revived.map((entry) => entry.id));
+      setPending((prev) => new Set([...prev].filter((id) => !ids.has(id))));
+      setLeaving((prev) => new Map([...prev].filter(([id]) => !ids.has(id))));
+      setGone((prev) => new Set([...prev].filter((id) => !ids.has(id))));
+    }
     const turned = placed.filter(
       (entry) => !entry.unread && !pending.has(entry.id) && !undone.has(entry.id),
     );
