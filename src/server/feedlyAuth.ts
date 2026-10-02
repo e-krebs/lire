@@ -20,10 +20,8 @@ export type AccessTokenResult =
   | { ok: false; reason: "not_signed_in" }
   | RefreshFailure;
 
-type Flight = { refreshToken: string; promise: Promise<AccessTokenResult> };
-
 export class FeedlyAuth extends DurableObject<Env> {
-  #refreshing: Flight | undefined;
+  readonly #refreshing = new Map<string, Promise<AccessTokenResult>>();
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -35,7 +33,7 @@ export class FeedlyAuth extends DurableObject<Env> {
 
   clearTokens(): void {
     this.ctx.storage.kv.delete(TOKENS_KEY);
-    this.#refreshing = undefined;
+    this.#refreshing.clear();
   }
 
   // Validates the candidate before it replaces anything, so a bad paste keeps a working sign-in.
@@ -92,22 +90,20 @@ export class FeedlyAuth extends DurableObject<Env> {
     refreshToken: string;
     onTokens: (tokens: Required<StoredTokens>) => void;
   }): Promise<AccessTokenResult> {
-    if (this.#refreshing?.refreshToken === refreshToken) return this.#refreshing.promise;
+    const inFlight = this.#refreshing.get(refreshToken);
+    if (inFlight) return inFlight;
 
-    const flight: Flight = {
-      refreshToken,
-      promise: this.#refresh(refreshToken)
-        .then((result): AccessTokenResult => {
-          if (!result.ok) return result;
-          onTokens(result.tokens);
-          return { ok: true, token: result.tokens.accessToken };
-        })
-        .finally(() => {
-          if (this.#refreshing === flight) this.#refreshing = undefined;
-        }),
-    };
-    this.#refreshing = flight;
-    return flight.promise;
+    const promise = this.#refresh(refreshToken)
+      .then((result): AccessTokenResult => {
+        if (!result.ok) return result;
+        onTokens(result.tokens);
+        return { ok: true, token: result.tokens.accessToken };
+      })
+      .finally(() => {
+        if (this.#refreshing.get(refreshToken) === promise) this.#refreshing.delete(refreshToken);
+      });
+    this.#refreshing.set(refreshToken, promise);
+    return promise;
   }
 
   async #refresh(
