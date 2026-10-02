@@ -100,6 +100,7 @@ const EntryLinkSchema = z
 const EntryVisualSchema = z
   .object({
     url: z.string(),
+    edgeCacheUrl: z.string().optional(),
     width: z.number().optional(),
     height: z.number().optional(),
     contentType: z.string().optional(),

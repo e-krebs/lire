@@ -49,6 +49,7 @@
       ],
       "visual": {
         "url": "https://picsum.photos/seed/news-0029/700/1000",
+        "edgeCacheUrl": "https://picsum.photos/seed/news-0029-proxy/700/1000",
         "width": 700,
         "height": 1000,
         "contentType": "image/jpeg"

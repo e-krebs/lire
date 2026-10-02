@@ -1,4 +1,4 @@
-import { render, waitFor } from "@testing-library/react";
+import { fireEvent, render, waitFor } from "@testing-library/react";
 import type { RenderResult } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import {
@@ -40,6 +40,9 @@ const ui = {
   },
   async button(view: RenderResult, name: string) {
     return view.findByRole("button", { name });
+  },
+  bodyImages(view: RenderResult) {
+    return [...view.container.querySelectorAll("article img")];
   },
 };
 
@@ -127,6 +130,40 @@ describe("Reader", () => {
     const distinct = setup({ entryId: UNREAD_ID });
     await ui.link(distinct.view, TITLE);
     expect(hero(distinct.view)).toHaveLength(1);
+  });
+
+  it("retries the hero on the proxy copy, then drops it", async () => {
+    const { view } = setup({ entryId: UNREAD_ID });
+    await ui.link(view, TITLE);
+
+    const [first] = hero(view);
+    expect(first).toHaveAttribute("src", "https://picsum.photos/seed/news-0029/700/1000");
+    fireEvent.error(first);
+    await waitFor(() => {
+      expect(hero(view)[0]).toHaveAttribute(
+        "src",
+        "https://picsum.photos/seed/news-0029-proxy/700/1000",
+      );
+    });
+    fireEvent.error(hero(view)[0]);
+    await waitFor(() => {
+      expect(hero(view)).toHaveLength(0);
+    });
+  });
+
+  it("swaps a failed body image for a labelled placeholder", async () => {
+    const { view } = setup({ entryId: UNREAD_ID });
+    await ui.link(view, TITLE);
+
+    const img = ui.bodyImages(view)[0];
+    const alt = img.getAttribute("alt") ?? "";
+    fireEvent.error(img);
+
+    expect(img).not.toBeInTheDocument();
+    const label = alt === "" ? "Image unavailable" : `Image unavailable: ${alt}`;
+    expect(
+      view.container.querySelector(`article [role=img][aria-label="${label}"]`),
+    ).not.toBeNull();
   });
 
   it("renders a newsletter's title as plain text, with no link to an original", async () => {

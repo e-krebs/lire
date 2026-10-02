@@ -4,6 +4,7 @@ import type { CSSProperties, KeyboardEvent, MouseEvent, PointerEvent } from "rea
 import { toStreamKey } from "shared/feedsApi/streamKey";
 import type { Entry } from "shared/feedsApi/types";
 import { useDirectOpen } from "client/hooks/useDirectOpen";
+import { useImageFallback } from "client/hooks/useImageFallback";
 import { feedHue } from "client/utils/feedHue";
 import { Icon } from "client/components/ui/icons";
 import { absoluteTime, shortRelativeTime } from "client/utils/time";
@@ -198,7 +199,11 @@ export const MosaicTile = ({
   swipeable = false,
   leavesWhenRead = false,
 }: MosaicTileProps) => {
-  const hasImage = Boolean(entry.visual?.url);
+  const image = useImageFallback({
+    url: entry.visual?.url,
+    fallbackUrl: entry.visual?.edgeCacheUrl,
+  });
+  const hasImage = image.src !== undefined;
   const isRead = muteRead && !entry.unread;
   const { width, height } = entry.visual ?? {};
   const title = entry.title ?? "(untitled)";
@@ -429,7 +434,8 @@ export const MosaicTile = ({
         >
           {hasImage ? (
             <img
-              src={entry.visual?.url}
+              src={image.src}
+              onError={image.onError}
               alt=""
               loading="lazy"
               decoding="async"
