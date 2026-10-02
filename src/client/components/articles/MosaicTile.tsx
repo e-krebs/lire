@@ -4,8 +4,10 @@ import type { CSSProperties, KeyboardEvent, MouseEvent, PointerEvent } from "rea
 import { toStreamKey } from "shared/feedsApi/streamKey";
 import type { Entry } from "shared/feedsApi/types";
 import { useDirectOpen } from "client/hooks/useDirectOpen";
+import { useOriginTitle } from "client/hooks/useOriginTitle";
 import { useImageFallback } from "client/hooks/useImageFallback";
 import { feedHue } from "client/utils/feedHue";
+import { decodeEntities } from "client/utils/html";
 import { Icon } from "client/components/ui/icons";
 import { absoluteTime, shortRelativeTime } from "client/utils/time";
 import { useLocale } from "client/i18n/locale";
@@ -213,8 +215,8 @@ export const MosaicTile = ({
   const hasImage = image.src !== undefined;
   const isRead = muteRead && !entry.unread;
   const { width, height } = entry.visual ?? {};
-  const title = entry.title ?? t.articles.untitled;
-  const originTitle = entry.origin.title ?? entry.origin.streamId;
+  const title = entry.title ? decodeEntities(entry.title) : t.articles.untitled;
+  const originTitle = useOriginTitle(entry.origin);
   const original = entry.alternate?.[0]?.href;
   // A newsletter has no page of its own, so the flag has nothing to open: the card stays a route.
   const directOpen = useDirectOpen(entry.origin.streamId) && original !== undefined;

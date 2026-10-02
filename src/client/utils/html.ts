@@ -8,3 +8,7 @@ export const textSnippet = (html: string | undefined): string => {
     .trim();
   return text;
 };
+
+/** Feedly returns some titles with HTML entities still escaped (`&nbsp;`, `&amp;`). */
+export const decodeEntities = (text: string): string =>
+  new DOMParser().parseFromString(text, "text/html").documentElement.textContent;
