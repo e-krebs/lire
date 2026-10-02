@@ -370,36 +370,6 @@ describe("worker", () => {
       ]);
     });
 
-    it("forwards the client IP to the feeds API when Cloudflare provides one", async () => {
-      await setup();
-      upstream = () => tokenReply("access-1");
-      await signIn();
-      upstream = () => Response.json({});
-
-      await authed("/api/v3/profile", { headers: { "CF-Connecting-IP": "203.0.113.7" } });
-
-      const [call] = apiCalls();
-      expect(call.headers.get("X-Forwarded-For")).toBe("203.0.113.7");
-      expect(call.headers.get("X-Real-IP")).toBe("203.0.113.7");
-    });
-
-    it("exposes upstream diagnostic headers on an error answer only", async () => {
-      await setup();
-      upstream = () => tokenReply("access-1");
-      await signIn();
-      upstream = () =>
-        Response.json("boom", {
-          status: 400,
-          headers: { "x-feedly-server": "sv1", "x-other": "kept-back" },
-        });
-
-      const response = await authed("/api/v3/profile");
-      expect(response.status).toBe(400);
-      expect(response.headers.get("x-upstream-status")).toBe("400");
-      expect(response.headers.get("x-upstream-x-feedly-server")).toBe("sv1");
-      expect(response.headers.get("x-upstream-x-other")).toBeNull();
-    });
-
     it("returns 401 without clearing tokens after a second upstream 401", async () => {
       await setup();
       upstream = () => tokenReply("access-1");

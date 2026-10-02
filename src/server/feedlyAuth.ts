@@ -27,19 +27,6 @@ export class FeedlyAuth extends DurableObject<Env> {
     super(ctx, env);
   }
 
-  // TEMP probe: same fetch, but issued from the Durable Object. Remove with the debug route.
-  /* istanbul ignore next */
-  async probeFetch({
-    url,
-    headers,
-  }: {
-    url: string;
-    headers: Record<string, string>;
-  }): Promise<{ status: number; body: string }> {
-    const response = await fetch(url, { headers });
-    return { status: response.status, body: (await response.text()).slice(0, 400) };
-  }
-
   hasRefreshToken(): boolean {
     return this.#read() !== undefined;
   }
