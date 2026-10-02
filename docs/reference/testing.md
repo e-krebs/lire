@@ -230,9 +230,11 @@ const setup = () => {
 
 A test file does not undo a global stub. The global `afterEach` in `src/test/setup.ts` undoes them
 after every client test: it unstubs globals and env, restores real timers, restores
-`window.localStorage` and every own property of `HTMLElement.prototype`, and removes the MSW
+`window.localStorage` and every own property of `HTMLElement.prototype` and `Element.prototype`, and removes the MSW
 `server.events` listeners. A file keeps a local `afterEach` only for teardown that is unsafe to
-run after every file. The server project has no setup file, so `worker.test.ts` keeps its own
+run after every file. The client project runs without isolation, so its files share one jsdom
+per worker: a test that patches a global the setup file does not restore leaks into the next file,
+and the failure then depends on file order. The server project has no setup file, so `worker.test.ts` keeps its own
 `afterEach(() => vi.unstubAllGlobals())` for its `fetch` stub.
 
 To hold or fail an API request instead of mocking the transport, stub `VITE_API_MODE=real`, add

@@ -12,14 +12,16 @@ The machinery behind the tests. Test style is in [testing.md](testing.md).
 | `server` | `yarn test:worker` | Workers pool | `src/server/**/__tests__/**/*.test.ts` |
 | `storybook` | `yarn test:storybook` | Chromium via Playwright | the stories |
 
-The `client` project sets `VITE_FIXTURES=seed` and `VITE_FIXTURE_LATENCY_MS=0`
+The `client` project runs in worker threads without isolation, so its test files share one jsdom
+per worker and the setup file is what keeps one file's patches from reaching the next. It also sets
+`VITE_FIXTURES=seed` and `VITE_FIXTURE_LATENCY_MS=0`
 ([fixtures.md](fixtures.md)).
 
 ### Shared setup in `src/test/`
 
 | File | Role |
 | --- | --- |
-| [setup.ts](../../src/test/setup.ts) | Starts MSW, runs cleanup, restores timers, `localStorage` and the `HTMLElement` prototype after each test |
+| [setup.ts](../../src/test/setup.ts) | Starts MSW, runs cleanup, restores timers, `localStorage` and the `HTMLElement` and `Element` prototypes after each test |
 | [msw.ts](../../src/test/msw.ts) | MSW server with baseline handlers over the seed fixtures |
 | [fixtureBackend.ts](../../src/test/fixtureBackend.ts) | Serves `fixtureTransport` over MSW at `/api` |
 | [renderApp.tsx](../../src/test/renderApp.tsx) | Renders the app with a memory router and a query client |

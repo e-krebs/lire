@@ -140,6 +140,8 @@ describe("TooltipLayer", () => {
   it("opens at once on keyboard focus and closes on Escape", () => {
     setup();
     const trigger = ui.button("Unread only");
+    // jsdom keeps its focus-visible modality per window, so an earlier file's pointer use would hide it.
+    fireEvent.keyDown(document, { key: "Tab" });
     act(() => {
       trigger.focus();
     });

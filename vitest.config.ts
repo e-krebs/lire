@@ -41,6 +41,9 @@ export default defineConfig({
           name: "client",
           include: ["src/{client,shared}/**/__tests__/**/*.test.{ts,tsx}"],
           environment: "jsdom",
+          // Files share one jsdom per worker, so src/test/setup.ts must undo whatever a test patches.
+          pool: "threads",
+          isolate: false,
           setupFiles: ["./src/test/setup.ts"],
           css: false,
           // Tests assert seed IDs and counts, so a complete fixtures/real/ recording must not win.
