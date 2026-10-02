@@ -166,7 +166,11 @@ const proxy = async ({ request, env }: { request: Request; env: Env }): Promise<
   const headers = new Headers();
   for (const [name, value] of upstream.headers) {
     if (name === "content-type") headers.set(name, value);
+    // TEMP diagnostic for the "not an IP string literal" 400: remove once the cause is known.
+    if (upstream.status >= 400 && ["x-feedly-server", "cf-ray", "server", "via"].includes(name))
+      headers.set(`x-upstream-${name}`, value);
   }
+  if (upstream.status >= 400) headers.set("x-upstream-status", String(upstream.status));
   return new Response(upstream.body, { status: upstream.status, headers });
 };
 
