@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties, RefObject } from "react";
 import type { Entry } from "shared/feedsApi/types";
+import { useOriginTitle } from "client/hooks/useOriginTitle";
 import { feedHue } from "client/utils/feedHue";
 import { decodeEntities } from "client/utils/html";
 import { Icon } from "client/components/ui/icons";
@@ -63,7 +64,7 @@ export const ReaderHeader = ({
   }, [paneRef, sentinel]);
 
   const t = useT();
-  const originTitle = entry.origin.title ?? entry.origin.streamId;
+  const originTitle = useOriginTitle(entry.origin);
   const title = entry.title ? decodeEntities(entry.title) : t.articles.untitled;
   const href = entry.alternate?.[0]?.href;
   const timestamp = entry.published ?? entry.crawled;

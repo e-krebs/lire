@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen } from "@testing-library/react";
 import { createRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -58,7 +59,11 @@ const setup = ({ entry = ENTRY }: { entry?: Entry } = {}) => {
       />
     </div>
   );
-  const view = render(<Pane />);
+  const view = render(
+    <QueryClientProvider client={new QueryClient()}>
+      <Pane />
+    </QueryClientProvider>,
+  );
   const head = () => view.container.querySelector(".reader-head");
   return { view, head };
 };
