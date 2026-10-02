@@ -616,6 +616,22 @@ describe("worker", () => {
       expect(tokenCalls()).toHaveLength(1);
     });
 
+    it("keeps sharing a refresh while a pasted token refreshes alongside it", async () => {
+      await setup();
+      upstream = () => tokenReply("access-1");
+      await signIn();
+      upstream = () => tokenReply("access-2");
+
+      await runInDurableObject(auth(), async (instance) =>
+        Promise.all([
+          instance.getAccessToken({ rejectedAccessToken: "access-1" }),
+          instance.replaceRefreshToken("refresh-pasted"),
+          instance.getAccessToken({ rejectedAccessToken: "access-1" }),
+        ]),
+      );
+      expect(tokenCalls()).toHaveLength(2);
+    });
+
     it("drops a refresh result when the tokens are cleared mid-refresh", async () => {
       await setup();
       upstream = () => tokenReply("access-1");
