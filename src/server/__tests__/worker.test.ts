@@ -370,6 +370,23 @@ describe("worker", () => {
       ]);
     });
 
+    it("exposes upstream diagnostic headers on an error answer only", async () => {
+      await setup();
+      upstream = () => tokenReply("access-1");
+      await signIn();
+      upstream = () =>
+        Response.json("boom", {
+          status: 400,
+          headers: { "x-feedly-server": "sv1", "x-other": "kept-back" },
+        });
+
+      const response = await authed("/api/v3/profile");
+      expect(response.status).toBe(400);
+      expect(response.headers.get("x-upstream-status")).toBe("400");
+      expect(response.headers.get("x-upstream-x-feedly-server")).toBe("sv1");
+      expect(response.headers.get("x-upstream-x-other")).toBeNull();
+    });
+
     it("returns 401 without clearing tokens after a second upstream 401", async () => {
       await setup();
       upstream = () => tokenReply("access-1");
