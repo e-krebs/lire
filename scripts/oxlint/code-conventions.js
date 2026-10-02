@@ -15,6 +15,21 @@ const returnsJsx = (fn) => {
   );
 };
 
+const TEXT_ATTRIBUTES = new Set(["aria-label", "title", "placeholder", "alt", "label", "data-tip"]);
+const ALLOWED_TEXT = new Set(["Lire"]);
+
+const staticText = (node) => {
+  if (node?.type === "Literal") return typeof node.value === "string" ? node.value : null;
+  if (node?.type === "TemplateLiteral")
+    return node.quasis.map((quasi) => quasi.value.cooked).join("");
+  return null;
+};
+
+const isUserText = (text) => {
+  const trimmed = text?.trim();
+  return Boolean(trimmed) && /\p{L}/u.test(trimmed) && !ALLOWED_TEXT.has(trimmed);
+};
+
 export default {
   meta: { name: "code-conventions" },
   rules: {
@@ -89,6 +104,35 @@ export default {
                   "A barrel exports several values. With one export, put the code in index.tsx. See docs/reference/conventions.md.",
               });
             }
+          },
+        };
+      },
+    },
+    "no-raw-jsx-text": {
+      meta: {
+        type: "problem",
+        docs: { description: "User-facing JSX text comes from the i18n catalog." },
+      },
+      create(context) {
+        const report = (node) =>
+          context.report({
+            node,
+            message:
+              "Raw text in JSX. Move it to src/client/i18n/messages/ and read it through useT. See docs/reference/conventions.md.",
+          });
+        return {
+          JSXText(node) {
+            if (isUserText(node.value)) report(node);
+          },
+          JSXAttribute(node) {
+            if (node.name.type !== "JSXIdentifier" || !TEXT_ATTRIBUTES.has(node.name.name)) return;
+            const value =
+              node.value?.type === "JSXExpressionContainer" ? node.value.expression : node.value;
+            if (isUserText(staticText(value))) report(node);
+          },
+          JSXExpressionContainer(node) {
+            if (node.parent?.type !== "JSXElement" && node.parent?.type !== "JSXFragment") return;
+            if (isUserText(staticText(node.expression))) report(node);
           },
         };
       },

@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Icon } from "client/components/ui/icons";
+import { useT } from "client/i18n/useT";
 import { tip } from "client/utils/tooltip";
 import { panelSearch } from "client/utils/subscriptionsSearch";
 
@@ -20,14 +21,17 @@ interface EditLinkProps {
   onClose: () => void;
 }
 
-export const EditLink = ({ target, title, onClose }: EditLinkProps) => (
-  <Link
-    to="/subscriptions"
-    search={panelSearch(target)}
-    onClick={onClose}
-    {...tip({ label: `Edit ${title}` })}
-    className={editClassName}
-  >
-    <Icon name="edit" className="size-4" />
-  </Link>
-);
+export const EditLink = ({ target, title, onClose }: EditLinkProps) => {
+  const t = useT().navigation;
+  return (
+    <Link
+      to="/subscriptions"
+      search={panelSearch(target)}
+      onClick={onClose}
+      {...tip({ label: t.edit({ label: title }) })}
+      className={editClassName}
+    >
+      <Icon name="edit" className="size-4" />
+    </Link>
+  );
+};

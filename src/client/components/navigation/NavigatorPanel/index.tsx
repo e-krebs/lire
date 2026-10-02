@@ -18,6 +18,7 @@ import {
   useUnreadCounts,
 } from "client/api/queries";
 import { Icon } from "client/components/ui/icons";
+import { useT } from "client/i18n/useT";
 import { CategoryResultRow } from "./CategoryResultRow";
 import { CategoryRowsSkeleton } from "./CategoryRowsSkeleton";
 import { CategoryTreeRow } from "./CategoryTreeRow";
@@ -71,6 +72,7 @@ interface NavigatorPanelProps {
 // keyboard events, so the two surfaces behave identically.
 export const NavigatorPanel = forwardRef<NavigatorPanelHandle, NavigatorPanelProps>(
   ({ query, onClose, scopeKey, scopeLabel }, ref) => {
+    const t = useT().navigation;
     const navigate = useNavigate();
     const params = useParams({ strict: false });
     const unreadOnly = useViewPrefs().unread;
@@ -349,11 +351,11 @@ export const NavigatorPanel = forwardRef<NavigatorPanelHandle, NavigatorPanelPro
             )}
           </span>
           <span
-            data-tip="All articles"
+            data-tip={t.allArticles}
             data-tip-overflow=""
             className="min-w-0 flex-1 truncate text-sm group-data-current:text-accent-text"
           >
-            All articles
+            {t.allArticles}
           </span>
           {globalCount > 0 ? <span className={countBadgeClassName}>{globalCount}</span> : null}
         </button>
@@ -370,11 +372,11 @@ export const NavigatorPanel = forwardRef<NavigatorPanelHandle, NavigatorPanelPro
             <Icon name="history" className="size-4" />
           </span>
           <span
-            data-tip="Recently read"
+            data-tip={t.recentlyRead}
             data-tip-overflow=""
             className="min-w-0 flex-1 truncate text-sm group-data-current:text-accent-text"
           >
-            Recently read
+            {t.recentlyRead}
           </span>
         </button>
 
@@ -449,10 +451,10 @@ export const NavigatorPanel = forwardRef<NavigatorPanelHandle, NavigatorPanelPro
               />
 
               <div>
-                <p className={sectionHeadingClassName}>Matches</p>
+                <p className={sectionHeadingClassName}>{t.matches}</p>
                 {noMatches ? (
                   <p className="px-2 py-2 text-sm text-faint">
-                    No feeds or collections match “{trimmedQuery}”.
+                    {t.noMatches({ query: trimmedQuery })}
                   </p>
                 ) : (
                   <div className="flex flex-col gap-0.5">
@@ -515,7 +517,7 @@ export const NavigatorPanel = forwardRef<NavigatorPanelHandle, NavigatorPanelPro
                 data-selected:shadow-[inset_0_0_0_1.5px_var(--color-accent)]
               `}
             >
-              Manage subscriptions
+              {t.manageSubscriptions}
             </Link>
           </div>
         ) : null}

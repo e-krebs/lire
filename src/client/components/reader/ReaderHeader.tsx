@@ -3,6 +3,8 @@ import type { CSSProperties, RefObject } from "react";
 import type { Entry } from "shared/feedsApi/types";
 import { feedHue } from "client/utils/feedHue";
 import { Icon } from "client/components/ui/icons";
+import { useLocale } from "client/i18n/locale";
+import { useT } from "client/i18n/useT";
 import { absoluteTime, mediumDate } from "client/utils/time";
 import { tip } from "client/utils/tooltip";
 
@@ -59,10 +61,12 @@ export const ReaderHeader = ({
     };
   }, [paneRef, sentinel]);
 
+  const t = useT();
   const originTitle = entry.origin.title ?? entry.origin.streamId;
-  const title = entry.title ?? "(untitled)";
+  const title = entry.title ?? t.articles.untitled;
   const href = entry.alternate?.[0]?.href;
   const timestamp = entry.published ?? entry.crawled;
+  const locale = useLocale();
   const openedRead = openedUnread === false;
   const keepIcon = openedRead ? "check" : "unread-only";
   const markIcon = openedRead ? "unread-only" : "check";
@@ -87,15 +91,18 @@ export const ReaderHeader = ({
             <span aria-hidden="true" className="reader-feed-rule" />
           </span>
           <span className="reader-meta">
-            <time dateTime={new Date(timestamp).toISOString()} data-tip={absoluteTime(timestamp)}>
-              {mediumDate(timestamp)}
+            <time
+              dateTime={new Date(timestamp).toISOString()}
+              data-tip={absoluteTime({ timestamp, locale })}
+            >
+              {mediumDate({ timestamp, locale })}
             </time>
-            {minutes > 0 ? ` · ${minutes} min` : ""}
+            {minutes > 0 ? ` · ${t.articles.readingTime({ minutes })}` : ""}
           </span>
           <span className="flex flex-none items-center gap-2">
             <button
               type="button"
-              {...tip({ label: openedRead ? "Keep read" : "Keep unread" })}
+              {...tip({ label: openedRead ? t.articles.keepRead : t.articles.keepUnread })}
               onClick={onKeep}
               className={`reader-btn ${BUTTON_FOCUS} focus-visible:outline-accent`}
             >
@@ -104,7 +111,7 @@ export const ReaderHeader = ({
             <button
               type="button"
               data-accent=""
-              {...tip({ label: openedRead ? "Mark as unread" : "Mark as read" })}
+              {...tip({ label: openedRead ? t.articles.markAsUnread : t.articles.markAsRead })}
               onClick={onMark}
               className={`reader-btn ${BUTTON_FOCUS} focus-visible:outline-ink`}
             >

@@ -8,6 +8,8 @@ import { useImageFallback } from "client/hooks/useImageFallback";
 import { feedHue } from "client/utils/feedHue";
 import { Icon } from "client/components/ui/icons";
 import { absoluteTime, shortRelativeTime } from "client/utils/time";
+import { useLocale } from "client/i18n/locale";
+import { useT } from "client/i18n/useT";
 import { tip } from "client/utils/tooltip";
 
 export interface TileSlot {
@@ -105,15 +107,16 @@ const buttonClassName = `
 // The masthead names the feed, so the chip carries the age alone.
 const Chip = ({ entry }: { entry: Entry }) => {
   const timestamp = entry.published ?? entry.crawled;
+  const locale = useLocale();
 
   return (
     <span className={chipClassName}>
       <time
         dateTime={new Date(timestamp).toISOString()}
-        data-tip={absoluteTime(timestamp)}
+        data-tip={absoluteTime({ timestamp, locale })}
         className="pointer-events-auto flex-none tabular-nums"
       >
-        {shortRelativeTime(timestamp)}
+        {shortRelativeTime({ timestamp, locale })}
       </time>
     </span>
   );
@@ -137,55 +140,58 @@ const Masthead = ({
   tabIndex,
   onFocus,
   onTitleClick,
-}: MastheadProps) => (
-  <>
-    <span
-      className={`
+}: MastheadProps) => {
+  const t = useT();
+  return (
+    <>
+      <span
+        className={`
         tile-label flex items-center gap-1.5
         text-[11px]/[14px] font-bold tracking-[0.08em] uppercase
       `}
-    >
-      <span
-        data-tip={originTitle}
-        data-tip-overflow=""
-        className="tile-feed pointer-events-auto min-w-0 truncate"
       >
-        {originTitle}
-      </span>
-      {directOpen ? (
         <span
-          aria-hidden="true"
-          className={`
+          data-tip={originTitle}
+          data-tip-overflow=""
+          className="tile-feed pointer-events-auto min-w-0 truncate"
+        >
+          {originTitle}
+        </span>
+        {directOpen ? (
+          <span
+            aria-hidden="true"
+            className={`
             inline-flex h-3.5 flex-none items-center rounded-full bg-accent px-1 text-on-accent
           `}
-        >
-          <Icon name="external" className="size-2.5" />
-        </span>
-      ) : null}
-    </span>
-    <span aria-hidden="true" className="tile-rule mt-1.5 mb-2 h-0.5 w-7 flex-none rounded-full" />
-    {original === undefined ? (
-      <span data-tip={title} data-tip-overflow="" className={titleClassName}>
-        {title}
+          >
+            <Icon name="external" className="size-2.5" />
+          </span>
+        ) : null}
       </span>
-    ) : (
-      <a
-        href={original}
-        target="_blank"
-        rel="noopener"
-        aria-label={`${title} (opens the original in a new tab)`}
-        data-tip={title}
-        data-tip-overflow={directOpen ? "Opens on its site" : "Open the original"}
-        tabIndex={tabIndex}
-        onFocus={onFocus}
-        onClick={onTitleClick}
-        className={titleClassName}
-      >
-        {title}
-      </a>
-    )}
-  </>
-);
+      <span aria-hidden="true" className="tile-rule mt-1.5 mb-2 h-0.5 w-7 flex-none rounded-full" />
+      {original === undefined ? (
+        <span data-tip={title} data-tip-overflow="" className={titleClassName}>
+          {title}
+        </span>
+      ) : (
+        <a
+          href={original}
+          target="_blank"
+          rel="noopener"
+          aria-label={t.articles.opensOriginalInNewTab({ title })}
+          data-tip={title}
+          data-tip-overflow={directOpen ? t.articles.opensOnItsSite : t.articles.openTheOriginal}
+          tabIndex={tabIndex}
+          onFocus={onFocus}
+          onClick={onTitleClick}
+          className={titleClassName}
+        >
+          {title}
+        </a>
+      )}
+    </>
+  );
+};
 
 export const MosaicTile = ({
   streamId,
@@ -203,10 +209,11 @@ export const MosaicTile = ({
     url: entry.visual?.url,
     fallbackUrl: entry.visual?.edgeCacheUrl,
   });
+  const t = useT();
   const hasImage = image.src !== undefined;
   const isRead = muteRead && !entry.unread;
   const { width, height } = entry.visual ?? {};
-  const title = entry.title ?? "(untitled)";
+  const title = entry.title ?? t.articles.untitled;
   const originTitle = entry.origin.title ?? entry.origin.streamId;
   const original = entry.alternate?.[0]?.href;
   // A newsletter has no page of its own, so the flag has nothing to open: the card stays a route.
@@ -216,7 +223,7 @@ export const MosaicTile = ({
   const hueStyle: CSSProperties & { "--hue": string } = {
     "--hue": String(feedHue(entry.origin.streamId)),
   };
-  const toggleLabel = entry.unread ? "Mark as read" : "Mark as unread";
+  const toggleLabel = entry.unread ? t.articles.markAsRead : t.articles.markAsUnread;
 
   // `dragX` follows the finger while `dragging`; `flying` is the committed card on its way out.
   const [dragX, setDragX] = useState(0);

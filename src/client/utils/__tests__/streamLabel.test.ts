@@ -7,6 +7,7 @@ import {
   globalUncategorizedStreamId,
 } from "shared/feedsApi/streams";
 import type { Collection, Subscription } from "shared/feedsApi/types";
+import { catalogs } from "client/i18n/messages";
 import { streamLabel } from "../streamLabel";
 
 const USER_ID = "user-1";
@@ -26,7 +27,15 @@ const subscriptions: Subscription[] = [
   { id: looseFeedId, title: "Loose Feed", categories: [] },
 ];
 
-const label = (streamId: string) => streamLabel({ streamId, collections, subscriptions });
+const labelsEn = { ...catalogs.en.navigation, uncategorized: catalogs.en.shell.uncategorized };
+const labelsFr = catalogs.fr.navigation;
+const label = (streamId: string) =>
+  streamLabel({
+    streamId,
+    collections,
+    subscriptions,
+    labels: labelsEn,
+  });
 
 describe("streamLabel", () => {
   it("names the global streams", () => {
@@ -59,7 +68,22 @@ describe("streamLabel", () => {
     const unknownId = feedStreamId("https://unknown.example/rss");
     expect(label(unknownId)).toEqual({ kind: "unknown", label: unknownId });
     expect(
-      streamLabel({ streamId: techId, collections: undefined, subscriptions: undefined }),
+      streamLabel({
+        streamId: techId,
+        collections: undefined,
+        subscriptions: undefined,
+        labels: labelsEn,
+      }),
     ).toEqual({ kind: "unknown", label: techId });
+  });
+
+  it("takes its constant labels from the given catalog", () => {
+    const named = streamLabel({
+      streamId: globalAllStreamId(USER_ID),
+      collections,
+      subscriptions,
+      labels: { ...labelsFr, uncategorized: catalogs.fr.shell.uncategorized },
+    });
+    expect(named.label).toBe("Tous les articles");
   });
 });

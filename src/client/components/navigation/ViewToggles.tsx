@@ -1,5 +1,6 @@
 import type { StreamSearch } from "client/routes/stream.$streamKey";
 import { Icon } from "client/components/ui/icons";
+import { useT } from "client/i18n/useT";
 import { tip } from "client/utils/tooltip";
 import { setViewPrefs, useViewPrefs } from "client/utils/viewPrefs";
 
@@ -25,6 +26,7 @@ const controlClassName = `
 // The unread filter and the sort order as two direct toggles at the pill's right end: one tap
 // each, and the icon itself carries the state so the fill is never the only signal.
 export const ViewToggles = ({ search }: ViewTogglesProps) => {
+  const t = useT().navigation;
   const prefs = useViewPrefs();
 
   // A search is always newest first. Clearing the search itself belongs to the location bar's
@@ -34,12 +36,12 @@ export const ViewToggles = ({ search }: ViewTogglesProps) => {
   const oldestFirst = prefs.ranked === "oldest";
 
   return (
-    <div role="group" aria-label="View" className="flex h-9 flex-none items-center gap-0.5">
+    <div role="group" aria-label={t.viewGroup} className="flex h-9 flex-none items-center gap-0.5">
       <button
         type="button"
         aria-pressed={unreadOnly}
-        {...tip({ label: "Unread only" })}
-        data-tip={unreadOnly ? "Show all articles" : "Show unread only"}
+        {...tip({ label: t.unreadOnly })}
+        data-tip={unreadOnly ? t.showAllArticles : t.showUnreadOnly}
         onClick={() => {
           setViewPrefs({ unread: !unreadOnly });
         }}
@@ -54,14 +56,8 @@ export const ViewToggles = ({ search }: ViewTogglesProps) => {
       <button
         type="button"
         aria-pressed={oldestFirst}
-        aria-label="Oldest first"
-        data-tip={
-          searching
-            ? "Search results are newest first"
-            : oldestFirst
-              ? "Newest first"
-              : "Oldest first"
-        }
+        aria-label={t.oldestFirst}
+        data-tip={searching ? t.searchNewestFirst : oldestFirst ? t.newestFirst : t.oldestFirst}
         aria-disabled={searching || undefined}
         onClick={() => {
           if (searching) return;
@@ -81,20 +77,23 @@ export const ViewToggles = ({ search }: ViewTogglesProps) => {
 
 // Same footprint as the toggles while the profile is still loading, so the pill's right end and
 // its divider don't pop in later.
-export const ViewTogglesSkeleton = () => (
-  <div
-    role="group"
-    aria-label="View"
-    aria-busy="true"
-    className="flex h-9 flex-none items-center gap-0.5"
-  >
-    {Array.from({ length: 2 }, (_, index) => (
-      <span key={index} className="inline-flex h-9 w-10 items-center justify-center">
-        <span
-          aria-hidden="true"
-          className="size-5 rounded-full bg-surface-2 motion-safe:animate-pulse"
-        />
-      </span>
-    ))}
-  </div>
-);
+export const ViewTogglesSkeleton = () => {
+  const t = useT().navigation;
+  return (
+    <div
+      role="group"
+      aria-label={t.viewGroup}
+      aria-busy="true"
+      className="flex h-9 flex-none items-center gap-0.5"
+    >
+      {Array.from({ length: 2 }, (_, index) => (
+        <span key={index} className="inline-flex h-9 w-10 items-center justify-center">
+          <span
+            aria-hidden="true"
+            className="size-5 rounded-full bg-surface-2 motion-safe:animate-pulse"
+          />
+        </span>
+      ))}
+    </div>
+  );
+};

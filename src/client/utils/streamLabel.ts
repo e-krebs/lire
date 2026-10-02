@@ -5,8 +5,6 @@ import {
 } from "shared/feedsApi/streams";
 import type { Collection, Subscription } from "shared/feedsApi/types";
 
-const UNCATEGORIZED_LABEL = "Uncategorized";
-
 export interface StreamLabel {
   kind: "all" | "category" | "feed" | "unknown";
   label: string;
@@ -19,15 +17,17 @@ export const streamLabel = ({
   streamId,
   collections,
   subscriptions,
+  labels,
 }: {
   streamId: string;
   collections: readonly Collection[] | undefined;
   subscriptions: readonly Subscription[] | undefined;
+  labels: { allArticles: string; recentlyRead: string; uncategorized: string };
 }): StreamLabel => {
-  if (isGlobalAllStreamId(streamId)) return { kind: "all", label: "All articles" };
-  if (isReadStreamId(streamId)) return { kind: "all", label: "Recently read" };
+  if (isGlobalAllStreamId(streamId)) return { kind: "all", label: labels.allArticles };
+  if (isReadStreamId(streamId)) return { kind: "all", label: labels.recentlyRead };
   if (isGlobalUncategorizedStreamId(streamId)) {
-    return { kind: "category", label: UNCATEGORIZED_LABEL };
+    return { kind: "category", label: labels.uncategorized };
   }
 
   const collection = collections?.find((entry) => entry.id === streamId);
@@ -39,7 +39,7 @@ export const streamLabel = ({
     const parent =
       collections?.find((entry) => entry.id === categoryId)?.label ??
       subscription.categories[0]?.label ??
-      UNCATEGORIZED_LABEL;
+      labels.uncategorized;
     return { kind: "feed", label: subscription.title, parent };
   }
 

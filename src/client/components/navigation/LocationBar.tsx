@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useId } from "react";
 import type { KeyboardEvent, ReactNode, RefObject } from "react";
 import { Link } from "@tanstack/react-router";
 import { Icon } from "client/components/ui/icons";
+import { useT } from "client/i18n/useT";
 import { ScopeChip } from "client/components/navigation/ScopeChip";
 import { tip } from "client/utils/tooltip";
 import { useActiveOverlay } from "client/hooks/useOverlay";
@@ -43,27 +44,25 @@ const clearButtonClassName = `
   focus-visible:outline-2 focus-visible:outline-accent
 `;
 
-// The chip names a narrower stream; on All articles there is no chip, the placeholder says so.
-const placeholderFor = (clearable: boolean): string =>
-  clearable ? "Search articles, feeds…" : "Search all articles, feeds…";
-
 interface PillEditLinkProps {
   edit: LocationBarProps["edit"];
   inert: true | undefined;
 }
 
-const PillEditLink = ({ edit, inert }: PillEditLinkProps) =>
-  edit === undefined ? null : (
+const PillEditLink = ({ edit, inert }: PillEditLinkProps) => {
+  const t = useT().navigation;
+  return edit === undefined ? null : (
     <Link
       to="/subscriptions"
       search={edit.search}
       inert={inert}
-      {...tip({ label: `Edit ${edit.label}` })}
+      {...tip({ label: t.edit({ label: edit.label }) })}
       className={clearButtonClassName}
     >
       <Icon name="edit" className="size-4" />
     </Link>
   );
+};
 
 interface PillDividerProps {
   viewControls: ReactNode;
@@ -101,6 +100,7 @@ export const LocationBar = forwardRef<HTMLDivElement, LocationBarProps>(
     },
     ref,
   ) => {
+    const t = useT().navigation;
     const tier = useTier();
     const locationId = useId();
     // Behind an open panel the pill goes inert, save the input when the panel is the Navigator.
@@ -132,6 +132,8 @@ export const LocationBar = forwardRef<HTMLDivElement, LocationBarProps>(
     }, [onOpen, inputRef, fieldInert]);
 
     const text = draft;
+    // The chip names a narrower stream; on All articles there is no chip, the placeholder says so.
+    const placeholder = clearable ? t.searchScoped : t.searchAll;
 
     const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
       // Backspace at the very start eats the chip first, like a mail composer's recipient token.
@@ -154,14 +156,14 @@ export const LocationBar = forwardRef<HTMLDivElement, LocationBarProps>(
     if (tier === "phone") {
       return (
         <div className="flex min-w-0 flex-1 justify-center">
-          <div ref={ref} role="group" aria-label="Location" className={pillClassName}>
+          <div ref={ref} role="group" aria-label={t.location} className={pillClassName}>
             {/* The button is the pill's left part, padding included, so its ring lines up with
                 the pill's own left edge. */}
             <button
               type="button"
               onClick={onOpen}
               inert={fieldInert}
-              {...tip({ label: "Open navigator" })}
+              {...tip({ label: t.openNavigator })}
               aria-describedby={locationId}
               className={`
                 flex h-10 min-w-0 flex-1 items-center gap-2.5 rounded-full pr-1.5 pl-3.5 text-left
@@ -177,7 +179,7 @@ export const LocationBar = forwardRef<HTMLDivElement, LocationBarProps>(
                 data-empty={text === "" || undefined}
                 className="min-w-0 flex-1 truncate text-sm font-semibold text-ink data-empty:font-normal data-empty:text-faint"
               >
-                {text === "" ? placeholderFor(clearable) : text}
+                {text === "" ? placeholder : text}
               </span>
             </button>
             <PillEditLink edit={edit} inert={pillInert} />
@@ -189,7 +191,7 @@ export const LocationBar = forwardRef<HTMLDivElement, LocationBarProps>(
 
     return (
       <div className="flex min-w-0 flex-1 justify-center">
-        <div ref={ref} role="group" aria-label="Location" className={pillClassName}>
+        <div ref={ref} role="group" aria-label={t.location} className={pillClassName}>
           <div className="flex h-10 min-w-0 flex-1 items-center gap-2.5 pl-3.5">
             <Icon name="search" className="size-4 flex-none text-faint" />
             {clearable ? (
@@ -210,10 +212,10 @@ export const LocationBar = forwardRef<HTMLDivElement, LocationBarProps>(
                 onDraftChange(event.target.value);
               }}
               onKeyDown={handleKeyDown}
-              placeholder={placeholderFor(clearable)}
-              aria-label="Search articles and feeds"
+              placeholder={placeholder}
+              aria-label={t.searchArticlesAndFeeds}
               aria-keyshortcuts="/ Meta+K"
-              data-tip="Search articles and feeds"
+              data-tip={t.searchArticlesAndFeeds}
               className={`
                 min-w-0 flex-1 bg-transparent text-sm text-ink outline-none
                 placeholder:text-faint
@@ -223,7 +225,7 @@ export const LocationBar = forwardRef<HTMLDivElement, LocationBarProps>(
             {text === "" ? null : (
               <button
                 type="button"
-                {...tip({ label: "Clear search text" })}
+                {...tip({ label: t.clearSearchText })}
                 inert={pillInert}
                 onClick={onClearText}
                 className={clearButtonClassName}

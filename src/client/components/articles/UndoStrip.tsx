@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 import { Icon } from "client/components/ui/icons";
+import { useT } from "client/i18n/useT";
 
 // The strip sits in the slot the card had, so it never says which article it was: its place in
 // the grid does. The bar under it is the clock — `styles.css` runs the `undo-tick` animation on
@@ -57,6 +58,7 @@ export const UndoStrip = ({
   // a native one, because React's synthetic `onAnimationEnd` never fires under jsdom, which has no
   // `AnimationEvent`. `undo-tick` is the strip's own and only animation, so an event from a child
   // is somebody else's.
+  const t = useT();
   const stripRef = useRef<HTMLDivElement>(null);
   const undoRef = useRef<HTMLButtonElement>(null);
   const action = (): StripAction => ({
@@ -99,30 +101,30 @@ export const UndoStrip = ({
       {/* The status is the label alone: focus sits on Undo, inside the strip, and a live region
           around it would announce twice. */}
       <span role="status" className="min-w-0 flex-1 truncate pl-1 font-medium">
-        Marked as read
+        {t.articles.markedAsRead}
       </span>
       <button
         ref={undoRef}
         type="button"
-        data-tip="Mark as unread"
+        data-tip={t.articles.markAsUnread}
         onClick={() => {
           onUndo(action());
         }}
         className={undoClassName}
       >
         <Icon name="undo" className="size-4" />
-        Undo
+        {t.common.undo}
       </button>
       <button
         type="button"
-        data-tip="Keep read, and close"
+        data-tip={t.articles.keepReadAndClose}
         onClick={() => {
           onConfirm(action());
         }}
         className={confirmClassName}
       >
         <Icon name="check" className="size-4" />
-        Confirm
+        {t.common.confirm}
       </button>
       <span aria-hidden="true" className="undo-bar" />
     </div>

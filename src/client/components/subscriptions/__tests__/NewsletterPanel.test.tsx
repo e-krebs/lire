@@ -186,6 +186,7 @@ describe("NewsletterPanel", () => {
       await user.click(ui.generate);
       await ui.findAddress();
       vi.stubGlobal("navigator", {
+        languages: ["en-US"],
         clipboard: { writeText: async () => Promise.reject(new Error("denied")) },
       });
       fireEvent.click(ui.copy);
@@ -199,7 +200,7 @@ describe("NewsletterPanel", () => {
 
   describe("when there is no clipboard", () => {
     it("shows no Copy button", async () => {
-      vi.stubGlobal("navigator", { clipboard: undefined });
+      vi.stubGlobal("navigator", { languages: ["en-US"], clipboard: undefined });
       vi.stubEnv("VITE_API_MODE", "real");
       server.use(fixtureBackend);
       resetFixtureState();

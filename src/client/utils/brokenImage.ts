@@ -1,7 +1,18 @@
 const SVG_NS = "http://www.w3.org/2000/svg";
 
+interface BrokenImageLabels {
+  imageUnavailable: string;
+  imageUnavailableNamed: (args: { alt: string }) => string;
+}
+
 // Called on images from other windows too (the newsletter iframe), hence `tagName`, not instanceof.
-export const replaceBrokenImage = (img: Element): void => {
+export const replaceBrokenImage = ({
+  img,
+  labels,
+}: {
+  img: Element;
+  labels: BrokenImageLabels;
+}): void => {
   if (img.tagName !== "IMG") return;
   const width = Number(img.getAttribute("width"));
   const height = Number(img.getAttribute("height"));
@@ -13,7 +24,7 @@ export const replaceBrokenImage = (img: Element): void => {
 
   const doc = img.ownerDocument;
   const alt = img.getAttribute("alt")?.trim() ?? "";
-  const text = alt || "Image unavailable";
+  const text = alt || labels.imageUnavailable;
 
   const icon = doc.createElementNS(SVG_NS, "svg");
   icon.setAttribute("aria-hidden", "true");
@@ -29,7 +40,10 @@ export const replaceBrokenImage = (img: Element): void => {
 
   const box = doc.createElement("span");
   box.setAttribute("role", "img");
-  box.setAttribute("aria-label", alt ? `Image unavailable: ${alt}` : "Image unavailable");
+  box.setAttribute(
+    "aria-label",
+    alt ? labels.imageUnavailableNamed({ alt }) : labels.imageUnavailable,
+  );
   box.style.cssText =
     "display: flex; align-items: center; justify-content: center; gap: 0.5em; width: fit-content; max-width: 100%; margin: 0.75em auto; padding: 0.5em 0.75em; border: 1px dashed color-mix(in srgb, currentColor 40%, transparent); border-radius: 0.5rem; font-size: 0.875em";
   box.append(icon, label);

@@ -1,5 +1,6 @@
 import { useId, useLayoutEffect, useRef, useState } from "react";
 import { Icon } from "client/components/ui/icons";
+import { useT } from "client/i18n/useT";
 
 interface CategoryOption {
   id: string;
@@ -82,6 +83,7 @@ export const CategoryPicker = ({
   exclude = [],
   onCreate,
 }: CategoryPickerProps) => {
+  const t = useT().subscriptions;
   const headingId = useId();
   const name = useId();
   const [filter, setFilter] = useState("");
@@ -123,7 +125,7 @@ export const CategoryPicker = ({
   return (
     <div role="group" aria-labelledby={headingId} className="flex flex-col gap-2">
       <h3 id={headingId} className="text-xs font-semibold text-muted tabular-nums">
-        {`Categories · ${selectedCount} of ${options.length}`}
+        {t.categoriesHeading({ selected: selectedCount, total: options.length })}
       </h3>
       <div className="overflow-hidden rounded-xl ring-1 ring-hairline ring-inset">
         <div
@@ -135,8 +137,8 @@ export const CategoryPicker = ({
           <Icon name="search" className="size-4 flex-none text-faint" />
           <input
             type="search"
-            aria-label="Filter categories"
-            placeholder={`Filter ${options.length} categories…`}
+            aria-label={t.filterCategories}
+            placeholder={t.filterCategoriesCount({ count: options.length })}
             value={filter}
             onChange={(event) => {
               setFilter(event.target.value);
@@ -177,11 +179,11 @@ export const CategoryPicker = ({
                 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent
               `}
             >
-              <span className="truncate">{`Create “${filter.trim()}”`}</span>
+              <span className="truncate">{t.createOption({ name: filter.trim() })}</span>
             </button>
           ) : (
             <p className="flex min-h-11 items-center px-3 text-sm text-faint">
-              {needle === "" ? "No category yet" : `No category matches “${filter.trim()}”`}
+              {needle === "" ? t.noCategoryYet : t.noCategoryMatches({ query: filter.trim() })}
             </p>
           )
         ) : null}

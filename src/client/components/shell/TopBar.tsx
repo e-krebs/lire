@@ -17,6 +17,7 @@ import { LocationBar } from "client/components/navigation/LocationBar";
 import { Navigator } from "client/components/navigation/Navigator";
 import type { NavigatorPanelHandle } from "client/components/navigation/Navigator";
 import { ViewToggles, ViewTogglesSkeleton } from "client/components/navigation/ViewToggles";
+import { useT } from "client/i18n/useT";
 import { tip } from "client/utils/tooltip";
 import { useActiveOverlay } from "client/hooks/useOverlay";
 import { streamLabel } from "client/utils/streamLabel";
@@ -41,6 +42,7 @@ const iconButtonClassName = `
 // chip, `q` is the article search text. The bar owns nothing but whether the panel is open and
 // the text being typed into it.
 export const TopBar = () => {
+  const { shell, navigation } = useT();
   const params = useParams({ strict: false });
   const search = useSearch({ strict: false });
   const location = useLocation();
@@ -82,6 +84,11 @@ export const TopBar = () => {
           streamId: scopeStreamId,
           collections: collections.data,
           subscriptions: subscriptions.data,
+          labels: {
+            allArticles: navigation.allArticles,
+            recentlyRead: navigation.recentlyRead,
+            uncategorized: shell.uncategorized,
+          },
         });
   // Until then the key is the best name at hand — for a category it usually *is* the label.
   const scopeLabel = named === undefined ? scopeKey : scopeLabelOf(named);
@@ -165,7 +172,7 @@ export const TopBar = () => {
               type="button"
               onClick={goBack}
               inert={anyOverlay}
-              aria-label="Go back"
+              aria-label={shell.goBack}
               className={`
                 -ml-1 inline-flex h-10 min-w-0 items-center gap-1.5 rounded-full pr-3.5 pl-2.5
                 text-sm font-medium text-muted
@@ -174,11 +181,11 @@ export const TopBar = () => {
               `}
             >
               <Icon name="back" className="size-5 flex-none" />
-              <span className="truncate">Back</span>
+              <span className="truncate">{shell.back}</span>
             </button>
           </div>
           <h1 inert={anyOverlay} className="min-w-0 truncate text-base font-semibold text-ink">
-            Subscriptions
+            {shell.subscriptions}
           </h1>
         </>
       ) : (
@@ -186,7 +193,7 @@ export const TopBar = () => {
           <Link
             to="/"
             inert={anyOverlay}
-            {...tip({ label: "Lire home" })}
+            {...tip({ label: shell.lireHome })}
             className={`${iconButtonClassName} -ml-1 text-ink`}
           >
             <Icon name="lire" className="size-6.5" />

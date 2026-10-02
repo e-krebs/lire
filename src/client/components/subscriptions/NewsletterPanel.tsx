@@ -4,6 +4,7 @@ import {
   useCreateNewsletterAddress,
   useSubscribeNewsletter,
 } from "client/api/queries";
+import { useT } from "client/i18n/useT";
 import type { Collection } from "shared/feedsApi/types";
 import { Icon } from "client/components/ui/icons";
 import { CategoryPicker } from "./CategoryPicker";
@@ -35,6 +36,7 @@ interface NewsletterPanelProps {
 }
 
 export const NewsletterPanel = ({ collections, categoryId, onClose }: NewsletterPanelProps) => {
+  const t = useT();
   const formId = useId();
   const nameId = useId();
   const [name, setName] = useState("");
@@ -56,11 +58,11 @@ export const NewsletterPanel = ({ collections, categoryId, onClose }: Newsletter
     address !== undefined && name.trim().length > 0 && selected.length > 0 && !subscribe.isPending;
 
   const errorLine = generate.isError
-    ? `Could not create an address. ${generate.error.message}`
+    ? t.subscriptions.createAddressFailed({ message: generate.error.message })
     : subscribe.isError
-      ? `Could not subscribe to that newsletter. ${subscribe.error.message}`
+      ? t.subscriptions.subscribeNewsletterFailed({ message: subscribe.error.message })
       : createCollection.isError
-        ? `Could not create that category. ${createCollection.error.message}`
+        ? t.subscriptions.createCategoryFailed({ message: createCollection.error.message })
         : null;
 
   useEffect(
@@ -83,7 +85,7 @@ export const NewsletterPanel = ({ collections, categoryId, onClose }: Newsletter
       () => {
         clearTimeout(resetTimer.current);
         setCopied(false);
-        setCopyError("Could not copy. Select the address and copy it by hand.");
+        setCopyError(t.subscriptions.copyFailed);
       },
     );
   };
@@ -92,19 +94,17 @@ export const NewsletterPanel = ({ collections, categoryId, onClose }: Newsletter
     <SidePanel
       open
       onClose={onClose}
-      title="Add a newsletter"
+      title={t.subscriptions.addNewsletterTitle}
       subtitle={
-        address === undefined
-          ? "Step 1 of 2 · get an address"
-          : "Step 2 of 2 · name it and pick where it lands"
+        address === undefined ? t.subscriptions.newsletterStep1 : t.subscriptions.newsletterStep2
       }
       actions={
         <>
           <button type="button" onClick={onClose} className={cancelClassName}>
-            Cancel
+            {t.common.cancel}
           </button>
           <button type="submit" form={formId} disabled={!canSubscribe} className={primaryClassName}>
-            Subscribe
+            {t.subscriptions.subscribe}
           </button>
         </>
       }
@@ -133,7 +133,7 @@ export const NewsletterPanel = ({ collections, categoryId, onClose }: Newsletter
             }}
             className={secondaryClassName}
           >
-            Generate address
+            {t.subscriptions.generateAddress}
           </button>
         ) : (
           <div className="flex flex-col gap-2">
@@ -151,12 +151,12 @@ export const NewsletterPanel = ({ collections, categoryId, onClose }: Newsletter
                   className={`${secondaryClassName} copy-swap data-copied:text-accent-text`}
                 >
                   <span className="copy-swap-label" aria-hidden={copied || undefined}>
-                    Copy
+                    {t.subscriptions.copy}
                   </span>
                   <span className="copy-swap-check" aria-hidden>
                     <Icon name="check" />
                   </span>
-                  {copied ? <span className="sr-only">Copied</span> : null}
+                  {copied ? <span className="sr-only">{t.subscriptions.copied}</span> : null}
                 </button>
               ) : null}
             </div>
@@ -168,7 +168,7 @@ export const NewsletterPanel = ({ collections, categoryId, onClose }: Newsletter
         {address === undefined ? null : (
           <div className="flex flex-col gap-2">
             <label htmlFor={nameId} className="text-xs font-semibold text-muted">
-              Name
+              {t.subscriptions.name}
             </label>
             <input
               id={nameId}

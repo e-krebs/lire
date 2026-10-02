@@ -1,3 +1,4 @@
+import { useT } from "client/i18n/useT";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { KeyboardEvent, PointerEvent } from "react";
 
@@ -41,6 +42,7 @@ interface Drag {
 
 /** The reader panel's width, the drag/keyboard handle that changes it, and its persistence. */
 export const useResizablePanel = () => {
+  const { shell } = useT();
   const [width, setWidth] = useState(() => clampWidth(storedWidth() ?? DEFAULT_WIDTH));
   const [max, setMax] = useState(() => maxWidth());
   const [dragging, setDragging] = useState(false);
@@ -109,7 +111,7 @@ export const useResizablePanel = () => {
     separatorProps: {
       role: "separator" as const,
       "aria-orientation": "vertical" as const,
-      "aria-label": "Resize the article panel",
+      "aria-label": shell.resizeArticlePanel,
       "aria-valuenow": width,
       "aria-valuemin": MIN_WIDTH,
       "aria-valuemax": max,

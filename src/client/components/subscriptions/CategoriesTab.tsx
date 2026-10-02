@@ -28,10 +28,10 @@ import {
   useUnreadCounts,
 } from "client/api/queries";
 import { Icon } from "client/components/ui/icons";
+import { useT } from "client/i18n/useT";
 import type { Collection } from "shared/feedsApi/types";
 import {
   EmptyLine,
-  feedCountLabel,
   FilterRow,
   addButtonClassName,
   listRowClassName,
@@ -58,6 +58,7 @@ interface NewCategoryFormProps {
 
 // Asks for the name in place, and keeps the draft on blur: only Cancel or Escape drops it.
 const NewCategoryForm = ({ onCancel, onCreated }: NewCategoryFormProps) => {
+  const t = useT();
   const inputId = useId();
   const errorId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -66,9 +67,9 @@ const NewCategoryForm = ({ onCancel, onCreated }: NewCategoryFormProps) => {
   const createCollection = useCreateCollection();
 
   const errorMessage = empty
-    ? "Enter a name for the category."
+    ? t.subscriptions.enterCategoryName
     : createCollection.isError
-      ? `Could not create that category. ${createCollection.error.message}`
+      ? t.subscriptions.createCategoryFailed({ message: createCollection.error.message })
       : null;
 
   return (
@@ -90,7 +91,7 @@ const NewCategoryForm = ({ onCancel, onCreated }: NewCategoryFormProps) => {
       }}
     >
       <label htmlFor={inputId} className="text-xs font-semibold text-muted">
-        New category name
+        {t.subscriptions.newCategoryName}
       </label>
       <input
         ref={inputRef}
@@ -122,14 +123,14 @@ const NewCategoryForm = ({ onCancel, onCreated }: NewCategoryFormProps) => {
           onClick={onCancel}
           className={`${textButtonClassName} text-muted hover:bg-surface-2`}
         >
-          Cancel
+          {t.common.cancel}
         </button>
         <button
           type="submit"
           disabled={createCollection.isPending}
           className={`${textButtonClassName} bg-accent font-semibold text-on-accent`}
         >
-          Create category
+          {t.subscriptions.createCategory}
         </button>
       </div>
     </form>
@@ -171,6 +172,7 @@ const CategoryRow = ({
     transition,
     isDragging,
   } = useSortable({ id: collection.id, disabled: !sortable || saving });
+  const t = useT().subscriptions;
   const feedCount = collection.feeds.length;
   const detailId = useId();
   const unreadId = useId();
@@ -191,7 +193,7 @@ const CategoryRow = ({
           type="button"
           {...attributes}
           {...listeners}
-          aria-label={`Reorder ${collection.label}`}
+          aria-label={t.reorder({ label: collection.label })}
           className={`
             grid size-11 flex-none cursor-grab touch-none place-items-center rounded-xl text-faint
             hover:text-muted
@@ -224,7 +226,7 @@ const CategoryRow = ({
             {collection.label}
           </span>
           <span id={detailId} className="morph-detail self-start text-xs text-faint tabular-nums">
-            {feedCountLabel(feedCount)}
+            {t.feedCount({ count: feedCount })}
           </span>
         </span>
         <span
@@ -235,7 +237,7 @@ const CategoryRow = ({
           `}
         >
           {unread}
-          <span className="sr-only"> unread</span>
+          <span className="sr-only">{t.unread}</span>
         </span>
         <Icon name="chevron" className="size-4 flex-none text-faint" />
       </button>
@@ -256,6 +258,7 @@ export const CategoriesTab = ({
   openCategoryId,
   onOpenCategory,
 }: CategoriesTabProps) => {
+  const t = useT().subscriptions;
   const [filter, setFilter] = useState("");
   const [creating, setCreating] = useState(false);
   // dnd-kit clears the drag transforms on drop, so the list must take the new order in that same render.
@@ -279,14 +282,20 @@ export const CategoriesTab = ({
   const labelOf = (id: UniqueIdentifier): string =>
     ordered.find((collection) => collection.id === id)?.label ?? "";
   const positionOf = (id: UniqueIdentifier): string =>
-    `position ${ordered.findIndex((collection) => collection.id === id) + 1} of ${ordered.length}`;
+    t.positionOf({
+      index: ordered.findIndex((collection) => collection.id === id) + 1,
+      total: ordered.length,
+    });
   const announcements: Announcements = {
-    onDragStart: ({ active }) => `Picked up ${labelOf(active.id)}, at ${positionOf(active.id)}.`,
+    onDragStart: ({ active }) =>
+      t.dragPickedUp({ label: labelOf(active.id), position: positionOf(active.id) }),
     onDragOver: ({ active, over }) =>
-      over ? `${labelOf(active.id)} moved to ${positionOf(over.id)}.` : undefined,
+      over ? t.dragMoved({ label: labelOf(active.id), position: positionOf(over.id) }) : undefined,
     onDragEnd: ({ active, over }) =>
-      over ? `${labelOf(active.id)} dropped at ${positionOf(over.id)}.` : undefined,
-    onDragCancel: ({ active }) => `Move cancelled. ${labelOf(active.id)} stays in place.`,
+      over
+        ? t.dragDropped({ label: labelOf(active.id), position: positionOf(over.id) })
+        : undefined,
+    onDragCancel: ({ active }) => t.dragCancelled({ label: labelOf(active.id) }),
   };
 
   const onDragEnd = ({ active, over }: DragEndEvent): void => {
@@ -311,8 +320,8 @@ export const CategoriesTab = ({
     <div className="flex flex-col gap-4">
       <div className="flex gap-2">
         <FilterRow
-          label="Filter categories"
-          placeholder="Filter categories…"
+          label={t.filterCategories}
+          placeholder={t.filterCategoriesPlaceholder}
           value={filter}
           onChange={setFilter}
         />
@@ -324,7 +333,7 @@ export const CategoriesTab = ({
           }}
           className={addButtonClassName}
         >
-          ＋ New
+          {t.newCategory}
         </button>
       </div>
       {creating ? (
@@ -340,14 +349,14 @@ export const CategoriesTab = ({
         />
       ) : null}
       {collections.length === 0 ? (
-        <EmptyLine>Categories group your feeds. Create one with “＋ New”.</EmptyLine>
+        <EmptyLine>{t.noCategories}</EmptyLine>
       ) : shown.length === 0 ? (
-        <EmptyLine>{`No category matches “${filter.trim()}”`}</EmptyLine>
+        <EmptyLine>{t.noCategoryMatches({ query: filter.trim() })}</EmptyLine>
       ) : (
         <>
           {reorder.isError ? (
             <p role="alert" className="text-sm text-danger">
-              Could not save the new order. Move the category again to retry.
+              {t.reorderFailed}
             </p>
           ) : null}
           <DndContext

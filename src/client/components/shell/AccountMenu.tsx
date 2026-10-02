@@ -10,6 +10,9 @@ import { Switch } from "client/components/ui/Switch";
 import { swallowNextClick } from "client/utils/swallowNextClick";
 import { tip } from "client/utils/tooltip";
 import { useOverlay } from "client/hooks/useOverlay";
+import { setLocalePreference, useLocalePreference } from "client/i18n/locale";
+import type { LocalePreference } from "client/i18n/locale";
+import { useT } from "client/i18n/useT";
 import {
   browserChoices,
   getPreferredBrowser,
@@ -31,16 +34,17 @@ const rowClassName = `
 
 // Only an installed iOS app or the Android TWA has a browser to pick, so elsewhere the row is absent.
 const ExternalBrowserSelect = () => {
-  const [choices] = useState(browserChoices);
+  const { shell } = useT();
+  const choices = browserChoices({ defaultLabel: shell.defaultBrowser });
   const [browser, setBrowser] = useState(getPreferredBrowser);
   if (choices.length === 0) return null;
   const options: { id: BrowserId; label: string }[] = [
     ...choices,
-    { id: "none", label: "This app" },
+    { id: "none", label: shell.thisApp },
   ];
   return (
     <label className={rowClassName}>
-      <span className="flex-none text-muted">Open external links in</span>
+      <span className="flex-none text-muted">{shell.openExternalLinksIn}</span>
       <select
         value={browser ?? "none"}
         onChange={(event) => {
@@ -48,6 +52,39 @@ const ExternalBrowserSelect = () => {
           if (next === undefined) return;
           setPreferredBrowser(next);
           setBrowser(next);
+        }}
+        className={`
+          h-8 min-w-0 rounded-lg border border-hairline bg-surface px-2 text-ink
+          focus-visible:outline-2 focus-visible:outline-accent
+        `}
+      >
+        {options.map(({ id, label }) => (
+          <option key={id} value={id}>
+            {label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+};
+
+const LanguageSelect = () => {
+  const { shell } = useT();
+  const preference = useLocalePreference();
+  const options: { id: LocalePreference; label: string }[] = [
+    { id: "system", label: shell.languageSystem },
+    { id: "en", label: shell.languageEnglish },
+    { id: "fr", label: shell.languageFrench },
+  ];
+  return (
+    <label className={rowClassName}>
+      <span className="flex-none text-muted">{shell.language}</span>
+      <select
+        value={preference}
+        onChange={(event) => {
+          const next = options.find(({ id }) => id === event.target.value)?.id;
+          if (next === undefined) return;
+          setLocalePreference(next);
         }}
         className={`
           h-8 min-w-0 rounded-lg border border-hairline bg-surface px-2 text-ink
@@ -82,6 +119,7 @@ export const AccountMenu = () => {
   const authStatus = useAuthStatus();
   const barPosition = useBarPosition();
   const mock = isMockMode();
+  const { shell } = useT();
   useOverlay({ id: "account-menu", isOpen: open });
 
   const close = (): void => {
@@ -112,7 +150,7 @@ export const AccountMenu = () => {
         type="button"
         popoverTarget={id}
         aria-expanded={open}
-        {...tip({ label: "Account and app info" })}
+        {...tip({ label: shell.accountAndAppInfo })}
         className={triggerClassName}
       >
         <Icon name="settings" />
@@ -122,7 +160,7 @@ export const AccountMenu = () => {
         id={id}
         popover="auto"
         role="group"
-        aria-label="Account and app info"
+        aria-label={shell.accountAndAppInfo}
         onToggle={(event) => {
           setOpen(event.newState === "open");
         }}
@@ -148,11 +186,11 @@ export const AccountMenu = () => {
         </div>
 
         {import.meta.env.VITE_DEMO !== "true" && (
-          <Row label="Account">
+          <Row label={shell.account}>
             {mock ? (
-              "Mock data"
+              shell.mockData
             ) : authStatus.data?.signedIn ? (
-              "Signed in"
+              shell.signedIn
             ) : (
               <a
                 href="/api/auth/login"
@@ -161,7 +199,7 @@ export const AccountMenu = () => {
                   focus-visible:outline-2 focus-visible:outline-accent
                 `}
               >
-                Sign in
+                {shell.signIn}
               </a>
             )}
           </Row>
@@ -174,13 +212,14 @@ export const AccountMenu = () => {
           }}
           className="mx-3 justify-between"
         >
-          Bar at the bottom
+          {shell.barAtBottom}
         </Switch>
         <ExternalBrowserSelect />
+        <LanguageSelect />
 
         <hr className="my-2 border-hairline" />
 
-        <Row label="Version">{import.meta.env.VITE_APP_VERSION ?? "dev"}</Row>
+        <Row label={shell.version}>{import.meta.env.VITE_APP_VERSION ?? "dev"}</Row>
 
         <Link
           to="/subscriptions"
@@ -191,7 +230,7 @@ export const AccountMenu = () => {
             focus-visible:outline-2 focus-visible:outline-accent
           `}
         >
-          Manage subscriptions
+          {shell.manageSubscriptions}
         </Link>
       </div>
     </>

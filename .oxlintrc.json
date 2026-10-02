@@ -18,6 +18,7 @@
         "code-conventions/hook-file-name": "error",
         "code-conventions/no-render-helper": "error",
         "code-conventions/barrel-needs-several-exports": "error",
+        "code-conventions/no-raw-jsx-text": "error",
         "react-hooks/rules-of-hooks": "error",
         "react-hooks/exhaustive-deps": "error"
       }
@@ -120,6 +121,10 @@
     {
       "files": ["src/**/__tests__/**", "src/**/__stories__/**"],
       "rules": { "code-conventions/no-render-helper": "off" }
+    },
+    {
+      "files": ["src/**/__tests__/**", "src/**/__stories__/**", "src/client/routes/dev.*.tsx"],
+      "rules": { "code-conventions/no-raw-jsx-text": "off" }
     },
     {
       "files": ["e2e/**/*.spec.ts"],

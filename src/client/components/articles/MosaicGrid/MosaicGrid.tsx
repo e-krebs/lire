@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { useT } from "client/i18n/useT";
 import { MIN_SEARCH_LENGTH, keys, useSearchContents, useStream } from "client/api/queries";
 import { MosaicBody } from "./MosaicBody";
 import { actionClassName } from "./shared";
@@ -25,6 +26,7 @@ export const MosaicGrid = ({
   query = "",
   readerOpen = false,
 }: MosaicGridProps) => {
+  const t = useT();
   const searching = query.trim() !== "";
   const streamResult = useStream({ streamId, unreadOnly, ranked, enabled: !searching });
   const searchResult = useSearchContents({ streamId, query, unreadOnly, enabled: searching });
@@ -33,11 +35,9 @@ export const MosaicGrid = ({
   if (searching && query.trim().length < MIN_SEARCH_LENGTH) {
     return (
       <div className="flex flex-col items-start gap-3 p-4">
-        <p className="text-sm text-muted">
-          Type at least {MIN_SEARCH_LENGTH} characters to search.
-        </p>
+        <p className="text-sm text-muted">{t.articles.typeAtLeast({ min: MIN_SEARCH_LENGTH })}</p>
         <Link to="." search={(prev) => ({ ...prev, q: undefined })} className={actionClassName}>
-          Clear search
+          {t.articles.clearSearch}
         </Link>
       </div>
     );

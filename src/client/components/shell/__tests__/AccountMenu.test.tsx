@@ -15,6 +15,12 @@ const ui = {
   get browserSelect() {
     return screen.findByRole("combobox", { name: /^Open external links in/, hidden: true });
   },
+  get languageSelect() {
+    return screen.findByRole("combobox", { name: /^Language/, hidden: true });
+  },
+  get frenchLanguageSelect() {
+    return screen.findByRole("combobox", { name: /^Langue/, hidden: true });
+  },
 };
 
 describe("AccountMenu", () => {
@@ -44,5 +50,17 @@ describe("AccountMenu", () => {
     await userEvent.selectOptions(select, "This app");
     expect(select).toHaveValue("none");
     expect(window.localStorage.getItem("lire.externalBrowser")).toBe("none");
+  });
+
+  it("switches the UI to French from the language select", async () => {
+    renderApp({ url: "/subscriptions" });
+
+    const select = await ui.languageSelect;
+    expect(select).toHaveValue("system");
+
+    await userEvent.selectOptions(select, "Français");
+    expect(await ui.frenchLanguageSelect).toHaveValue("fr");
+    expect(document.documentElement.lang).toBe("fr");
+    expect(window.localStorage.getItem("lire.locale")).toBe("fr");
   });
 });

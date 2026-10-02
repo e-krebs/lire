@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { TooltipLayer } from "client/components/shell/TooltipLayer";
 import { TopBar } from "client/components/shell/TopBar";
+import { useT } from "client/i18n/useT";
 import { useOverlayOpen } from "client/hooks/useOverlay";
 
 interface AppShellProps {
@@ -14,6 +15,7 @@ interface AppShellProps {
 export const AppShell = ({ children }: AppShellProps) => {
   // A menu or the desktop Navigator is open: the content behind it neither hovers nor clicks.
   const overlayOpen = useOverlayOpen();
+  const { shell } = useT();
   return (
     <div
       className={`
@@ -32,7 +34,7 @@ export const AppShell = ({ children }: AppShellProps) => {
         focus-visible:outline-2 focus-visible:outline-accent
       `}
       >
-        Skip to content
+        {shell.skipToContent}
       </a>
       <TopBar />
       <main
@@ -56,23 +58,26 @@ interface PanesProps {
 // Below `lg` one pane shows: the reader when an entry is open, the list otherwise. At `lg`+ the
 // grid keeps the full width and the reader floats over it — the reader brings its own scrim and
 // panel (see Reader.tsx), which this container is only the positioning context for.
-export const Panes = ({ list, reader }: PanesProps) => (
-  <div
-    data-reading={reader ? "" : undefined}
-    className="panes group relative grid h-full min-h-0 grid-cols-1"
-  >
-    <section
-      aria-label="Entries"
-      // Behind the scrim the grid is out of reach for the keyboard and the reader as well.
-      inert={reader ? true : undefined}
-      className={`
+export const Panes = ({ list, reader }: PanesProps) => {
+  const { shell } = useT();
+  return (
+    <div
+      data-reading={reader ? "" : undefined}
+      className="panes group relative grid h-full min-h-0 grid-cols-1"
+    >
+      <section
+        aria-label={shell.entries}
+        // Behind the scrim the grid is out of reach for the keyboard and the reader as well.
+        inert={reader ? true : undefined}
+        className={`
         min-h-0 scroll-pane
         group-data-reading:hidden
         lg:group-data-reading:block
       `}
-    >
-      {list}
-    </section>
-    {reader}
-  </div>
-);
+      >
+        {list}
+      </section>
+      {reader}
+    </div>
+  );
+};

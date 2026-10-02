@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { useElementWidth } from "client/hooks/useElementWidth";
+import { useT } from "client/i18n/useT";
 
 interface ChipSetProps {
   /** Text of each chip. */
@@ -42,6 +43,7 @@ const moreClassName = `
 `;
 
 export const ChipSet = ({ labels, className }: ChipSetProps) => {
+  const t = useT().subscriptions;
   const { attach, width } = useElementWidth();
   const measureRef = useRef<HTMLDivElement>(null);
   const [count, setCount] = useState(labels.length);
@@ -74,7 +76,7 @@ export const ChipSet = ({ labels, className }: ChipSetProps) => {
       {hidden.length === 0 ? null : (
         <span data-tip={hidden.join(", ")} className={moreClassName}>
           <span aria-hidden="true">{`+${hidden.length}`}</span>
-          <span className="sr-only">{`, also in ${hidden.join(", ")}`}</span>
+          <span className="sr-only">{t.alsoIn({ names: hidden.join(", ") })}</span>
         </span>
       )}
       {/* Every chip at its natural width, plus the widest `+N`, for the fit above. */}

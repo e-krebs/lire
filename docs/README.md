@@ -56,3 +56,5 @@ Architecture decision records sit outside the four quadrants as their own genre 
   and owns the Cloudflare setup
 - [adr/0009-newsletter-iframe.md](adr/0009-newsletter-iframe.md) - Render newsletters in a
   sandboxed iframe, posts stay inline
+- [adr/0010-in-house-i18n.md](adr/0010-in-house-i18n.md) - Translate the UI with an in-house typed
+  catalog and `Intl`, no library

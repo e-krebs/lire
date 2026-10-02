@@ -53,6 +53,9 @@ export default defineConfig({
   use: {
     baseURL: SEED_URL,
     trace: "on-first-retry",
+    // Pinned, so the English copy and the dates read the same on every host.
+    locale: "en-US",
+    timezoneId: "UTC",
   },
   projects: [
     {

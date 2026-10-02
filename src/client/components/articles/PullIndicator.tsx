@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { Icon } from "client/components/ui/icons";
+import { useT } from "client/i18n/useT";
 import { PULL_THRESHOLD } from "client/hooks/usePullToRefresh";
 import type { PullState } from "client/hooks/usePullToRefresh";
 
@@ -9,6 +10,7 @@ interface PullIndicatorProps {
 
 // The disc the finger drags: silent while it is only a gesture, a status once the request is out.
 export const PullIndicator = ({ pull }: PullIndicatorProps) => {
+  const t = useT();
   if (!pull) return null;
   // The custom properties drive position and icon rotation from styles.css; typed as an
   // intersection, since React's CSSProperties has no index for `--*` keys.
@@ -29,7 +31,7 @@ export const PullIndicator = ({ pull }: PullIndicatorProps) => {
       style={pullStyle}
     >
       <Icon name="refresh" className="size-5" />
-      {pull.refreshing ? <span className="sr-only">Refreshing</span> : null}
+      {pull.refreshing ? <span className="sr-only">{t.articles.refreshingStatus}</span> : null}
     </div>
   );
 };

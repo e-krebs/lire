@@ -2,6 +2,7 @@ import { useId, useRef, useState } from "react";
 import { useRenameCollection, useSaveSubscription, useUnsubscribe } from "client/api/queries";
 import { feedsInCategory, orphansOf } from "client/api/selectors";
 import { Icon } from "client/components/ui/icons";
+import { useT } from "client/i18n/useT";
 import { tip } from "client/utils/tooltip";
 import type { Collection, Subscription } from "shared/feedsApi/types";
 import { AddSourcesMenu } from "./AddSourcesMenu";
@@ -13,7 +14,6 @@ import {
   FilterRow,
   HueDot,
   addButtonClassName,
-  feedCountLabel,
   hostOf,
   listRowClassName,
   matchesFilter,
@@ -39,6 +39,7 @@ interface CategoryNameFormProps {
 
 // Keeps the draft on blur and submit enabled; an empty name only marks the field invalid.
 export const CategoryNameForm = ({ formId, category, rename, onSaved }: CategoryNameFormProps) => {
+  const t = useT().subscriptions;
   const inputId = useId();
   const errorId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -46,9 +47,9 @@ export const CategoryNameForm = ({ formId, category, rename, onSaved }: Category
   const [empty, setEmpty] = useState(false);
 
   const message = empty
-    ? "Enter a name for this category."
+    ? t.enterCategoryNameForPanel
     : rename.isError
-      ? `Could not rename this category. ${rename.error.message}`
+      ? t.renameFailed({ message: rename.error.message })
       : null;
 
   return (
@@ -68,7 +69,7 @@ export const CategoryNameForm = ({ formId, category, rename, onSaved }: Category
       }}
     >
       <label htmlFor={inputId} className="text-xs font-semibold text-muted">
-        Name
+        {t.name}
       </label>
       <input
         ref={inputRef}
@@ -98,8 +99,6 @@ export const CategoryNameForm = ({ formId, category, rename, onSaved }: Category
     </form>
   );
 };
-
-const LOCKED_TIP = "Its feeds have no other category to move to";
 
 // The feeds API keeps no feed without a category, so the last one's feeds would have nowhere to go.
 const isDeleteLocked = ({
@@ -133,6 +132,7 @@ export const CategoryActions = ({
   renaming,
   onDelete,
 }: CategoryActionsProps) => {
+  const t = useT().subscriptions;
   const reasonId = useId();
   const locked = isDeleteLocked({ category, collections, subscriptions });
 
@@ -144,22 +144,22 @@ export const CategoryActions = ({
         disabled={renaming}
         aria-disabled={locked || undefined}
         aria-describedby={locked ? reasonId : undefined}
-        data-tip={locked ? LOCKED_TIP : undefined}
+        data-tip={locked ? t.lockedTip : undefined}
         data-tip-side={locked ? "top" : undefined}
         onClick={() => {
           if (!locked) onDelete();
         }}
         className={`${dangerSoftClassName} aria-disabled:cursor-default aria-disabled:opacity-50`}
       >
-        Delete category…
+        {t.deleteCategoryEllipsis}
       </button>
       {locked ? (
         <span id={reasonId} hidden>
-          {LOCKED_TIP}
+          {t.lockedTip}
         </span>
       ) : null}
       <button type="submit" form={formId} className={primaryClassName}>
-        Save changes
+        {t.saveChanges}
       </button>
     </>
   );
@@ -191,6 +191,7 @@ export const CategoryPanel = ({
   onAddWebsite,
   onAddNewsletter,
 }: CategoryPanelProps) => {
+  const t = useT().subscriptions;
   const formId = useId();
   const feedsHeadingId = useId();
   const [filter, setFilter] = useState("");
@@ -203,7 +204,7 @@ export const CategoryPanel = ({
   const feeds = feedsInCategory({ subscriptions, categoryId: category.id });
   const orphans = orphansOf({ subscriptions, categoryId: category.id }).length;
   const shared = feeds.length - orphans;
-  const feedCount = feedCountLabel(feeds.length);
+  const feedCount = t.feedCount({ count: feeds.length });
   const rowId = useId();
   const shown = feeds.filter((feed) =>
     matchesFilter({ filter, texts: [feed.title, feed.website] }),
@@ -233,7 +234,7 @@ export const CategoryPanel = ({
         subtitle={
           <>
             <span className="morph-detail">{feedCount}</span>
-            {shared === 0 ? null : <span>{` · ${shared} also in another category`}</span>}
+            {shared === 0 ? null : <span>{t.alsoInAnother({ count: shared })}</span>}
           </>
         }
         actions={
@@ -253,12 +254,12 @@ export const CategoryPanel = ({
           <CategoryNameForm formId={formId} category={category} rename={rename} onSaved={onClose} />
           <section aria-labelledby={feedsHeadingId} className="flex flex-col gap-2">
             <h3 id={feedsHeadingId} className="text-xs font-semibold text-muted tabular-nums">
-              {`Feeds · ${feeds.length}`}
+              {t.feedsHeading({ count: feeds.length })}
             </h3>
             <div className="flex gap-2">
               <FilterRow
-                label={`Filter feeds in ${category.label}`}
-                placeholder={`Filter ${feedCount}…`}
+                label={t.filterFeedsIn({ label: category.label })}
+                placeholder={t.filterPlaceholder({ feedCount })}
                 value={filter}
                 onChange={setFilter}
               />
@@ -269,7 +270,7 @@ export const CategoryPanel = ({
               />
             </div>
             {shown.length === 0 ? (
-              <EmptyLine>{`No feed matches “${filter.trim()}”`}</EmptyLine>
+              <EmptyLine>{t.noFeedMatches({ query: filter.trim() })}</EmptyLine>
             ) : (
               <ul className="flex flex-col">
                 {shown.map((feed, index) => {
@@ -326,7 +327,9 @@ export const CategoryPanel = ({
                       <button
                         type="button"
                         disabled={removing}
-                        {...tip({ label: `Remove ${feed.title} from ${category.label}` })}
+                        {...tip({
+                          label: t.removeFeed({ title: feed.title, label: category.label }),
+                        })}
                         onClick={() => {
                           remove(feed);
                         }}
@@ -347,14 +350,14 @@ export const CategoryPanel = ({
             )}
             {save.isError ? (
               <p role="alert" className="text-sm text-danger">
-                {`Could not remove that feed. ${save.error.message}`}
+                {t.removeFeedFailed({ message: save.error.message })}
               </p>
             ) : null}
           </section>
           <p className="text-xs text-faint text-pretty">
             {orphans === 0 || isDeleteLocked({ category, collections, subscriptions })
-              ? "✕ removes the feed from this category only."
-              : `✕ removes the feed from this category only. Deleting the category asks where the ${orphans === 1 ? "feed" : `${orphans} feeds`} with no other category go.`}
+              ? t.removeHint
+              : t.removeHintOrphans({ count: orphans })}
           </p>
         </div>
       </SidePanel>
@@ -384,19 +387,19 @@ export const CategoryPanel = ({
             },
           });
         }}
-        title={`Unsubscribe from ${unsubscribing?.title ?? "this feed"}?`}
-        confirmLabel="Unsubscribe"
+        title={t.unsubscribeTitle({ title: unsubscribing?.title ?? t.thisFeed })}
+        confirmLabel={t.unsubscribe}
         confirmDisabled={unsubscribe.isPending}
         busy={unsubscribe.isPending}
         extra={
           unsubscribe.isError ? (
             <p role="alert" className="text-sm text-danger">
-              {`Could not unsubscribe. ${unsubscribe.error.message}`}
+              {t.unsubscribeFailed({ message: unsubscribe.error.message })}
             </p>
           ) : undefined
         }
       >
-        {`${category.label} is its only category, so removing it unsubscribes the feed. Subscribing again starts from an empty history.`}
+        {t.onlyCategory({ label: category.label })}
       </ConfirmDialog>
     </>
   );

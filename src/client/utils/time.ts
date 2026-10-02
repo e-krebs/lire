@@ -1,4 +1,53 @@
-const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
+import type { Locale } from "client/i18n/locale";
+
+// The fixed words stay here rather than in the catalog, so this util does not depend on it.
+const WORDS: Record<
+  Locale,
+  {
+    justNow: string;
+    now: string;
+    gap: string;
+    m: string;
+    h: string;
+    d: string;
+    w: string;
+  }
+> = {
+  en: {
+    justNow: "just now",
+    now: "now",
+    gap: "",
+    m: "m",
+    h: "h",
+    d: "d",
+    w: "w",
+  },
+  fr: {
+    justNow: "à l'instant",
+    now: "maintenant",
+    gap: " ",
+    m: "min",
+    h: "h",
+    d: "j",
+    w: "sem",
+  },
+};
+
+const perLocale = <T>(make: (locale: Locale) => T): ((locale: Locale) => T) => {
+  const cache = new Map<Locale, T>();
+  return (locale) => {
+    let value = cache.get(locale);
+    if (value === undefined) {
+      value = make(locale);
+      cache.set(locale, value);
+    }
+    return value;
+  };
+};
+
+const relativeFormatter = perLocale(
+  (locale) => new Intl.RelativeTimeFormat(locale, { numeric: "auto" }),
+);
 
 const UNITS: { unit: Intl.RelativeTimeFormatUnit; ms: number }[] = [
   { unit: "year", ms: 365 * 24 * 60 * 60 * 1000 },
@@ -9,46 +58,72 @@ const UNITS: { unit: Intl.RelativeTimeFormatUnit; ms: number }[] = [
   { unit: "minute", ms: 60 * 1000 },
 ];
 
+interface TimeArgs {
+  timestamp: number;
+  locale: Locale;
+}
+
 /** Relative time for a list row ("3h ago"); falls back to "just now" under a minute. */
-export const relativeTime = (timestamp: number, now = Date.now()): string => {
+export const relativeTime = ({
+  timestamp,
+  locale,
+  now = Date.now(),
+}: TimeArgs & { now?: number }): string => {
   const diff = timestamp - now;
   for (const { unit, ms } of UNITS) {
-    if (Math.abs(diff) >= ms) return rtf.format(Math.round(diff / ms), unit);
+    if (Math.abs(diff) >= ms) return relativeFormatter(locale).format(Math.round(diff / ms), unit);
   }
-  return "just now";
+  return WORDS[locale].justNow;
 };
 
-const absoluteFormatter = new Intl.DateTimeFormat(undefined, {
-  dateStyle: "long",
-  timeStyle: "short",
-});
+const absoluteFormatter = perLocale(
+  (locale) => new Intl.DateTimeFormat(locale, { dateStyle: "long", timeStyle: "short" }),
+);
 
 /** Full date and time, for tooltips and `dateTime` fallbacks. */
-export const absoluteTime = (timestamp: number): string => absoluteFormatter.format(timestamp);
+export const absoluteTime = ({ timestamp, locale }: TimeArgs): string =>
+  absoluteFormatter(locale).format(timestamp);
 
-const mediumDateFormatter = new Intl.DateTimeFormat(undefined, { dateStyle: "medium" });
+const mediumDateFormatter = perLocale(
+  (locale) => new Intl.DateTimeFormat(locale, { dateStyle: "medium" }),
+);
 
-/** Date alone for the reader header ("18 Sept 2026"), where the full form crowds the masthead. */
-export const mediumDate = (timestamp: number): string => mediumDateFormatter.format(timestamp);
+/** Date alone for the reader header ("Sep 18, 2026"), where the full form crowds the masthead. */
+export const mediumDate = ({ timestamp, locale }: TimeArgs): string =>
+  mediumDateFormatter(locale).format(timestamp);
 
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 const WEEK = 7 * DAY;
 
-const shortDateFormatter = new Intl.DateTimeFormat("en", { month: "short", day: "numeric" });
+const shortDateFormatter = perLocale(
+  (locale) => new Intl.DateTimeFormat(locale, { month: "short", day: "numeric" }),
+);
+
+const shortDateYearFormatter = perLocale(
+  (locale) =>
+    new Intl.DateTimeFormat(locale, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }),
+);
 
 /** Compact age for a card chip: "now", "5m", "3h", "2d", "3w", then "Mar 4" (year when not this one). */
-export const shortRelativeTime = (timestamp: number, now = Date.now()): string => {
+export const shortRelativeTime = ({
+  timestamp,
+  locale,
+  now = Date.now(),
+}: TimeArgs & { now?: number }): string => {
+  const words = WORDS[locale];
   const age = now - timestamp;
-  if (age < MINUTE) return "now";
-  if (age < HOUR) return `${Math.floor(age / MINUTE)}m`;
-  if (age < DAY) return `${Math.floor(age / HOUR)}h`;
-  if (age < WEEK) return `${Math.floor(age / DAY)}d`;
-  if (age < 5 * WEEK) return `${Math.floor(age / WEEK)}w`;
+  if (age < MINUTE) return words.now;
+  if (age < HOUR) return `${Math.floor(age / MINUTE)}${words.gap}${words.m}`;
+  if (age < DAY) return `${Math.floor(age / HOUR)}${words.gap}${words.h}`;
+  if (age < WEEK) return `${Math.floor(age / DAY)}${words.gap}${words.d}`;
+  if (age < 5 * WEEK) return `${Math.floor(age / WEEK)}${words.gap}${words.w}`;
 
-  const date = new Date(timestamp);
-  const short = shortDateFormatter.format(date);
-  const year = date.getFullYear();
-  return year === new Date(now).getFullYear() ? short : `${short}, ${year}`;
+  const sameYear = new Date(timestamp).getFullYear() === new Date(now).getFullYear();
+  return (sameYear ? shortDateFormatter : shortDateYearFormatter)(locale).format(timestamp);
 };

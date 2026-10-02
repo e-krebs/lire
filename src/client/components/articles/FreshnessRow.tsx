@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { Icon } from "client/components/ui/icons";
+import { useLocale } from "client/i18n/locale";
+import { useT } from "client/i18n/useT";
 import { relativeTime } from "client/utils/time";
 
 interface FreshnessRowProps {
@@ -40,12 +42,14 @@ const buttonClassName = `
 // The row above the results: what the grid is showing on the left, how fresh it is on the right.
 export const FreshnessRow = ({ updatedAt, refreshing, onRefresh, children }: FreshnessRowProps) => {
   const now = useNow(AGE_TICK_MS);
+  const locale = useLocale();
+  const t = useT();
 
   const status = refreshing
-    ? "Refreshing…"
+    ? t.articles.refreshing
     : updatedAt === undefined
       ? ""
-      : `Updated ${relativeTime(updatedAt, now)}`;
+      : t.articles.updated({ age: relativeTime({ timestamp: updatedAt, locale, now }) });
 
   return (
     <div className="flex min-h-10 items-center justify-between gap-3 px-3 pt-3 text-sm text-muted">
@@ -58,14 +62,14 @@ export const FreshnessRow = ({ updatedAt, refreshing, onRefresh, children }: Fre
             disappears from under the pointer is worse than a no-op. */}
         <button
           type="button"
-          data-tip="Refresh"
+          data-tip={t.common.refresh}
           aria-keyshortcuts="R"
           aria-busy={refreshing || undefined}
           onClick={onRefresh}
           className={`group ${buttonClassName}`}
         >
           <Icon name="refresh" className="size-4 group-aria-busy:motion-safe:animate-spin" />
-          Refresh
+          {t.common.refresh}
         </button>
       </div>
     </div>

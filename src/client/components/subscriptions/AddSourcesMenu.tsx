@@ -1,6 +1,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useOverlay, useOverlayOpen } from "client/hooks/useOverlay";
+import { useT } from "client/i18n/useT";
 import { swallowNextClick } from "client/utils/swallowNextClick";
 
 interface AddSourcesMenuProps {
@@ -30,6 +31,7 @@ export const AddSourcesMenu = ({
   onAddNewsletter,
   className,
 }: AddSourcesMenuProps) => {
+  const t = useT().subscriptions;
   const id = useId();
   const anchorName = `--add-sources-${id.replaceAll(":", "")}`;
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -93,7 +95,7 @@ export const AddSourcesMenu = ({
         style={{ anchorName }}
         className={className}
       >
-        ＋ Add sources
+        {t.addSources}
       </button>
       {/* Portaled out of <main>: that goes inert while the menu is open, and inert follows the DOM
           tree, not the top layer. */}
@@ -104,7 +106,7 @@ export const AddSourcesMenu = ({
             id={id}
             popover="auto"
             role="group"
-            aria-label="Add sources"
+            aria-label={t.addSourcesGroup}
             style={{ positionAnchor: anchorName }}
             onToggle={(event) => {
               const isOpen = event.newState === "open";
@@ -129,7 +131,7 @@ export const AddSourcesMenu = ({
               }}
               className={itemClassName}
             >
-              Add website
+              {t.addWebsite}
             </button>
             <button
               type="button"
@@ -138,7 +140,7 @@ export const AddSourcesMenu = ({
               }}
               className={itemClassName}
             >
-              Add newsletter
+              {t.addNewsletter}
             </button>
           </div>,
           portalTarget,

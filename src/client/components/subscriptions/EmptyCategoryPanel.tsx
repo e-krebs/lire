@@ -1,10 +1,10 @@
 import { useId, useState } from "react";
 import { useRenameCollection } from "client/api/queries";
+import { useT } from "client/i18n/useT";
 import type { Collection, Subscription } from "shared/feedsApi/types";
 import { AddSourcesMenu } from "./AddSourcesMenu";
 import { CategoryActions, CategoryNameForm, primaryClassName } from "./CategoryPanel";
 import { DeleteCategoryDialog } from "./DeleteCategoryDialog";
-import { feedCountLabel } from "./FeedsTab";
 import { SidePanel } from "./SidePanel";
 
 interface EmptyCategoryPanelProps {
@@ -31,6 +31,7 @@ export const EmptyCategoryPanel = ({
   onAddWebsite,
   onAddNewsletter,
 }: EmptyCategoryPanelProps) => {
+  const t = useT().subscriptions;
   const formId = useId();
   const [deleting, setDeleting] = useState(false);
   const rename = useRenameCollection();
@@ -41,7 +42,7 @@ export const EmptyCategoryPanel = ({
         open
         onClose={onClose}
         title={category.label}
-        subtitle={feedCountLabel(0)}
+        subtitle={t.feedCount({ count: 0 })}
         actions={
           <CategoryActions
             formId={formId}
@@ -58,10 +59,8 @@ export const EmptyCategoryPanel = ({
         <div className="flex flex-col gap-4 px-4 py-4">
           <CategoryNameForm formId={formId} category={category} rename={rename} onSaved={onClose} />
           <div className="flex flex-col items-center gap-2 rounded-xl bg-surface-2 px-4 py-6 text-center">
-            <p className="text-sm text-ink">No feeds in this category yet.</p>
-            <p className="text-sm text-faint text-pretty">
-              Add one, or tick this category in another feed’s panel.
-            </p>
+            <p className="text-sm text-ink">{t.noFeedsInCategory}</p>
+            <p className="text-sm text-faint text-pretty">{t.addOrTick}</p>
             <AddSourcesMenu
               onAddWebsite={onAddWebsite}
               onAddNewsletter={onAddNewsletter}

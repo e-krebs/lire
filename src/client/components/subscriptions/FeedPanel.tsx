@@ -8,6 +8,9 @@ import {
 } from "client/api/queries";
 import { Switch } from "client/components/ui/Switch";
 import { useDirectOpen, useSetDirectOpen } from "client/hooks/useDirectOpen";
+import type { Locale } from "client/i18n/locale";
+import { useLocale } from "client/i18n/locale";
+import { useT } from "client/i18n/useT";
 import type { Collection, Subscription } from "shared/feedsApi/types";
 import { CategoryPicker } from "./CategoryPicker";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -23,17 +26,32 @@ const actionClassName = `
 const submitClassName = `${actionClassName} bg-accent text-on-accent not-disabled:hover:bg-accent/90 data-clearing:bg-danger data-clearing:text-surface data-clearing:not-disabled:hover:bg-danger/90`;
 const dangerSoftClassName = `${actionClassName} bg-danger-soft text-danger`;
 
-const listFormat = new Intl.ListFormat("en", { type: "conjunction" });
+const listFormats = new Map<Locale, Intl.ListFormat>();
 
-const lossesOf = ({ categories, unread }: { categories: number; unread: number }): string =>
-  listFormat.format([
-    "the feed",
-    ...(categories === 0
-      ? []
-      : [categories === 1 ? "its category" : `its ${categories} categories`]),
-    ...(unread === 0
-      ? []
-      : [unread === 1 ? "its unread article" : `its ${unread} unread articles`]),
+const listFormatFor = (locale: Locale): Intl.ListFormat => {
+  let format = listFormats.get(locale);
+  if (!format) {
+    format = new Intl.ListFormat(locale, { type: "conjunction" });
+    listFormats.set(locale, format);
+  }
+  return format;
+};
+
+const lossesOf = ({
+  categories,
+  unread,
+  t,
+  locale,
+}: {
+  categories: number;
+  unread: number;
+  t: ReturnType<typeof useT>["subscriptions"];
+  locale: Locale;
+}): string =>
+  listFormatFor(locale).format([
+    t.lossFeed,
+    ...(categories === 0 ? [] : [t.lossCategories({ count: categories })]),
+    ...(unread === 0 ? [] : [t.lossUnread({ count: unread })]),
   ]);
 
 interface FeedPanelProps {
@@ -46,6 +64,8 @@ interface FeedPanelProps {
 }
 
 export const FeedPanel = ({ feed, collections, onClose }: FeedPanelProps) => {
+  const t = useT().subscriptions;
+  const locale = useLocale();
   const formId = useId();
   const titleId = useId();
   const titleErrorId = useId();
@@ -78,9 +98,9 @@ export const FeedPanel = ({ feed, collections, onClose }: FeedPanelProps) => {
 
   const clearing = selected.length === 0;
   const saveMessage = save.isError
-    ? `Could not save this feed. ${save.error.message}`
+    ? t.saveFeedFailed({ message: save.error.message })
     : createCollection.isError
-      ? `Could not create that category. ${createCollection.error.message}`
+      ? t.createCategoryFailed({ message: createCollection.error.message })
       : null;
 
   const handleSave = (): void => {
@@ -119,7 +139,7 @@ export const FeedPanel = ({ feed, collections, onClose }: FeedPanelProps) => {
                 }}
                 className={dangerSoftClassName}
               >
-                Unsubscribe…
+                {t.unsubscribeEllipsis}
               </button>
             )}
             <button
@@ -129,7 +149,7 @@ export const FeedPanel = ({ feed, collections, onClose }: FeedPanelProps) => {
               data-clearing={clearing || undefined}
               className={submitClassName}
             >
-              {clearing ? "Unsubscribe…" : "Save changes"}
+              {clearing ? t.unsubscribeEllipsis : t.saveChanges}
             </button>
           </>
         }
@@ -145,7 +165,7 @@ export const FeedPanel = ({ feed, collections, onClose }: FeedPanelProps) => {
         >
           <div className="flex flex-col gap-2">
             <label htmlFor={titleId} className="text-xs font-semibold text-muted">
-              Title
+              {t.titleLabel}
             </label>
             <input
               ref={titleRef}
@@ -169,7 +189,7 @@ export const FeedPanel = ({ feed, collections, onClose }: FeedPanelProps) => {
             />
             {titleEmpty ? (
               <p id={titleErrorId} role="alert" className="text-sm text-danger">
-                Enter a title for this feed.
+                {t.enterTitle}
               </p>
             ) : null}
           </div>
@@ -195,12 +215,10 @@ export const FeedPanel = ({ feed, collections, onClose }: FeedPanelProps) => {
               }}
               className="w-full justify-between"
             >
-              Opens on its site
+              {t.opensOnSite}
             </Switch>
           </div>
-          {clearing ? (
-            <p className="text-xs text-faint">Clearing every box unsubscribes this feed.</p>
-          ) : null}
+          {clearing ? <p className="text-xs text-faint">{t.clearingHint}</p> : null}
           {saveMessage === null ? null : (
             <p role="alert" className="text-sm text-danger">
               {saveMessage}
@@ -221,23 +239,27 @@ export const FeedPanel = ({ feed, collections, onClose }: FeedPanelProps) => {
             },
           });
         }}
-        title={`Unsubscribe from ${feed.title}?`}
-        confirmLabel="Unsubscribe"
+        title={t.unsubscribeTitle({ title: feed.title })}
+        confirmLabel={t.unsubscribe}
         // A DELETE that lands before a pending save's POST would be undone by it.
         confirmDisabled={unsubscribe.isPending || save.isPending}
         busy={unsubscribe.isPending}
         extra={
           unsubscribe.isError ? (
             <p role="alert" className="text-sm text-danger">
-              {`Could not unsubscribe. ${unsubscribe.error.message}`}
+              {t.unsubscribeFailed({ message: unsubscribe.error.message })}
             </p>
           ) : undefined
         }
       >
-        {`Lire drops ${lossesOf({
-          categories: feed.categories.length,
-          unread: unreadCountFor({ counts: unreadCounts.data, id: feed.id }),
-        })}. Subscribing again starts from an empty history.`}
+        {t.unsubscribeBody({
+          losses: lossesOf({
+            categories: feed.categories.length,
+            unread: unreadCountFor({ counts: unreadCounts.data, id: feed.id }),
+            t,
+            locale,
+          }),
+        })}
       </ConfirmDialog>
     </>
   );

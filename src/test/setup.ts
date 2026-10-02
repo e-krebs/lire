@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, vi } from "vitest";
+import { setLocalePreference } from "client/i18n/locale";
 import { setViewPrefs } from "client/utils/viewPrefs";
 import { server } from "./msw";
 
@@ -41,6 +42,8 @@ afterEach(() => {
   else Reflect.deleteProperty(window, "localStorage");
   // The store outlives the cleared storage, so put its defaults back first.
   setViewPrefs({ unread: true, ranked: "newest" });
+  setLocalePreference("system");
+  document.documentElement.lang = "en";
   window.localStorage.clear();
 });
 
