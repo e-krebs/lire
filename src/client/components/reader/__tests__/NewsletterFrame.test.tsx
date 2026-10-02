@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { NewsletterFrame } from "../NewsletterFrame";
 
 const HTML =
@@ -21,6 +21,10 @@ const setup = () => {
   fireEvent.load(ui.frame);
   const received = vi.fn<(event: KeyboardEvent) => void>();
   document.addEventListener("keydown", received);
+  // Files share one document, so a leftover listener would cancel other files' keys.
+  onTestFinished(() => {
+    document.removeEventListener("keydown", received);
+  });
   return {
     doc,
     received,
