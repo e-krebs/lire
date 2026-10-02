@@ -9,6 +9,9 @@ const SANDBOX = "allow-same-origin allow-popups allow-popups-to-escape-sandbox";
 const FRAME_STYLE =
   "html, body { margin: 0; background: #fff; color: #000; } html { overflow-y: hidden; overflow-x: auto; } img { max-width: 100%; height: auto; } body { font-family: system-ui, sans-serif; }";
 
+// An email sized in `vh` reads the frame's own height, so without a cap it grows on every resize.
+const MAX_FRAME_HEIGHT = 20_000;
+
 const FIELD_TAGS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
 
 // Frame elements come from another realm, so `instanceof` against this window's classes fails.
@@ -28,8 +31,8 @@ interface NewsletterFrameProps {
 }
 
 // Emails assume a white page and a browser-default stylesheet, so they render in a sandboxed frame
-// sized to its content; the reader's pane does the scrolling. Listeners are attached from here
-// because no script runs inside the frame.
+// sized to its content up to `MAX_FRAME_HEIGHT`; below that the reader's pane does the scrolling.
+// Listeners are attached from here because no script runs inside the frame.
 export const NewsletterFrame = ({ html, dir }: NewsletterFrameProps) => {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const setupRef = useRef<{ doc: Document; teardown: () => void } | null>(null);
@@ -58,7 +61,9 @@ export const NewsletterFrame = ({ html, dir }: NewsletterFrameProps) => {
     // horizontal scrollbar is added so it never covers the last line.
     const resize = () => {
       const scrollbar = Math.max(0, win.innerHeight - root.clientHeight);
-      frame.style.height = `${Math.ceil(root.getBoundingClientRect().height) + scrollbar}px`;
+      const height = Math.ceil(root.getBoundingClientRect().height) + scrollbar;
+      frame.style.height = `${Math.min(height, MAX_FRAME_HEIGHT)}px`;
+      root.style.overflowY = height > MAX_FRAME_HEIGHT ? "auto" : "";
     };
     resize();
     // Images load after setup. jsdom has no ResizeObserver.

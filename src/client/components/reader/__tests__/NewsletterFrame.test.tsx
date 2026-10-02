@@ -50,6 +50,18 @@ describe("NewsletterFrame", () => {
     expect(ui.frame.style.height).toMatch(/^\d+px$/);
   });
 
+  it("caps the height and scrolls inside past the cap", () => {
+    render(<NewsletterFrame html={HTML} dir="ltr" />);
+    const root = ui.frame.contentDocument!.documentElement;
+    Object.defineProperty(root, "getBoundingClientRect", {
+      value: () => new DOMRect(0, 0, 0, 50_000),
+    });
+    fireEvent.load(ui.frame);
+
+    expect(ui.frame.style.height).toBe("20000px");
+    expect(root.style.overflowY).toBe("auto");
+  });
+
   it("sets up once the document is parsed, before load", async () => {
     render(<NewsletterFrame html={HTML} dir="ltr" />);
     Object.defineProperty(ui.frame.contentDocument!, "URL", { value: "about:srcdoc" });
