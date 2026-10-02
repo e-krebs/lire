@@ -1,5 +1,6 @@
 import type { Collection } from "shared/feedsApi/types";
 import { Icon } from "client/components/ui/icons";
+import { useT } from "client/i18n/useT";
 import { EditLink } from "./EditLink";
 import {
   countBadgeClassName,
@@ -51,52 +52,55 @@ export const CategoryTreeRow = ({
   onToggleCollapse,
   onSelect,
   onClose,
-}: CategoryTreeRowProps) => (
-  <div
-    data-current={isCurrent || undefined}
-    data-selected={selected || undefined}
-    className={`group ${rowClassName}`}
-  >
-    <button type="button" onClick={onSelect} className={rowButtonClassName}>
-      <span aria-hidden="true" className="size-6 flex-none" />
-      <span
-        data-tip={collection.label}
-        data-tip-overflow=""
-        className={`
-          min-w-0 flex-1 truncate text-sm font-bold text-ink
-          group-data-current:text-accent-text
-        `}
-      >
-        {collection.label}
-      </span>
-      {count > 0 ? (
-        <span aria-hidden="true" className={countBadgeClassName}>
-          {count}
+}: CategoryTreeRowProps) => {
+  const t = useT().navigation;
+  return (
+    <div
+      data-current={isCurrent || undefined}
+      data-selected={selected || undefined}
+      className={`group ${rowClassName}`}
+    >
+      <button type="button" onClick={onSelect} className={rowButtonClassName}>
+        <span aria-hidden="true" className="size-6 flex-none" />
+        <span
+          data-tip={collection.label}
+          data-tip-overflow=""
+          className={`
+            min-w-0 flex-1 truncate text-sm font-bold text-ink
+            group-data-current:text-accent-text
+          `}
+        >
+          {collection.label}
         </span>
-      ) : null}
-      {selected ? (
-        <span aria-hidden="true" className={enterHintClassName}>
-          ↵
-        </span>
-      ) : null}
-    </button>
-    {expandable ? (
-      <button
-        type="button"
-        aria-label={`Toggle ${collection.label}`}
-        aria-expanded={!collapsed}
-        data-tip={collapsed ? "Expand" : "Collapse"}
-        data-collapsed={collapsed || undefined}
-        onClick={onToggleCollapse}
-        className={twistyClassName}
-      >
-        <Icon name="chevron" className="size-4" />
+        {count > 0 ? (
+          <span aria-hidden="true" className={countBadgeClassName}>
+            {count}
+          </span>
+        ) : null}
+        {selected ? (
+          <span aria-hidden="true" className={enterHintClassName}>
+            ↵
+          </span>
+        ) : null}
       </button>
-    ) : null}
-    <EditLink
-      target={{ kind: "category", categoryId: collection.id }}
-      title={collection.label}
-      onClose={onClose}
-    />
-  </div>
-);
+      {expandable ? (
+        <button
+          type="button"
+          aria-label={t.toggle({ label: collection.label })}
+          aria-expanded={!collapsed}
+          data-tip={collapsed ? t.expand : t.collapse}
+          data-collapsed={collapsed || undefined}
+          onClick={onToggleCollapse}
+          className={twistyClassName}
+        >
+          <Icon name="chevron" className="size-4" />
+        </button>
+      ) : null}
+      <EditLink
+        target={{ kind: "category", categoryId: collection.id }}
+        title={collection.label}
+        onClose={onClose}
+      />
+    </div>
+  );
+};

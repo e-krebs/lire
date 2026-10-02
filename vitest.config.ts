@@ -1,3 +1,5 @@
+// Set before any worker starts, so every date the tests format reads the same on every host.
+process.env.TZ = "UTC";
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import { cloudflareTest } from "@cloudflare/vitest-pool-workers";

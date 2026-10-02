@@ -209,6 +209,15 @@ const ui = (page: Page) => ({
 })
 ```
 
+## Locale
+
+Tests run in English: the setup file resets the locale preference to `system` after every test, and
+`system` resolves to English under jsdom, so assertions use the English catalog text. A test that
+needs French calls `setLocalePreference("fr")` from `client/i18n/locale` and relies on that reset to
+undo it. The Vitest config pins `TZ=UTC`, so time-dependent assertions do not depend on the host
+timezone. A catalog test walks every message of every locale and calls each function with sample
+arguments, so a French message needs no test of its own for coverage.
+
 ## No mocks
 
 Banned: `vi.mock`, `vi.doMock`, `vi.unmock`, `vi.doUnmock`, `vi.mocked`, `vi.importMock`,
@@ -263,6 +272,8 @@ oxlint checks these rules on every Vitest and Playwright test file:
   start with `when `
 - `test-conventions/queries-in-getters` — requires a `screen`/`view`/`within(...)`/`page` query to
   sit inside a getter or method of an object literal
+
+`code-conventions/no-raw-jsx-text` is off in `__tests__`, `__stories__` and `routes/dev.*.tsx`.
 
 These gaps stay review-enforced, because a wider rule would cost more false positives than it
 catches: a chained query off another query (`ui.list.getByRole(...)`), a query on a `render()`

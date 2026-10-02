@@ -36,6 +36,13 @@ errors, so a convention holds without a reviewer remembering it:
   start with "when", and `screen`, `within` or `page` queries sit inside a getter or method of a
   `ui` object.
 
+[code-conventions.js](../../scripts/oxlint/code-conventions.js) also holds `no-raw-jsx-text`, an
+error in `src/client`. It flags JSX text containing a letter, a string or template literal directly
+inside JSX, and a literal on `aria-label`, `title`, `placeholder`, `alt`, `label` or `data-tip`,
+because UI text belongs in the i18n catalog ([conventions](../reference/conventions.md#ui-strings)).
+The brand name `Lire` is allowed. Tests, stories and `routes/dev.*.tsx` are exempt. A string built
+in plain code, such as an object-literal `aria-label`, is outside the rule and left to review.
+
 The config adds Vitest rules beside them: `vi.mock` and its relatives, and `vi.spyOn`, are
 banned in tests, because tests go through MSW and real modules instead. Each lint message names
 the doc that explains its rule, so the error itself points at the reasoning.

@@ -48,6 +48,20 @@ The unread filter and the sort order are per device, not per account, and never 
 live in `localStorage` under `lire.view` ([viewPrefs.ts](../../src/client/utils/viewPrefs.ts)),
 behind a small store that the stream route, the view toggles and the Navigator all read.
 
+The UI speaks English and French, through a small in-house module in
+[src/client/i18n/](../../src/client/i18n/) instead of a library
+([ADR 0010](../adr/0010-in-house-i18n.md)). The catalog is one file per UI area under
+`messages/`, each holding `en` and `fr` side by side, and `en` is the source of truth that `fr` must
+match key for key. A component reads it through `useT()`, which returns a plain nested object
+(`t.subscriptions.deleteTitle`). The locale lives in a store of the same shape as the view
+preferences, built on `useSyncExternalStore`, so no React provider wraps the app. The store holds a
+preference, `system`, `en` or `fr`, in `localStorage` under `lire.locale`, which the account menu's
+language select writes. `system` follows `navigator.languages` and listens to `languagechange`, and
+any other language resolves to English. The store also keeps `<html lang>` equal to the active locale.
+Every `Intl` formatter, such as the relative times in `time.ts` and the feed list in the feed panel,
+takes that locale. Feed titles, category labels, article content and server error text are data and
+stay as they arrive. The PWA manifest, `index.html` and the Android strings stay English.
+
 An installed PWA opens an external link in an in-app view: a Safari view on iOS, a Custom Tab on
 Android Chrome. One click listener on the document, and one on each newsletter frame's document,
 sends the link to a browser the user picks in the account menu instead ([externalLinks.ts](../../src/client/utils/externalLinks.ts)). The choice is
@@ -144,7 +158,8 @@ Storybook ([.storybook/](../../.storybook/)) is its own surface, built and deplo
 app by its own CI jobs ([ci.yml](../../.github/workflows/ci.yml)). Its Vite config drops the app's
 route generator, PWA plugin and second React plugin
 ([main.ts](../../.storybook/main.ts)), because those only make sense for the real app. Stories
-double as tests: the `storybook` Vitest project runs them in a browser with the a11y addon.
+double as tests: the `storybook` Vitest project runs them in a browser with the a11y addon. A
+`locale` toolbar global switches every story between English and French.
 
 The built Storybook is deployed public at `storybook.lire.krebs.tech`, outside Access. What keeps it
 safe is the brand gate, `yarn check:demo storybook-static`

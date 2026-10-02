@@ -6,6 +6,7 @@ import { useEntry, useMarkRead } from "client/api/queries";
 import { NewsletterFrame } from "client/components/reader/NewsletterFrame";
 import { ReaderHeader } from "client/components/reader/ReaderHeader";
 import { readingTime } from "client/utils/readingTime";
+import { useT } from "client/i18n/useT";
 import { replaceBrokenImage } from "client/utils/brokenImage";
 import { useImageFallback } from "client/hooks/useImageFallback";
 import { useResizablePanel } from "client/hooks/useResizablePanel";
@@ -72,6 +73,7 @@ interface ReaderProps {
 // Leaving is the only way to mark the entry: "Keep" navigates, "Mark" mutates then navigates, and
 // the scrim and Escape both take the "Mark" exit.
 export const Reader = ({ entryId, streamKey }: ReaderProps) => {
+  const t = useT();
   const entry = useEntry(entryId);
   const { mutate } = useMarkRead();
   const navigate = useNavigate();
@@ -126,16 +128,19 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
   const hero = useImageFallback({ url: heroUrl, fallbackUrl: data?.visual?.edgeCacheUrl });
 
   // `error` does not bubble, so it is caught in the capture phase on the article.
-  const watchBodyImages = useCallback((article: HTMLElement) => {
-    const onError = (event: Event): void => {
-      const { target } = event;
-      if (target instanceof Element) replaceBrokenImage(target);
-    };
-    article.addEventListener("error", onError, true);
-    return () => {
-      article.removeEventListener("error", onError, true);
-    };
-  }, []);
+  const watchBodyImages = useCallback(
+    (article: HTMLElement) => {
+      const onError = (event: Event): void => {
+        const { target } = event;
+        if (target instanceof Element) replaceBrokenImage({ img: target, labels: t.articles });
+      };
+      article.addEventListener("error", onError, true);
+      return () => {
+        article.removeEventListener("error", onError, true);
+      };
+    },
+    [t],
+  );
 
   const dir = (data?.content?.direction ?? data?.summary?.direction) === "rtl" ? "rtl" : "ltr";
 
@@ -143,10 +148,10 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
   if (data === undefined) {
     body = entry.isError ? (
       <p role="alert" className="p-4 text-sm text-danger">
-        Article not found.
+        {t.articles.articleNotFound}
       </p>
     ) : (
-      <p className="p-4 text-sm text-faint">Loading…</p>
+      <p className="p-4 text-sm text-faint">{t.common.loading}</p>
     );
   } else {
     body = (
@@ -207,13 +212,13 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
       >
         {openedUnread === undefined ? null : (
           <p className="reader-scrim-label">
-            Mark as {openedUnread ? "read" : "unread"} and close
-            <kbd>Esc</kbd>
+            {openedUnread ? t.articles.markReadAndClose : t.articles.markUnreadAndClose}
+            <kbd>{t.articles.escapeKey}</kbd>
           </p>
         )}
       </div>
       <section
-        aria-label="Article"
+        aria-label={t.articles.article}
         style={widthStyle}
         className="reader-panel flex min-h-0 flex-col"
       >

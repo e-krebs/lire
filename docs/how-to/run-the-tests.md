@@ -37,6 +37,17 @@ Linux machine.
 
 Both need the Playwright browsers installed. Reports land in `playwright-report/`.
 
+## Locale and timezone
+
+The tests pin both, so no setup is needed: Vitest sets `TZ=UTC` in `vitest.config.ts`, and
+Playwright runs with locale `en-US` and timezone `UTC`. To run the French spec alone:
+
+```sh
+yarn test:e2e e2e/locale.spec.ts
+```
+
+To read the UI in French in Storybook, pick French in the toolbar's Locale menu.
+
 ## Type checks
 
 | Task | Command |

@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { replaceBrokenImage } from "../brokenImage";
 
+const labels = {
+  imageUnavailable: "Image unavailable",
+  imageUnavailableNamed: ({ alt }: { alt: string }) => `Image unavailable: ${alt}`,
+};
+
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 const setup = (attrs: Record<string, string>) => {
@@ -9,7 +14,7 @@ const setup = (attrs: Record<string, string>) => {
   host.append(img);
   document.body.append(host);
   for (const [name, value] of Object.entries(attrs)) img.setAttribute(name, value);
-  replaceBrokenImage(img);
+  replaceBrokenImage({ img, labels });
   return host;
 };
 

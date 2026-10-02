@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { setLocalePreference } from "client/i18n/locale";
 import { UNDO_STRIP_HEIGHT, UndoStrip } from "../UndoStrip";
 
 const ui = {
@@ -12,6 +13,9 @@ const ui = {
   },
   get undo() {
     return screen.findByRole("button", { name: "Undo" });
+  },
+  get confirmFr() {
+    return screen.findByRole("button", { name: "Confirmer" });
   },
   get confirm() {
     return screen.findByRole("button", { name: "Confirm" });
@@ -46,6 +50,13 @@ describe("UndoStrip", () => {
   it("says what happened, without naming the article", async () => {
     setup();
     expect(await ui.strip()).toHaveTextContent("Marked as read");
+  });
+
+  it("speaks French when the locale is French", async () => {
+    setLocalePreference("fr");
+    setup();
+    expect(await ui.strip()).toHaveTextContent("Marqué comme lu");
+    expect(await ui.confirmFr).toBeInTheDocument();
   });
 
   it("marks the entry unread again from Undo", async () => {

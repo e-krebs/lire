@@ -2,6 +2,7 @@ import { Fragment, useCallback, useEffect, useRef } from "react";
 import type { MouseEvent, ReactNode, RefObject } from "react";
 import { useBarPosition } from "client/hooks/useBarPosition";
 import type { NavigatorPanelHandle } from "client/components/navigation/NavigatorPanel";
+import { useT } from "client/i18n/useT";
 import { SheetField } from "./SheetField";
 import { SheetHandle } from "./SheetHandle";
 
@@ -51,6 +52,7 @@ export const PhoneSheet = ({
   onClearText,
   children,
 }: PhoneSheetProps) => {
+  const t = useT().navigation;
   const position = useBarPosition();
   const atBottom = position === "bottom";
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -234,7 +236,7 @@ export const PhoneSheet = ({
     // oxlint-disable-next-line jsx-a11y/click-events-have-key-events
     <dialog
       ref={dialogRef}
-      aria-label="Navigator"
+      aria-label={t.navigator}
       onClick={handleBackdropClick}
       className={`
         navigator fixed inset-x-0 m-0 hidden max-h-none w-full max-w-full flex-col

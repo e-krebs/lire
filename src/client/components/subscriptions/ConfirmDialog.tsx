@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef } from "react";
 import type { MouseEvent, PointerEvent, ReactNode } from "react";
+import { useT } from "client/i18n/useT";
 
 // A click on a modal <dialog>'s ::backdrop targets the <dialog> itself, and so do a click on its
 // padding and a drag that ends outside. So both the press and the click must land outside its box.
@@ -67,6 +68,7 @@ export const ConfirmDialog = ({
   confirmDisabled = false,
   busy = false,
 }: ConfirmDialogProps) => {
+  const t = useT();
   const titleId = useId();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
@@ -176,7 +178,7 @@ export const ConfirmDialog = ({
           }}
           className={`${buttonClassName} bg-surface-2 text-ink not-disabled:hover:bg-hairline`}
         >
-          Cancel
+          {t.common.cancel}
         </button>
         <button
           type="button"

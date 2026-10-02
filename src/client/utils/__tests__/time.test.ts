@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { shortRelativeTime, mediumDate } from "../time";
+import { absoluteTime, mediumDate, relativeTime, shortRelativeTime } from "../time";
 
 const NOW = Date.UTC(2026, 8, 20, 12, 0, 0); // 2026-09-20T12:00:00Z
 
-const ago = (ms: number) => shortRelativeTime(NOW - ms, NOW);
+const ago = (ms: number, locale: "en" | "fr" = "en") =>
+  shortRelativeTime({ timestamp: NOW - ms, locale, now: NOW });
 
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
@@ -47,7 +48,13 @@ describe("time", () => {
     });
 
     it("adds the year when it differs from now's", () => {
-      expect(shortRelativeTime(Date.UTC(2025, 2, 4, 12, 0, 0), NOW)).toBe("Mar 4, 2025");
+      expect(
+        shortRelativeTime({
+          timestamp: Date.UTC(2025, 2, 4, 12, 0, 0),
+          locale: "en",
+          now: NOW,
+        }),
+      ).toBe("Mar 4, 2025");
     });
 
     it('treats a future timestamp as "now"', () => {
@@ -55,12 +62,66 @@ describe("time", () => {
     });
   });
 
+  describe("when formatting a relative time in French", () => {
+    it("uses the French words and units", () => {
+      expect(ago(0, "fr")).toBe("maintenant");
+      expect(ago(5 * MINUTE, "fr")).toBe("5 min");
+      expect(ago(3 * HOUR, "fr")).toBe("3 h");
+      expect(ago(2 * DAY, "fr")).toBe("2 j");
+      expect(ago(3 * WEEK, "fr")).toBe("3 sem");
+    });
+
+    it("puts the day before the month in a short date", () => {
+      expect(ago(5 * WEEK, "fr")).toBe("16 août");
+      expect(
+        shortRelativeTime({
+          timestamp: Date.UTC(2025, 2, 4, 12, 0, 0),
+          locale: "fr",
+          now: NOW,
+        }),
+      ).toBe("4 mars 2025");
+    });
+  });
+
+  describe("when formatting a list-row relative time", () => {
+    it('reads "just now" under a minute', () => {
+      expect(relativeTime({ timestamp: NOW - 30 * SECOND, locale: "en", now: NOW })).toBe(
+        "just now",
+      );
+      expect(relativeTime({ timestamp: NOW - 30 * SECOND, locale: "fr", now: NOW })).toBe(
+        "à l'instant",
+      );
+    });
+
+    it("names the largest whole unit in the locale", () => {
+      expect(relativeTime({ timestamp: NOW - 3 * MINUTE, locale: "en", now: NOW })).toBe(
+        "3 minutes ago",
+      );
+      expect(relativeTime({ timestamp: NOW - 3 * HOUR, locale: "fr", now: NOW })).toBe(
+        "il y a 3 heures",
+      );
+    });
+  });
+
+  describe("when formatting an absolute time", () => {
+    it("writes the date and time in the locale", () => {
+      const timestamp = Date.UTC(2026, 8, 18, 14, 5);
+      expect(absoluteTime({ timestamp, locale: "en" })).toBe("September 18, 2026 at 2:05 PM");
+      expect(absoluteTime({ timestamp, locale: "fr" })).toBe("18 septembre 2026 à 14:05");
+    });
+  });
+
   describe("when formatting a medium date", () => {
     it("names the day, month and year without a time", () => {
-      const text = mediumDate(Date.UTC(2026, 8, 18, 12));
-      expect(text).toContain("2026");
-      expect(text).toContain("18");
-      expect(text).not.toMatch(/\d:\d\d/);
+      expect(mediumDate({ timestamp: Date.UTC(2026, 8, 18, 12), locale: "en" })).toBe(
+        "Sep 18, 2026",
+      );
+    });
+
+    it("puts the day first in French", () => {
+      expect(mediumDate({ timestamp: Date.UTC(2026, 8, 18, 12), locale: "fr" })).toBe(
+        "18 sept. 2026",
+      );
     });
   });
 });

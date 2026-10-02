@@ -1,4 +1,5 @@
 import { FreshnessRow } from "client/components/articles/FreshnessRow";
+import { useT } from "client/i18n/useT";
 
 interface MosaicFreshnessProps {
   updatedAt: number | undefined;
@@ -14,13 +15,16 @@ export const MosaicFreshness = ({
   onRefresh,
   searchQuery,
   count,
-}: MosaicFreshnessProps) => (
-  <FreshnessRow updatedAt={updatedAt} refreshing={refreshing} onRefresh={onRefresh}>
-    {searchQuery === undefined ? undefined : (
-      <span>
-        Results for “{searchQuery}” · <span className="tabular-nums">{count}</span>{" "}
-        {count === 1 ? "article" : "articles"}
-      </span>
-    )}
-  </FreshnessRow>
-);
+}: MosaicFreshnessProps) => {
+  const t = useT();
+  return (
+    <FreshnessRow updatedAt={updatedAt} refreshing={refreshing} onRefresh={onRefresh}>
+      {searchQuery === undefined ? undefined : (
+        <span>
+          {t.articles.resultsFor({ query: searchQuery })}{" "}
+          <span className="tabular-nums">{count}</span> {t.articles.articleWord({ count })}
+        </span>
+      )}
+    </FreshnessRow>
+  );
+};

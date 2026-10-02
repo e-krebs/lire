@@ -6,40 +6,43 @@ import {
   useDeleteCollection,
 } from "client/api/queries";
 import { feedsInCategory, orphansOf } from "client/api/selectors";
+import { useT } from "client/i18n/useT";
 import type { Collection, Subscription } from "shared/feedsApi/types";
 import { CategoryPicker } from "./CategoryPicker";
 import { ConfirmDialog } from "./ConfirmDialog";
 
-const feedsWord = (count: number): string => `${count} ${count === 1 ? "feed" : "feeds"}`;
+type SubscriptionsMessages = ReturnType<typeof useT>["subscriptions"];
 
-const effectCopy = ({ total, orphans }: { total: number; orphans: number }): string => {
+const effectCopy = ({
+  total,
+  orphans,
+  t,
+}: {
+  total: number;
+  orphans: number;
+  t: SubscriptionsMessages;
+}): string => {
   const shared = total - orphans;
-  if (total === 0) return "It holds no feed, so nothing else changes.";
-  if (orphans === 0) {
-    return total === 1
-      ? "Its one feed sits in another category and only loses this one."
-      : `All ${total} of its feeds sit in another category and only lose this one.`;
-  }
-  if (shared === 0) {
-    return total === 1
-      ? "Its one feed has no other category, so it needs a new one."
-      : `Its ${total} feeds have no other category, so they need a new one.`;
-  }
-  const sharedPart =
-    shared === 1
-      ? `1 of its ${total} feeds sits in another category and only loses this one.`
-      : `${shared} of its ${total} feeds sit in another category and only lose this one.`;
-  const orphanPart =
-    orphans === 1
-      ? "The other one has no other category, so it needs a new one."
-      : `The other ${orphans} have no other category, so they need a new one.`;
-  return `${sharedPart} ${orphanPart}`;
+  if (total === 0) return t.effectNone;
+  if (orphans === 0) return t.effectAllShared({ count: total });
+  if (shared === 0) return t.effectAllOrphans({ count: total });
+  return `${t.effectShared({ count: shared, total })} ${t.effectOrphans({ count: orphans })}`;
 };
 
-const errorCopy = ({ error, label }: { error: Error; label: string }): string => {
-  if (!(error instanceof DeleteAndMoveError)) return `Could not delete ${label}. ${error.message}`;
-  const cause = error.cause instanceof Error ? ` ${error.cause.message}` : "";
-  return `Moved ${feedsWord(error.moved)}, then one move failed.${cause} ${label} is still here, so trying again is safe.`;
+const errorCopy = ({
+  error,
+  label,
+  t,
+}: {
+  error: Error;
+  label: string;
+  t: SubscriptionsMessages;
+}): string => {
+  if (!(error instanceof DeleteAndMoveError)) {
+    return t.deleteFailed({ label, message: error.message });
+  }
+  const cause = error.cause instanceof Error ? error.cause.message : "";
+  return t.moveFailed({ count: error.moved, cause, label });
 };
 
 interface DeleteCategoryDialogProps {
@@ -65,6 +68,7 @@ export const DeleteCategoryDialog = ({
   onCancel,
   onDeleted,
 }: DeleteCategoryDialogProps) => {
+  const t = useT().subscriptions;
   const checkboxId = useId();
   const [targetId, setTargetId] = useState<string | undefined>(undefined);
   const [moveAll, setMoveAll] = useState(false);
@@ -102,15 +106,15 @@ export const DeleteCategoryDialog = ({
       open={open}
       onCancel={cancel}
       onConfirm={confirm}
-      title={`Delete ${category.label}?`}
-      confirmLabel={moveCount === 0 ? "Delete category" : `Delete and move ${feedsWord(moveCount)}`}
+      title={t.deleteTitle({ label: category.label })}
+      confirmLabel={moveCount === 0 ? t.deleteCategory : t.deleteAndMove({ count: moveCount })}
       confirmDisabled={pending || (moveCount > 0 && targetId === undefined)}
       busy={pending}
       extra={
         <div className="flex flex-col gap-4">
           {moveCount === 0 ? null : (
             <div className="flex flex-col gap-2">
-              <p className="text-xs font-semibold text-muted">{`Move ${feedsWord(moveCount)} to`}</p>
+              <p className="text-xs font-semibold text-muted">{t.moveTo({ count: moveCount })}</p>
               <CategoryPicker
                 key={category.id}
                 categories={collections}
@@ -145,30 +149,28 @@ export const DeleteCategoryDialog = ({
                 }}
                 className="size-5 flex-none accent-accent focus-visible:outline-2 focus-visible:outline-accent"
               />
-              <span className="text-pretty">
-                {`Also move the ${shared === 1 ? "feed that sits" : `${shared} feeds that sit`} in another category`}
-              </span>
+              <span className="text-pretty">{t.alsoMove({ count: shared })}</span>
             </label>
           )}
           {deleteError === null ? null : (
             <p role="alert" className="text-sm text-danger">
-              {errorCopy({ error: deleteError, label: category.label })}
+              {errorCopy({ error: deleteError, label: category.label, t })}
             </p>
           )}
           {createCollection.data?.id === category.id && targetId === undefined ? (
             <p role="alert" className="text-sm text-danger">
-              {`${category.label} is the category being deleted. Pick another one.`}
+              {t.pickAnother({ label: category.label })}
             </p>
           ) : null}
           {createCollection.isError ? (
             <p role="alert" className="text-sm text-danger">
-              {`Could not create that category. ${createCollection.error.message}`}
+              {t.createCategoryFailed({ message: createCollection.error.message })}
             </p>
           ) : null}
         </div>
       }
     >
-      {effectCopy({ total, orphans })}
+      {effectCopy({ total, orphans, t })}
     </ConfirmDialog>
   );
 };

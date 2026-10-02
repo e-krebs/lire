@@ -11,6 +11,7 @@ import { UNDO_STRIP_HEIGHT, UndoStrip } from "client/components/articles/UndoStr
 import type { StripAction } from "client/components/articles/UndoStrip";
 import { PullIndicator } from "client/components/articles/PullIndicator";
 import { Icon } from "client/components/ui/icons";
+import { useT } from "client/i18n/useT";
 import { layoutMasonry, neighbourOf, tileAspect } from "client/utils/masonry";
 import type { Direction, MasonryLayout } from "client/utils/masonry";
 import { useElementWidth } from "client/hooks/useElementWidth";
@@ -57,6 +58,7 @@ export const MosaicBody = ({
   readerOpen,
   searchQuery,
 }: MosaicBodyProps) => {
+  const t = useT();
   const entries = flattenStream(result.data);
   const { hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage } = result;
   const refreshEntries = useRefreshEntries();
@@ -173,7 +175,11 @@ export const MosaicBody = ({
   if (result.isPending) {
     return (
       <MosaicSkeleton
-        label={searchQuery === undefined ? "Loading articles" : `Searching for “${searchQuery}”`}
+        label={
+          searchQuery === undefined
+            ? t.articles.loadingArticles
+            : t.articles.searchingFor({ query: searchQuery })
+        }
       />
     );
   }
@@ -182,7 +188,7 @@ export const MosaicBody = ({
       <div role="alert" className="flex flex-col items-start gap-2 p-4 text-sm text-danger">
         <p>{result.error.message}</p>
         <button type="button" className={actionClassName} onClick={() => void result.refetch()}>
-          Retry
+          {t.common.retry}
         </button>
       </div>
     );
@@ -212,7 +218,7 @@ export const MosaicBody = ({
           searchQuery={searchQuery}
           count={placed.length}
         />
-        <MosaicSkeleton label="Loading more articles" />
+        <MosaicSkeleton label={t.articles.loadingMoreArticles} />
       </div>
     );
   }
@@ -238,8 +244,8 @@ export const MosaicBody = ({
           <div className="flex flex-col items-center gap-4 px-4 pt-12 pb-8 text-center text-sm text-faint">
             <p>
               {searchQuery === undefined
-                ? "Nothing to read here."
-                : `No articles match “${searchQuery}”.`}
+                ? t.articles.nothingToRead
+                : t.articles.noArticlesMatch({ query: searchQuery })}
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               {searchQuery === undefined ? null : (
@@ -248,7 +254,7 @@ export const MosaicBody = ({
                   search={(prev) => ({ ...prev, q: undefined })}
                   className={actionClassName}
                 >
-                  Clear search
+                  {t.articles.clearSearch}
                 </Link>
               )}
               {/* Everything there is: the all-articles stream, read entries included, no search. */}
@@ -259,7 +265,7 @@ export const MosaicBody = ({
                 className={actionClassName}
               >
                 <Icon name="everything" className="size-4" />
-                Show all articles
+                {t.articles.showAllArticles}
               </Link>
             </div>
           </div>

@@ -87,19 +87,22 @@ describe("externalLinks", () => {
 
   it("offers browsers only in an installed iOS app, iPad included", () => {
     stubPlatform({ device: IPAD, installed: false });
-    expect(browserChoices()).toEqual([]);
+    expect(browserChoices({ defaultLabel: "Default browser" })).toEqual([]);
 
     stubPlatform({ device: IPAD, installed: true });
-    expect(browserChoices().map(({ label }) => label)).toEqual(["Safari", "Chrome"]);
+    expect(browserChoices({ defaultLabel: "Default browser" }).map(({ label }) => label)).toEqual([
+      "Safari",
+      "Chrome",
+    ]);
 
     stubPlatform({ device: IPHONE, installed: false });
     vi.stubGlobal("navigator", { ...IPHONE, standalone: true });
-    expect(browserChoices()).toHaveLength(2);
+    expect(browserChoices({ defaultLabel: "Default browser" })).toHaveLength(2);
 
     stubPlatform({ device: ANDROID, installed: true });
-    expect(browserChoices()).toEqual([]);
+    expect(browserChoices({ defaultLabel: "Default browser" })).toEqual([]);
     stubPlatform({ device: MAC, installed: true });
-    expect(browserChoices()).toEqual([]);
+    expect(browserChoices({ defaultLabel: "Default browser" })).toEqual([]);
   });
 
   it("defaults to Safari, remembers a choice and ignores an unknown one", () => {
@@ -163,7 +166,7 @@ describe("externalLinks", () => {
   it("hands links to the Android app's activity only inside the TWA", () => {
     stubPlatform({ device: ANDROID, installed: true });
     stubDocument({ referrer: "android-app://tech.krebs.lire/" });
-    expect(browserChoices().map(({ id }) => id)).toEqual([
+    expect(browserChoices({ defaultLabel: "Default browser" }).map(({ id }) => id)).toEqual([
       "default",
       "chrome",
       "firefox",
@@ -191,7 +194,7 @@ describe("externalLinks", () => {
     // After an Access login the referrer is gone, but the launch URL keeps its marker.
     window.sessionStorage.clear();
     stubPlatform({ device: ANDROID, installed: true, search: "?source=twa" });
-    expect(browserChoices()).toHaveLength(6);
+    expect(browserChoices({ defaultLabel: "Default browser" })).toHaveLength(6);
   });
 
   it("reroutes plain clicks on external links and leaves every other click alone", () => {

@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
+import { useT } from "client/i18n/useT";
 import { feedHue } from "client/utils/feedHue";
 import { Icon } from "client/components/ui/icons";
 import type { Collection, Subscription } from "shared/feedsApi/types";
@@ -56,10 +57,6 @@ export const listRowClassName = `
   data-selected:bg-accent-soft
 `;
 
-// One source for a category's count, so its row and its panel's subtitle read the same and morph.
-export const feedCountLabel = (count: number): string =>
-  count === 0 ? "No feed" : `${count} ${count === 1 ? "feed" : "feeds"}`;
-
 export const EmptyLine = ({ children }: { children: ReactNode }) => (
   <p className="px-3 py-4 text-sm text-muted text-pretty">{children}</p>
 );
@@ -114,6 +111,7 @@ export const FeedsTab = ({
   onAddWebsite,
   onAddNewsletter,
 }: FeedsTabProps) => {
+  const t = useT().subscriptions;
   const [filter, setFilter] = useState("");
   const labelOf = new Map(collections.map((collection) => [collection.id, collection.label]));
   const rowId = useId();
@@ -126,8 +124,8 @@ export const FeedsTab = ({
     <div className="flex flex-col gap-4">
       <div className="flex gap-2">
         <FilterRow
-          label="Filter feeds"
-          placeholder="Filter feeds…"
+          label={t.filterFeeds}
+          placeholder={t.filterFeedsPlaceholder}
           value={filter}
           onChange={setFilter}
         />
@@ -139,12 +137,12 @@ export const FeedsTab = ({
       </div>
       {/* Per-category counts never add up to the total, since a feed can sit in several. */}
       <p className="px-3 text-xs text-faint tabular-nums">
-        {`${subscriptions.length} ${subscriptions.length === 1 ? "feed" : "feeds"}, ${shared} of them in more than one category`}
+        {t.feedsSummary({ count: subscriptions.length, shared })}
       </p>
       {subscriptions.length === 0 ? (
-        <EmptyLine>Feeds you follow show here. Add one by its site or feed URL.</EmptyLine>
+        <EmptyLine>{t.noFeeds}</EmptyLine>
       ) : shown.length === 0 ? (
-        <EmptyLine>{`No feed matches “${filter.trim()}”`}</EmptyLine>
+        <EmptyLine>{t.noFeedMatches({ query: filter.trim() })}</EmptyLine>
       ) : (
         <ul className="flex flex-col">
           {shown.map((subscription, index) => {

@@ -7,7 +7,8 @@ backed by a Cloudflare Worker that proxies the feeds API behind Cloudflare Acces
 
 The app runs in mock mode by default, against recorded or synthetic fixtures: collections, unread
 counts, streams with continuation, an article reader, mark read and mark-all-read, subscription
-add, move and unsubscribe. Three layout tiers (phone, tablet, desktop) and a PWA shell. The Worker
+add, move and unsubscribe. Three layout tiers (phone, tablet, desktop) and a PWA shell. The UI is in English and French,
+following the browser unless the account menu picks one. The Worker
 exists: Cloudflare Access with an owner email pin guards it, and a pasted refresh token, kept in a
 Durable Object, authenticates the upstream calls.
 

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useT } from "client/i18n/useT";
 import { replaceBrokenImage } from "client/utils/brokenImage";
 import { installExternalLinks } from "client/utils/externalLinks";
 
@@ -32,6 +33,12 @@ interface NewsletterFrameProps {
 export const NewsletterFrame = ({ html, dir }: NewsletterFrameProps) => {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const setupRef = useRef<{ doc: Document; teardown: () => void } | null>(null);
+
+  const t = useT();
+  const labelsRef = useRef(t.articles);
+  useEffect(() => {
+    labelsRef.current = t.articles;
+  }, [t]);
 
   const srcDoc = useMemo(
     () =>
@@ -82,10 +89,11 @@ export const NewsletterFrame = ({ html, dir }: NewsletterFrameProps) => {
     // Images that failed before this listener existed only show as complete with no width.
     for (const img of doc.querySelectorAll("img")) {
       if (img.getAttribute("src") && img.complete && img.naturalWidth === 0)
-        replaceBrokenImage(img);
+        replaceBrokenImage({ img, labels: labelsRef.current });
     }
     const onError = (error: Event) => {
-      if (isImage(error.target)) replaceBrokenImage(error.target);
+      if (isImage(error.target))
+        replaceBrokenImage({ img: error.target, labels: labelsRef.current });
     };
     doc.addEventListener("error", onError, true);
     const removeLinks = installExternalLinks(doc);
@@ -137,7 +145,7 @@ export const NewsletterFrame = ({ html, dir }: NewsletterFrameProps) => {
   return (
     <iframe
       sandbox={SANDBOX}
-      title="Newsletter"
+      title={t.articles.newsletter}
       className="newsletter-frame"
       srcDoc={srcDoc}
       ref={frameRef}

@@ -20,7 +20,9 @@ import { fromStreamKey, toStreamKey } from "shared/feedsApi/streamKey";
 import { resetFixtureState } from "client/api/adapters/fixture";
 import { updatePreferences } from "client/api/client";
 import { keys, useCollections, useProfile, useSubscriptions } from "client/api/queries";
+import { setLocalePreference } from "client/i18n/locale";
 import { setBarPosition } from "client/hooks/utils/barPosition";
+import { catalogs } from "client/i18n/messages";
 import { streamLabel } from "client/utils/streamLabel";
 import type { Collection, Subscription } from "shared/feedsApi/types";
 import { fixtureBackend } from "test/fixtureBackend";
@@ -46,6 +48,9 @@ const ui = {
   },
   get search() {
     return screen.findByLabelText("Search articles and feeds");
+  },
+  get frenchSearch() {
+    return screen.findByLabelText("Rechercher des articles et des flux");
   },
   // The row's accessible name ends with its unread count, so the label's own text finds it.
   get allArticles() {
@@ -275,6 +280,11 @@ const Harness = () => {
           streamId: scopeStreamId,
           collections: collections.data,
           subscriptions: subscriptions.data,
+          labels: {
+            allArticles: catalogs.en.navigation.allArticles,
+            recentlyRead: catalogs.en.navigation.recentlyRead,
+            uncategorized: catalogs.en.shell.uncategorized,
+          },
         }).label;
 
   const openPanel = (): void => {
@@ -651,6 +661,18 @@ describe("Navigator", () => {
   });
 
   describe("when on desktop or tablet (anchored popover)", () => {
+    it("reads its interpolated labels in French", async () => {
+      setLocalePreference("fr");
+      const { user } = setup({ tier: "desktop" });
+
+      await user.type(await ui.frenchSearch, "zzz");
+
+      expect(await ui.text("Rechercher des articles pour « zzz »")).toBeInTheDocument();
+      expect(
+        await ui.text("Aucun flux ni collection ne correspond à « zzz »."),
+      ).toBeInTheDocument();
+    });
+
     it("keeps the field, and its focus, when Escape closes the panel", async () => {
       const { user } = setup({ tier: "desktop" });
 

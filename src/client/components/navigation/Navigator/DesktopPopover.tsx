@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { useBarPosition } from "client/hooks/useBarPosition";
 import { swallowNextClick } from "client/utils/swallowNextClick";
 import { useOverlay } from "client/hooks/useOverlay";
+import { useT } from "client/i18n/useT";
 
 const POPOVER_GAP = 6;
 
@@ -40,6 +41,7 @@ export const DesktopPopover = ({
   anchorRef,
   children,
 }: DesktopPopoverProps) => {
+  const t = useT().navigation;
   useOverlay({ id: "navigator", isOpen: open });
   const position = useBarPosition();
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -145,7 +147,7 @@ export const DesktopPopover = ({
     <div
       ref={popoverRef}
       role="group"
-      aria-label="Navigator"
+      aria-label={t.navigator}
       data-open={open && rect ? "" : undefined}
       className={`
         navigator-popover fixed z-30 hidden flex-col overflow-hidden rounded-xl border

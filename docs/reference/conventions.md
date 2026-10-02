@@ -20,6 +20,31 @@ A component never defines JSX in a variable or a render helper inside another co
 a component with props. A lint rule checks this in `src/client`, tests and stories excluded. An
 exception takes an `oxlint-disable-next-line` with the reason.
 
+## UI strings
+
+Every user-facing string lives in the catalog under `src/client/i18n/messages/`, one file per UI
+area (`common`, `shell`, `subscriptions`, `navigation`, `articles`), and a component reads it with
+`const t = useT()`.
+
+- Add the key to the area file's `en` and `fr` together. `en` is the source of truth and `fr`
+  is declared `satisfies Messages<typeof en>`, so a missing or mistyped French key fails the
+  type check.
+- A message is a string, or a function of one object argument: `({ count, label }) => ...`.
+- A count uses the area file's `plural`, bound once with `pluralFor("en")` or `pluralFor("fr")`:
+  `plural({ count, one, other })`, where `one` and `other` are functions of `count`. The CLDR rules
+  of `Intl.PluralRules` pick the form, so French reads 0 as singular.
+- `common.ts` holds the shared verbs. A word another area needs keeps its own copy in that area's
+  file.
+- `time.ts` keeps its few fixed words in a per-locale map, so the util does not import the catalog.
+- Never translated: feed titles, category labels, article content, profile fields, and
+  `error.message` from the server or from `src/client/api`. The dev-only `routes/dev.*.tsx` pages
+  stay English.
+- French uses a neutral register: infinitives and noun labels, with `vous` only where a pronoun is
+  needed. It writes the typographic apostrophe `'` and the single ellipsis character `…`.
+
+A lint rule rejects raw text in JSX ([tooling.md](../explanation/tooling.md#custom-lint-plugins)).
+Formatters take the active locale, cached per locale.
+
 ## Conditional styles
 
 Style from state through attributes, not through class ternaries on JS values.

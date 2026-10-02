@@ -99,8 +99,15 @@ const installedPlatform = (): Platform | undefined => {
 };
 
 // Empty outside an installed iOS app or the TWA, which is when the setting hides.
-export const browserChoices = (): { id: BrowserId; label: string }[] =>
-  installedPlatform()?.browsers.map(({ id, label }) => ({ id, label })) ?? [];
+// The caller passes the translated name of the "default" entry. The dev page keeps the English one.
+export const browserChoices = ({ defaultLabel }: { defaultLabel?: string } = {}): {
+  id: BrowserId;
+  label: string;
+}[] =>
+  installedPlatform()?.browsers.map(({ id, label }) => ({
+    id,
+    label: id === "default" ? (defaultLabel ?? label) : label,
+  })) ?? [];
 
 export const getPreferredBrowser = (): BrowserId | undefined => {
   const platform = currentPlatform();

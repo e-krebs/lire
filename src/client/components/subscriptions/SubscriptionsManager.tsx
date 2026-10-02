@@ -10,6 +10,7 @@ import { NewsletterPanel } from "client/components/subscriptions/NewsletterPanel
 import { PanelExitContext, markPanelOrigin } from "client/components/subscriptions/SidePanel";
 import { SubscribePanel } from "client/components/subscriptions/SubscribePanel";
 import { Tabs, tabId, tabPanelId } from "client/components/subscriptions/Tabs";
+import { useT } from "client/i18n/useT";
 
 export type SubscriptionsTab = "categories" | "feeds";
 
@@ -35,22 +36,25 @@ interface SubscriptionsManagerProps {
   onPanelChange: (panel: SubscriptionsPanel | undefined) => void;
 }
 
-const CategoryRowsSkeleton = () => (
-  <div
-    role="status"
-    aria-busy="true"
-    aria-label="Loading categories"
-    className="flex flex-col gap-2"
-  >
-    {[0, 1, 2].map((index) => (
-      <div
-        key={index}
-        aria-hidden="true"
-        className="h-12 rounded-xl bg-surface-2 motion-safe:animate-pulse"
-      />
-    ))}
-  </div>
-);
+const CategoryRowsSkeleton = () => {
+  const t = useT().subscriptions;
+  return (
+    <div
+      role="status"
+      aria-busy="true"
+      aria-label={t.loadingCategories}
+      className="flex flex-col gap-2"
+    >
+      {[0, 1, 2].map((index) => (
+        <div
+          key={index}
+          aria-hidden="true"
+          className="h-12 rounded-xl bg-surface-2 motion-safe:animate-pulse"
+        />
+      ))}
+    </div>
+  );
+};
 
 // Renders the list's scroll pane and the side panel as siblings, so the caller's `relative h-full`
 // box anchors the panel while the list scrolls under it.
@@ -60,6 +64,7 @@ export const SubscriptionsManager = ({
   onTabChange,
   onPanelChange,
 }: SubscriptionsManagerProps) => {
+  const t = useT().subscriptions;
   const collections = useCollections();
   const subscriptions = useSubscriptions();
   const { collections: collectionList, ready: collectionsReady } = useOrderedCollections();
@@ -128,17 +133,17 @@ export const SubscriptionsManager = ({
           `}
         >
           <Tabs
-            label="Subscriptions"
+            label={t.tabsLabel}
             tabs={[
-              { id: "categories", label: "Categories", count: collectionList.length },
-              { id: "feeds", label: "Feeds", count: subscriptionList.length },
+              { id: "categories", label: t.tabCategories, count: collectionList.length },
+              { id: "feeds", label: t.tabFeeds, count: subscriptionList.length },
             ]}
             selected={tab}
             onSelect={onTabChange}
           />
           {loadError === null ? null : (
             <p role="alert" className="text-sm text-danger">
-              {`Could not load your subscriptions. ${loadError.message}`}
+              {t.loadFailed({ message: loadError.message })}
             </p>
           )}
           <div role="tabpanel" id={tabPanelId(tab)} aria-labelledby={tabId(tab)}>

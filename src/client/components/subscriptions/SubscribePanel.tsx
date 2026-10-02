@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useCreateCollection, useFeedLookup, useSubscribe } from "client/api/queries";
+import { useT } from "client/i18n/useT";
 import type { Collection } from "shared/feedsApi/types";
 import { CategoryPicker } from "./CategoryPicker";
 import { primaryClassName } from "./CategoryPanel";
@@ -7,6 +8,7 @@ import { hostOf } from "./FeedsTab";
 import { SidePanel } from "./SidePanel";
 
 const MIN_QUERY_LENGTH = 4;
+const FEED_URL_PLACEHOLDER = "https://example.test/rss";
 
 const cancelClassName = `
   min-h-11 flex-1 rounded-xl bg-surface-2 px-4 text-sm font-semibold text-ink
@@ -30,6 +32,7 @@ interface SubscribePanelProps {
 }
 
 export const SubscribePanel = ({ collections, categoryId, onClose }: SubscribePanelProps) => {
+  const t = useT();
   const formId = useId();
   const urlId = useId();
   const errorId = useId();
@@ -66,14 +69,14 @@ export const SubscribePanel = ({ collections, categoryId, onClose }: SubscribePa
   const canSubscribe = chosen !== undefined && selected.length > 0 && !subscribe.isPending;
 
   const urlError = tooShort
-    ? "Enter a feed or site URL."
+    ? t.subscriptions.enterUrl
     : lookup.isError
-      ? `Could not look up that URL. ${lookup.error.message}`
+      ? t.subscriptions.lookupFailed({ message: lookup.error.message })
       : null;
   const submitError = subscribe.isError
-    ? `Could not subscribe to that feed. ${subscribe.error.message}`
+    ? t.subscriptions.subscribeFeedFailed({ message: subscribe.error.message })
     : createCollection.isError
-      ? `Could not create that category. ${createCollection.error.message}`
+      ? t.subscriptions.createCategoryFailed({ message: createCollection.error.message })
       : null;
 
   const handleSubmit = (): void => {
@@ -97,25 +100,21 @@ export const SubscribePanel = ({ collections, categoryId, onClose }: SubscribePa
   const resultCount =
     lookup.isFetching || debouncedQuery.trim().length < MIN_QUERY_LENGTH
       ? ""
-      : results.length === 1
-        ? "1 result"
-        : `${results.length} results`;
+      : t.subscriptions.resultCount({ count: results.length });
 
   return (
     <SidePanel
       open
       onClose={onClose}
-      title="Add a feed"
-      subtitle={
-        chosen === undefined ? "Step 1 of 2 · find the feed" : "Step 2 of 2 · pick where it lands"
-      }
+      title={t.subscriptions.addFeedTitle}
+      subtitle={chosen === undefined ? t.subscriptions.feedStep1 : t.subscriptions.feedStep2}
       actions={
         <>
           <button type="button" onClick={onClose} className={cancelClassName}>
-            Cancel
+            {t.common.cancel}
           </button>
           <button type="submit" form={formId} disabled={!canSubscribe} className={primaryClassName}>
-            Subscribe
+            {t.subscriptions.subscribe}
           </button>
         </>
       }
@@ -133,10 +132,10 @@ export const SubscribePanel = ({ collections, categoryId, onClose }: SubscribePa
         <div className="flex flex-col gap-2">
           <div className="flex items-baseline justify-between gap-2">
             <label htmlFor={urlId} className="text-xs font-semibold text-muted">
-              Feed or site URL
+              {t.subscriptions.feedUrlLabel}
             </label>
             <span role="status" className="text-xs text-faint tabular-nums">
-              {lookup.isFetching ? "Searching…" : resultCount}
+              {lookup.isFetching ? t.subscriptions.searching : resultCount}
             </span>
           </div>
           <input
@@ -146,7 +145,7 @@ export const SubscribePanel = ({ collections, categoryId, onClose }: SubscribePa
             inputMode="url"
             autoComplete="off"
             enterKeyHint="search"
-            placeholder="https://example.test/rss"
+            placeholder={FEED_URL_PLACEHOLDER}
             value={urlInput}
             aria-invalid={urlError !== null || undefined}
             aria-describedby={urlError === null ? undefined : errorId}
@@ -168,7 +167,7 @@ export const SubscribePanel = ({ collections, categoryId, onClose }: SubscribePa
           )}
           {results.length === 0 ? null : (
             <fieldset className="overflow-hidden rounded-xl ring-1 ring-hairline ring-inset">
-              <legend className="sr-only">Results</legend>
+              <legend className="sr-only">{t.subscriptions.results}</legend>
               {results.map((result) => {
                 const host = hostOf(result.website);
                 return (
@@ -219,7 +218,7 @@ export const SubscribePanel = ({ collections, categoryId, onClose }: SubscribePa
           }}
         />
         {selected.length === 0 ? (
-          <p className="text-xs text-faint">Pick at least one category for this feed.</p>
+          <p className="text-xs text-faint">{t.subscriptions.pickCategory}</p>
         ) : null}
         {submitError === null ? null : (
           <p role="alert" className="text-sm text-danger">
