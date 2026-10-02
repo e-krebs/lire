@@ -125,7 +125,9 @@ brand gate after the demo build. The `e2e` and `storybook` jobs run the browser 
 `cloudflare-gate` job runs only on `main` and checks that the Cloudflare secrets exist. The
 `preflight` job then runs `check-access` and `provision-pages`. The deploy jobs for the SPA, demo,
 Storybook and Worker follow once their dependencies pass, and `check-live` runs after all four.
-Every Cloudflare job is skipped when the gate finds no secrets. [ADR 0008](../adr/0008-ci-owns-cloudflare-setup.md)
+Every job that installs dependencies uses the shared [setup action](../../.github/actions/setup/action.yml),
+which restores the Yarn cache. The `e2e` and `storybook` jobs also cache the Playwright browsers,
+keyed on the Playwright version. Every Cloudflare job is skipped when the gate finds no secrets. [ADR 0008](../adr/0008-ci-owns-cloudflare-setup.md)
 records why CI owns this setup.
 
 ## Dependency updates
