@@ -140,14 +140,11 @@ const proxy = async ({ request, env }: { request: Request; env: Env }): Promise<
   if (!first.ok) return refreshFailed(first.reason);
 
   const body = hasBody ? await request.arrayBuffer() : undefined;
-  // Guess: the feeds API wants a client IP and reads something else from a Worker subrequest.
-  const clientIp = request.headers.get("CF-Connecting-IP");
   const send = async (token: string): Promise<Response> =>
     fetch(`${env.FEEDLY_HOST}${pathname}${url.search}`, {
       method: request.method,
       headers: {
         Authorization: `OAuth ${token}`,
-        ...(clientIp ? { "X-Forwarded-For": clientIp, "X-Real-IP": clientIp } : {}),
         ...(hasBody ? { "Content-Type": "application/json" } : {}),
       },
       body,
@@ -169,52 +166,12 @@ const proxy = async ({ request, env }: { request: Request; env: Env }): Promise<
   const headers = new Headers();
   for (const [name, value] of upstream.headers) {
     if (name === "content-type") headers.set(name, value);
-    // TEMP diagnostic for the "not an IP string literal" 400: remove once the cause is known.
-    if (upstream.status >= 400 && ["x-feedly-server", "cf-ray", "server", "via"].includes(name))
-      headers.set(`x-upstream-${name}`, value);
   }
-  if (upstream.status >= 400) headers.set("x-upstream-status", String(upstream.status));
   return new Response(upstream.body, { status: upstream.status, headers });
-};
-
-// TEMP probe for the "not an IP string literal" 400: remove once the cause is known.
-/* istanbul ignore next */
-const probe = async ({ request, env }: { request: Request; env: Env }): Promise<Response> => {
-  const auth = await feedlyAuth(env).getAccessToken();
-  if (!auth.ok) return json({ body: { error: "no_token" }, status: 401 });
-  const ip = request.headers.get("CF-Connecting-IP") ?? "";
-  const variants: Record<string, Record<string, string>> = {
-    none: {},
-    xff: { "X-Forwarded-For": ip },
-    realIp: { "X-Real-IP": ip },
-    both: { "X-Forwarded-For": ip, "X-Real-IP": ip },
-    cfWorker: { "CF-Worker": ip },
-    cfConnecting: { "CF-Connecting-IP": ip },
-    trueClient: { "True-Client-IP": ip },
-  };
-  const results: Record<string, unknown> = {};
-  for (const [name, extra] of Object.entries(variants)) {
-    const response = await fetch(`${env.FEEDLY_HOST}/v3/markers/counts`, {
-      headers: { Authorization: `OAuth ${auth.token}`, ...extra },
-    });
-    results[name] = { status: response.status, body: (await response.text()).slice(0, 120) };
-  }
-  const echo = await fetch("https://httpbin.org/headers");
-  const durable = feedlyAuth(env);
-  const viaDo = {
-    feedly: await durable.probeFetch({
-      url: `${env.FEEDLY_HOST}/v3/markers/counts`,
-      headers: { Authorization: `OAuth ${auth.token}` },
-    }),
-    echo: await durable.probeFetch({ url: "https://httpbin.org/headers", headers: {} }),
-  };
-  return json({ body: { ip, results, echo: await echo.text(), viaDo } });
 };
 
 const route = async ({ request, env }: { request: Request; env: Env }): Promise<Response> => {
   const { pathname } = new URL(request.url);
-  /* istanbul ignore next */
-  if (pathname === "/api/debug/probe" && request.method === "GET") return probe({ request, env });
   if (pathname === "/api/auth/status" && request.method === "GET") {
     return json({ body: { signedIn: await feedlyAuth(env).hasRefreshToken() } });
   }
