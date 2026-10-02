@@ -230,6 +230,62 @@ describe("queries", () => {
     });
   });
 
+  it("rolls back only the failed entry when a later mark succeeded", async () => {
+    const { client, wrapper } = setup();
+    vi.stubEnv("VITE_API_MODE", "real");
+    const makeEntry = (id: string): Entry => ({
+      id,
+      originId: `origin-${id}`,
+      fingerprint: `fp-${id}`,
+      title: id,
+      published: Date.now(),
+      crawled: Date.now(),
+      unread: true,
+      origin: { streamId: "feed/http://example-rollback.test/rss", title: "Rollback Feed" },
+    });
+    const streamKey = keys.stream({ streamId: techNewsStreamId });
+    client.setQueryData<InfiniteData<StreamContents>>(streamKey, {
+      pages: [{ id: "stub", updated: Date.now(), items: [makeEntry("a"), makeEntry("b")] }],
+      pageParams: [undefined],
+    });
+    let release = (): void => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let posts = 0;
+    server.use(
+      http.post("/api/v3/markers", async () => {
+        if (posts++ === 0) {
+          await held;
+          return HttpResponse.json({ error: "boom" }, { status: 500 });
+        }
+        return new HttpResponse("", { status: 200 });
+      }),
+    );
+
+    const { result } = renderHook(() => ({ a: useMarkRead(), b: useMarkRead() }), { wrapper });
+    let settled: Promise<unknown> = Promise.resolve();
+    act(() => {
+      settled = Promise.allSettled([
+        result.current.a.mutateAsync({ entryIds: ["a"], read: true }),
+        result.current.b.mutateAsync({ entryIds: ["b"], read: true }),
+      ]);
+    });
+    await waitFor(() => {
+      expect(posts).toBe(2);
+    });
+    release();
+    await act(async () => settled);
+
+    const unread = Object.fromEntries(
+      flattenStream(client.getQueryData<InfiniteData<StreamContents>>(streamKey)).map((entry) => [
+        entry.id,
+        entry.unread,
+      ]),
+    );
+    expect(unread).toEqual({ a: true, b: false });
+  });
+
   it("trims the cache back to the first page and invalidates the unread counts", async () => {
     const { client, queryKey, result } = renderRefresh();
     await waitFor(() => {

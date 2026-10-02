@@ -335,6 +335,41 @@ const GLOBAL_ALL_SUFFIX = "/category/global.all";
 // The infinite caches holding entries: plain streams and in-stream article searches.
 const ENTRY_CACHE_PREFIXES = [["stream"], ["search"]] as const;
 
+const shiftUnreadCounts = ({
+  client,
+  entries,
+  delta,
+}: {
+  client: QueryClient;
+  entries: Entry[];
+  delta: 1 | -1;
+}): void => {
+  const counts = client.getQueryData<MarkerCounts>(keys.unreadCounts);
+  if (!counts || entries.length === 0) return;
+  const subscriptions = client.getQueryData<Subscription[]>(keys.subscriptions);
+  const categoriesByFeed = new Map<string, string[]>(
+    subscriptions?.map((sub) => [sub.id, sub.categories.map((category) => category.id)]) ?? [],
+  );
+  const nextCounts = new Map(counts.unreadcounts.map((entry) => [entry.id, entry.count]));
+  const shift = (id: string, by: number): void => {
+    nextCounts.set(id, Math.max(0, (nextCounts.get(id) ?? 0) + by));
+  };
+  for (const entry of entries) {
+    const feedId = entry.origin.streamId;
+    shift(feedId, delta);
+    for (const categoryId of categoriesByFeed.get(feedId) ?? []) shift(categoryId, delta);
+  }
+  const globalEntry = counts.unreadcounts.find((entry) => entry.id.endsWith(GLOBAL_ALL_SUFFIX));
+  if (globalEntry) shift(globalEntry.id, delta * entries.length);
+  client.setQueryData<MarkerCounts>(keys.unreadCounts, {
+    ...counts,
+    unreadcounts: counts.unreadcounts.map((entry) => ({
+      ...entry,
+      count: nextCounts.get(entry.id) ?? entry.count,
+    })),
+  });
+};
+
 export const useMarkRead = () => {
   const client = useQueryClient();
   return useMutation({
@@ -349,7 +384,6 @@ export const useMarkRead = () => {
       const previousStreams: StreamEntry[] = ENTRY_CACHE_PREFIXES.flatMap((prefix) =>
         client.getQueriesData<InfiniteData<StreamContents>>({ queryKey: prefix }),
       );
-      const previousCounts = client.getQueryData<MarkerCounts>(keys.unreadCounts);
       const previousEntries = new Map<string, Entry | undefined>(
         entryIds.map((entryId) => [entryId, client.getQueryData<Entry>(keys.entry(entryId))]),
       );
@@ -385,51 +419,44 @@ export const useMarkRead = () => {
         );
       }
 
-      if (previousCounts && changedEntries.size > 0) {
-        const delta = read ? -1 : 1;
-        const subscriptions = client.getQueryData<Subscription[]>(keys.subscriptions);
-        const categoriesByFeed = new Map<string, string[]>(
-          subscriptions?.map((sub) => [sub.id, sub.categories.map((category) => category.id)]) ??
-            [],
-        );
-        const nextCounts = new Map(
-          previousCounts.unreadcounts.map((entry) => [entry.id, entry.count]),
-        );
-        let globalDelta = 0;
-        for (const entry of changedEntries.values()) {
-          const feedId = entry.origin.streamId;
-          nextCounts.set(feedId, Math.max(0, (nextCounts.get(feedId) ?? 0) + delta));
-          for (const categoryId of categoriesByFeed.get(feedId) ?? []) {
-            nextCounts.set(categoryId, Math.max(0, (nextCounts.get(categoryId) ?? 0) + delta));
-          }
-          globalDelta += delta;
-        }
-        const globalEntry = previousCounts.unreadcounts.find((entry) =>
-          entry.id.endsWith(GLOBAL_ALL_SUFFIX),
-        );
-        if (globalEntry) {
-          nextCounts.set(
-            globalEntry.id,
-            Math.max(0, (nextCounts.get(globalEntry.id) ?? 0) + globalDelta),
-          );
-        }
-        client.setQueryData<MarkerCounts>(keys.unreadCounts, {
-          ...previousCounts,
-          unreadcounts: previousCounts.unreadcounts.map((entry) => ({
-            ...entry,
-            count: nextCounts.get(entry.id) ?? entry.count,
-          })),
-        });
-      }
+      shiftUnreadCounts({ client, entries: [...changedEntries.values()], delta: read ? -1 : 1 });
 
-      return { previousStreams, previousCounts, previousEntries };
+      return { previousStreams, previousEntries, changedEntries: [...changedEntries.values()] };
     },
-    onError: (_error, _variables, context) => {
+    // Undoes only this mutation's flips: restoring the whole snapshot would also undo marks that
+    // landed on other entries since.
+    onError: (_error, { entryIds, read }, context) => {
       if (!context) return;
-      for (const [queryKey, data] of context.previousStreams) client.setQueryData(queryKey, data);
-      if (context.previousCounts) client.setQueryData(keys.unreadCounts, context.previousCounts);
-      for (const [entryId, entry] of context.previousEntries)
-        client.setQueryData(keys.entry(entryId), entry);
+      const failed = new Set(entryIds);
+      for (const [queryKey, previous] of context.previousStreams) {
+        const previousUnread = new Map<string, boolean>(
+          previous?.pages.flatMap((page) => page.items.map((item) => [item.id, item.unread])),
+        );
+        client.setQueryData<InfiniteData<StreamContents>>(
+          queryKey,
+          (data) =>
+            data && {
+              ...data,
+              pages: data.pages.map((page) => ({
+                ...page,
+                items: page.items.map((item) => {
+                  const unread = failed.has(item.id) ? previousUnread.get(item.id) : undefined;
+                  return unread === undefined ? item : { ...item, unread };
+                }),
+              })),
+            },
+        );
+      }
+      for (const [entryId, previous] of context.previousEntries) {
+        client.setQueryData<Entry>(keys.entry(entryId), (entry) =>
+          entry && previous ? { ...entry, unread: previous.unread } : entry,
+        );
+      }
+      shiftUnreadCounts({
+        client,
+        entries: context.changedEntries,
+        delta: read ? 1 : -1,
+      });
     },
     onSettled: () => {
       void client.invalidateQueries({ queryKey: keys.unreadCounts });
