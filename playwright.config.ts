@@ -42,10 +42,12 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: CI,
   retries: CI ? 2 : 0,
+  // The 2-vCPU private-repo runner resolves the 50% default to one worker.
+  workers: CI ? 2 : undefined,
   // Mock mode loads the fixture transport as its own chunk, one more round trip before the first
   // data, and a dev server shared by parallel workers can push that past the 5s default.
   expect: { timeout: 10_000 },
-  reporter: CI ? [["github"], ["html", { open: "never" }]] : "list",
+  reporter: CI ? [["github"], ["list"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL: SEED_URL,
     trace: "on-first-retry",
