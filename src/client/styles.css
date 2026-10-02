@@ -119,12 +119,11 @@ body {
   padding-right: env(safe-area-inset-right, 0px);
 }
 
-/* Newsletter bodies: emails assume a white page, so the card stays white in both themes. */
+/* Newsletter bodies: emails assume a white page, so the band stays white in both themes. */
 .newsletter-frame {
   display: block;
   width: 100%;
   border: 0;
-  border-radius: 0.75rem;
   background: #fff;
   color-scheme: light;
 }

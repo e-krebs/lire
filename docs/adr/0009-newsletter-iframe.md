@@ -16,8 +16,8 @@ email's `<style>` blocks, so the emails bring no phone rules of their own.
 
 A body is a newsletter when its sanitized HTML holds an element with class `webfeeds--newsletter`,
 which Feedly adds to every email feed body. The reader renders it in a `srcdoc` iframe with the
-browser's default styles, on a white card with `color-scheme: light` in both themes. Blog posts stay
-inline with `.prose-reader`, and the table overrides are gone.
+browser's default styles, on a full-width white band with `color-scheme: light` in both themes. Blog
+posts stay inline with `.prose-reader`, and the table overrides are gone.
 
 The sandbox is exactly `allow-same-origin allow-popups allow-popups-to-escape-sandbox`, never
 `allow-scripts`. The parent reads the iframe document, so no script runs in the frame while the
