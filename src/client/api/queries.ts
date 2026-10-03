@@ -29,6 +29,7 @@ import {
   updatePreferences,
   type EntryOrder,
 } from "client/api/client";
+import { useTier } from "client/hooks/useTier";
 import { markReadQueue } from "client/api/markReadQueue";
 import { orderCategories, orphansOf } from "client/api/selectors";
 import { CATEGORY_ORDER_KEY } from "shared/feedsApi/preferences";
@@ -57,21 +58,29 @@ export const keys = {
     streamKey,
     unreadOnly,
     order,
+    count,
   }: {
     streamKey: StreamKey;
     unreadOnly?: boolean;
     order?: EntryOrder;
+    count?: number;
   }) =>
-    ["stream", streamKey, { unreadOnly: unreadOnly ?? false, order: order ?? "newest" }] as const,
+    [
+      "stream",
+      streamKey,
+      { unreadOnly: unreadOnly ?? false, order: order ?? "newest", count },
+    ] as const,
   search: ({
     streamKey,
     query,
     unreadOnly,
+    count,
   }: {
     streamKey: StreamKey;
     query: string;
     unreadOnly?: boolean;
-  }) => ["search", streamKey, query, { unreadOnly: unreadOnly ?? false }] as const,
+    count?: number;
+  }) => ["search", streamKey, query, { unreadOnly: unreadOnly ?? false, count }] as const,
   entry: (entryId: string) => ["entry", entryId] as const,
   feedLookup: (query: string) => ["feedLookup", query] as const,
 };
@@ -208,21 +217,38 @@ export const flattenStream = (data: InfiniteData<EntryPage> | undefined): Entry[
     .filter((entry) => !seen.has(entry.id) && seen.add(entry.id));
 };
 
+const DESKTOP_RIVER_COUNT = 24;
+const DESKTOP_FEED_COUNT = 12;
+
+// Phone and tablet keep the server's default page size.
+export const pageCountFor = ({
+  tier,
+  streamKey,
+}: {
+  tier: ReturnType<typeof useTier>;
+  streamKey: StreamKey;
+}): number | undefined => {
+  if (tier !== "desktop") return undefined;
+  return parseStreamKey(streamKey)?.kind === "feed" ? DESKTOP_FEED_COUNT : DESKTOP_RIVER_COUNT;
+};
+
 export const useStream = ({
   streamKey,
   unreadOnly,
   order,
+  count,
   enabled = true,
 }: {
   streamKey: StreamKey;
   unreadOnly?: boolean;
   order?: EntryOrder;
+  count?: number;
   enabled?: boolean;
 }) =>
   useInfiniteQuery({
-    queryKey: keys.stream({ streamKey, unreadOnly, order }),
+    queryKey: keys.stream({ streamKey, unreadOnly, order, count }),
     queryFn: async ({ pageParam }) =>
-      getStreamEntries({ streamKey, unreadOnly, order, cursor: pageParam }),
+      getStreamEntries({ streamKey, unreadOnly, order, count, cursor: pageParam }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.cursor,
     enabled,
@@ -235,17 +261,19 @@ export const useSearchContents = ({
   streamKey,
   query,
   unreadOnly,
+  count,
   enabled = true,
 }: {
   streamKey: StreamKey;
   query: string;
   unreadOnly?: boolean;
+  count?: number;
   enabled?: boolean;
 }) =>
   useInfiniteQuery({
-    queryKey: keys.search({ streamKey, query, unreadOnly }),
+    queryKey: keys.search({ streamKey, query, unreadOnly, count }),
     queryFn: async ({ pageParam }) =>
-      searchEntries({ streamKey, query, unreadOnly, cursor: pageParam }),
+      searchEntries({ streamKey, query, unreadOnly, count, cursor: pageParam }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.cursor,
     enabled: enabled && query.trim().length >= MIN_SEARCH_LENGTH,

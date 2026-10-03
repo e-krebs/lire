@@ -5,7 +5,7 @@ import { useT } from "client/i18n/useT";
 // Aspects the real mosaic tends to produce, so the placeholder columns look like the grid.
 const SKELETON_ASPECTS = [0.8, 1, 1.33, 0.75, 1.5, 0.9, 1.2, 0.8, 1.78, 1];
 
-export const MosaicSkeleton = ({ label }: { label?: string }) => {
+export const MosaicSkeleton = ({ label, count }: { label?: string; count?: number }) => {
   const t = useT();
   const { attach, width } = useElementWidth();
   const layout =
@@ -13,7 +13,10 @@ export const MosaicSkeleton = ({ label }: { label?: string }) => {
       ? undefined
       : layoutMasonry({
           containerWidth: width,
-          items: SKELETON_ASPECTS.map((aspect, index) => ({ id: String(index), aspect })),
+          items: SKELETON_ASPECTS.slice(0, count).map((aspect, index) => ({
+            id: String(index),
+            aspect,
+          })),
         });
 
   return (

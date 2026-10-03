@@ -125,7 +125,7 @@ describe("handle reads", () => {
     it("reads a feed from /reader/feed/:id and maps the entry", async () => {
       const upstream = fakeUpstream({ "GET /reader/feed/1": stories });
       const response = await send({
-        url: "/api/streams/feed%3A1/entries?count=20&unreadOnly=true&order=oldest",
+        url: "/api/streams/feed%3A1/entries?count=6&unreadOnly=true&order=oldest",
         upstream,
       });
       expect(response).toEqual({
@@ -153,6 +153,25 @@ describe("handle reads", () => {
         read_filter: "unread",
         include_hidden: "true",
       });
+    });
+
+    it("chains upstream pages of 6 for a feed when count is larger", async () => {
+      const upstream = fakeUpstream({ "GET /reader/feed/1": stories });
+      const first = await send({ url: "/api/streams/feed%3A1/entries?count=12", upstream });
+      expect(upstream.calls.map((call) => call.query?.page)).toEqual(["1", "2"]);
+      expect(first.body).toMatchObject({ cursor: encodeCursor({ page: 2 }) });
+      const second = await send({
+        url: `/api/streams/feed%3A1/entries?count=12&cursor=${encodeCursor({ page: 2 })}`,
+        upstream,
+      });
+      expect(upstream.calls.map((call) => call.query?.page)).toEqual(["1", "2", "3", "4"]);
+      expect(second.body).toMatchObject({ cursor: encodeCursor({ page: 3 }) });
+    });
+
+    it("issues one upstream request for a feed without count", async () => {
+      const upstream = fakeUpstream({ "GET /reader/feed/1": stories });
+      await send({ url: "/api/streams/feed%3A1/entries", upstream });
+      expect(upstream.calls).toHaveLength(1);
     });
 
     it("maps a sparse story", async () => {

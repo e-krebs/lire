@@ -41,6 +41,12 @@ const ui = {
   showAllLink(view: RenderResult) {
     return view.getByRole("link", { name: "Show all articles" });
   },
+  loadingMore(view: RenderResult) {
+    return view.queryByRole("status", { name: "Loading more articles" });
+  },
+  async findLoadingMore(view: RenderResult) {
+    return view.findByRole("status", { name: "Loading more articles" });
+  },
   queryEmptyState(view: RenderResult) {
     return view.queryByText("Nothing to read here.");
   },
@@ -231,7 +237,12 @@ describe("MosaicGrid", () => {
       expect(card(entryId)).not.toBeNull();
     });
     const all = client.getQueryData<InfiniteData<EntryPage>>(
-      keys.stream({ streamKey: "all", unreadOnly: false, order: "newest" }),
+      keys.stream({
+        streamKey: "all",
+        unreadOnly: false,
+        order: "newest",
+        count: 24,
+      }),
     );
     expect(all?.pages.flatMap((page) => page.items).some((item) => item.id === entryId)).toBe(true);
     expect(card(entryId)).not.toBeNull();
@@ -244,11 +255,17 @@ describe("MosaicGrid", () => {
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
     });
-    const queryKey = keys.stream({ streamKey: "all", unreadOnly: true, order: "newest" });
+    const queryKey = keys.stream({
+      streamKey: "all",
+      unreadOnly: true,
+      order: "newest",
+      count: 24,
+    });
     const firstPage = await getStreamEntries({
       streamKey: "all",
       unreadOnly: true,
       order: "newest",
+      count: 24,
     });
     expect(firstPage.cursor).toBeDefined();
     client.setQueryData<InfiniteData<EntryPage, string | undefined>>(queryKey, {
@@ -263,6 +280,43 @@ describe("MosaicGrid", () => {
     expect(firstPage.items.some((item) => item.id === entryId)).toBe(false);
     for (const item of firstPage.items) expect(card(item.id)).toBeNull();
     expect(ui.queryEmptyState(view)).toBeNull();
+  });
+
+  it("shows a row of skeleton tiles while the next page loads, and drops it when the page lands", async () => {
+    vi.stubEnv("VITE_API_MODE", "real");
+    let release = (): void => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    server.use(fixtureBackend);
+    server.use(
+      http.get("/api/streams/:streamKey/entries", async ({ request }) => {
+        // Returning nothing falls through to the fixture backend once released.
+        if (new URL(request.url).searchParams.has("cursor")) await held;
+      }),
+    );
+    resetFixtureState();
+    const callbacks: Array<(records: Array<{ isIntersecting: boolean }>) => void> = [];
+    class ReportingIntersectionObserver {
+      constructor(callback: (records: Array<{ isIntersecting: boolean }>) => void) {
+        callbacks.push(callback);
+      }
+      observe(): void {}
+      disconnect(): void {}
+    }
+    const { view } = setup({ client: newQueryClient(), observer: ReportingIntersectionObserver });
+    await ui.unreadToggles(view);
+    expect(ui.loadingMore(view)).toBeNull();
+
+    act(() => {
+      callbacks.at(-1)?.([{ isIntersecting: true }]);
+    });
+    expect(await ui.findLoadingMore(view)).toBeInTheDocument();
+
+    release();
+    await waitFor(() => {
+      expect(ui.loadingMore(view)).toBeNull();
+    });
   });
 
   it("pages in more when the end sentinel comes into view, and a refresh trims back to one page", async () => {
@@ -280,6 +334,7 @@ describe("MosaicGrid", () => {
       streamKey: "all",
       unreadOnly: true,
       order: "newest",
+      count: 24,
     });
     const { view } = setup({ client: newQueryClient(), observer: ReportingIntersectionObserver });
     const cards = () => view.container.querySelectorAll("[data-entry-id]").length;

@@ -346,7 +346,10 @@ interface StoriesQuery {
   q?: string;
 }
 
-// `count` maps to `limit` where the view reads it; a single feed is fixed at 6 a page.
+// `count` maps to `limit` where the view reads it; a single feed has no `limit`, so the Worker
+// chains upstream pages of 6 for a larger count.
+const FEED_PAGE_SIZE = 6;
+
 const fetchStories = async ({
   ctx,
   stream,
@@ -364,11 +367,21 @@ const fetchStories = async ({
   if (stream.kind === "read") {
     request = { method: "GET", path: "/reader/read_stories", query: { ...common, ...limit } };
   } else if (stream.kind === "feed") {
-    request = {
-      method: "GET",
-      path: `/reader/feed/${stream.feedId}`,
-      query: { ...common, ...filters },
-    };
+    const chain = count === undefined ? 1 : Math.ceil(count / FEED_PAGE_SIZE);
+    const answers = await Promise.all(
+      Array.from({ length: chain }, async (_, index) =>
+        call({
+          ctx,
+          request: {
+            method: "GET",
+            path: `/reader/feed/${stream.feedId}`,
+            query: { ...common, page: String((page - 1) * chain + index + 1), ...filters },
+          },
+          schema: StoriesAnswerSchema,
+        }),
+      ),
+    );
+    return answers.flatMap(({ stories }) => stories);
   } else {
     const library = await loadLibrary(ctx);
     const feedIds =

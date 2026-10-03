@@ -1,8 +1,9 @@
 import { expect, test, type Locator, type Page } from "./fixtures";
 
-// The seed holds 38 unread entries and a river page holds 12, so the unread-only default view
-// has four pages.
+// The seed holds 38 unread entries and a river page holds 12 (24 on desktop), so the unread-only
+// default view has four pages (two on desktop).
 const FIRST_PAGE = 12;
+const DESKTOP_FIRST_PAGE = 24;
 const UNREAD_TOTAL = 40;
 
 const ui = (page: Page) => ({
@@ -75,12 +76,14 @@ test.describe("gestures", () => {
     await expect(pageUi.tiles.first()).toBeVisible();
   });
 
-  test("loads the next page when the grid is scrolled to its end", async ({ page }) => {
+  test("loads the next page when the grid is scrolled to its end", async ({ page }, testInfo) => {
     const pageUi = ui(page);
     await page.goto("/");
 
     await expect(pageUi.tiles.first()).toBeVisible();
-    await expect(pageUi.tiles).toHaveCount(FIRST_PAGE);
+    await expect(pageUi.tiles).toHaveCount(
+      testInfo.project.name === "desktop" ? DESKTOP_FIRST_PAGE : FIRST_PAGE,
+    );
 
     // Each scroll to the end loads one more page.
     await expect(async () => {

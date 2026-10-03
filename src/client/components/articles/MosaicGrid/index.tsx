@@ -1,7 +1,14 @@
 import { Link } from "@tanstack/react-router";
 import type { StreamKey } from "shared/feedsApi/streamKey";
 import { useT } from "client/i18n/useT";
-import { MIN_SEARCH_LENGTH, keys, useSearchContents, useStream } from "client/api/queries";
+import {
+  MIN_SEARCH_LENGTH,
+  keys,
+  pageCountFor,
+  useSearchContents,
+  useStream,
+} from "client/api/queries";
+import { useTier } from "client/hooks/useTier";
 import { MosaicBody } from "./MosaicBody";
 import { actionClassName } from "./shared";
 
@@ -29,8 +36,21 @@ export const MosaicGrid = ({
 }: MosaicGridProps) => {
   const t = useT();
   const searching = query.trim() !== "";
-  const streamResult = useStream({ streamKey, unreadOnly, order: ranked, enabled: !searching });
-  const searchResult = useSearchContents({ streamKey, query, unreadOnly, enabled: searching });
+  const count = pageCountFor({ tier: useTier(), streamKey });
+  const streamResult = useStream({
+    streamKey,
+    unreadOnly,
+    order: ranked,
+    count,
+    enabled: !searching,
+  });
+  const searchResult = useSearchContents({
+    streamKey,
+    query,
+    unreadOnly,
+    count,
+    enabled: searching,
+  });
 
   // The search hook stays disabled below the minimum, so `isPending` would otherwise spin forever.
   if (searching && query.trim().length < MIN_SEARCH_LENGTH) {
@@ -45,8 +65,8 @@ export const MosaicGrid = ({
   }
 
   const queryKey = searching
-    ? keys.search({ streamKey, query, unreadOnly })
-    : keys.stream({ streamKey, unreadOnly, order: ranked });
+    ? keys.search({ streamKey, query, unreadOnly, count })
+    : keys.stream({ streamKey, unreadOnly, order: ranked, count });
   return (
     <MosaicBody
       key={JSON.stringify(queryKey)}

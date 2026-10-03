@@ -20,12 +20,15 @@ describe("feedsApi types", () => {
     expect(StreamEntriesQuerySchema.parse({})).toEqual({});
   });
 
-  it.for([{ count: "0" }, { count: "two" }, { unreadOnly: "maybe" }, { order: "random" }])(
-    "rejects the stream query %o",
-    (query) => {
-      expect(StreamEntriesQuerySchema.safeParse(query).success).toBe(false);
-    },
-  );
+  it.for([
+    { count: "0" },
+    { count: "51" },
+    { count: "two" },
+    { unreadOnly: "maybe" },
+    { order: "random" },
+  ])("rejects the stream query %o", (query) => {
+    expect(StreamEntriesQuerySchema.safeParse(query).success).toBe(false);
+  });
 
   it("needs a stream and a query to search entries", () => {
     expect(SearchEntriesQuerySchema.safeParse({ streamKey: "all", q: "" }).success).toBe(false);

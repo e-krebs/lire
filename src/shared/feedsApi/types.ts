@@ -97,7 +97,7 @@ export const PreferencesUpdateSchema = z.record(z.string(), z.string().nullable(
 export type PreferencesUpdate = z.infer<typeof PreferencesUpdateSchema>;
 
 // Query strings. Every field is optional; the Worker picks the defaults.
-const countParam = z.coerce.number().int().positive().optional();
+const countParam = z.coerce.number().int().positive().max(50).optional();
 const unreadOnlyParam = z.stringbool().optional();
 
 export const StreamEntriesQuerySchema = z
