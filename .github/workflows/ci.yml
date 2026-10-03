@@ -394,11 +394,11 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Write Worker secrets file
         run: |
-          printf 'ACCESS_ALLOWED_EMAIL=%s\nNEWSBLUR_USERNAME=%s\nNEWSBLUR_PASSWORD=%s\nNEWSBLUR_NEWSLETTER_ADDRESS=%s\n' \
-            "$ACCESS_ALLOWED_EMAIL" "$NEWSBLUR_USERNAME" "$NEWSBLUR_PASSWORD" "$NEWSBLUR_NEWSLETTER_ADDRESS" \
-            > "$RUNNER_TEMP/worker.env"
+          # JSON, not dotenv: dotenv cuts a value at its first "#", which truncated the password.
+          jq -n 'env | {ACCESS_ALLOWED_EMAIL, NEWSBLUR_USERNAME, NEWSBLUR_PASSWORD, NEWSBLUR_NEWSLETTER_ADDRESS}' \
+            > "$RUNNER_TEMP/worker-secrets.json"
       - name: Deploy Worker
-        run: yarn worker:deploy --secrets-file "$RUNNER_TEMP/worker.env"
+        run: yarn worker:deploy --secrets-file "$RUNNER_TEMP/worker-secrets.json"
 
   # Node built-ins only, so no install.
   check-live:
