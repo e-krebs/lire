@@ -43,8 +43,9 @@ their own convention and location (see `docs/adr/0001-adopt-diataxis.md`).
 - **Explanation** — discursive, understanding-oriented. The "why": design decisions, trade-offs,
   context. May admit alternatives and limits — this is the only quadrant where that's at home.
 - **ADR** — a decision record, not narration: **Status / Context / Decision / Consequences**.
-  "We chose X over Y" belongs in an ADR, never in reference docs. To reverse a decision, add a new
-  ADR that supersedes the old one and mark the old one superseded; don't rewrite history.
+  "We chose X over Y" belongs in an ADR, never in reference docs. To reverse a decision, write the
+  new ADR with the old one's still-valid reasons, delete the old ADR, renumber the later ones with
+  no gaps and grep the repo for stale links. Git history keeps the old record.
 
 ## Rules for all docs
 

@@ -1,4 +1,4 @@
-# 0006. No module mocks or spies, MSW and page.route only
+# 0004. No module mocks or spies, MSW and page.route only
 
 ## Status
 

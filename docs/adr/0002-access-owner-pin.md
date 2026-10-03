@@ -1,4 +1,4 @@
-# 0003. Cloudflare Access plus an owner email pin as the outer layer
+# 0002. Cloudflare Access plus an owner email pin as the outer layer
 
 ## Status
 
@@ -17,7 +17,7 @@ When the `ACCESS_ALLOWED_EMAIL` secret is set, the token's email must match it, 
 widened by mistake in the Access dashboard still admits only the owner. A missing team domain or
 audience fails closed. The `CF_Authorization` cookie is not a fallback, since it rides cross-site
 requests. `ACCESS_TEAM_DOMAIN` and `ACCESS_AUD` are vars in [wrangler.toml](../../wrangler.toml);
-the pin is a secret. [ADR 0008](0008-ci-owns-cloudflare-setup.md) moves setting it into CI.
+the pin is a secret. [ADR 0006](0006-ci-owns-cloudflare-setup.md) moves setting it into CI.
 
 ## Consequences
 

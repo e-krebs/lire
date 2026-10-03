@@ -1,4 +1,4 @@
-# 0005. Fixture-backed mock mode by default
+# 0003. Fixture-backed mock mode by default
 
 ## Status
 

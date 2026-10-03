@@ -14,7 +14,8 @@ reference and explanation.
 
 Organize `docs/` as `{tutorials,how-to,reference,explanation}/`, each doc filed by its dominant
 purpose and moved whole. [docs/README.md](../README.md) is the map. ADRs stay at `docs/adr/`: they
-are a genre with their own convention (numbered, immutable, superseded rather than rewritten).
+are a genre with their own convention (numbered with no gaps, a reversed decision deleted and
+replaced).
 
 ## Consequences
 
