@@ -57,9 +57,13 @@ export default defineConfig({
         plugins: [
           cloudflareTest({
             wrangler: { configPath: "./wrangler.toml" },
-            // The owner pin is a secret, absent from wrangler.toml; the tests need it set to cover the check.
+            // Secrets are absent from wrangler.toml; the tests need them set to cover the checks.
             miniflare: {
-              bindings: { ACCESS_ALLOWED_EMAIL: "owner@example.com" },
+              bindings: {
+                ACCESS_ALLOWED_EMAIL: "owner@example.com",
+                NEWSBLUR_CLIENT_SECRET: "test-client-secret",
+                NEWSBLUR_NEWSLETTER_ADDRESS: "demo-0000@newsletters.newsblur.com",
+              },
             },
           }),
         ],
