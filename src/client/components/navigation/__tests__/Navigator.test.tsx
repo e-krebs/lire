@@ -579,7 +579,7 @@ describe("Navigator", () => {
       expect(document.body).not.toHaveTextContent(/Subscribe to /);
     });
 
-    it("activates a feed result with ArrowDown then Enter, keeping the text as its search", async () => {
+    it("activates a feed result with ArrowDown then Enter, dropping the text", async () => {
       const { user, feedsLoaded } = setup();
       await waitFor(() => expect(ui.queryButton("Tech")).toBeInTheDocument());
       await feedsLoaded();
@@ -587,7 +587,7 @@ describe("Navigator", () => {
       await user.type(await ui.search, "Longform");
       await user.keyboard("{ArrowDown}{Enter}");
 
-      expect(await ui.text("received:feed:109?q=Longform")).toBeInTheDocument();
+      expect(await ui.text("received:feed:109")).toBeInTheDocument();
     });
   });
 
@@ -688,7 +688,7 @@ describe("Navigator", () => {
       expect(await ui.text("received:all")).toBeInTheDocument();
     });
 
-    it("keeps the typed text as the article search of the stream picked", async () => {
+    it("drops the typed text when a matched category is picked", async () => {
       const { user, router, feedsLoaded } = setup({ tier: "desktop" });
       await waitFor(() => expect(ui.queryButton("Tech")).toBeInTheDocument());
       await feedsLoaded();
@@ -698,7 +698,7 @@ describe("Navigator", () => {
       const [matchRow] = await ui.rows("Tech");
       await user.click(matchRow);
 
-      expect(await ui.text(`received:${TECH_KEY}?q=tech`)).toBeInTheDocument();
+      expect(await ui.text(`received:${TECH_KEY}`)).toBeInTheDocument();
       // The category rides in one path segment.
       expect(decodeURIComponent(router.state.location.pathname)).toBe(`/stream/${TECH_KEY}`);
     });
@@ -722,6 +722,17 @@ describe("Navigator", () => {
       await user.click(ui.allArticles!);
 
       expect(await ui.text("received:all")).toBeInTheDocument();
+    });
+
+    it("drops the typed text when All articles is picked", async () => {
+      const { user, feedsLoaded } = setup({ streamKey: TECH_KEY });
+      await feedsLoaded();
+
+      await user.type(await ui.search, "tech");
+      await user.click(ui.allArticles!);
+
+      expect(await ui.text("received:all")).toBeInTheDocument();
+      expect(await ui.search).toHaveValue("");
     });
 
     it("opens Recently read on click", async () => {
@@ -764,7 +775,7 @@ describe("Navigator", () => {
       expect(await ui.text("received:all?q=tech")).toBeInTheDocument();
     });
 
-    it("opens a matched feed on click, keeping the text as its search", async () => {
+    it("opens a matched feed on click, dropping the text", async () => {
       const { user, router, feedsLoaded } = setup();
       await feedsLoaded();
 
@@ -775,7 +786,7 @@ describe("Navigator", () => {
       await waitFor(() => {
         expect(decodeURIComponent(router.state.location.pathname)).toBe(`/stream/${FEED_KEY}`);
       });
-      expect(router.state.location.search).toEqual({ q: "Example Tech Daily" });
+      expect(router.state.location.search).toEqual({});
     });
 
     it("opens the feed behind a highlighted match with Enter", async () => {

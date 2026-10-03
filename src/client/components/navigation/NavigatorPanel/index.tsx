@@ -51,6 +51,7 @@ export interface NavigatorPanelHandle {
 interface NavigatorPanelProps {
   /** Text typed in the location bar field. */
   query: string;
+  onQueryChange: (value: string) => void;
   /** Panel should close, e.g. after a selection. */
   onClose: () => void;
   /** Route key of the stream a search is limited to: "all", `folder:<label>` or `feed:<id>`. */
@@ -63,7 +64,7 @@ interface NavigatorPanelProps {
 // omnibox popover — both mount this once they're open and drive it through the same `query` and
 // keyboard events, so the two surfaces behave identically.
 export const NavigatorPanel = forwardRef<NavigatorPanelHandle, NavigatorPanelProps>(
-  ({ query, onClose, scopeKey, scopeLabel }, ref) => {
+  ({ query, onQueryChange, onClose, scopeKey, scopeLabel }, ref) => {
     const t = useT().navigation;
     const navigate = useNavigate();
     const params = useParams({ strict: false });
@@ -200,14 +201,13 @@ export const NavigatorPanel = forwardRef<NavigatorPanelHandle, NavigatorPanelPro
     const selectedBrowseKey =
       activeIndex >= results.length ? browseRows[activeIndex - results.length]?.key : undefined;
 
-    // Picking a stream carries the typed text along as that stream's article search, so the
-    // omnibox never throws away what was typed to get here.
     const goToKey = (streamKeyToOpen: string): void => {
       void navigate({
         to: "/stream/$streamKey",
         params: { streamKey: streamKeyToOpen },
-        search: (prev) => ({ ...prev, q: trimmedQuery === "" ? undefined : trimmedQuery }),
+        search: (prev) => ({ ...prev, q: undefined }),
       });
+      onQueryChange("");
       onClose();
     };
 

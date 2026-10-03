@@ -22,7 +22,13 @@ const meta = {
     ),
   ],
   argTypes: { onClose: { control: false } },
-  args: { query: "", scopeKey: "all", scopeLabel: "All articles", onClose: fn() },
+  args: {
+    query: "",
+    onQueryChange: fn(),
+    scopeKey: "all",
+    scopeLabel: "All articles",
+    onClose: fn(),
+  },
   render: function Render(args: ComponentProps<typeof NavigatorPanel>) {
     const [, updateArgs] = useArgs();
     const handleRef = useRef<NavigatorPanelHandle>(null);
