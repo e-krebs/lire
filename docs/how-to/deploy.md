@@ -161,13 +161,16 @@ auth class and the token it stored. The first deploy after the move applies it.
 ## Deploy the Worker
 
 CI deploys the Worker through the `deploy-worker` job. To deploy from a machine instead, set
-`CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, write `ACCESS_ALLOWED_EMAIL=<owner email>`,
-`NEWSBLUR_USERNAME=<username>`, `NEWSBLUR_PASSWORD=<password>` and
-`NEWSBLUR_NEWSLETTER_ADDRESS=<address>` to a file and run:
+`CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, write `ACCESS_ALLOWED_EMAIL`,
+`NEWSBLUR_USERNAME`, `NEWSBLUR_PASSWORD` and `NEWSBLUR_NEWSLETTER_ADDRESS` to a JSON file, as one
+object of strings, and run:
 
 ```sh
 yarn worker:deploy --secrets-file <file>
 ```
+
+Use JSON, not a `.env` file. The `.env` format cuts a value at its first `#`, so a password
+with a `#` reaches the Worker truncated.
 
 Check the host is closed and the sites answer. The whole host sits behind Access, so an
 unauthenticated request stops at the edge with a redirect to the Access login, not a Worker `403`:

@@ -222,6 +222,15 @@ describe("worker", () => {
       expect((await auth().getSession())?.sessionId).toBe(SESSION_ID);
     });
 
+    it("sends a User-Agent on every NewsBlur call", async () => {
+      await setup();
+      upstream = signInUpstream();
+
+      await authed("/api/profile");
+      expect(upstreamCalls.length).toBeGreaterThan(2);
+      for (const call of upstreamCalls) expect(call.headers.get("User-Agent")).toBe("Lire");
+    });
+
     it("logs in on its own when a request finds no session", async () => {
       await setup();
       upstream = signInUpstream();

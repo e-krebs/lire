@@ -43,7 +43,7 @@ folder title, an entry id is the story hash. A stream key is `all`, `read`, `fol
 Preference keys are `lire.categoryOrder` and `lire.directOpen.<feedId>`
 ([preferences.ts](../../src/shared/feedsApi/preferences.ts)). The Worker rejects other keys with 400.
 
-The Worker sends `Cookie: newsblur_sessionid=<id>` upstream. Non-GET requests need a same-origin
+The Worker sends `Cookie: newsblur_sessionid=<id>` and `User-Agent: Lire` upstream. NewsBlur bans a request with no user agent. Non-GET requests need a same-origin
 caller, and POST and PATCH need a JSON content type. Creates answer 201 with the resource, PATCH
 answers 200, and deletes, marks and preference writes answer 204. Errors are JSON: `forbidden`,
 `not_found`, `bad_request`, `conflict` (409), `sign_in_required` (401), `upstream_error` (502). The response and
