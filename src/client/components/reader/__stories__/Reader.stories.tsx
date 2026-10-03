@@ -140,6 +140,33 @@ export const Newsletter: Story = {
   },
 };
 
+export const Embeds: Story = {
+  args: { entryId: "102:1a2b3c" },
+  parameters: { url: "/stream/all/entry/102:1a2b3c" },
+  play: async ({ canvasElement }) => {
+    const video = await waitFor(() => {
+      const found = canvasElement.querySelector('iframe[src^="https://www.youtube.com/embed/"]');
+      if (!(found instanceof HTMLIFrameElement)) throw new Error("no YouTube frame yet");
+      return found;
+    }, LOADED);
+    await expect(video.getBoundingClientRect().height).toBeGreaterThan(150);
+  },
+};
+
+export const TweetEmbed: Story = {
+  args: { entryId: "102:1b3c4d" },
+  parameters: { url: "/stream/all/entry/102:1b3c4d" },
+  play: async ({ canvasElement }) => {
+    const frame = await waitFor(() => {
+      const found = canvasElement.querySelector('iframe[data-embed="x"]');
+      if (!(found instanceof HTMLIFrameElement)) throw new Error("no X frame yet");
+      return found;
+    }, LOADED);
+    await expect(frame.getAttribute("src")).toContain("platform.twitter.com/embed/Tweet.html");
+    await expect(canvasElement.querySelector("script")).toBeNull();
+  },
+};
+
 export const NotFound: Story = {
   args: { entryId: "missing-entry" },
   play: async ({ canvasElement }) => {

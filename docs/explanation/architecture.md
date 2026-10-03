@@ -48,6 +48,12 @@ apply and the app's article styles cannot break it. The parent sizes the frame t
 presses out of it. The reasons and limits are in
 [ADR 0007](../adr/0007-newsletter-iframe.md).
 
+A blog post keeps two kinds of frame: a YouTube `/embed/` frame, and an X frame that Lire builds
+from a `twitter-tweet` blockquote. The helpers are in
+[embeds.ts](../../src/client/utils/embeds.ts). Every other frame is dropped, no third-party script
+runs in the app's origin, and a newsletter never gets frames. The allowlist and the privacy cost
+are in [ADR 0011](../adr/0011-reader-embeds.md).
+
 The unread filter and the sort order are per device, not per account, and never in the URL. They
 live in `localStorage` under `lire.view` ([viewPrefs.ts](../../src/client/utils/viewPrefs.ts)),
 behind a small store that the stream route, the view toggles and the Navigator all read.

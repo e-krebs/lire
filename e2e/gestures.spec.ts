@@ -3,7 +3,7 @@ import { expect, test, type Locator, type Page } from "./fixtures";
 // The seed holds 38 unread entries and a river page holds 12, so the unread-only default view
 // has four pages.
 const FIRST_PAGE = 12;
-const UNREAD_TOTAL = 38;
+const UNREAD_TOTAL = 40;
 
 const ui = (page: Page) => ({
   get entriesRegion() {

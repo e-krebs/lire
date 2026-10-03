@@ -57,3 +57,5 @@ Architecture decision records sit outside the four quadrants as their own genre 
 - [adr/0009-newsblur-bff.md](adr/0009-newsblur-bff.md) - Serve a Lire-owned contract from the Worker
   over NewsBlur
 - [adr/0010-newsblur-session-cookie.md](adr/0010-newsblur-session-cookie.md) - Sign in with the NewsBlur session cookie
+- [adr/0011-reader-embeds.md](adr/0011-reader-embeds.md) - Embed YouTube and X in blog posts as
+  iframes, newsletters unchanged

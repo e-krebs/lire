@@ -65,7 +65,8 @@ the common content goes through `useReparentedContent` and each wrapper renders 
 ## Hooks and utils
 
 `src/client/hooks` holds hooks only, each file named `useXxx`. A helper a hook needs goes in
-`hooks/utils`. Pure functions go in `src/client/utils`. A lint rule checks the hook file names.
+`hooks/utils`. Pure functions go in `src/client/utils`, such as `embeds.ts`, which checks and builds
+the YouTube and X frame sources. A lint rule checks the hook file names.
 
 ## Stories
 

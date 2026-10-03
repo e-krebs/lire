@@ -31,5 +31,27 @@
     "story_timestamp": "1759940600",
     "image_urls": [],
     "read_status": 1
+  },
+  {
+    "story_hash": "102:1a2b3c",
+    "story_feed_id": 102,
+    "story_title": "A video embed in feed 102",
+    "story_authors": "Ada Writer",
+    "story_content": "<p>A YouTube video inside a blog post.</p><iframe title=\"Synthetic video\" src=\"https://www.youtube.com/embed/dQw4w9WgXcQ\" width=\"560\" height=\"315\" allowfullscreen></iframe>",
+    "story_permalink": "https://example.test/102/4",
+    "story_timestamp": "1759100000",
+    "image_urls": [],
+    "read_status": 0
+  },
+  {
+    "story_hash": "102:1b3c4d",
+    "story_feed_id": 102,
+    "story_title": "A tweet embed in feed 102",
+    "story_authors": "Ada Writer",
+    "story_content": "<p>A post from X inside a blog post.</p><blockquote class=\"twitter-tweet\"><p>Synthetic post text for the embed.</p>&mdash; Ada Writer (@ada) <a href=\"https://twitter.com/ada/status/1234567890123456789\">October 1, 2025</a></blockquote><script async src=\"https://platform.twitter.com/widgets.js\"></script>",
+    "story_permalink": "https://example.test/102/5",
+    "story_timestamp": "1759090000",
+    "image_urls": [],
+    "read_status": 0
   }
 ]
