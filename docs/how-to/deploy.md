@@ -44,7 +44,7 @@ accepts a manual run only from `main`.
 The `cloudflare-gate` job checks that `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` exist and
 skips every Cloudflare job cleanly when they do not. The `preflight` job then runs
 `yarn check:access` and `yarn provision:pages`, and every deploy job needs it. `preflight` also
-fails while `NEWSBLUR_CLIENT_ID` is empty in `wrangler.toml`. The SPA, demo and
+fails while the `NEWSBLUR_CLIENT_ID` secret is not set. The SPA, demo and
 Worker jobs need both `verify` and `e2e` green; the Storybook job needs the `storybook` job. A job
 skipped by the change filter does not block a deploy, but a failed one does. The `check-live` job
 runs last, once the deploys that ran finish, and runs `yarn check:live`. The `docs-links` job runs
@@ -67,7 +67,8 @@ uploads.
 | `ACCESS_ALLOWED_EMAIL` | GitHub repo secret, Worker secret | Owner email pin |
 | `ACCESS_TEAM_DOMAIN` | `[vars]` in [wrangler.toml](../../wrangler.toml) | Access team domain |
 | `ACCESS_AUD` | `[vars]` in wrangler.toml | Access application audience |
-| `NEWSBLUR_HOST`, `NEWSBLUR_CLIENT_ID` | `[vars]` in wrangler.toml | NewsBlur base URL and OAuth client id |
+| `NEWSBLUR_HOST` | `[vars]` in wrangler.toml | NewsBlur base URL |
+| `NEWSBLUR_CLIENT_ID` | GitHub repo secret, Worker secret | OAuth client id |
 | `NEWSBLUR_CLIENT_SECRET` | GitHub repo secret, Worker secret | OAuth client secret |
 | `NEWSBLUR_NEWSLETTER_ADDRESS` | GitHub repo secret, Worker secret | The newsletter address the app shows |
 | `LIRE_KEYSTORE_BASE64` | GitHub repo secret | Android signing keystore, base64 |
@@ -89,14 +90,15 @@ secret value.
 
 ## NewsBlur OAuth app
 
-Sign-in needs an OAuth client from NewsBlur, and three values in the repo before the Worker deploys.
-Until they exist, `preflight` fails on the empty client id and the Worker job fails on the empty
+Sign-in needs an OAuth client from NewsBlur, and three GitHub secrets before the Worker deploys.
+Until they exist, `preflight` fails on the missing client id and the Worker job fails on the empty
 secret.
 
 1. Ask NewsBlur (samuel@newsblur.com) for an OAuth client. Give it the redirect URI
    `https://lire.krebs.tech/api/auth/callback` and the scopes `read` and `write`.
-2. Set the client id as `NEWSBLUR_CLIENT_ID` in `[vars]` of [wrangler.toml](../../wrangler.toml).
-   It ships empty.
+2. Add the GitHub repo secret `NEWSBLUR_CLIENT_ID` with the client id:
+   `gh secret set NEWSBLUR_CLIENT_ID --repo e-krebs/lire`. The id is not secret, because the
+   sign-in redirect shows it, but a secret keeps it out of the public repo.
 3. Add the GitHub repo secret `NEWSBLUR_CLIENT_SECRET` with the client secret.
 4. Add the GitHub repo secret `NEWSBLUR_NEWSLETTER_ADDRESS`. Copy the address
    (`<username>-<token>@newsletters.newsblur.com`) from the NewsBlur settings.

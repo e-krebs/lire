@@ -20,10 +20,8 @@ deleted_classes = ["FeedlyAuth"]
 
 [vars]
 NEWSBLUR_HOST = "https://newsblur.com"
-# Empty until NewsBlur issues the OAuth client; CI preflight fails while it is.
-NEWSBLUR_CLIENT_ID = ""
 ACCESS_TEAM_DOMAIN = "lire-6s2-pages.cloudflareaccess.com"
 ACCESS_AUD = "80a2c7fef3de869a12354a2a822ae8ef803a29a2953ad24f41ce690c955cad0a"
 
-# Secrets: CI sets ACCESS_ALLOWED_EMAIL, NEWSBLUR_CLIENT_SECRET and NEWSBLUR_NEWSLETTER_ADDRESS from
-# the GitHub secrets of the same names
+# Secrets: CI sets ACCESS_ALLOWED_EMAIL, NEWSBLUR_CLIENT_ID, NEWSBLUR_CLIENT_SECRET and
+# NEWSBLUR_NEWSLETTER_ADDRESS from the GitHub secrets of the same names

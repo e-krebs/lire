@@ -291,13 +291,14 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       ACCESS_ALLOWED_EMAIL: ${{ secrets.ACCESS_ALLOWED_EMAIL }}
+      NEWSBLUR_CLIENT_ID: ${{ secrets.NEWSBLUR_CLIENT_ID }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - name: Require the NewsBlur OAuth client id
         run: |
-          if ! grep -Eq '^NEWSBLUR_CLIENT_ID = "[^"]+"' wrangler.toml; then
-            echo "::error::NEWSBLUR_CLIENT_ID is empty in wrangler.toml — sign-in cannot reach NewsBlur."
+          if [ -z "$NEWSBLUR_CLIENT_ID" ]; then
+            echo "::error::NEWSBLUR_CLIENT_ID secret not set — sign-in cannot reach NewsBlur."
             exit 1
           fi
       - name: Access config check
@@ -373,6 +374,7 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       ACCESS_ALLOWED_EMAIL: ${{ secrets.ACCESS_ALLOWED_EMAIL }}
+      NEWSBLUR_CLIENT_ID: ${{ secrets.NEWSBLUR_CLIENT_ID }}
       NEWSBLUR_CLIENT_SECRET: ${{ secrets.NEWSBLUR_CLIENT_SECRET }}
       NEWSBLUR_NEWSLETTER_ADDRESS: ${{ secrets.NEWSBLUR_NEWSLETTER_ADDRESS }}
     steps:
@@ -392,8 +394,8 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Write Worker secrets file
         run: |
-          printf 'ACCESS_ALLOWED_EMAIL=%s\nNEWSBLUR_CLIENT_SECRET=%s\nNEWSBLUR_NEWSLETTER_ADDRESS=%s\n' \
-            "$ACCESS_ALLOWED_EMAIL" "$NEWSBLUR_CLIENT_SECRET" "$NEWSBLUR_NEWSLETTER_ADDRESS" \
+          printf 'ACCESS_ALLOWED_EMAIL=%s\nNEWSBLUR_CLIENT_ID=%s\nNEWSBLUR_CLIENT_SECRET=%s\nNEWSBLUR_NEWSLETTER_ADDRESS=%s\n' \
+            "$ACCESS_ALLOWED_EMAIL" "$NEWSBLUR_CLIENT_ID" "$NEWSBLUR_CLIENT_SECRET" "$NEWSBLUR_NEWSLETTER_ADDRESS" \
             > "$RUNNER_TEMP/worker.env"
       - name: Deploy Worker
         run: yarn worker:deploy --secrets-file "$RUNNER_TEMP/worker.env"

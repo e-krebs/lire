@@ -62,7 +62,7 @@ Names and roles only.
 | `VITE_DEMO` | build | `true` makes the demo build |
 | `NEWSBLUR_USERNAME`, `NEWSBLUR_PASSWORD` | local | Recorder login, listed in [.env.sample](../../.env.sample) |
 | `NEWSBLUR_HOST` | Worker var | Base URL of NewsBlur |
-| `NEWSBLUR_CLIENT_ID` | Worker var | OAuth client id sent on authorize and on the code exchange |
+| `NEWSBLUR_CLIENT_ID` | Worker secret | OAuth client id sent on authorize and on the code exchange, set by CI from a GitHub secret |
 | `NEWSBLUR_CLIENT_SECRET` | Worker secret | OAuth client secret, set by CI from a GitHub secret |
 | `NEWSBLUR_NEWSLETTER_ADDRESS` | Worker secret | The newsletter address the app shows, set by CI from a GitHub secret |
 | `ACCESS_TEAM_DOMAIN` | Worker var | Access team domain that issues the JWT |
