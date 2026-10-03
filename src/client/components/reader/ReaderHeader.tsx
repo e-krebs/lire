@@ -64,17 +64,17 @@ export const ReaderHeader = ({
   }, [paneRef, sentinel]);
 
   const t = useT();
-  const originTitle = useOriginTitle(entry.origin);
+  const originTitle = useOriginTitle({ feedId: entry.feedId });
   const title = entry.title ? decodeEntities(entry.title) : t.articles.untitled;
-  const href = entry.alternate?.[0]?.href;
-  const timestamp = entry.published ?? entry.crawled;
+  const href = entry.url;
+  const timestamp = entry.published;
   const locale = useLocale();
   const openedRead = openedUnread === false;
   const keepIcon = openedRead ? "check" : "unread-only";
   const markIcon = openedRead ? "unread-only" : "check";
   // The custom property feeds the masthead colours in styles.css, the same recipe as the tile's.
   const hueStyle: CSSProperties & { "--hue": string } = {
-    "--hue": String(feedHue(entry.origin.streamId)),
+    "--hue": String(feedHue(entry.feedId)),
   };
 
   return (

@@ -62,7 +62,7 @@ export const Interaction: Story = {
       await expect(trigger).toHaveAttribute("aria-expanded", "true");
     });
     const menu = await within(document.body).findByRole("group", { name: "Account and app info" });
-    await within(menu).findByText("Ada Reader", {}, { timeout: 10_000 });
+    await within(menu).findByText("ada-reader", {}, { timeout: 10_000 });
     const toggle = within(menu).getByRole("checkbox", { name: "Bar at the bottom" });
     await userEvent.click(toggle);
     await expect(toggle).toBeChecked();

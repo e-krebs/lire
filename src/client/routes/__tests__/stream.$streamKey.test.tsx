@@ -15,7 +15,7 @@ const ui = {
   },
   async articleLink() {
     return within(await ui.articleRegion).findByRole("link", {
-      name: "Chipmaker unveils next generation of low-power silicon",
+      name: "A deliberately long article title that goes on well past the usual width of a header to test wrapping and the sticky title",
     });
   },
 };
@@ -37,11 +37,11 @@ describe("/stream/$streamKey", () => {
     resetFixtureState();
   });
 
-  describe("when a collection label has a % and a space in it", () => {
+  describe("when a category label has a % and a space in it", () => {
     // TanStack Router must own the encode/decode round trip, since the app no longer calls
     // encodeURIComponent/decodeURIComponent on stream params (see TopBar.tsx, this route).
     it("carries a key with a % and a space through a navigation to useParams unchanged", async () => {
-      const streamKey = "100% Design & Code";
+      const streamKey = "folder:100% Design & Code";
       const { router } = setup({ url: "/stream/all" });
 
       await router.navigate({ to: "/stream/$streamKey", params: { streamKey } });
@@ -50,6 +50,14 @@ describe("/stream/$streamKey", () => {
         expect(leafMatch(router)?.params).toEqual({ streamKey });
       });
       expect(decodeURIComponent(router.state.location.pathname)).toBe(`/stream/${streamKey}`);
+    });
+  });
+
+  it("redirects a key that names no stream to all", async () => {
+    const { router } = setup({ url: "/stream/folder:" });
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe("/stream/all");
     });
   });
 
@@ -99,12 +107,12 @@ describe("/stream/$streamKey", () => {
 
   describe("when opening an entry", () => {
     it("renders the reader beside the grid", async () => {
-      const { view } = setup({ url: "/stream/all/entry/news-0029" });
+      const { view } = setup({ url: "/stream/all/entry/101:0dcd64" });
 
       // The grid tile carries the same title, so the reader's link is looked up inside its region.
       expect(await ui.articleLink()).toBeInTheDocument();
       await waitFor(() => {
-        expect(view.container.querySelector('[data-entry-id="news-0029"]')).not.toBeNull();
+        expect(view.container.querySelector('[data-entry-id="101:0dcd64"]')).not.toBeNull();
       });
     });
   });

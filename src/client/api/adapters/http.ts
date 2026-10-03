@@ -12,12 +12,13 @@ const toSearch = (
   return search ? `?${search}` : "";
 };
 
-// Same-origin fetch to the Worker, mounted under /api — credentials ride the session cookie.
-export const httpTransport: Transport = async ({ method, path, query, body }) => {
-  const url = new URL(`/api${path}${toSearch(query)}`, location.origin);
+// Same-origin fetch to the Worker — credentials ride the session cookie.
+export const httpTransport: Transport = async ({ method, path, query, body, keepalive }) => {
+  const url = new URL(`${path}${toSearch(query)}`, location.origin);
   const response = await fetch(url, {
     method,
     credentials: "same-origin",
+    ...(keepalive ? { keepalive } : {}),
     ...(body !== undefined
       ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
       : {}),

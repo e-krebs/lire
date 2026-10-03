@@ -3,17 +3,12 @@ import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 import { resetFixtureState } from "client/api/adapters/fixture";
 import { CategoryPanel } from "client/components/subscriptions/CategoryPanel";
 import { withQueryClient } from "stories/decorators";
-import { COLLECTIONS, SUBSCRIPTIONS } from "stories/fixtures";
+import { CATEGORIES, FEEDS } from "stories/fixtures";
 
 const SLOW = { timeout: 10_000 };
 
-const sharedFeeds = SUBSCRIPTIONS.map((feed, index) =>
-  index === 0
-    ? {
-        ...feed,
-        categories: [...feed.categories, { id: COLLECTIONS[1].id, label: COLLECTIONS[1].label }],
-      }
-    : feed,
+const sharedFeeds = FEEDS.map((feed, index) =>
+  index === 0 ? { ...feed, categoryIds: [...feed.categoryIds, CATEGORIES[1].id] } : feed,
 );
 
 const meta = {
@@ -32,9 +27,9 @@ const meta = {
     onAddNewsletter: { control: false },
   },
   args: {
-    category: COLLECTIONS[0],
-    collections: COLLECTIONS,
-    subscriptions: SUBSCRIPTIONS,
+    category: CATEGORIES[0],
+    categories: CATEGORIES,
+    allFeeds: FEEDS,
     onClose: fn(),
     onOpenFeed: fn(),
     onAddWebsite: fn(),
@@ -48,26 +43,26 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
 
 export const SharedFeed: Story = {
-  args: { subscriptions: sharedFeeds },
+  args: { allFeeds: sharedFeeds },
   play: async ({ args }) => {
-    const panel = await screen.findByRole("complementary", { name: "Tech News" });
-    await userEvent.click(within(panel).getByRole("button", { name: "Example News" }));
+    const panel = await screen.findByRole("complementary", { name: "Tech" });
+    await userEvent.click(within(panel).getByRole("button", { name: "Example Tech Daily" }));
     await expect(args.onOpenFeed).toHaveBeenCalledOnce();
     await userEvent.click(
-      within(panel).getByRole("button", { name: "Remove Example News from Tech News" }),
+      within(panel).getByRole("button", { name: "Remove Example Tech Daily from Tech" }),
     );
     await waitFor(async () => {
       await expect(
-        within(panel).getByRole("button", { name: "Remove Example News from Tech News" }),
+        within(panel).getByRole("button", { name: "Remove Example Tech Daily from Tech" }),
       ).toBeEnabled();
     }, SLOW);
   },
 };
 
 export const SingleCategory: Story = {
-  args: { collections: [COLLECTIONS[0]] },
+  args: { categories: [CATEGORIES[0]] },
   play: async () => {
-    const panel = await screen.findByRole("complementary", { name: "Tech News" });
+    const panel = await screen.findByRole("complementary", { name: "Tech" });
     const locked = within(panel).getByRole("button", { name: "Delete category…" });
     await expect(locked).toHaveAttribute("aria-disabled", "true");
     await userEvent.click(locked);
@@ -77,9 +72,9 @@ export const SingleCategory: Story = {
 
 export const DeleteCategory: Story = {
   play: async ({ args }) => {
-    const panel = await screen.findByRole("complementary", { name: "Tech News" });
+    const panel = await screen.findByRole("complementary", { name: "Tech" });
     await userEvent.click(within(panel).getByRole("button", { name: "Delete category…" }));
-    const dialog = await screen.findByRole("dialog", { name: "Delete Tech News?" });
+    const dialog = await screen.findByRole("dialog", { name: "Delete Tech?" });
     await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
     await waitFor(async () => {
       await expect(screen.queryByRole("dialog")).toBeNull();
@@ -89,7 +84,9 @@ export const DeleteCategory: Story = {
       within(await screen.findByRole("dialog")).getByRole("radio", { name: "Design" }),
     );
     await userEvent.click(
-      within(screen.getByRole("dialog")).getByRole("button", { name: "Delete and move 4 feeds" }),
+      within(screen.getByRole("dialog")).getByRole("button", {
+        name: /^Delete and move \d+ feeds?$/,
+      }),
     );
     await waitFor(async () => {
       await expect(args.onClose).toHaveBeenCalledOnce();
@@ -99,7 +96,7 @@ export const DeleteCategory: Story = {
 
 export const AddWebsite: Story = {
   play: async ({ args }) => {
-    const panel = await screen.findByRole("complementary", { name: "Tech News" });
+    const panel = await screen.findByRole("complementary", { name: "Tech" });
     await userEvent.click(within(panel).getByRole("button", { name: "＋ Add sources" }));
     await userEvent.click(await screen.findByRole("button", { name: "Add website" }));
     await expect(args.onAddWebsite).toHaveBeenCalledOnce();
@@ -108,7 +105,7 @@ export const AddWebsite: Story = {
 
 export const Rename: Story = {
   play: async ({ args }) => {
-    const panel = await screen.findByRole("complementary", { name: "Tech News" });
+    const panel = await screen.findByRole("complementary", { name: "Tech" });
     const name = within(panel).getByRole("textbox", { name: "Name" });
     await userEvent.clear(name);
     await userEvent.type(name, "Technology");

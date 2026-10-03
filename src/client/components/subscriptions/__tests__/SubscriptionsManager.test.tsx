@@ -13,11 +13,11 @@ import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { resetFixtureState } from "client/api/adapters/fixture";
 import {
-  createCollection,
-  deleteCollection,
-  getCollections,
-  getSubscriptions,
-  postSubscription,
+  createCategory,
+  deleteCategory,
+  getCategories,
+  getFeeds,
+  updateFeed,
   updatePreferences,
 } from "client/api/client";
 import { keys } from "client/api/queries";
@@ -25,6 +25,7 @@ import { useDirectOpen } from "client/hooks/useDirectOpen";
 import { Route as SubscriptionsRoute } from "client/routes/subscriptions";
 import { fixtureBackend, logRequests } from "test/fixtureBackend";
 import { server } from "test/msw";
+import { CATEGORY_ORDER_KEY, directOpenKey } from "shared/feedsApi/preferences";
 import { seedCategoryId } from "test/seedCategories";
 
 // A mutation plus the refetch it invalidates stack two fixture latencies, past findBy's 1s default.
@@ -32,16 +33,15 @@ const SETTLED = { timeout: 3000 };
 // A delete-and-move posts every feed one after another, then deletes and refetches.
 const MOVED = { timeout: 6000 };
 
-const USER = "user/5f3d4b2a-1234-4c56-8def-9876543210ab";
-const TECH_NEWS = `${USER}/category/0efbd7ec-69a4-40b7-8e99-619c3c4d5054`;
-const DESIGN = `${USER}/category/1b9a5c72-8d3e-4f16-9a24-7c0e5b18d9f3`;
-const ARCHIVE = `${USER}/category/3d71e2b8-4c9a-4e58-9f30-6a18b7d5c2e9`;
-const DESIGN_FEEDS = [
-  "feed/http://example-design.test/atom",
-  "feed/http://example-typeface.test/rss",
-  "feed/http://example-ux.test/feed",
-];
-const EXAMPLE_NEWS = "feed/http://example-news.test/rss";
+const TECH = seedCategoryId("Tech");
+const DESIGN = seedCategoryId("Design");
+const NEWS = seedCategoryId("News");
+// Design's feeds that sit in no other category.
+const DESIGN_ORPHANS = ["104", "105", "109"];
+// "Example Daily News", filed in News only.
+const DAILY_NEWS = "106";
+// "Example Dev Notes", filed in Tech and Design.
+const DEV_NOTES = "103";
 
 // dnd-kit's screen reader instructions, which describe every reorder handle.
 const DRAG_INSTRUCTIONS =
@@ -73,7 +73,7 @@ const ui = {
     return screen.queryByRole("button", { name: title });
   },
   async openFeedsTab(page: Page) {
-    await page.user.click(await ui.tab("Feeds · 9"));
+    await page.user.click(await ui.tab("Feeds · 12"));
   },
   async text(text: string) {
     return screen.findByText(text);
@@ -105,7 +105,7 @@ const ui = {
       await ui.openFeedsTab(page);
       const panel = await this.open({ page, label: title });
       // The feeds can land before the categories, which the picker lists.
-      await waitFor(() => panel.checkbox("Archive"));
+      await waitFor(() => panel.checkbox("Newsletters"));
       return panel;
     },
     async createPodcasts(page: Page) {
@@ -229,7 +229,7 @@ const setup = async ({
   };
 };
 
-type Method = "get" | "post" | "delete";
+type Method = "get" | "post" | "patch" | "delete";
 
 // Without `status`, holds the path until release; the handler returns nothing, so the request
 // falls through to fixtureBackend. With `status`, fails the path at once instead.
@@ -263,9 +263,7 @@ const intercept = ({
 };
 
 const feedCategoryIds = async (feedId: string): Promise<string[] | undefined> =>
-  (await getSubscriptions())
-    .find((subscription) => subscription.id === feedId)
-    ?.categories.map((category) => category.id);
+  (await getFeeds()).find((feed) => feed.id === feedId)?.categoryIds;
 
 describe("SubscriptionsManager", () => {
   describe("when switching tabs and filtering", () => {
@@ -273,9 +271,9 @@ describe("SubscriptionsManager", () => {
       const { user, router } = await setup();
 
       expect(await ui.tab("Categories · 4")).toHaveAttribute("aria-selected", "true");
-      await user.click(await ui.tab("Feeds · 9"));
+      await user.click(await ui.tab("Feeds · 12"));
 
-      expect(await ui.tab("Feeds · 9")).toHaveAttribute("aria-selected", "true");
+      expect(await ui.tab("Feeds · 12")).toHaveAttribute("aria-selected", "true");
       expect(router.state.location.search).toMatchObject({ tab: "feeds" });
       expect(await ui.search("Filter feeds")).toBeInTheDocument();
     });
@@ -286,10 +284,10 @@ describe("SubscriptionsManager", () => {
       await waitFor(() => {
         expect(ui.queryRow("Design")).toBeInTheDocument();
       }, SETTLED);
-      await user.type(await ui.search("Filter categories"), "arch");
+      await user.type(await ui.search("Filter categories"), "letters");
 
       await waitFor(() => {
-        expect(ui.queryRow("Archive")).toBeInTheDocument();
+        expect(ui.queryRow("Newsletters")).toBeInTheDocument();
         expect(ui.queryRow("Design")).not.toBeInTheDocument();
       });
     });
@@ -299,25 +297,25 @@ describe("SubscriptionsManager", () => {
       await ui.openFeedsTab(page);
 
       await waitFor(() => {
-        expect(ui.queryRow("Example News")).toBeInTheDocument();
+        expect(ui.queryRow("Example Daily News")).toBeInTheDocument();
       }, SETTLED);
-      await page.user.type(await ui.search("Filter feeds"), "typeface");
+      await page.user.type(await ui.search("Filter feeds"), "foundry");
 
       await waitFor(() => {
-        expect(ui.queryRow("Example Typeface Journal")).toBeInTheDocument();
-        expect(ui.queryRow("Example News")).not.toBeInTheDocument();
+        expect(ui.queryRow("Example Type Foundry")).toBeInTheDocument();
+        expect(ui.queryRow("Example Daily News")).not.toBeInTheDocument();
       });
-      expect(await ui.text("9 feeds, 0 of them in more than one category")).toBeInTheDocument();
+      expect(await ui.text("12 feeds, 1 of them in more than one category")).toBeInTheDocument();
     });
 
     it("filters the feeds in a category panel", async () => {
       const page = await setup();
 
-      const panel = await ui.panel.open({ page, label: "Tech News" });
-      await page.user.type(panel.searchbox("Filter feeds in Tech News"), "gadg");
+      const panel = await ui.panel.open({ page, label: "Tech" });
+      await page.user.type(panel.searchbox("Filter feeds in Tech"), "frame");
 
-      expect(panel.queryRow("Example Gadgets Weekly")).toBeInTheDocument();
-      expect(panel.queryRow("Example News")).not.toBeInTheDocument();
+      expect(panel.queryRow("Example Frameworks Weekly")).toBeInTheDocument();
+      expect(panel.queryRow("Example Dev Notes")).not.toBeInTheDocument();
     });
   });
 
@@ -328,7 +326,7 @@ describe("SubscriptionsManager", () => {
       if (current.length === 0) throw new Error("No handles yet");
       return current.map((handle) => handle.getAttribute("aria-label")?.replace("Reorder ", ""));
     };
-    const preferencePosts = async () => requests.find({ method: "POST", path: "/v3/preferences" });
+    const preferencePosts = async () => requests.find({ method: "POST", path: "/api/preferences" });
 
     const pickUp = async ({ page, label }: { page: Page; label: string }) => {
       // jsdom lays nothing out, and the keyboard sensor moves by the rows' rects.
@@ -362,18 +360,18 @@ describe("SubscriptionsManager", () => {
 
     it("holds the rows behind a placeholder until the stored order loads", async () => {
       let release = (): void => {};
-      const stored = ["Archive", "Newsletters", "Design", "Tech News"];
+      const stored = ["Newsletters", "News", "Design", "Tech"];
       const page = await setup({
         seed: async () => {
           await updatePreferences({
-            categoriesOrderingId: JSON.stringify(stored.map(seedCategoryId)),
+            [CATEGORY_ORDER_KEY]: JSON.stringify(stored.map(seedCategoryId)),
           });
-          release = intercept({ method: "get", path: "/v3/preferences" });
+          release = intercept({ method: "get", path: "/preferences" });
         },
       });
 
       await waitFor(() => {
-        expect(page.client.getQueryState(keys.collections)?.status).toBe("success");
+        expect(page.client.getQueryState(keys.categories)?.status).toBe("success");
       }, SETTLED);
       expect(ui.loadingCategories).toHaveAttribute("aria-busy", "true");
       expect(ui.handles).toHaveLength(0);
@@ -385,19 +383,19 @@ describe("SubscriptionsManager", () => {
 
     it("moves a category with the keyboard, and the order holds after a remount", async () => {
       const page = await setup();
-      expect(await waitFor(order)).toEqual(["Tech News", "Design", "Newsletters", "Archive"]);
+      expect(await waitFor(order)).toEqual(["Tech", "Design", "News", "Newsletters"]);
 
       await moveDesignDown(page);
 
       await waitFor(() => {
-        expect(order()).toEqual(["Tech News", "Newsletters", "Design", "Archive"]);
+        expect(order()).toEqual(["Tech", "News", "Design", "Newsletters"]);
       });
       await page.settled();
       const posts = await preferencePosts();
       expect(posts).toHaveLength(1);
       expect(posts[0]?.body).toEqual({
-        categoriesOrderingId: JSON.stringify(
-          ["Tech News", "Newsletters", "Design", "Archive"].map(seedCategoryId),
+        [CATEGORY_ORDER_KEY]: JSON.stringify(
+          ["Tech", "News", "Design", "Newsletters"].map(seedCategoryId),
         ),
       });
 
@@ -405,7 +403,7 @@ describe("SubscriptionsManager", () => {
       mount("/subscriptions");
       // One loaded full-suite run read the API order here before the stored order.
       await waitFor(() => {
-        expect(order()).toEqual(["Tech News", "Newsletters", "Design", "Archive"]);
+        expect(order()).toEqual(["Tech", "News", "Design", "Newsletters"]);
       });
     });
 
@@ -415,10 +413,10 @@ describe("SubscriptionsManager", () => {
       await waitFor(() => {
         expect(ui.handles).toHaveLength(4);
       });
-      await page.user.type(await ui.search("Filter categories"), "arch");
+      await page.user.type(await ui.search("Filter categories"), "letters");
 
       await waitFor(() => {
-        expect(ui.queryRow("Archive")).toBeInTheDocument();
+        expect(ui.queryRow("Newsletters")).toBeInTheDocument();
       });
       expect(ui.handles).toHaveLength(0);
     });
@@ -434,7 +432,7 @@ describe("SubscriptionsManager", () => {
       await page.user.keyboard("{Escape}");
 
       expect(await ui.text("Move cancelled. Design stays in place.")).toBeInTheDocument();
-      expect(order()).toEqual(["Tech News", "Design", "Newsletters", "Archive"]);
+      expect(order()).toEqual(["Tech", "Design", "News", "Newsletters"]);
       await page.settled();
       expect(await preferencePosts()).toHaveLength(0);
     });
@@ -444,12 +442,12 @@ describe("SubscriptionsManager", () => {
       await waitFor(() => {
         expect(ui.handles).not.toHaveLength(0);
       });
-      intercept({ method: "post", path: "/v3/preferences", status: 500 });
+      intercept({ method: "post", path: "/preferences", status: 500 });
 
       await moveDesignDown(page);
 
       expect(await ui.alert).toHaveTextContent(/^Could not save the new order\./);
-      expect(order()).toEqual(["Tech News", "Design", "Newsletters", "Archive"]);
+      expect(order()).toEqual(["Tech", "Design", "News", "Newsletters"]);
     });
 
     it("shows the new order on drop and holds the handles while it saves", async () => {
@@ -457,7 +455,7 @@ describe("SubscriptionsManager", () => {
       await waitFor(() => {
         expect(ui.handles).not.toHaveLength(0);
       });
-      const release = intercept({ method: "post", path: "/v3/preferences" });
+      const release = intercept({ method: "post", path: "/preferences" });
 
       await pickUp({ page, label: "Design" });
       await page.user.keyboard("{ArrowDown}");
@@ -467,23 +465,23 @@ describe("SubscriptionsManager", () => {
         code: "Space",
       });
       expect(ui.handles.map((handle) => handle.getAttribute("aria-label"))).toEqual(
-        ["Tech News", "Newsletters", "Design", "Archive"].map((label) => `Reorder ${label}`),
+        ["Tech", "News", "Design", "Newsletters"].map((label) => `Reorder ${label}`),
       );
       await waitFor(() => {
         for (const handle of ui.handles) {
           expect(handle).toHaveAttribute("aria-disabled", "true");
         }
       });
-      await pickUp({ page, label: "Tech News" });
+      await pickUp({ page, label: "Tech" });
       await page.user.keyboard("{ArrowDown}");
       await page.user.keyboard(" ");
 
       release();
       await page.settled();
       expect(await preferencePosts()).toHaveLength(1);
-      expect(order()).toEqual(["Tech News", "Newsletters", "Design", "Archive"]);
+      expect(order()).toEqual(["Tech", "News", "Design", "Newsletters"]);
       await waitFor(() => {
-        expect(ui.queryRow("Reorder Tech News")).toHaveAttribute("aria-disabled", "false");
+        expect(ui.queryRow("Reorder Tech")).toHaveAttribute("aria-disabled", "false");
       });
     });
 
@@ -492,38 +490,36 @@ describe("SubscriptionsManager", () => {
       await waitFor(() => {
         expect(ui.handles).not.toHaveLength(0);
       });
-      const release = intercept({ method: "post", path: "/v3/preferences" });
+      const release = intercept({ method: "post", path: "/preferences" });
 
       await moveDesignDown(page);
       await ui.openFeedsTab(page);
       await page.user.click(await ui.tab("Categories · 4"));
 
-      expect(await waitFor(order)).toEqual(["Tech News", "Newsletters", "Design", "Archive"]);
+      expect(await waitFor(order)).toEqual(["Tech", "News", "Design", "Newsletters"]);
       for (const handle of ui.handles) {
         expect(handle).toHaveAttribute("aria-disabled", "true");
       }
-      await pickUp({ page, label: "Tech News" });
+      await pickUp({ page, label: "Tech" });
       await page.user.keyboard("{ArrowDown}");
       await page.user.keyboard(" ");
 
       release();
       await page.settled();
       expect(await preferencePosts()).toHaveLength(1);
-      expect(order()).toEqual(["Tech News", "Newsletters", "Design", "Archive"]);
+      expect(order()).toEqual(["Tech", "News", "Design", "Newsletters"]);
     });
   });
 
   describe("when a feed panel is open", () => {
-    const subscriptionPosts = async () =>
-      requests.find({ method: "POST", path: "/v3/subscriptions" });
+    const feedPatches = async (feedId: string) =>
+      requests.find({ method: "PATCH", path: `/api/feeds/${feedId}` });
 
-    it("saves a new title and a new category set in one POST", async () => {
+    it("saves a new title and a new category set in one PATCH", async () => {
       const page = await setup();
-      const panel = await ui.panel.openFeed({ page, title: "Example News" });
+      const panel = await ui.panel.openFeed({ page, title: "Example Daily News" });
       const { user } = page;
-      expect(page.router.state.location.search).toMatchObject({
-        feed: EXAMPLE_NEWS,
-      });
+      expect(page.router.state.location.search).toMatchObject({ feed: DAILY_NEWS });
 
       const title = panel.textbox("Title");
       await user.clear(title);
@@ -533,12 +529,9 @@ describe("SubscriptionsManager", () => {
       await user.click(panel.queryRow("Save changes")!);
 
       await page.closed();
-      const posts = await subscriptionPosts();
-      expect(posts).toHaveLength(1);
-      expect(posts[0]?.body).toMatchObject({
-        title: "Example Daily",
-        categories: [{ id: TECH_NEWS }, { id: DESIGN }],
-      });
+      const patches = await feedPatches(DAILY_NEWS);
+      expect(patches).toHaveLength(1);
+      expect(patches[0]?.body).toEqual({ title: "Example Daily", categoryIds: [NEWS, DESIGN] });
       await waitFor(() => {
         expect(ui.queryRow("Example Daily")).toHaveFocus();
       }, SETTLED);
@@ -546,21 +539,21 @@ describe("SubscriptionsManager", () => {
 
     it("keeps the panel open and shows the error when a save fails", async () => {
       const page = await setup();
-      const panel = await ui.panel.openFeed({ page, title: "Example News" });
-      intercept({ method: "post", path: "/v3/subscriptions", status: 500 });
+      const panel = await ui.panel.openFeed({ page, title: "Example Daily News" });
+      intercept({ method: "patch", path: "/feeds/*", status: 500 });
 
       await page.user.click(panel.queryRow("Save changes")!);
 
       expect(
         await waitFor(() => panel.text("Could not save this feed. API error (500)")),
       ).toBeInTheDocument();
-      expect(await ui.findPanel("Example News")).toBeInTheDocument();
+      expect(await ui.findPanel("Example Daily News")).toBeInTheDocument();
     });
 
     it("drops the draft when Escape closes the panel", async () => {
       const page = await setup();
       const { user } = page;
-      const panel = await ui.panel.openFeed({ page, title: "Example News" });
+      const panel = await ui.panel.openFeed({ page, title: "Example Daily News" });
 
       const title = panel.textbox("Title");
       await user.clear(title);
@@ -569,23 +562,20 @@ describe("SubscriptionsManager", () => {
       await waitFor(() => {
         expect(ui.panel.panel).not.toBeInTheDocument();
       });
-      expect(page.router.state.location.search).not.toHaveProperty("feed", EXAMPLE_NEWS);
-      const reopened = await ui.panel.open({ page, label: "Example News" });
-      expect(reopened.textbox("Title")).toHaveValue("Example News");
+      expect(page.router.state.location.search).not.toHaveProperty("feed", DAILY_NEWS);
+      const reopened = await ui.panel.open({ page, label: "Example Daily News" });
+      expect(reopened.textbox("Title")).toHaveValue("Example Daily News");
     });
 
     it("keeps a category created from one feed out of the next feed's draft", async () => {
       const page = await setup();
       const { user } = page;
-      const first = await ui.panel.openFeed({ page, title: "Example News" });
-      const release = intercept({ method: "post", path: "/v3/collections" });
+      const first = await ui.panel.openFeed({ page, title: "Example Daily News" });
+      const release = intercept({ method: "post", path: "/categories" });
 
       await user.type(first.searchbox("Filter categories"), "Podcasts");
       await user.click(first.queryRow("Create “Podcasts”")!);
-      const second = await ui.panel.open({
-        page,
-        label: "Example Typeface Journal",
-      });
+      const second = await ui.panel.open({ page, label: "Example World Desk" });
       release();
 
       expect(await waitFor(() => second.checkbox("Podcasts"))).not.toBeChecked();
@@ -594,14 +584,14 @@ describe("SubscriptionsManager", () => {
       await user.click(second.queryRow("Save changes")!);
 
       await page.closed();
-      const posts = await subscriptionPosts();
-      expect(posts[0]?.body).toMatchObject({ categories: [{ id: DESIGN }] });
+      const patches = await feedPatches("107");
+      expect(patches[0]?.body).toMatchObject({ categoryIds: [NEWS] });
     });
 
     it("holds Unsubscribe while a save is pending", async () => {
       const page = await setup();
-      const panel = await ui.panel.openFeed({ page, title: "Example News" });
-      const release = intercept({ method: "post", path: "/v3/subscriptions" });
+      const panel = await ui.panel.openFeed({ page, title: "Example Daily News" });
+      const release = intercept({ method: "patch", path: "/feeds/*" });
 
       await page.user.click(panel.queryRow("Save changes")!);
       expect(panel.queryRow("Unsubscribe…")!).toBeDisabled();
@@ -612,34 +602,36 @@ describe("SubscriptionsManager", () => {
     it("turns Save into Unsubscribe once every box is cleared, behind the confirm", async () => {
       const page = await setup();
       const { user } = page;
-      const panel = await ui.panel.openFeed({ page, title: "Example News" });
+      const panel = await ui.panel.openFeed({ page, title: "Example Daily News" });
 
-      await user.click(panel.checkbox("Tech News"));
+      await user.click(panel.checkbox("News"));
       expect(panel.queryRow("Save changes")).not.toBeInTheDocument();
       await user.click(panel.queryRow("Unsubscribe…")!);
 
       const dialog = ui.dialog;
-      expect(dialog.heading("Unsubscribe from Example News?")).toBeVisible();
+      expect(dialog.heading("Unsubscribe from Example Daily News?")).toBeVisible();
       await user.click(dialog.button("Unsubscribe"));
 
       await waitFor(() => {
-        expect(ui.queryRow("Example News")).not.toBeInTheDocument();
+        expect(ui.queryRow("Example Daily News")).not.toBeInTheDocument();
       }, SETTLED);
-      expect(await ui.tab("Feeds · 8")).toBeInTheDocument();
-      expect(await feedCategoryIds(EXAMPLE_NEWS)).toBeUndefined();
+      expect(await ui.tab("Feeds · 11")).toBeInTheDocument();
+      expect(await feedCategoryIds(DAILY_NEWS)).toBeUndefined();
     });
 
     it("flags one feed for its own site and leaves the other feeds alone", async () => {
       const page = await setup();
       const { user, settled, wrapper } = page;
-      const panel = await ui.panel.openFeed({ page, title: "Example News" });
+      const panel = await ui.panel.openFeed({ page, title: "Example World Desk" });
 
       const toggle = panel.checkbox("Opens on its site");
       expect(toggle).not.toBeChecked();
       await user.click(toggle);
       await settled();
       expect(toggle).toBeChecked();
-      expect(renderHook(() => useDirectOpen(EXAMPLE_NEWS), { wrapper }).result.current).toBe(true);
+      expect(renderHook(() => useDirectOpen("107"), { wrapper }).result.current).toBe(true);
+      const posts = await requests.find({ method: "POST", path: "/api/preferences" });
+      expect(posts.map((post) => post.body)).toEqual([{ [directOpenKey("107")]: "visit" }]);
 
       const other = await ui.panel.open({ page, label: "Example Tech Daily" });
       expect(other.checkbox("Opens on its site")).not.toBeChecked();
@@ -647,7 +639,7 @@ describe("SubscriptionsManager", () => {
 
     it("refuses an empty title and keeps the panel open", async () => {
       const page = await setup();
-      const panel = await ui.panel.openFeed({ page, title: "Example News" });
+      const panel = await ui.panel.openFeed({ page, title: "Example Daily News" });
 
       const title = panel.textbox("Title");
       await page.user.clear(title);
@@ -661,7 +653,7 @@ describe("SubscriptionsManager", () => {
     it("backs out of the unsubscribe confirm on Cancel", async () => {
       const page = await setup();
       const { user } = page;
-      const panel = await ui.panel.openFeed({ page, title: "Example News" });
+      const panel = await ui.panel.openFeed({ page, title: "Example Daily News" });
 
       await user.click(panel.queryRow("Unsubscribe…")!);
       await user.click(ui.dialog.button("Cancel"));
@@ -669,13 +661,13 @@ describe("SubscriptionsManager", () => {
       await waitFor(() => {
         expect(ui.dialog.dialog).not.toBeInTheDocument();
       });
-      expect(await ui.findPanel("Example News")).toBeInTheDocument();
-      expect(await feedCategoryIds(EXAMPLE_NEWS)).toEqual([TECH_NEWS]);
+      expect(await ui.findPanel("Example Daily News")).toBeInTheDocument();
+      expect(await feedCategoryIds(DAILY_NEWS)).toEqual([NEWS]);
     });
 
     it("ticks a category created from the feed's picker", async () => {
       const page = await setup();
-      const panel = await ui.panel.openFeed({ page, title: "Example News" });
+      const panel = await ui.panel.openFeed({ page, title: "Example Daily News" });
 
       await page.user.type(panel.searchbox("Filter categories"), "Podcasts");
       await page.user.click(panel.queryRow("Create “Podcasts”")!);
@@ -688,29 +680,19 @@ describe("SubscriptionsManager", () => {
     const designUrl = `/subscriptions?category=${encodeURIComponent(DESIGN)}`;
 
     it("removes a feed from this category only with its ✕", async () => {
-      const page = await setup({
-        // Example News also sits in Design, since the seed keeps no feed in two categories.
-        seed: async () => {
-          await postSubscription({
-            feedId: EXAMPLE_NEWS,
-            title: "Example News",
-            categoryIds: [TECH_NEWS, DESIGN],
-          });
-        },
-        url: designUrl,
-      });
+      const page = await setup({ url: designUrl });
       await ui.findPanel("Design");
       const panel = ui.panel;
       expect(panel.text("4 feeds").parentElement).toHaveTextContent(
         /^4 feeds · 1 also in another category$/,
       );
 
-      await page.user.click(panel.queryRow("Remove Example News from Design")!);
+      await page.user.click(panel.queryRow("Remove Example Dev Notes from Design")!);
 
       await waitFor(() => {
-        expect(panel.queryRow("Example News")).not.toBeInTheDocument();
+        expect(panel.queryRow("Example Dev Notes")).not.toBeInTheDocument();
       }, SETTLED);
-      expect(await feedCategoryIds(EXAMPLE_NEWS)).toEqual([TECH_NEWS]);
+      expect(await feedCategoryIds(DEV_NOTES)).toEqual([TECH]);
     });
 
     it("asks before the ✕ on a feed's last category unsubscribes it", async () => {
@@ -718,16 +700,16 @@ describe("SubscriptionsManager", () => {
       await ui.findPanel("Design");
       const panel = ui.panel;
 
-      await user.click(panel.queryRow("Remove Example UX Notes from Design")!);
+      await user.click(panel.queryRow("Remove Example Longform from Design")!);
 
       const dialog = ui.dialog;
-      expect(dialog.heading("Unsubscribe from Example UX Notes?")).toBeVisible();
+      expect(dialog.heading("Unsubscribe from Example Longform?")).toBeVisible();
       await user.click(dialog.button("Unsubscribe"));
 
       await waitFor(() => {
-        expect(panel.queryRow("Example UX Notes")).not.toBeInTheDocument();
+        expect(panel.queryRow("Example Longform")).not.toBeInTheDocument();
       }, SETTLED);
-      expect(await feedCategoryIds("feed/http://example-ux.test/feed")).toBeUndefined();
+      expect(await feedCategoryIds("109")).toBeUndefined();
     });
 
     it("renames a category and closes the panel", async () => {
@@ -739,17 +721,31 @@ describe("SubscriptionsManager", () => {
       await page.user.type(name, "Design & UX{Enter}");
 
       await page.closed();
+      // The id is the label, so the renamed row remounts and focus has no row to return to.
       await waitFor(() => {
-        expect(ui.queryRow("Design & UX")).toHaveFocus();
+        expect(ui.queryRow("Design & UX")).toBeInTheDocument();
+        expect(ui.queryRow("Design")).not.toBeInTheDocument();
       }, SETTLED);
+    });
+
+    it("refuses to rename a category to a label already taken", async () => {
+      const page = await setup();
+
+      const panel = await ui.panel.open({ page, label: "Design" });
+      const name = panel.textbox("Name");
+      await page.user.clear(name);
+      await page.user.type(name, "Tech{Enter}");
+
+      expect(ui.panel.alert).toHaveTextContent("A category with this name already exists.");
+      expect(ui.queryRow("Design")).toBeInTheDocument();
     });
 
     it("locks the delete on the last category while it holds feeds", async () => {
       const { user } = await setup({
-        // Design is left as the only category, with its three feeds.
+        // Design is left as the only category, with its four feeds.
         seed: async () => {
-          for (const { id } of await getCollections())
-            if (id !== DESIGN) await deleteCollection(id);
+          for (const { id } of await getCategories())
+            if (id !== DESIGN) await deleteCategory({ categoryId: id });
         },
         url: designUrl,
       });
@@ -767,7 +763,7 @@ describe("SubscriptionsManager", () => {
     it("keeps the delete on an empty last category", async () => {
       const page = await setup({
         seed: async () => {
-          for (const { id } of await getCollections()) await deleteCollection(id);
+          for (const { id } of await getCategories()) await deleteCategory({ categoryId: id });
         },
       });
 
@@ -789,6 +785,18 @@ describe("SubscriptionsManager", () => {
     });
   });
 
+  describe("when creating a category", () => {
+    it("refuses a label already taken", async () => {
+      const page = await setup();
+      await waitFor(() => expect(ui.queryRow("＋ New")).toBeInTheDocument());
+
+      await page.user.click(ui.queryRow("＋ New")!);
+      await page.user.type(await ui.textbox("New category name"), "Tech{Enter}");
+
+      expect(await ui.alert).toHaveTextContent("A category with this name already exists.");
+    });
+  });
+
   describe("when deleting a category", () => {
     it("keeps the button disabled until a target is picked, then moves the orphans", async () => {
       const page = await setup();
@@ -796,57 +804,55 @@ describe("SubscriptionsManager", () => {
 
       const confirm = dialog.button("Delete and move 3 feeds");
       expect(confirm).toBeDisabled();
-      await page.user.click(dialog.radio("Archive"));
+      await page.user.click(dialog.radio("News"));
       expect(confirm).toBeEnabled();
       await page.user.click(confirm);
 
       await waitFor(() => {
         expect(ui.queryRow("Design")).not.toBeInTheDocument();
       }, MOVED);
-      for (const feedId of DESIGN_FEEDS) expect(await feedCategoryIds(feedId)).toEqual([ARCHIVE]);
+      for (const feedId of DESIGN_ORPHANS) expect(await feedCategoryIds(feedId)).toEqual([NEWS]);
+      expect(await feedCategoryIds(DEV_NOTES)).toEqual([TECH]);
     }, 10_000);
 
     it("also moves the feeds in another category once the checkbox is ticked", async () => {
-      const page = await setup({
-        // Example News also sits in Design, since the seed keeps no feed in two categories.
-        seed: async () => {
-          await postSubscription({
-            feedId: EXAMPLE_NEWS,
-            title: "Example News",
-            categoryIds: [TECH_NEWS, DESIGN],
-          });
-        },
-      });
+      const page = await setup();
       const { user } = page;
       const dialog = await ui.dialog.openDelete({ page, label: "Design" });
 
       expect(dialog.button("Delete and move 3 feeds")).toBeInTheDocument();
       await user.click(dialog.checkbox("Also move the feed that sits in another category"));
-      await user.click(dialog.radio("Archive"));
+      await user.click(dialog.radio("News"));
+      requests.clear();
       await user.click(dialog.button("Delete and move 4 feeds"));
 
       await waitFor(() => {
         expect(ui.queryRow("Design")).not.toBeInTheDocument();
       }, MOVED);
-      const ids = await feedCategoryIds(EXAMPLE_NEWS);
-      expect(ids).toContain(TECH_NEWS);
+      const ids = await feedCategoryIds(DEV_NOTES);
+      expect(ids).toContain(TECH);
+      expect(ids).toContain(NEWS);
       expect(ids).not.toContain(DESIGN);
       expect(ids).toHaveLength(2);
+      expect(
+        await requests.find({ method: "DELETE", path: `/api/categories/${DESIGN}` }),
+      ).toHaveLength(1);
+      expect(await requests.find({ method: "PATCH" })).toHaveLength(0);
     }, 10_000);
 
     it("stays open and says how many feeds moved when a move fails partway", async () => {
       const page = await setup();
       const { user } = page;
       const dialog = await ui.dialog.openDelete({ page, label: "Design" });
-      let posts = 0;
+      let patches = 0;
       server.use(
-        http.post("/api/v3/subscriptions", () => {
-          posts += 1;
-          return posts === 2 ? HttpResponse.json({}, { status: 500 }) : undefined;
+        http.patch("/api/feeds/*", () => {
+          patches += 1;
+          return patches === 2 ? HttpResponse.json({}, { status: 500 }) : undefined;
         }),
       );
 
-      await user.click(dialog.radio("Archive"));
+      await user.click(dialog.radio("News"));
       await user.click(dialog.button("Delete and move 3 feeds"));
 
       expect(
@@ -863,12 +869,8 @@ describe("SubscriptionsManager", () => {
     it("deletes a category whose feeds all sit elsewhere without a move", async () => {
       const page = await setup({
         seed: async () => {
-          const podcasts = await createCollection("Podcasts");
-          await postSubscription({
-            feedId: EXAMPLE_NEWS,
-            title: "Example News",
-            categoryIds: [TECH_NEWS, podcasts.id],
-          });
+          const podcasts = await createCategory("Podcasts");
+          await updateFeed({ feedId: DAILY_NEWS, categoryIds: [NEWS, podcasts.id] });
         },
       });
       const dialog = await ui.dialog.openDelete({ page, label: "Podcasts" });
@@ -881,7 +883,7 @@ describe("SubscriptionsManager", () => {
       await waitFor(() => {
         expect(ui.queryRow("Podcasts")).not.toBeInTheDocument();
       }, SETTLED);
-      expect(await feedCategoryIds(EXAMPLE_NEWS)).toEqual([TECH_NEWS]);
+      expect(await feedCategoryIds(DAILY_NEWS)).toEqual([NEWS]);
     });
 
     it("picks a category created from the modal as the move target", async () => {
@@ -907,7 +909,7 @@ describe("SubscriptionsManager", () => {
       });
       expect(await ui.findPanel("Podcasts")).toBeInTheDocument();
 
-      intercept({ method: "delete", path: "/v3/collections/*", status: 500, once: true });
+      intercept({ method: "delete", path: "/categories/*", status: 500, once: true });
       await user.click(panel.queryRow("Delete category…")!);
       const dialog = ui.dialog;
       await user.click(dialog.button("Delete category"));
@@ -923,8 +925,8 @@ describe("SubscriptionsManager", () => {
     });
   });
 
-  describe("when subscribing to a newsletter", () => {
-    it("opens the newsletter panel from a category panel with that category ticked", async () => {
+  describe("when adding sources", () => {
+    it("opens the newsletter panel from a category panel", async () => {
       const page = await setup();
       await ui.panel.open({ page, label: "Design" });
 
@@ -932,10 +934,9 @@ describe("SubscriptionsManager", () => {
       await ui.findPanel("Add a newsletter");
 
       expect(page.router.state.location.search).toMatchObject({ newsletter: DESIGN });
-      expect(ui.panel.checkbox("Design")).toBeChecked();
     });
 
-    it("opens the newsletter panel from the Feeds tab with no category ticked", async () => {
+    it("opens the newsletter panel from the Feeds tab", async () => {
       const page = await setup();
       await ui.openFeedsTab(page);
       await waitFor(() => expect(ui.queryRow("＋ Add sources")).toBeInTheDocument());
@@ -988,8 +989,8 @@ describe("SubscriptionsManager", () => {
       const panel = ui.panel;
       expect(page.router.state.location.search).toMatchObject({ add: true });
 
-      await user.type(panel.textbox("Feed or site URL"), "http://example-new.test/rss");
-      await user.click(await panel.findRadio("http://example-new.test/rssexample-new.test"));
+      await user.type(panel.textbox("Feed or site URL"), "gardening.example.test");
+      await user.click(await panel.findRadio("Example Gardeninggardening.example.test"));
       const subscribe = panel.queryRow("Subscribe")!;
       expect(subscribe).toBeDisabled();
 
@@ -997,18 +998,23 @@ describe("SubscriptionsManager", () => {
       await user.click(panel.queryRow("Create “Podcasts”")!);
       expect(await waitFor(() => panel.checkbox("Podcasts"))).toBeChecked();
       expect(subscribe).toBeEnabled();
+      requests.clear();
       await user.click(subscribe);
 
       await waitFor(() => {
-        expect(ui.queryRow("http://example-new.test/rss")).toBeInTheDocument();
+        expect(ui.queryRow("Example Gardening")).toBeInTheDocument();
         expect(ui.panel.panel).not.toBeInTheDocument();
       }, SETTLED);
-      const created = (await getSubscriptions()).find(
-        (subscription) => subscription.id === "feed/http://example-new.test/rss",
-      );
-      const collections = await getCollections();
-      const podcasts = collections.find((collection) => collection.label === "Podcasts");
-      expect(created?.categories.map((category) => category.id)).toEqual([podcasts?.id]);
+      const posts = await requests.find({ method: "POST", path: "/api/feeds" });
+      expect(posts.map((post) => post.body)).toEqual([
+        {
+          feedUrl: "https://gardening.example.test/rss",
+          title: "Example Gardening",
+          categoryIds: ["Podcasts"],
+        },
+      ]);
+      const created = (await getFeeds()).find((feed) => feed.title === "Example Gardening");
+      expect(created?.categoryIds).toEqual(["Podcasts"]);
     }, 10_000);
   });
 });

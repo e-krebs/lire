@@ -1,4 +1,4 @@
-import type { Subscription } from "shared/feedsApi/types";
+import type { Feed } from "shared/feedsApi/types";
 import { EditLink } from "./EditLink";
 import { highlightMatch } from "./highlightMatch";
 import {
@@ -9,7 +9,7 @@ import {
 } from "./shared";
 
 interface FeedRowProps {
-  subscription: Subscription;
+  feed: Feed;
   /** Unread count in the badge. */
   count: number;
   /** The feed is the stream currently open. */
@@ -25,7 +25,7 @@ interface FeedRowProps {
 }
 
 export const FeedRow = ({
-  subscription,
+  feed,
   count,
   isCurrent,
   selected,
@@ -43,19 +43,17 @@ export const FeedRow = ({
         aria-hidden="true"
         className="flex size-6 flex-none items-center justify-center rounded-full bg-accent-soft text-[0.65rem] font-bold text-accent-text"
       >
-        {subscription.title.charAt(0).toUpperCase() || "?"}
+        {feed.title.charAt(0).toUpperCase() || "?"}
       </span>
       <span
-        data-tip={subscription.title}
+        data-tip={feed.title}
         data-tip-overflow=""
         className={`
           min-w-0 flex-1 truncate text-sm font-medium text-ink
           group-data-current:font-semibold group-data-current:text-accent-text
         `}
       >
-        {matchQuery
-          ? highlightMatch({ text: subscription.title, query: matchQuery })
-          : subscription.title}
+        {matchQuery ? highlightMatch({ text: feed.title, query: matchQuery }) : feed.title}
       </span>
       {count > 0 ? (
         <span aria-hidden="true" className={countBadgeClassName}>
@@ -68,10 +66,6 @@ export const FeedRow = ({
         </span>
       ) : null}
     </button>
-    <EditLink
-      target={{ kind: "feed", feedId: subscription.id }}
-      title={subscription.title}
-      onClose={onClose}
-    />
+    <EditLink target={{ kind: "feed", feedId: feed.id }} title={feed.title} onClose={onClose} />
   </div>
 );

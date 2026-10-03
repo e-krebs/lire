@@ -1,9 +1,9 @@
 import { useId, useRef, useState } from "react";
 import {
   unreadCountFor,
-  useCreateCollection,
-  useSaveSubscription,
-  useUnreadCounts,
+  useCreateCategory,
+  useUpdateFeed,
+  useCounts,
   useUnsubscribe,
 } from "client/api/queries";
 import { Switch } from "client/components/ui/Switch";
@@ -11,7 +11,8 @@ import { useDirectOpen, useSetDirectOpen } from "client/hooks/useDirectOpen";
 import type { Locale } from "client/i18n/locale";
 import { useLocale } from "client/i18n/locale";
 import { useT } from "client/i18n/useT";
-import type { Collection, Subscription } from "shared/feedsApi/types";
+import { toStreamKey } from "shared/feedsApi/streamKey";
+import type { Category, Feed } from "shared/feedsApi/types";
 import { CategoryPicker } from "./CategoryPicker";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { HueDot, hostOf } from "./FeedsTab";
@@ -56,29 +57,29 @@ const lossesOf = ({
 
 interface FeedPanelProps {
   /** The subscription being edited. */
-  feed: Subscription;
+  feed: Feed;
   /** All categories, for the feed's category picker. */
-  collections: Collection[];
+  categories: Category[];
   /** Panel dismissed, or the feed was saved or removed. */
   onClose: () => void;
 }
 
-export const FeedPanel = ({ feed, collections, onClose }: FeedPanelProps) => {
+export const FeedPanel = ({ feed, categories, onClose }: FeedPanelProps) => {
   const t = useT().subscriptions;
   const locale = useLocale();
   const formId = useId();
   const titleId = useId();
   const titleErrorId = useId();
   const titleRef = useRef<HTMLInputElement>(null);
-  const savedIds = feed.categories.map((category) => category.id);
+  const savedIds = feed.categoryIds;
   const [draftFor, setDraftFor] = useState(feed.id);
   const [title, setTitle] = useState(feed.title);
   const [selected, setSelected] = useState(savedIds);
   const [titleEmpty, setTitleEmpty] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const save = useSaveSubscription();
+  const save = useUpdateFeed();
   const unsubscribe = useUnsubscribe();
-  const createCollection = useCreateCollection();
+  const createCategory = useCreateCategory();
   // Another row opened while the panel stays up: the drafts follow the new feed. The resets
   // also detach a pending save or create, so its onSuccess cannot close or tick this draft.
   if (draftFor !== feed.id) {
@@ -89,18 +90,18 @@ export const FeedPanel = ({ feed, collections, onClose }: FeedPanelProps) => {
     setConfirming(false);
     save.reset();
     unsubscribe.reset();
-    createCollection.reset();
+    createCategory.reset();
   }
 
-  const unreadCounts = useUnreadCounts();
+  const counts = useCounts();
   const directOpen = useDirectOpen(feed.id);
   const setDirectOpen = useSetDirectOpen();
 
   const clearing = selected.length === 0;
   const saveMessage = save.isError
     ? t.saveFeedFailed({ message: save.error.message })
-    : createCollection.isError
-      ? t.createCategoryFailed({ message: createCollection.error.message })
+    : createCategory.isError
+      ? t.createCategoryFailed({ message: createCategory.error.message })
       : null;
 
   const handleSave = (): void => {
@@ -126,7 +127,7 @@ export const FeedPanel = ({ feed, collections, onClose }: FeedPanelProps) => {
         open
         onClose={onClose}
         title={feed.title}
-        subtitle={hostOf(feed.website)}
+        subtitle={hostOf(feed.siteUrl)}
         leading={<HueDot feedId={feed.id} />}
         actions={
           <>
@@ -195,14 +196,14 @@ export const FeedPanel = ({ feed, collections, onClose }: FeedPanelProps) => {
           </div>
           <CategoryPicker
             key={feed.id}
-            categories={collections}
+            categories={categories}
             selected={selected}
             onChange={setSelected}
             mode="multiple"
             onCreate={(label) => {
-              createCollection.mutate(label, {
-                onSuccess: (collection) => {
-                  setSelected((current) => [...current, collection.id]);
+              createCategory.mutate(label, {
+                onSuccess: (created) => {
+                  setSelected((current) => [...current, created.id]);
                 },
               });
             }}
@@ -254,8 +255,11 @@ export const FeedPanel = ({ feed, collections, onClose }: FeedPanelProps) => {
       >
         {t.unsubscribeBody({
           losses: lossesOf({
-            categories: feed.categories.length,
-            unread: unreadCountFor({ counts: unreadCounts.data, id: feed.id }),
+            categories: feed.categoryIds.length,
+            unread: unreadCountFor({
+              counts: counts.data,
+              streamKey: toStreamKey({ kind: "feed", feedId: feed.id }),
+            }),
             t,
             locale,
           }),

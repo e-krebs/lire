@@ -66,6 +66,7 @@ export const en = {
   addOrTick: "Add one, or tick this category in another feed's panel.",
 
   enterCategoryNameForPanel: "Enter a name for this category.",
+  categoryExists: "A category with this name already exists.",
   renameFailed: ({ message }: { message: string }) => `Could not rename this category. ${message}`,
   lockedTip: "Its feeds have no other category to move to",
   deleteCategoryEllipsis: "Delete category…",
@@ -148,16 +149,14 @@ export const en = {
   saveFeedFailed: ({ message }: { message: string }) => `Could not save this feed. ${message}`,
 
   addNewsletterTitle: "Add a newsletter",
-  newsletterStep1: "Step 1 of 2 · get an address",
-  newsletterStep2: "Step 2 of 2 · name it and pick where it lands",
-  generateAddress: "Generate address",
+  newsletterSubtitle: "Your newsletter address",
+  newsletterHelp:
+    "Subscribe to a newsletter with this address. A new sender appears in the “Newsletters” folder after its first email. File it from there.",
   copy: "Copy",
   copied: "Copied",
   copyFailed: "Could not copy. Select the address and copy it by hand.",
-  createAddressFailed: ({ message }: { message: string }) =>
-    `Could not create an address. ${message}`,
-  subscribeNewsletterFailed: ({ message }: { message: string }) =>
-    `Could not subscribe to that newsletter. ${message}`,
+  loadAddressFailed: ({ message }: { message: string }) =>
+    `Could not load your address. ${message}`,
 
   addFeedTitle: "Add a feed",
   feedStep1: "Step 1 of 2 · find the feed",
@@ -239,6 +238,7 @@ export const fr = {
   addOrTick: "Ajoutez-en un, ou cochez cette catégorie dans le panneau d'un autre flux.",
 
   enterCategoryNameForPanel: "Saisissez un nom pour cette catégorie.",
+  categoryExists: "Une catégorie porte déjà ce nom.",
   renameFailed: ({ message }) => `Impossible de renommer cette catégorie. ${message}`,
   lockedTip: "Ses flux n'ont aucune autre catégorie où aller",
   deleteCategoryEllipsis: "Supprimer la catégorie…",
@@ -322,15 +322,13 @@ export const fr = {
   saveFeedFailed: ({ message }) => `Impossible d'enregistrer ce flux. ${message}`,
 
   addNewsletterTitle: "Ajouter une newsletter",
-  newsletterStep1: "Étape 1 sur 2 · obtenir une adresse",
-  newsletterStep2: "Étape 2 sur 2 · la nommer et choisir où elle arrive",
-  generateAddress: "Générer une adresse",
+  newsletterSubtitle: "Votre adresse de newsletters",
+  newsletterHelp:
+    "Abonnez-vous à une newsletter avec cette adresse. Un nouvel expéditeur apparaît dans le dossier « Newsletters » après son premier e-mail. Classez-le depuis ce dossier.",
   copy: "Copier",
   copied: "Copiée",
   copyFailed: "Impossible de copier. Sélectionnez l'adresse et copiez-la à la main.",
-  createAddressFailed: ({ message }) => `Impossible de créer une adresse. ${message}`,
-  subscribeNewsletterFailed: ({ message }) =>
-    `Impossible de s'abonner à cette newsletter. ${message}`,
+  loadAddressFailed: ({ message }) => `Impossible de charger votre adresse. ${message}`,
 
   addFeedTitle: "Ajouter un flux",
   feedStep1: "Étape 1 sur 2 · trouver le flux",

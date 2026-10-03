@@ -1,29 +1,16 @@
-import type { Collection, Preferences, Subscription } from "shared/feedsApi/types";
-
-export const CATEGORIES_ORDERING_KEY = "categoriesOrderingId";
+import { CATEGORY_ORDER_KEY } from "shared/feedsApi/preferences";
+import type { Category, Feed, Preferences } from "shared/feedsApi/types";
 
 export const feedsInCategory = ({
-  subscriptions,
+  feeds,
   categoryId,
 }: {
-  subscriptions: Subscription[];
+  feeds: Feed[];
   categoryId: string;
-}): Subscription[] =>
-  subscriptions.filter((subscription) =>
-    subscription.categories.some((category) => category.id === categoryId),
-  );
+}): Feed[] => feeds.filter((feed) => feed.categoryIds.includes(categoryId));
 
-export const orphansOf = ({
-  subscriptions,
-  categoryId,
-}: {
-  subscriptions: Subscription[];
-  categoryId: string;
-}): Subscription[] =>
-  subscriptions.filter(
-    (subscription) =>
-      subscription.categories.length === 1 && subscription.categories[0]?.id === categoryId,
-  );
+export const orphansOf = ({ feeds, categoryId }: { feeds: Feed[]; categoryId: string }): Feed[] =>
+  feeds.filter((feed) => feed.categoryIds.length === 1 && feed.categoryIds[0] === categoryId);
 
 const parseOrdering = (value: unknown): string[] | undefined => {
   if (typeof value !== "string") return undefined;
@@ -37,19 +24,21 @@ const parseOrdering = (value: unknown): string[] | undefined => {
   }
 };
 
-// Categories missing from the stored order go last in API order; stale ids are skipped.
-export const orderCollections = ({
-  collections,
+// The Worker already orders categories; this reapplies the cached preference so a reorder shows
+// before the refetch. Categories missing from the stored order go last in API order; stale ids are
+// skipped.
+export const orderCategories = ({
+  categories,
   preferences,
 }: {
-  collections: Collection[];
+  categories: Category[];
   preferences: Preferences | undefined;
-}): Collection[] => {
-  const ordering = parseOrdering(preferences?.[CATEGORIES_ORDERING_KEY]);
-  if (ordering === undefined) return collections;
+}): Category[] => {
+  const ordering = parseOrdering(preferences?.[CATEGORY_ORDER_KEY]);
+  if (ordering === undefined) return categories;
   const rank = new Map(ordering.map((id, index) => [id, index]));
-  const ranked = collections
-    .filter((collection) => rank.has(collection.id))
+  const ranked = categories
+    .filter((category) => rank.has(category.id))
     .sort((a, b) => (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0));
-  return [...ranked, ...collections.filter((collection) => !rank.has(collection.id))];
+  return [...ranked, ...categories.filter((category) => !rank.has(category.id))];
 };

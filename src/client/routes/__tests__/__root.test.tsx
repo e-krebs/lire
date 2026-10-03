@@ -10,7 +10,7 @@ import { renderApp } from "test/renderApp";
 
 const ui = {
   get signInLink() {
-    return screen.queryByRole("link", { name: "Sign in" });
+    return screen.queryByRole("link", { name: "Sign in with NewsBlur" });
   },
   get loadingArticles() {
     return screen.findByRole("status", { name: "Loading articles" });

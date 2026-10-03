@@ -126,7 +126,7 @@ export const DesktopFocusOut: Story = {
 export const Phone: Story = { args: { tier: "phone" } };
 
 export const PhoneSearching: Story = {
-  args: { tier: "phone", query: "tech", clearable: true, scopeLabel: "Tech News" },
+  args: { tier: "phone", query: "tech", clearable: true, scopeLabel: "Tech" },
   play: async ({ args }) => {
     const body = within(document.body);
     const field = await body.findByRole("searchbox", { name: "Search articles and feeds" });
@@ -162,7 +162,7 @@ export const PhoneSwipeClose: Story = {
   play: async ({ args }) => {
     const body = within(document.body);
     const dialog = await body.findByRole("dialog", { name: "Navigator" });
-    await body.findByText("Tech News", {}, LOADED);
+    await body.findByText("Tech", {}, LOADED);
     const field = body.getByRole("searchbox", { name: "Search articles and feeds" });
     swipe({ target: field, from: 200, to: 150 });
     await waitFor(async () => {

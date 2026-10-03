@@ -74,26 +74,3 @@ export const ViewToggles = ({ search }: ViewTogglesProps) => {
     </div>
   );
 };
-
-// Same footprint as the toggles while the profile is still loading, so the pill's right end and
-// its divider don't pop in later.
-export const ViewTogglesSkeleton = () => {
-  const t = useT().navigation;
-  return (
-    <div
-      role="group"
-      aria-label={t.viewGroup}
-      aria-busy="true"
-      className="flex h-9 flex-none items-center gap-0.5"
-    >
-      {Array.from({ length: 2 }, (_, index) => (
-        <span key={index} className="inline-flex h-9 w-10 items-center justify-center">
-          <span
-            aria-hidden="true"
-            className="size-5 rounded-full bg-surface-2 motion-safe:animate-pulse"
-          />
-        </span>
-      ))}
-    </div>
-  );
-};

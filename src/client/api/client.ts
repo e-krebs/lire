@@ -1,26 +1,28 @@
-import { z } from "zod";
+import type { StreamKey } from "shared/feedsApi/streamKey";
 import {
-  CollectionSchema,
-  SubscriptionSchema,
-  ProfileSchema,
-  MarkerCountsSchema,
-  StreamContentsSchema,
+  AuthStatusSchema,
+  CategoriesSchema,
+  CountsSchema,
+  EntryPageSchema,
   EntrySchema,
-  FeedSearchResponseSchema,
-  PreferencesSchema,
+  FeedSearchResultsSchema,
+  FeedsSchema,
   NewsletterAddressSchema,
+  PreferencesSchema,
+  ProfileSchema,
 } from "shared/feedsApi/types";
 import type {
-  Profile,
-  Collection,
-  Subscription,
-  MarkerCounts,
-  StreamContents,
+  AuthStatus,
+  Category,
+  Counts,
   Entry,
-  FeedSearchResponse,
-  MarkerAction,
-  Preferences,
+  EntryPage,
+  Feed,
+  FeedSearchResult,
   NewsletterAddress,
+  Preferences,
+  PreferencesUpdate,
+  Profile,
 } from "shared/feedsApi/types";
 import { httpTransport } from "client/api/adapters/http";
 import type { Transport, TransportRequest, TransportResponse } from "client/api/transport";
@@ -73,203 +75,180 @@ const request = async (req: TransportRequest): Promise<unknown> => {
   return response.json();
 };
 
-// Skips response.json() entirely: markers/subscriptions endpoints may answer with an empty body.
+// Skips response.json(): writes answer 204 with no body.
 const requestVoid = async (req: TransportRequest): Promise<void> => {
   await performRequest(req);
 };
 
-export const getProfile = async (): Promise<Profile> => {
-  const json = await request({ method: "GET", path: "/v3/profile" });
-  return ProfileSchema.parse(json);
-};
+const segment = (value: string): string => encodeURIComponent(value);
 
-export const getCollections = async (): Promise<Collection[]> => {
-  const json = await request({ method: "GET", path: "/v3/collections" });
-  return z.array(CollectionSchema).parse(json);
-};
+export const getProfile = async (): Promise<Profile> =>
+  ProfileSchema.parse(await request({ method: "GET", path: "/api/profile" }));
 
-export const getSubscriptions = async (): Promise<Subscription[]> => {
-  const json = await request({ method: "GET", path: "/v3/subscriptions" });
-  return z.array(SubscriptionSchema).parse(json);
-};
+// Ordered by the `lire.categoryOrder` preference.
+export const getCategories = async (): Promise<Category[]> =>
+  CategoriesSchema.parse(await request({ method: "GET", path: "/api/categories" }));
 
-export const getUnreadCounts = async (): Promise<MarkerCounts> => {
-  const json = await request({ method: "GET", path: "/v3/markers/counts" });
-  return MarkerCountsSchema.parse(json);
-};
+export const getFeeds = async (): Promise<Feed[]> =>
+  FeedsSchema.parse(await request({ method: "GET", path: "/api/feeds" }));
 
-export const getStream = async ({
-  streamId,
+export const getCounts = async (): Promise<Counts> =>
+  CountsSchema.parse(await request({ method: "GET", path: "/api/counts" }));
+
+export type EntryOrder = "newest" | "oldest";
+
+export const getStreamEntries = async ({
+  streamKey,
   count,
   unreadOnly,
-  ranked,
-  continuation,
+  order,
+  cursor,
 }: {
-  streamId: string;
+  streamKey: StreamKey;
   count?: number;
   unreadOnly?: boolean;
-  ranked?: "newest" | "oldest";
-  continuation?: string;
-}): Promise<StreamContents> => {
+  order?: EntryOrder;
+  cursor?: string;
+}): Promise<EntryPage> => {
   const json = await request({
     method: "GET",
-    path: "/v3/streams/contents",
-    query: { streamId, count, unreadOnly, ranked, continuation },
+    path: `/api/streams/${segment(streamKey)}/entries`,
+    query: { count, unreadOnly, order, cursor },
   });
-  return StreamContentsSchema.parse(json);
+  return EntryPageSchema.parse(json);
 };
 
-export const getEntry = async (entryId: string): Promise<Entry> => {
-  const json = await request({ method: "GET", path: `/v3/entries/${encodeURIComponent(entryId)}` });
-  // The feeds API answers with a one-element array.
-  const entry = z.array(EntrySchema).parse(json).at(0);
-  if (!entry) throw new ApiError({ status: 404, code: "http", message: "Entry not found" });
-  return entry;
-};
+export const getEntry = async (entryId: string): Promise<Entry> =>
+  EntrySchema.parse(await request({ method: "GET", path: `/api/entries/${segment(entryId)}` }));
 
-export const markEntries = async ({
-  entryIds,
-  read,
-}: {
-  entryIds: string[];
-  read: boolean;
-}): Promise<void> => {
-  const body: MarkerAction = read
-    ? { action: "markAsRead", type: "entries", entryIds }
-    : { action: "keepUnread", type: "entries", entryIds };
-  await requestVoid({ method: "POST", path: "/v3/markers", body });
-};
-
-// Paid plan only: a free account answers 4xx here, which surfaces as an ApiError like any other.
-export const searchContents = async ({
-  streamId,
+export const searchEntries = async ({
+  streamKey,
   query,
   count,
   unreadOnly,
-  continuation,
+  cursor,
 }: {
-  streamId: string;
+  streamKey: StreamKey;
   query: string;
   count?: number;
   unreadOnly?: boolean;
-  continuation?: string;
-}): Promise<StreamContents> => {
+  cursor?: string;
+}): Promise<EntryPage> => {
   const json = await request({
     method: "GET",
-    path: "/v3/search/contents",
-    query: { streamId, query, count, unreadOnly, continuation },
+    path: "/api/search/entries",
+    query: { streamKey, q: query, count, unreadOnly, cursor },
   });
-  return StreamContentsSchema.parse(json);
+  return EntryPageSchema.parse(json);
 };
 
-export const searchFeeds = async (query: string): Promise<FeedSearchResponse> => {
-  const json = await request({ method: "GET", path: "/v3/search/feeds", query: { query } });
-  return FeedSearchResponseSchema.parse(json);
+export const searchFeeds = async (query: string): Promise<FeedSearchResult[]> =>
+  FeedSearchResultsSchema.parse(
+    await request({ method: "GET", path: "/api/search/feeds", query: { q: query } }),
+  );
+
+export const markRead = async ({
+  entryIds,
+  keepalive,
+}: {
+  entryIds: string[];
+  keepalive?: boolean;
+}): Promise<void> => {
+  await requestVoid({ method: "POST", path: "/api/entries/read", body: { entryIds }, keepalive });
 };
 
-export const postSubscription = async ({
+export const markUnread = async ({ entryIds }: { entryIds: string[] }): Promise<void> => {
+  await requestVoid({ method: "POST", path: "/api/entries/unread", body: { entryIds } });
+};
+
+export const createFeed = async ({
+  feedUrl,
+  title,
+  categoryIds,
+}: {
+  feedUrl: string;
+  title?: string;
+  categoryIds: string[];
+}): Promise<Feed> => {
+  const json = await request({
+    method: "POST",
+    path: "/api/feeds",
+    body: { feedUrl, title, categoryIds },
+  });
+  return FeedsSchema.element.parse(json);
+};
+
+export const updateFeed = async ({
   feedId,
   title,
   categoryIds,
 }: {
   feedId: string;
   title?: string;
-  categoryIds: string[];
+  categoryIds?: string[];
+}): Promise<Feed> => {
+  const json = await request({
+    method: "PATCH",
+    path: `/api/feeds/${segment(feedId)}`,
+    body: { title, categoryIds },
+  });
+  return FeedsSchema.element.parse(json);
+};
+
+export const deleteFeed = async (feedId: string): Promise<void> => {
+  await requestVoid({ method: "DELETE", path: `/api/feeds/${segment(feedId)}` });
+};
+
+export const createCategory = async (label: string): Promise<Category> =>
+  CategoriesSchema.element.parse(
+    await request({ method: "POST", path: "/api/categories", body: { label } }),
+  );
+
+export const renameCategory = async ({
+  categoryId,
+  label,
+}: {
+  categoryId: string;
+  label: string;
+}): Promise<Category> =>
+  CategoriesSchema.element.parse(
+    await request({
+      method: "PATCH",
+      path: `/api/categories/${segment(categoryId)}`,
+      body: { label },
+    }),
+  );
+
+// Without `moveTo`, a feed only in this category lands at the top level; with it, every feed in
+// the category moves there first.
+export const deleteCategory = async ({
+  categoryId,
+  moveTo,
+}: {
+  categoryId: string;
+  moveTo?: string;
 }): Promise<void> => {
   await requestVoid({
-    method: "POST",
-    path: "/v3/subscriptions",
-    body: { id: feedId, title, categories: categoryIds.map((id) => ({ id })) },
+    method: "DELETE",
+    path: `/api/categories/${segment(categoryId)}`,
+    query: { moveTo },
   });
 };
 
-export const subscribe = async ({
-  feedId,
-  title,
-  categoryIds,
-}: {
-  feedId: string;
-  title: string;
-  categoryIds: string[];
-}): Promise<void> => postSubscription({ feedId, title, categoryIds });
+export const getPreferences = async (): Promise<Preferences> =>
+  PreferencesSchema.parse(await request({ method: "GET", path: "/api/preferences" }));
 
-// The `{}` body is load-bearing: the Worker rejects a POST without a JSON content type.
-export const createNewsletterAddress = async (): Promise<NewsletterAddress> => {
-  const json = await request({ method: "POST", path: "/v3/feeds/newsletters", body: {} });
-  return NewsletterAddressSchema.parse(json);
+// A partial record merges in; a `null` value deletes the key.
+export const updatePreferences = async (patch: PreferencesUpdate): Promise<void> => {
+  await requestVoid({ method: "POST", path: "/api/preferences", body: patch });
 };
 
-export const addFeedToCollection = async ({
-  collectionId,
-  feedId,
-  title,
-}: {
-  collectionId: string;
-  feedId: string;
-  title: string;
-}): Promise<void> => {
-  await requestVoid({
-    method: "POST",
-    path: `/v3/collections/${encodeURIComponent(collectionId)}/feeds/.mput`,
-    body: [{ id: feedId, title }],
-  });
-};
+export const getNewsletterAddress = async (): Promise<NewsletterAddress> =>
+  NewsletterAddressSchema.parse(await request({ method: "GET", path: "/api/newsletter-address" }));
 
-export const unsubscribe = async (feedId: string): Promise<void> => {
-  await requestVoid({ method: "DELETE", path: `/v3/subscriptions/${encodeURIComponent(feedId)}` });
-};
-
-// The feeds API answers a collection create/rename with a one-element array, like
-// `/v3/entries/:id`.
-const postCollection = async ({
-  id,
-  label,
-}: {
-  id?: string;
-  label: string;
-}): Promise<Collection> => {
-  const json = await request({ method: "POST", path: "/v3/collections", body: { id, label } });
-  const collection = z.array(CollectionSchema).parse(json).at(0);
-  if (!collection)
-    throw new ApiError({ status: 404, code: "http", message: "Collection not found" });
-  return collection;
-};
-
-export const renameCollection = async ({
-  id,
-  label,
-}: {
-  id: string;
-  label: string;
-}): Promise<Collection> => postCollection({ id, label });
-
-export const createCollection = async (label: string): Promise<Collection> =>
-  postCollection({ label });
-
-export const deleteCollection = async (id: string): Promise<void> => {
-  await requestVoid({ method: "DELETE", path: `/v3/collections/${encodeURIComponent(id)}` });
-};
-
-// The feeds API's own sentinel: a key set to it is removed from the bucket. A `null` value gets
-// a 400.
-export const PREFERENCE_DELETE = "==DELETE==";
-
-export const getPreferences = async (): Promise<Preferences> => {
-  const json = await request({ method: "GET", path: "/v3/preferences" });
-  return PreferencesSchema.parse(json);
-};
-
-// A partial body merges into the bucket; the answer is the whole merged store.
-export const updatePreferences = async (patch: Record<string, string>): Promise<Preferences> => {
-  const json = await request({ method: "POST", path: "/v3/preferences", body: patch });
-  return PreferencesSchema.parse(json);
-};
-
-const AuthStatusSchema = z.object({ signedIn: z.boolean() });
-
-export const getAuthStatus = async (): Promise<{ signedIn: boolean }> => {
+export const getAuthStatus = async (): Promise<AuthStatus> => {
   if (isMockMode()) return { signedIn: true };
-  const response = await httpTransport({ method: "GET", path: "/auth/status" });
+  const response = await httpTransport({ method: "GET", path: "/api/auth/status" });
   if (response.status !== 200) return { signedIn: false };
   return AuthStatusSchema.parse(await response.json());
 };

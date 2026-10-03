@@ -1,25 +1,33 @@
 import { http, HttpResponse } from "msw";
 import { describe, expect, it, vi } from "vitest";
 import { server } from "test/msw";
+import { httpTransport } from "../adapters/http";
 import {
-  addFeedToCollection,
   ApiError,
-  createNewsletterAddress,
+  deleteCategory,
+  getAuthStatus,
+  getCategories,
+  getEntry,
+  getNewsletterAddress,
   getProfile,
-  markEntries,
-  searchContents,
+  getStreamEntries,
+  markRead,
+  searchEntries,
+  updatePreferences,
 } from "../client";
 
 const setup = (): void => {
   vi.stubEnv("VITE_API_MODE", "real");
 };
 
+const entry = { id: "101:aa", feedId: "101", title: "One", published: 1, unread: true };
+
 describe("client (http adapter)", () => {
   it("maps a 401 response to a sign_in_required ApiError", async () => {
     setup();
     server.use(
-      http.get("/api/v3/profile", () =>
-        HttpResponse.json({ error: "unauthorized" }, { status: 401 }),
+      http.get("/api/profile", () =>
+        HttpResponse.json({ error: "sign_in_required" }, { status: 401 }),
       ),
     );
 
@@ -31,9 +39,7 @@ describe("client (http adapter)", () => {
   it("maps a 429 response to a rate_limited ApiError", async () => {
     setup();
     server.use(
-      http.get("/api/v3/profile", () =>
-        HttpResponse.json({ error: "rate_limited" }, { status: 429 }),
-      ),
+      http.get("/api/profile", () => HttpResponse.json({ error: "rate_limited" }, { status: 429 })),
     );
 
     await expect(getProfile()).rejects.toMatchObject(
@@ -41,89 +47,168 @@ describe("client (http adapter)", () => {
     );
   });
 
-  it("passes the search params through and parses the stream response", async () => {
+  it("maps any other error status to an http ApiError", async () => {
     setup();
-    const seen: string[] = [];
     server.use(
-      http.get("/api/v3/search/contents", ({ request }) => {
-        seen.push(new URL(request.url).search);
-        return HttpResponse.json({
-          id: "user/u1/category/global.all",
-          // Extra keys the live endpoint adds on top of the streams/contents shape.
-          advancedSearch: true,
-          direction: "ltr",
-          items: [
-            {
-              id: "e1",
-              originId: "o1",
-              fingerprint: "f1",
-              title: "Battery breakthrough",
-              crawled: 1,
-              unread: true,
-              origin: { streamId: "feed/http://example.test/rss" },
-            },
-          ],
-          continuation: "c1",
-        });
+      http.get("/api/entries/:id", () =>
+        HttpResponse.json({ error: "not_found" }, { status: 404 }),
+      ),
+    );
+
+    await expect(getEntry("101:gone")).rejects.toMatchObject({ status: 404, code: "http" });
+  });
+
+  it("reads the seed through the baseline handlers", async () => {
+    setup();
+
+    await expect(getProfile()).resolves.toMatchObject({ username: "ada-reader" });
+    expect((await getCategories()).map((category) => category.id)).toEqual([
+      "Tech",
+      "Design",
+      "News",
+      "Newsletters",
+    ]);
+  });
+
+  it("encodes the stream key in the path and passes the paging params", async () => {
+    setup();
+    const seen: URL[] = [];
+    server.use(
+      http.get("/api/streams/:streamKey/entries", ({ request }) => {
+        seen.push(new URL(request.url));
+        return HttpResponse.json({ items: [entry], cursor: "c2" });
       }),
     );
 
-    const result = await searchContents({
-      streamId: "user/u1/category/global.all",
-      query: "battery",
+    const page = await getStreamEntries({
+      streamKey: "folder:Tech & Co",
       count: 20,
       unreadOnly: true,
+      order: "oldest",
+      cursor: "c1",
     });
 
-    expect(result.items.map((item) => item.id)).toEqual(["e1"]);
-    expect(result.continuation).toBe("c1");
-    expect(seen[0]).toContain("query=battery");
-    expect(seen[0]).toContain("unreadOnly=true");
-    expect(seen[0]).toContain("count=20");
+    expect(page).toEqual({ items: [entry], cursor: "c2" });
+    expect(seen[0]?.pathname).toBe("/api/streams/folder%3ATech%20%26%20Co/entries");
+    expect(Object.fromEntries(seen[0]?.searchParams ?? [])).toEqual({
+      count: "20",
+      unreadOnly: "true",
+      order: "oldest",
+      cursor: "c1",
+    });
   });
 
-  it("resolves markEntries against a 200 response with an empty body", async () => {
+  it("sends the search query as `q`, beside the stream key", async () => {
     setup();
-    server.use(http.post("/api/v3/markers", () => new HttpResponse("", { status: 200 })));
+    const seen: URLSearchParams[] = [];
+    server.use(
+      http.get("/api/search/entries", ({ request }) => {
+        seen.push(new URL(request.url).searchParams);
+        return HttpResponse.json({ items: [entry] });
+      }),
+    );
 
-    await expect(markEntries({ entryIds: ["e1"], read: true })).resolves.toBeUndefined();
+    const page = await searchEntries({ streamKey: "all", query: "battery", unreadOnly: false });
+
+    expect(page.items.map((item) => item.id)).toEqual(["101:aa"]);
+    expect(Object.fromEntries(seen[0] ?? [])).toEqual({
+      streamKey: "all",
+      q: "battery",
+      unreadOnly: "false",
+    });
   });
 
-  it("posts an empty JSON body to create a newsletter address", async () => {
+  it("posts the ids and resolves on a 204 with no body", async () => {
     setup();
     const seen: unknown[] = [];
     server.use(
-      http.post("/api/v3/feeds/newsletters", async ({ request }) => {
+      http.post("/api/entries/read", async ({ request }) => {
         seen.push(await request.json());
-        return HttpResponse.json({ emailAddress: "a1@feedly.email", feedId: "feed/https://x/a1" });
+        return new HttpResponse(null, { status: 204 });
       }),
     );
 
-    await expect(createNewsletterAddress()).resolves.toMatchObject({
-      emailAddress: "a1@feedly.email",
-      feedId: "feed/https://x/a1",
-    });
-    expect(seen).toEqual([{}]);
+    await expect(markRead({ entryIds: ["101:aa"] })).resolves.toBeUndefined();
+    expect(seen).toEqual([{ entryIds: ["101:aa"] }]);
   });
 
-  it("posts the feed to the encoded collection path with .mput", async () => {
+  it("sends a null preference value to delete the key", async () => {
     setup();
-    const seen: { pathname: string; body: unknown }[] = [];
+    const seen: unknown[] = [];
     server.use(
-      http.post("/api/v3/collections/:collectionId/feeds/.mput", async ({ request }) => {
-        seen.push({ pathname: new URL(request.url).pathname, body: await request.json() });
-        return new HttpResponse("", { status: 200 });
+      http.post("/api/preferences", async ({ request }) => {
+        seen.push(await request.json());
+        return new HttpResponse(null, { status: 204 });
       }),
     );
 
-    await expect(
-      addFeedToCollection({ collectionId: "user/u1/category/c 1", feedId: "feed/f1", title: "F1" }),
-    ).resolves.toBeUndefined();
-    expect(seen).toEqual([
-      {
-        pathname: "/api/v3/collections/user%2Fu1%2Fcategory%2Fc%201/feeds/.mput",
-        body: [{ id: "feed/f1", title: "F1" }],
-      },
+    await updatePreferences({ "lire.directOpen.101": null });
+
+    expect(seen).toEqual([{ "lire.directOpen.101": null }]);
+  });
+
+  it("deletes a category by its encoded id, with the move target in the query", async () => {
+    setup();
+    const seen: URL[] = [];
+    server.use(
+      http.delete("/api/categories/:id", ({ request }) => {
+        seen.push(new URL(request.url));
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    await deleteCategory({ categoryId: "Old news", moveTo: "News" });
+    await deleteCategory({ categoryId: "Old news" });
+
+    expect(seen.map((url) => `${url.pathname}${url.search}`)).toEqual([
+      "/api/categories/Old%20news?moveTo=News",
+      "/api/categories/Old%20news",
     ]);
+  });
+
+  it("reads the newsletter address", async () => {
+    setup();
+    server.use(
+      http.get("/api/newsletter-address", () =>
+        HttpResponse.json({ emailAddress: "a1@newsletters.example.test" }),
+      ),
+    );
+
+    await expect(getNewsletterAddress()).resolves.toEqual({
+      emailAddress: "a1@newsletters.example.test",
+    });
+  });
+
+  it("reads the auth status, and counts any failure as signed out", async () => {
+    setup();
+    server.use(http.get("/api/auth/status", () => HttpResponse.json({ signedIn: true })));
+    await expect(getAuthStatus()).resolves.toEqual({ signedIn: true });
+
+    server.use(http.get("/api/auth/status", () => new HttpResponse(null, { status: 500 })));
+    await expect(getAuthStatus()).resolves.toEqual({ signedIn: false });
+  });
+
+  it("answers signed in without a request in mock mode", async () => {
+    vi.stubEnv("VITE_API_MODE", "mock");
+
+    await expect(getAuthStatus()).resolves.toEqual({ signedIn: true });
+  });
+  it("passes keepalive through to fetch in the http transport", async () => {
+    const calls: RequestInit[] = [];
+    vi.stubGlobal("fetch", async (_url: URL, init: RequestInit) => {
+      calls.push(init);
+      return Promise.resolve(new Response(null, { status: 204 }));
+    });
+
+    const response = await httpTransport({
+      method: "POST",
+      path: "/api/entries/read",
+      body: { entryIds: ["101:aa"] },
+      keepalive: true,
+    });
+
+    expect(response.status).toBe(204);
+    await expect(response.json()).resolves.toBeNull();
+    expect(calls[0]).toMatchObject({ method: "POST", keepalive: true });
   });
 });

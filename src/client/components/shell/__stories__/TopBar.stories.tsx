@@ -5,7 +5,6 @@ import { withQueryClient, withTier, withUrl } from "stories/decorators";
 import type { Tier } from "stories/decorators";
 
 const LOADED = { timeout: 10_000 };
-const TECH = "0efbd7ec-69a4-40b7-8e99-619c3c4d5054";
 
 interface Args {
   tier: Tier;
@@ -43,11 +42,11 @@ export const Default: Story = {
 };
 
 export const CategoryScope: Story = {
-  parameters: { url: `/stream/${TECH}?q=rss` },
+  parameters: { url: `/stream/folder:Tech?q=rss` },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const field = await canvas.findByRole("searchbox", { name: "Search articles and feeds" });
-    await canvas.findByRole("link", { name: "Edit Tech News" }, LOADED);
+    await canvas.findByRole("link", { name: "Edit Tech" }, LOADED);
     await expect(field).toHaveValue("rss");
     await userEvent.click(canvas.getByRole("button", { name: "Unread only" }));
     await userEvent.click(canvas.getByRole("button", { name: "Unread only" }));
@@ -65,10 +64,10 @@ export const CategoryScope: Story = {
 };
 
 export const FeedScope: Story = {
-  parameters: { url: "/stream/feed:http%3A%2F%2Fexample-news.test%2Frss" },
+  parameters: { url: "/stream/feed:101" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await canvas.findByRole("link", { name: "Edit Example News" }, LOADED);
+    await canvas.findByRole("link", { name: "Edit Example Tech Daily" }, LOADED);
     await userEvent.click(canvas.getByRole("button", { name: /Search everywhere instead of/ }));
   },
 };
@@ -84,7 +83,7 @@ export const Subscriptions: Story = {
 
 export const Phone: Story = {
   args: { tier: "phone" },
-  parameters: { url: `/stream/${TECH}` },
+  parameters: { url: `/stream/folder:Tech` },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const body = within(document.body);

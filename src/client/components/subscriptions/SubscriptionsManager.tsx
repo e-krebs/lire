@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useCollections, useOrderedCollections, useSubscriptions } from "client/api/queries";
+import { useCategories, useFeeds, useOrderedCategories } from "client/api/queries";
 import { feedsInCategory } from "client/api/selectors";
 import { CategoriesTab } from "client/components/subscriptions/CategoriesTab";
 import { CategoryPanel } from "client/components/subscriptions/CategoryPanel";
@@ -65,11 +65,11 @@ export const SubscriptionsManager = ({
   onPanelChange,
 }: SubscriptionsManagerProps) => {
   const t = useT().subscriptions;
-  const collections = useCollections();
-  const subscriptions = useSubscriptions();
-  const { collections: collectionList, ready: collectionsReady } = useOrderedCollections();
-  const subscriptionList = subscriptions.data ?? [];
-  const loadError = collections.error ?? subscriptions.error;
+  const categoriesQuery = useCategories();
+  const feedsQuery = useFeeds();
+  const { categories: categoryList, ready: categoriesReady } = useOrderedCategories();
+  const feedList = feedsQuery.data ?? [];
+  const loadError = categoriesQuery.error ?? feedsQuery.error;
 
   // A panel that just closed stays up while it plays its exit (SidePanel), then unmounts. Opening
   // one meanwhile drops it, or takes it back if it is the same one.
@@ -86,16 +86,15 @@ export const SubscriptionsManager = ({
   };
   const openFeed =
     shownPanel?.kind === "feed"
-      ? subscriptionList.find((subscription) => subscription.id === shownPanel.feedId)
+      ? feedList.find((feed) => feed.id === shownPanel.feedId)
       : undefined;
   const openCategory =
     shownPanel?.kind === "category"
-      ? collectionList.find((collection) => collection.id === shownPanel.categoryId)
+      ? categoryList.find((category) => category.id === shownPanel.categoryId)
       : undefined;
   const addPanel =
-    shownPanel?.kind === "add" && collections.data !== undefined ? shownPanel : undefined;
-  const newsletterPanel =
-    shownPanel?.kind === "newsletter" && collections.data !== undefined ? shownPanel : undefined;
+    shownPanel?.kind === "add" && categoriesQuery.data !== undefined ? shownPanel : undefined;
+  const newsletterPanel = shownPanel?.kind === "newsletter" ? shownPanel : undefined;
   // Gone meanwhile, e.g. an unsubscribed feed: nothing is left to animate.
   if (
     closing !== undefined &&
@@ -135,8 +134,8 @@ export const SubscriptionsManager = ({
           <Tabs
             label={t.tabsLabel}
             tabs={[
-              { id: "categories", label: t.tabCategories, count: collectionList.length },
-              { id: "feeds", label: t.tabFeeds, count: subscriptionList.length },
+              { id: "categories", label: t.tabCategories, count: categoryList.length },
+              { id: "feeds", label: t.tabFeeds, count: feedList.length },
             ]}
             selected={tab}
             onSelect={onTabChange}
@@ -147,11 +146,11 @@ export const SubscriptionsManager = ({
             </p>
           )}
           <div role="tabpanel" id={tabPanelId(tab)} aria-labelledby={tabId(tab)}>
-            {tab === "categories" && !collectionsReady ? (
+            {tab === "categories" && !categoriesReady ? (
               <CategoryRowsSkeleton />
             ) : tab === "categories" ? (
               <CategoriesTab
-                collections={collectionList}
+                categories={categoryList}
                 openCategoryId={panel?.kind === "category" ? panel.categoryId : undefined}
                 onOpenCategory={(categoryId) => {
                   onPanelChange({ kind: "category", categoryId });
@@ -159,8 +158,8 @@ export const SubscriptionsManager = ({
               />
             ) : (
               <FeedsTab
-                subscriptions={subscriptionList}
-                collections={collectionList}
+                feeds={feedList}
+                categories={categoryList}
                 openFeedId={panel?.kind === "feed" ? panel.feedId : undefined}
                 onOpenFeed={openFeedPanel}
                 onAddWebsite={() => {
@@ -184,19 +183,19 @@ export const SubscriptionsManager = ({
         }
       >
         {openFeed === undefined ? null : (
-          <FeedPanel feed={openFeed} collections={collectionList} onClose={closePanel} />
+          <FeedPanel feed={openFeed} categories={categoryList} onClose={closePanel} />
         )}
         {/* Waits for the feeds, so a loading list never reads as an empty category. Swaps to the
           empty panel once the last feed leaves. */}
-        {openCategory === undefined || subscriptions.data === undefined ? null : feedsInCategory({
-            subscriptions: subscriptionList,
+        {openCategory === undefined || feedsQuery.data === undefined ? null : feedsInCategory({
+            feeds: feedList,
             categoryId: openCategory.id,
           }).length === 0 ? (
           <EmptyCategoryPanel
             key={openCategory.id}
             category={openCategory}
-            collections={collectionList}
-            subscriptions={subscriptionList}
+            categories={categoryList}
+            allFeeds={feedList}
             onClose={closePanel}
             onAddWebsite={() => {
               openSubscribe(openCategory.id);
@@ -209,8 +208,8 @@ export const SubscriptionsManager = ({
           <CategoryPanel
             key={openCategory.id}
             category={openCategory}
-            collections={collectionList}
-            subscriptions={subscriptionList}
+            categories={categoryList}
+            allFeeds={feedList}
             onClose={closePanel}
             onOpenFeed={openFeedPanel}
             onAddWebsite={() => {
@@ -225,19 +224,12 @@ export const SubscriptionsManager = ({
         {addPanel === undefined ? null : (
           <SubscribePanel
             key={addPanel.categoryId ?? ""}
-            collections={collectionList}
+            categories={categoryList}
             categoryId={addPanel.categoryId}
             onClose={closePanel}
           />
         )}
-        {newsletterPanel === undefined ? null : (
-          <NewsletterPanel
-            key={newsletterPanel.categoryId ?? ""}
-            collections={collectionList}
-            categoryId={newsletterPanel.categoryId}
-            onClose={closePanel}
-          />
-        )}
+        {newsletterPanel === undefined ? null : <NewsletterPanel onClose={closePanel} />}
       </PanelExitContext>
     </>
   );

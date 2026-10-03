@@ -3,25 +3,22 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it } from "vitest";
 import { catalogs } from "client/i18n/messages";
 import { setLocalePreference } from "client/i18n/locale";
-import type { Collection, Subscription } from "shared/feedsApi/types";
+import type { Category, Feed } from "shared/feedsApi/types";
 import { CategoryPicker } from "../CategoryPicker";
 import { DeleteCategoryDialog } from "../DeleteCategoryDialog";
 import { FeedsTab } from "../FeedsTab";
 
-const DESIGN: Collection = { id: "design", label: "Design", feeds: [] };
-const NEWS: Collection = { id: "news", label: "News", feeds: [] };
+const DESIGN: Category = { id: "design", label: "Design", feedIds: [] };
+const NEWS: Category = { id: "news", label: "News", feedIds: [] };
 
-const subscription = (index: number, categories: Collection[]): Subscription => ({
-  id: `feed/${index}`,
+const feed = (index: number, categories: Category[]): Feed => ({
+  id: String(index),
   title: `Feed ${index}`,
-  categories: categories.map(({ id, label }) => ({ id, label })),
+  categoryIds: categories.map(({ id }) => id),
+  isNewsletter: false,
 });
 
-const SUBSCRIPTIONS = [
-  subscription(1, [DESIGN, NEWS]),
-  subscription(2, [DESIGN]),
-  subscription(3, [NEWS]),
-];
+const FEEDS = [feed(1, [DESIGN, NEWS]), feed(2, [DESIGN]), feed(3, [NEWS])];
 
 const ui = {
   text(content: string) {
@@ -51,8 +48,8 @@ describe("subscriptions in French", () => {
       setLocalePreference("fr");
       render(
         <FeedsTab
-          subscriptions={SUBSCRIPTIONS}
-          collections={[DESIGN, NEWS]}
+          feeds={FEEDS}
+          categories={[DESIGN, NEWS]}
           openFeedId={undefined}
           onOpenFeed={() => undefined}
           onAddWebsite={() => undefined}
@@ -82,15 +79,15 @@ describe("subscriptions in French", () => {
   });
 
   describe("when deleting a category", () => {
-    const setup = (subscriptions: Subscription[]) => {
+    const setup = (allFeeds: Feed[]) => {
       setLocalePreference("fr");
       render(
         <QueryClientProvider client={new QueryClient()}>
           <DeleteCategoryDialog
             open
             category={DESIGN}
-            collections={[DESIGN, NEWS]}
-            subscriptions={subscriptions}
+            categories={[DESIGN, NEWS]}
+            allFeeds={allFeeds}
             onCancel={() => undefined}
             onDeleted={() => undefined}
           />
@@ -99,11 +96,7 @@ describe("subscriptions in French", () => {
     };
 
     it("explains a mix of shared and orphan feeds", () => {
-      setup([
-        subscription(1, [DESIGN, NEWS]),
-        subscription(2, [DESIGN]),
-        subscription(3, [DESIGN]),
-      ]);
+      setup([feed(1, [DESIGN, NEWS]), feed(2, [DESIGN]), feed(3, [DESIGN])]);
 
       expect(
         ui.text(
@@ -115,7 +108,7 @@ describe("subscriptions in French", () => {
     });
 
     it("uses the singular for a single orphan", () => {
-      setup([subscription(1, [DESIGN])]);
+      setup([feed(1, [DESIGN])]);
 
       expect(
         ui.text("Son unique flux n'a aucune autre catégorie, il lui en faut une nouvelle."),

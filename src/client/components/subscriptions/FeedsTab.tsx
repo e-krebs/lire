@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { useT } from "client/i18n/useT";
 import { feedHue } from "client/utils/feedHue";
 import { Icon } from "client/components/ui/icons";
-import type { Collection, Subscription } from "shared/feedsApi/types";
+import type { Category, Feed } from "shared/feedsApi/types";
 import { AddSourcesMenu } from "./AddSourcesMenu";
 import { ChipSet } from "./ChipSet";
 import { markPanelOrigin } from "./SidePanel";
@@ -89,10 +89,10 @@ export const matchesFilter = ({
 };
 
 interface FeedsTabProps {
-  /** All subscriptions to list. */
-  subscriptions: Subscription[];
+  /** All feeds to list. */
+  feeds: Feed[];
   /** All categories, for the category filter and the panel. */
-  collections: Collection[];
+  categories: Category[];
   /** Feed whose panel is open, if any. */
   openFeedId: string | undefined;
   /** Feed row clicked. */
@@ -104,8 +104,8 @@ interface FeedsTabProps {
 }
 
 export const FeedsTab = ({
-  subscriptions,
-  collections,
+  feeds,
+  categories,
   openFeedId,
   onOpenFeed,
   onAddWebsite,
@@ -113,12 +113,12 @@ export const FeedsTab = ({
 }: FeedsTabProps) => {
   const t = useT().subscriptions;
   const [filter, setFilter] = useState("");
-  const labelOf = new Map(collections.map((collection) => [collection.id, collection.label]));
+  const labelOf = new Map(categories.map((category) => [category.id, category.label]));
   const rowId = useId();
-  const shown = subscriptions.filter((subscription) =>
-    matchesFilter({ filter, texts: [subscription.title, subscription.website] }),
+  const shown = feeds.filter((feed) =>
+    matchesFilter({ filter, texts: [feed.title, feed.siteUrl] }),
   );
-  const shared = subscriptions.filter((subscription) => subscription.categories.length > 1).length;
+  const shared = feeds.filter((feed) => feed.categoryIds.length > 1).length;
 
   return (
     <div className="flex flex-col gap-4">
@@ -137,42 +137,42 @@ export const FeedsTab = ({
       </div>
       {/* Per-category counts never add up to the total, since a feed can sit in several. */}
       <p className="px-3 text-xs text-faint tabular-nums">
-        {t.feedsSummary({ count: subscriptions.length, shared })}
+        {t.feedsSummary({ count: feeds.length, shared })}
       </p>
-      {subscriptions.length === 0 ? (
+      {feeds.length === 0 ? (
         <EmptyLine>{t.noFeeds}</EmptyLine>
       ) : shown.length === 0 ? (
         <EmptyLine>{t.noFeedMatches({ query: filter.trim() })}</EmptyLine>
       ) : (
         <ul className="flex flex-col">
-          {shown.map((subscription, index) => {
-            const host = hostOf(subscription.website);
+          {shown.map((feed, index) => {
+            const host = hostOf(feed.siteUrl);
             const hostId = `${rowId}-host-${index}`;
             const chipsId = `${rowId}-chips-${index}`;
             return (
-              <li key={subscription.id}>
+              <li key={feed.id}>
                 <button
                   type="button"
-                  data-selected={subscription.id === openFeedId || undefined}
-                  aria-current={subscription.id === openFeedId || undefined}
-                  aria-label={subscription.title}
+                  data-selected={feed.id === openFeedId || undefined}
+                  aria-current={feed.id === openFeedId || undefined}
+                  aria-label={feed.title}
                   aria-describedby={[host === undefined ? null : hostId, chipsId]
                     .filter((id) => id !== null)
                     .join(" ")}
                   onClick={(event) => {
                     markPanelOrigin(event.currentTarget);
-                    onOpenFeed(subscription.id);
+                    onOpenFeed(feed.id);
                   }}
                   className={listRowClassName}
                 >
-                  <HueDot feedId={subscription.id} />
+                  <HueDot feedId={feed.id} />
                   <span className="flex min-w-0 flex-1 flex-col sm:w-52 sm:flex-none">
                     <span
-                      data-tip={subscription.title}
+                      data-tip={feed.title}
                       data-tip-overflow=""
                       className="morph-name max-w-full self-start truncate text-sm font-medium text-ink"
                     >
-                      {subscription.title}
+                      {feed.title}
                     </span>
                     {host === undefined ? null : (
                       <span
@@ -187,9 +187,7 @@ export const FeedsTab = ({
                   </span>
                   <span id={chipsId} className="contents">
                     <ChipSet
-                      labels={subscription.categories.map(
-                        (category) => labelOf.get(category.id) ?? category.label ?? category.id,
-                      )}
+                      labels={feed.categoryIds.map((id) => labelOf.get(id) ?? id)}
                       className="flex-1 justify-end sm:justify-start"
                     />
                   </span>

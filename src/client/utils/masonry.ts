@@ -5,9 +5,8 @@ const MIN_COLUMN_WIDTH = 360;
 const MAX_COLUMN_WIDTH = 480;
 // Past this the grid centres and leaves side margins, so an ultrawide stays readable.
 const MAX_COLUMNS = 5;
-// Aspect = width / height. Images are clamped so a card never gets absurdly tall or flat.
-const MIN_ASPECT = 1;
-const MAX_ASPECT = 16 / 9;
+// Aspect = width / height.
+const IMAGE_ASPECT = 3 / 2; // entries carry no image size, so every image card gets the same shape
 const TEXT_ASPECT = 16 / 9; // card without an image: a compact masthead
 // A lone column is the phone: a portrait card there would swallow most of the screen.
 const SINGLE_COLUMN_MIN_ASPECT = 4 / 3;
@@ -39,16 +38,8 @@ export interface MasonryLayout {
 
 export type Direction = "up" | "down" | "left" | "right";
 
-const clamp = ({ value, min, max }: { value: number; min: number; max: number }): number =>
-  Math.min(max, Math.max(min, value));
-
-export const tileAspect = (entry: Pick<Entry, "visual">): number => {
-  const visual = entry.visual;
-  if (!visual?.url) return TEXT_ASPECT;
-  const { width, height } = visual;
-  if (!width || !height) return TEXT_ASPECT;
-  return clamp({ value: width / height, min: MIN_ASPECT, max: MAX_ASPECT });
-};
+export const tileAspect = (entry: Pick<Entry, "imageUrl">): number =>
+  entry.imageUrl ? IMAGE_ASPECT : TEXT_ASPECT;
 
 export const layoutMasonry = ({
   containerWidth,

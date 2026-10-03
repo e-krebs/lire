@@ -1,42 +1,34 @@
 import { describe, expect, it } from "vitest";
-import type { Collection, Subscription } from "shared/feedsApi/types";
-import {
-  CATEGORIES_ORDERING_KEY,
-  feedsInCategory,
-  orderCollections,
-  orphansOf,
-} from "../selectors";
+import { CATEGORY_ORDER_KEY } from "shared/feedsApi/preferences";
+import type { Category, Feed } from "shared/feedsApi/types";
+import { feedsInCategory, orderCategories, orphansOf } from "../selectors";
 
-const feed = ({ id, categoryIds }: { id: string; categoryIds: string[] }): Subscription => ({
+const feed = ({ id, categoryIds }: { id: string; categoryIds: string[] }): Feed => ({
   id,
   title: id,
-  categories: categoryIds.map((categoryId) => ({ id: categoryId, label: categoryId })),
+  categoryIds,
+  isNewsletter: false,
 });
 
-const subscriptions = [
-  feed({ id: "feed/c", categoryIds: ["a"] }),
-  feed({ id: "feed/a", categoryIds: ["a", "b"] }),
-  feed({ id: "feed/b", categoryIds: ["b"] }),
+const feeds = [
+  feed({ id: "3", categoryIds: ["a"] }),
+  feed({ id: "1", categoryIds: ["a", "b"] }),
+  feed({ id: "2", categoryIds: ["b"] }),
 ];
 
-const collections: Collection[] = ["a", "b", "c"].map((id) => ({ id, label: id, feeds: [] }));
-const order = (value: unknown): string[] =>
-  orderCollections({ collections, preferences: { [CATEGORIES_ORDERING_KEY]: value } }).map(
-    ({ id }) => id,
-  );
+const categories: Category[] = ["a", "b", "c"].map((id) => ({ id, label: id, feedIds: [] }));
+const order = (value: string): string[] =>
+  orderCategories({ categories, preferences: { [CATEGORY_ORDER_KEY]: value } }).map(({ id }) => id);
 
 describe("selectors", () => {
   it("returns every feed carrying the category, in the given order", () => {
-    expect(feedsInCategory({ subscriptions, categoryId: "a" }).map(({ id }) => id)).toEqual([
-      "feed/c",
-      "feed/a",
-    ]);
+    expect(feedsInCategory({ feeds, categoryId: "a" }).map(({ id }) => id)).toEqual(["3", "1"]);
   });
 
   it("returns only the feeds whose sole category it is", () => {
-    expect(orphansOf({ subscriptions, categoryId: "a" }).map(({ id }) => id)).toEqual(["feed/c"]);
-    expect(orphansOf({ subscriptions, categoryId: "b" }).map(({ id }) => id)).toEqual(["feed/b"]);
-    expect(orphansOf({ subscriptions, categoryId: "z" })).toEqual([]);
+    expect(orphansOf({ feeds, categoryId: "a" }).map(({ id }) => id)).toEqual(["3"]);
+    expect(orphansOf({ feeds, categoryId: "b" }).map(({ id }) => id)).toEqual(["2"]);
+    expect(orphansOf({ feeds, categoryId: "z" })).toEqual([]);
   });
 
   it("follows a full stored order", () => {
@@ -52,9 +44,8 @@ describe("selectors", () => {
   });
 
   it("keeps API order on a missing or malformed value", () => {
-    expect(orderCollections({ collections, preferences: undefined })).toBe(collections);
-    expect(orderCollections({ collections, preferences: {} })).toBe(collections);
-    expect(order(["c", "a"])).toEqual(["a", "b", "c"]);
+    expect(orderCategories({ categories, preferences: undefined })).toBe(categories);
+    expect(orderCategories({ categories, preferences: {} })).toBe(categories);
     expect(order("not json")).toEqual(["a", "b", "c"]);
     expect(order(JSON.stringify({ c: 0 }))).toEqual(["a", "b", "c"]);
     expect(order(JSON.stringify([1, 2]))).toEqual(["a", "b", "c"]);

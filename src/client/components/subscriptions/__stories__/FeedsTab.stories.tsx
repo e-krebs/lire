@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
 import { FeedsTab } from "client/components/subscriptions/FeedsTab";
-import { COLLECTIONS, SUBSCRIPTIONS } from "stories/fixtures";
+import { CATEGORIES, FEEDS } from "stories/fixtures";
 
 const meta = {
   title: "Subscriptions/FeedsTab",
@@ -12,8 +12,8 @@ const meta = {
     onAddNewsletter: { control: false },
   },
   args: {
-    subscriptions: SUBSCRIPTIONS,
-    collections: COLLECTIONS,
+    feeds: FEEDS,
+    categories: CATEGORIES,
     openFeedId: undefined,
     onOpenFeed: fn(),
     onAddWebsite: fn(),

@@ -1,9 +1,5 @@
-import {
-  isGlobalAllStreamId,
-  isGlobalUncategorizedStreamId,
-  isReadStreamId,
-} from "shared/feedsApi/streams";
-import type { Collection, Subscription } from "shared/feedsApi/types";
+import type { Stream } from "shared/feedsApi/streamKey";
+import type { Category, Feed } from "shared/feedsApi/types";
 
 export interface StreamLabel {
   kind: "all" | "category" | "feed" | "unknown";
@@ -12,36 +8,34 @@ export interface StreamLabel {
   parent?: string;
 }
 
-// Names a full stream id from the loaded collections and subscriptions.
+// Names a stream from the loaded categories and feeds.
 export const streamLabel = ({
-  streamId,
-  collections,
-  subscriptions,
+  stream,
+  categories,
+  feeds,
   labels,
 }: {
-  streamId: string;
-  collections: readonly Collection[] | undefined;
-  subscriptions: readonly Subscription[] | undefined;
+  stream: Stream;
+  categories: readonly Category[] | undefined;
+  feeds: readonly Feed[] | undefined;
   labels: { allArticles: string; recentlyRead: string; uncategorized: string };
 }): StreamLabel => {
-  if (isGlobalAllStreamId(streamId)) return { kind: "all", label: labels.allArticles };
-  if (isReadStreamId(streamId)) return { kind: "all", label: labels.recentlyRead };
-  if (isGlobalUncategorizedStreamId(streamId)) {
-    return { kind: "category", label: labels.uncategorized };
+  if (stream.kind === "all") return { kind: "all", label: labels.allArticles };
+  if (stream.kind === "read") return { kind: "all", label: labels.recentlyRead };
+
+  if (stream.kind === "folder") {
+    const category = categories?.find((entry) => entry.id === stream.label);
+    return category
+      ? { kind: "category", label: category.label }
+      : { kind: "unknown", label: stream.label };
   }
 
-  const collection = collections?.find((entry) => entry.id === streamId);
-  if (collection) return { kind: "category", label: collection.label };
-
-  const subscription = subscriptions?.find((entry) => entry.id === streamId);
-  if (subscription) {
-    const categoryId = subscription.categories[0]?.id;
-    const parent =
-      collections?.find((entry) => entry.id === categoryId)?.label ??
-      subscription.categories[0]?.label ??
-      labels.uncategorized;
-    return { kind: "feed", label: subscription.title, parent };
-  }
-
-  return { kind: "unknown", label: streamId };
+  const feed = feeds?.find((entry) => entry.id === stream.feedId);
+  if (!feed) return { kind: "unknown", label: stream.feedId };
+  const categoryId = feed.categoryIds.at(0);
+  const parent =
+    categories?.find((entry) => entry.id === categoryId)?.label ??
+    categoryId ??
+    labels.uncategorized;
+  return { kind: "feed", label: feed.title, parent };
 };

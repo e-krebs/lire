@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { useCreateCollection, useFeedLookup, useSubscribe } from "client/api/queries";
+import { useCreateCategory, useFeedLookup, useSubscribe } from "client/api/queries";
 import { useT } from "client/i18n/useT";
-import type { Collection } from "shared/feedsApi/types";
+import type { Category } from "shared/feedsApi/types";
 import { CategoryPicker } from "./CategoryPicker";
 import { primaryClassName } from "./CategoryPanel";
 import { hostOf } from "./FeedsTab";
@@ -24,14 +24,14 @@ const resultRowClassName = `
 
 interface SubscribePanelProps {
   /** All categories, for the category picker. */
-  collections: Collection[];
+  categories: Category[];
   /** The category the panel was opened from, ticked up front. */
   categoryId: string | undefined;
   /** Panel dismissed, or the feed was added. */
   onClose: () => void;
 }
 
-export const SubscribePanel = ({ collections, categoryId, onClose }: SubscribePanelProps) => {
+export const SubscribePanel = ({ categories, categoryId, onClose }: SubscribePanelProps) => {
   const t = useT();
   const formId = useId();
   const urlId = useId();
@@ -43,13 +43,13 @@ export const SubscribePanel = ({ collections, categoryId, onClose }: SubscribePa
   const [tooShort, setTooShort] = useState(false);
   const [chosenId, setChosenId] = useState<string | undefined>(undefined);
   const [selected, setSelected] = useState(
-    categoryId !== undefined && collections.some((collection) => collection.id === categoryId)
+    categoryId !== undefined && categories.some((category) => category.id === categoryId)
       ? [categoryId]
       : [],
   );
   const lookup = useFeedLookup(debouncedQuery);
   const subscribe = useSubscribe();
-  const createCollection = useCreateCollection();
+  const createCategory = useCreateCategory();
 
   // Debounces the lookup against a timer, the standard "wait for typing to settle" Effect.
   useEffect(() => {
@@ -61,10 +61,10 @@ export const SubscribePanel = ({ collections, categoryId, onClose }: SubscribePa
     };
   }, [urlInput]);
 
-  const results = lookup.data?.results ?? [];
+  const results = lookup.data ?? [];
   // A single result is the obvious pick, so it needs no extra tap.
   const chosen =
-    results.find((result) => result.feedId === chosenId) ??
+    results.find((result) => result.feedUrl === chosenId) ??
     (results.length === 1 ? results[0] : undefined);
   const canSubscribe = chosen !== undefined && selected.length > 0 && !subscribe.isPending;
 
@@ -75,8 +75,8 @@ export const SubscribePanel = ({ collections, categoryId, onClose }: SubscribePa
       : null;
   const submitError = subscribe.isError
     ? t.subscriptions.subscribeFeedFailed({ message: subscribe.error.message })
-    : createCollection.isError
-      ? t.subscriptions.createCategoryFailed({ message: createCollection.error.message })
+    : createCategory.isError
+      ? t.subscriptions.createCategoryFailed({ message: createCategory.error.message })
       : null;
 
   const handleSubmit = (): void => {
@@ -92,7 +92,7 @@ export const SubscribePanel = ({ collections, categoryId, onClose }: SubscribePa
     }
     if (!canSubscribe) return;
     subscribe.mutate(
-      { feedId: chosen.feedId, title: chosen.title, categoryIds: selected },
+      { feedUrl: chosen.feedUrl, title: chosen.title, categoryIds: selected },
       { onSuccess: onClose },
     );
   };
@@ -169,15 +169,15 @@ export const SubscribePanel = ({ collections, categoryId, onClose }: SubscribePa
             <fieldset className="overflow-hidden rounded-xl ring-1 ring-hairline ring-inset">
               <legend className="sr-only">{t.subscriptions.results}</legend>
               {results.map((result) => {
-                const host = hostOf(result.website);
+                const host = hostOf(result.feedUrl);
                 return (
-                  <label key={result.feedId} className={resultRowClassName}>
+                  <label key={result.feedUrl} className={resultRowClassName}>
                     <input
                       type="radio"
                       name={resultsName}
-                      checked={chosen?.feedId === result.feedId}
+                      checked={chosen?.feedUrl === result.feedUrl}
                       onChange={() => {
-                        setChosenId(result.feedId);
+                        setChosenId(result.feedUrl);
                       }}
                       className={`
                         size-5 flex-none accent-accent
@@ -190,7 +190,7 @@ export const SubscribePanel = ({ collections, categoryId, onClose }: SubscribePa
                       </span>
                       {host === undefined ? null : (
                         <span
-                          data-tip={result.website}
+                          data-tip={result.feedUrl}
                           data-tip-overflow=""
                           className="block truncate text-xs text-faint"
                         >
@@ -205,14 +205,14 @@ export const SubscribePanel = ({ collections, categoryId, onClose }: SubscribePa
           )}
         </div>
         <CategoryPicker
-          categories={collections}
+          categories={categories}
           selected={selected}
           onChange={setSelected}
           mode="multiple"
           onCreate={(label) => {
-            createCollection.mutate(label, {
-              onSuccess: (collection) => {
-                setSelected((current) => [...current, collection.id]);
+            createCategory.mutate(label, {
+              onSuccess: (created) => {
+                setSelected((current) => [...current, created.id]);
               },
             });
           }}

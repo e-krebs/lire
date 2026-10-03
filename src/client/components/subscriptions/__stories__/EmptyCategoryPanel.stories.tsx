@@ -3,9 +3,9 @@ import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 import { resetFixtureState } from "client/api/adapters/fixture";
 import { EmptyCategoryPanel } from "client/components/subscriptions/EmptyCategoryPanel";
 import { withQueryClient } from "stories/decorators";
-import { COLLECTIONS, SUBSCRIPTIONS } from "stories/fixtures";
+import { CATEGORIES, FEEDS } from "stories/fixtures";
 
-const empty = { ...COLLECTIONS[0], feeds: [], numFeeds: 0 };
+const empty = { ...CATEGORIES[0], feedIds: [] };
 
 const meta = {
   title: "Subscriptions/EmptyCategoryPanel",
@@ -23,8 +23,8 @@ const meta = {
   },
   args: {
     category: empty,
-    collections: [empty, ...COLLECTIONS.slice(1)],
-    subscriptions: SUBSCRIPTIONS.filter((feed) => feed.categories[0].id !== empty.id),
+    categories: [empty, ...CATEGORIES.slice(1)],
+    allFeeds: FEEDS.filter((feed) => !feed.categoryIds.includes(empty.id)),
     onClose: fn(),
     onAddWebsite: fn(),
     onAddNewsletter: fn(),
@@ -47,7 +47,7 @@ export const AddWebsite: Story = {
 export const Delete: Story = {
   play: async ({ args }) => {
     await userEvent.click(await screen.findByRole("button", { name: "Delete category…" }));
-    const dialog = await screen.findByRole("dialog", { name: "Delete Tech News?" });
+    const dialog = await screen.findByRole("dialog", { name: "Delete Tech?" });
     await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
     await waitFor(async () => {
       await expect(screen.queryByRole("dialog")).toBeNull();

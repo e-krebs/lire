@@ -12,18 +12,15 @@ import type { InfiniteData } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { globalAllStreamId } from "shared/feedsApi/streams";
-import type { StreamContents } from "shared/feedsApi/types";
+import type { EntryPage } from "shared/feedsApi/types";
 import { resetFixtureState } from "client/api/adapters/fixture";
-import { getStream } from "client/api/client";
+import { markReadQueue } from "client/api/markReadQueue";
+import { getStreamEntries } from "client/api/client";
 import { keys, useMarkRead } from "client/api/queries";
-import profile from "fixtures/seed/profile.json";
 import { fixtureBackend } from "test/fixtureBackend";
 import { server } from "test/msw";
 import { setViewPrefs, useViewPrefs } from "client/utils/viewPrefs";
 import { MosaicGrid } from "../MosaicGrid";
-
-const GLOBAL_ALL = globalAllStreamId(profile.id);
 
 const ui = {
   async unreadToggles(view: RenderResult) {
@@ -73,7 +70,7 @@ const setup = ({
     path: "/",
     component: function StreamView() {
       const { unread } = useViewPrefs();
-      return <MosaicGrid streamId={GLOBAL_ALL} unreadOnly={unread} ranked="newest" query={query} />;
+      return <MosaicGrid streamKey="all" unreadOnly={unread} ranked="newest" query={query} />;
     },
   });
   const router = createRouter({
@@ -193,7 +190,7 @@ describe("MosaicGrid", () => {
     });
     server.use(fixtureBackend);
     server.use(
-      http.post("/api/v3/markers", async () => {
+      http.post("/api/entries/read", async () => {
         await held;
         return HttpResponse.json({ error: "boom" }, { status: 500 });
       }),
@@ -204,6 +201,7 @@ describe("MosaicGrid", () => {
 
     fireEvent.click(toggle);
     await findStrip(strip);
+    void markReadQueue.flush();
     release();
 
     await waitFor(() => {
@@ -257,8 +255,8 @@ describe("MosaicGrid", () => {
     const leftover = strip();
     if (leftover) await runOutCountdown(leftover);
 
-    const all = client.getQueryData<InfiniteData<StreamContents>>(
-      keys.stream({ streamId: GLOBAL_ALL, unreadOnly: false, ranked: "newest" }),
+    const all = client.getQueryData<InfiniteData<EntryPage>>(
+      keys.stream({ streamKey: "all", unreadOnly: false, order: "newest" }),
     );
     expect(all?.pages.flatMap((page) => page.items).some((item) => item.id === entryId)).toBe(true);
     expect(card(entryId)).not.toBeNull();
@@ -271,10 +269,14 @@ describe("MosaicGrid", () => {
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
     });
-    const queryKey = keys.stream({ streamId: GLOBAL_ALL, unreadOnly: true, ranked: "newest" });
-    const firstPage = await getStream({ streamId: GLOBAL_ALL, unreadOnly: true, ranked: "newest" });
-    expect(firstPage.continuation).toBeDefined();
-    client.setQueryData<InfiniteData<StreamContents, string | undefined>>(queryKey, {
+    const queryKey = keys.stream({ streamKey: "all", unreadOnly: true, order: "newest" });
+    const firstPage = await getStreamEntries({
+      streamKey: "all",
+      unreadOnly: true,
+      order: "newest",
+    });
+    expect(firstPage.cursor).toBeDefined();
+    client.setQueryData<InfiniteData<EntryPage, string | undefined>>(queryKey, {
       pages: [{ ...firstPage, items: firstPage.items.map((item) => ({ ...item, unread: false })) }],
       pageParams: [undefined],
     });
@@ -299,7 +301,11 @@ describe("MosaicGrid", () => {
       observe(): void {}
       disconnect(): void {}
     }
-    const { items } = await getStream({ streamId: GLOBAL_ALL, unreadOnly: true, ranked: "newest" });
+    const { items } = await getStreamEntries({
+      streamKey: "all",
+      unreadOnly: true,
+      order: "newest",
+    });
     const { view } = setup({ client: newQueryClient(), observer: ReportingIntersectionObserver });
     const cards = () => view.container.querySelectorAll("[data-entry-id]").length;
     await waitFor(() => {

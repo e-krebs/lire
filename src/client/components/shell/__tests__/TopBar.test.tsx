@@ -144,16 +144,16 @@ const setup = ({
 
 const inert = (element: Element): boolean => element.closest("[inert]") !== null;
 
-const TECH_NEWS_PATH = `/stream/${encodeURIComponent(seedCategoryKey("Tech News"))}`;
-const EXAMPLE_NEWS_ID = "feed/http://example-news.test/rss";
-const EXAMPLE_NEWS_PATH = `/stream/${encodeURIComponent(toStreamKey(EXAMPLE_NEWS_ID))}`;
+const TECH_PATH = `/stream/${encodeURIComponent(seedCategoryKey("Tech"))}`;
+const FEED_ID = "101";
+const FEED_PATH = `/stream/${encodeURIComponent(toStreamKey({ kind: "feed", feedId: FEED_ID }))}`;
 
 const searchParamsOf = (link: HTMLElement): URLSearchParams =>
   new URL(link.getAttribute("href") ?? "", location.origin).searchParams;
 
 describe("TopBar", () => {
   it("leaves every item live while nothing is open", async () => {
-    setup({ path: TECH_NEWS_PATH });
+    setup({ path: TECH_PATH });
 
     expect(inert(await ui.homeLink)).toBe(false);
     expect(inert(await ui.searchField)).toBe(false);
@@ -175,7 +175,7 @@ describe("TopBar", () => {
     };
 
     it("keeps only the cog live", async () => {
-      setup({ path: TECH_NEWS_PATH, menuOpen: true });
+      setup({ path: TECH_PATH, menuOpen: true });
 
       expect(inert(await ui.homeLink)).toBe(true);
       expect(inert(await ui.searchField)).toBe(true);
@@ -190,7 +190,7 @@ describe("TopBar", () => {
     });
 
     it("swallows the click of a press outside the open menu, not one inside it", async () => {
-      const view = setup({ path: TECH_NEWS_PATH });
+      const view = setup({ path: TECH_PATH });
       const menu = await openMenu(view);
       const outside = vi.fn<() => void>();
       const inside = vi.fn<() => void>();
@@ -210,7 +210,7 @@ describe("TopBar", () => {
     });
 
     it("moves the bar to the bottom and back", async () => {
-      const view = setup({ path: TECH_NEWS_PATH });
+      const view = setup({ path: TECH_PATH });
       const user = userEvent.setup();
       await openMenu(view);
       const bottom = ui.bottomCheckbox;
@@ -223,7 +223,7 @@ describe("TopBar", () => {
     });
 
     it("shows the app version", async () => {
-      const view = setup({ path: TECH_NEWS_PATH });
+      const view = setup({ path: TECH_PATH });
       await openMenu(view);
 
       expect(ui.versionRow.nextElementSibling).toHaveTextContent(/\S/);
@@ -232,7 +232,7 @@ describe("TopBar", () => {
     it("closes the menu when it opens Subscriptions", async () => {
       const hidePopover = vi.fn<() => void>();
       HTMLElement.prototype.hidePopover = hidePopover;
-      const view = setup({ path: TECH_NEWS_PATH });
+      const view = setup({ path: TECH_PATH });
       const user = userEvent.setup();
       await openMenu(view);
 
@@ -247,53 +247,49 @@ describe("TopBar", () => {
 
   describe("when the Navigator is open", () => {
     it("keeps only the search input live", async () => {
-      setup({ path: TECH_NEWS_PATH });
+      setup({ path: TECH_PATH });
       const user = userEvent.setup();
       const field = await ui.searchField;
-      // Wait out the ViewTogglesSkeleton swap so the View group queried below stays attached.
       await ui.oldestButton;
 
       await user.click(field);
 
       expect(inert(field)).toBe(false);
       expect(inert(await ui.accountButton)).toBe(true);
-      expect(inert(await ui.searchEverywhereButton("Tech News"))).toBe(true);
+      expect(inert(await ui.searchEverywhereButton("Tech"))).toBe(true);
       expect(inert(await ui.viewGroup)).toBe(true);
       expect(inert(await ui.homeLink)).toBe(true);
       // The Navigator's rows carry edit links too, so look inside the pill.
-      expect(inert(await ui.locationEditLink("Tech News"))).toBe(true);
+      expect(inert(await ui.locationEditLink("Tech"))).toBe(true);
     });
   });
 
   describe("when viewing a feed stream", () => {
     it("opens the feed panel from the edit link", async () => {
-      setup({ path: EXAMPLE_NEWS_PATH });
+      setup({ path: FEED_PATH });
 
-      const params = searchParamsOf(await ui.editLink("Example News"));
+      const params = searchParamsOf(await ui.editLink("Example Tech Daily"));
       expect(params.get("tab")).toBe("feeds");
-      expect(params.get("feed")).toBe(EXAMPLE_NEWS_ID);
+      expect(params.get("feed")).toBe(JSON.stringify(FEED_ID));
     });
   });
 
   describe("when viewing a category stream", () => {
     it("opens the category panel from the edit link", async () => {
-      setup({ path: TECH_NEWS_PATH });
+      setup({ path: TECH_PATH });
 
-      const params = searchParamsOf(await ui.editLink("Tech News"));
+      const params = searchParamsOf(await ui.editLink("Tech"));
       expect(params.get("tab")).toBe("categories");
-      expect(params.get("category")).toBe(seedCategoryId("Tech News"));
+      expect(params.get("category")).toBe(seedCategoryId("Tech"));
     });
   });
 
-  it.each(["all", "read", "global.uncategorized"])(
-    "shows no edit link on the %s stream",
-    async (streamKey) => {
-      setup({ path: `/stream/${streamKey}` });
+  it.each(["all", "read"])("shows no edit link on the %s stream", async (streamKey) => {
+    setup({ path: `/stream/${streamKey}` });
 
-      await ui.homeLink;
-      expect(ui.editLinks).toHaveLength(0);
-    },
-  );
+    await ui.homeLink;
+    expect(ui.editLinks).toHaveLength(0);
+  });
 
   it("shows no filter or sort control on the recently-read stream", async () => {
     setup({ path: "/stream/read" });
@@ -304,17 +300,17 @@ describe("TopBar", () => {
 
   describe("when on a phone", () => {
     it("sits the edit link beside the pill's button, not inside it", async () => {
-      setup({ path: EXAMPLE_NEWS_PATH, tier: "phone" });
+      setup({ path: FEED_PATH, tier: "phone" });
 
-      const link = await ui.editLink("Example News");
-      expect(searchParamsOf(link).get("feed")).toBe(EXAMPLE_NEWS_ID);
+      const link = await ui.editLink("Example Tech Daily");
+      expect(searchParamsOf(link).get("feed")).toBe(JSON.stringify(FEED_ID));
       expect(link.closest("button")).toBeNull();
       expect(ui.navigatorButton).toBeDefined();
     });
   });
 
   it("closes the Navigator on Escape and keeps focus in the field", async () => {
-    setup({ path: TECH_NEWS_PATH });
+    setup({ path: TECH_PATH });
     const user = userEvent.setup();
     const field = await ui.searchField;
     const home = await ui.homeLink;
@@ -328,7 +324,7 @@ describe("TopBar", () => {
   });
 
   it("clears the typed text and drops the article search from the route", async () => {
-    const view = setup({ path: `${TECH_NEWS_PATH}?q=rust` });
+    const view = setup({ path: `${TECH_PATH}?q=rust` });
     const user = userEvent.setup();
     const field = await ui.searchField;
     expect(field).toHaveValue("rust");
@@ -343,7 +339,7 @@ describe("TopBar", () => {
   });
 
   it("clears text that was only typed without touching the route", async () => {
-    const view = setup({ path: TECH_NEWS_PATH });
+    const view = setup({ path: TECH_PATH });
     const user = userEvent.setup();
     const field = await ui.searchField;
 
@@ -351,11 +347,11 @@ describe("TopBar", () => {
     await user.click(await ui.clearSearchButton);
 
     expect(field).toHaveValue("");
-    expect(view.router.state.location.pathname).toBe(TECH_NEWS_PATH);
+    expect(view.router.state.location.pathname).toBe(TECH_PATH);
   });
 
   it("follows a navigation that changes the article search", async () => {
-    const view = setup({ path: `${TECH_NEWS_PATH}?q=rust` });
+    const view = setup({ path: `${TECH_PATH}?q=rust` });
     const field = await ui.searchField;
 
     await act(async () => {
@@ -366,10 +362,10 @@ describe("TopBar", () => {
   });
 
   it("widens the scope to every stream, keeping the article search", async () => {
-    const view = setup({ path: `${TECH_NEWS_PATH}?q=rust` });
+    const view = setup({ path: `${TECH_PATH}?q=rust` });
     const user = userEvent.setup();
 
-    await user.click(await ui.searchEverywhereButton("Tech News"));
+    await user.click(await ui.searchEverywhereButton("Tech"));
 
     await waitFor(() => {
       expect(view.router.state.location.pathname).toBe("/stream/all");
@@ -378,13 +374,13 @@ describe("TopBar", () => {
   });
 
   it("goes back through history when there is some", async () => {
-    const view = setup({ path: "/subscriptions", history: [TECH_NEWS_PATH, "/subscriptions"] });
+    const view = setup({ path: "/subscriptions", history: [TECH_PATH, "/subscriptions"] });
     const user = userEvent.setup();
 
     await user.click(await ui.backButton);
 
     await waitFor(() => {
-      expect(view.router.state.location.pathname).toBe(TECH_NEWS_PATH);
+      expect(view.router.state.location.pathname).toBe(TECH_PATH);
     });
   });
 
@@ -400,7 +396,7 @@ describe("TopBar", () => {
   });
 
   it("toggles the unread filter and the sort order, kept on the device and out of the URL", async () => {
-    const view = setup({ path: TECH_NEWS_PATH });
+    const view = setup({ path: TECH_PATH });
     const user = userEvent.setup();
     const unread = await ui.unreadButton;
     const oldest = await ui.oldestButton;
@@ -424,7 +420,7 @@ describe("TopBar", () => {
 
   describe("when searching", () => {
     it("offers no sort order while searching", async () => {
-      const view = setup({ path: `${TECH_NEWS_PATH}?q=rust` });
+      const view = setup({ path: `${TECH_PATH}?q=rust` });
       const user = userEvent.setup();
       const oldest = await ui.oldestButton;
       expect(oldest).toHaveAttribute("aria-disabled", "true");

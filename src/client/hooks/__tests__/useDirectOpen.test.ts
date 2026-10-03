@@ -4,16 +4,13 @@ import { act, createElement } from "react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resetFixtureState } from "client/api/adapters/fixture";
-import { getPreferences, updatePreferences } from "client/api/client";
-import { keys, usePreferences } from "client/api/queries";
+import { getPreferences } from "client/api/client";
+import { keys } from "client/api/queries";
+import { directOpenKey } from "shared/feedsApi/preferences";
 import { useDirectOpen, useSetDirectOpen } from "../useDirectOpen";
 
-// The key the official web app stores the setting under.
-const directOpenKey = (feedId: string): string => `subscription/${feedId}/entryNavigation`;
-
-const FEED = "feed/http://example-news.test/rss";
-const OTHER = "feed/http://example-tech.test/feed";
-const STORAGE_KEY = "lire.directOpen";
+const FEED = "101";
+const OTHER = "102";
 
 const setup = () => {
   vi.stubEnv("VITE_API_MODE", "mock");
@@ -38,15 +35,6 @@ const toggle = () => {
     });
   };
   return { result, set };
-};
-
-const mountBucket = async () => {
-  const { wrapper } = setup();
-  const { result } = renderHook(() => usePreferences(), { wrapper });
-  await waitFor(() => {
-    expect(result.current.isSuccess).toBe(true);
-  });
-  return result;
 };
 
 describe("directOpen", () => {
@@ -90,62 +78,32 @@ describe("directOpen", () => {
     const { set } = toggle();
     await set(true);
     const stored: unknown = JSON.parse(
-      window.localStorage.getItem("lire.fixture.preferences") ?? "{}",
+      window.localStorage.getItem("lire.fixture.preferences.v2") ?? "{}",
     );
-    expect(stored).toEqual({ [directOpenKey(FEED)]: "visit" });
+    expect(stored).toMatchObject({ [directOpenKey(FEED)]: "visit" });
 
     // A test reset forgets it, so the next case starts from the fixture again.
     resetFixtureState();
-    expect(window.localStorage.getItem("lire.fixture.preferences")).toBeNull();
-    expect(await getPreferences()).toEqual({});
+    expect(window.localStorage.getItem("lire.fixture.preferences.v2")).toBeNull();
+    expect(await getPreferences()).not.toHaveProperty(directOpenKey(FEED));
   });
 
   it("touches no other key in the bucket", async () => {
     const { set } = toggle();
+    const before = Object.keys(await getPreferences());
 
     await set(true);
 
-    expect(Object.keys(await getPreferences())).toEqual([directOpenKey(FEED)]);
+    expect(Object.keys(await getPreferences())).toEqual([...before, directOpenKey(FEED)]);
   });
 
   it("leaves the bucket empty when a feed that was never flagged is turned off", async () => {
     const { result, set } = toggle();
+    const before = Object.keys(await getPreferences());
 
     await set(false);
 
     expect(result.current.on).toBe(false);
-    expect(Object.keys(await getPreferences())).toEqual([]);
-  });
-
-  it("lifts the local storage ids into the bucket and forgets the key", async () => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(["feed/x"]));
-
-    const result = await mountBucket();
-
-    expect(result.current.data?.[directOpenKey("feed/x")]).toBe("visit");
-    expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
-  });
-
-  it("keeps an id the bucket already carries and still forgets the key", async () => {
-    const { wrapper } = setup();
-    await updatePreferences({ [directOpenKey("feed/x")]: "visit" });
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(["feed/x"]));
-
-    const { result } = renderHook(() => usePreferences(), { wrapper });
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
-    });
-
-    expect(result.current.data?.[directOpenKey("feed/x")]).toBe("visit");
-    expect(window.localStorage.getItem(STORAGE_KEY)).toBeNull();
-  });
-
-  it("survives a stored value it cannot parse", async () => {
-    window.localStorage.setItem(STORAGE_KEY, "not json");
-
-    const result = await mountBucket();
-
-    expect(result.current.data).toEqual({});
-    expect(window.localStorage.getItem(STORAGE_KEY)).toBe("not json");
+    expect(Object.keys(await getPreferences())).toEqual(before);
   });
 });

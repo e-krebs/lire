@@ -2,21 +2,9 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "re
 import type { KeyboardEvent } from "react";
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useViewPrefs } from "client/utils/viewPrefs";
-import { fromStreamKey, toStreamKey } from "shared/feedsApi/streamKey";
-import {
-  globalAllStreamId,
-  isFeedStreamId,
-  isGlobalAllStreamId,
-  isReadStreamId,
-} from "shared/feedsApi/streams";
-import type { Collection, Subscription } from "shared/feedsApi/types";
-import {
-  unreadCountFor,
-  useOrderedCollections,
-  useProfile,
-  useSubscriptions,
-  useUnreadCounts,
-} from "client/api/queries";
+import { parseStreamKey, toStreamKey } from "shared/feedsApi/streamKey";
+import type { Category, Feed } from "shared/feedsApi/types";
+import { unreadCountFor, useCounts, useFeeds, useOrderedCategories } from "client/api/queries";
 import { Icon } from "client/components/ui/icons";
 import { useT } from "client/i18n/useT";
 import { CategoryResultRow } from "./CategoryResultRow";
@@ -37,8 +25,12 @@ import {
 
 type ResultRow =
   | { kind: "search" }
-  | { kind: "category"; collection: Collection }
-  | { kind: "feed"; subscription: Subscription };
+  | { kind: "category"; category: Category }
+  | { kind: "feed"; feed: Feed };
+
+const categoryStreamKey = (categoryId: string) =>
+  toStreamKey({ kind: "folder", label: categoryId });
+const feedStreamKey = (feedId: string) => toStreamKey({ kind: "feed", feedId });
 
 // One visible row of the browse tree, in render order. `expandId` marks the rows that
 // ArrowRight/ArrowLeft can open and close; `parentId` is the group a feed row sits in, so
@@ -61,7 +53,7 @@ interface NavigatorPanelProps {
   query: string;
   /** Panel should close, e.g. after a selection. */
   onClose: () => void;
-  /** Route key of the stream a search is limited to: "all", a category segment or a `feed:` url. */
+  /** Route key of the stream a search is limited to: "all", `folder:<label>` or `feed:<id>`. */
   scopeKey: string;
   /** Display label of that stream, for the search row's second line. */
   scopeLabel: string;
@@ -77,29 +69,20 @@ export const NavigatorPanel = forwardRef<NavigatorPanelHandle, NavigatorPanelPro
     const params = useParams({ strict: false });
     const unreadOnly = useViewPrefs().unread;
 
-    const profile = useProfile();
-    const { collections: collectionList, ready: collectionsReady } = useOrderedCollections();
-    const subscriptionsQuery = useSubscriptions();
-    const unreadCounts = useUnreadCounts();
+    const { categories: categoryList, ready: categoriesReady } = useOrderedCategories();
+    const feedsQuery = useFeeds();
+    const counts = useCounts();
 
-    // Rows carry full stream ids, so the current stream does too — and it waits on the profile,
-    // until when nothing counts as current.
-    const userId = profile.data?.id;
-    const streamKey = params.streamKey;
-    const currentStreamId =
-      streamKey === undefined || userId === undefined
-        ? undefined
-        : fromStreamKey({ key: streamKey, userId });
-    const currentIsGlobalAll =
-      currentStreamId !== undefined && isGlobalAllStreamId(currentStreamId);
-    const currentIsRead = currentStreamId !== undefined && isReadStreamId(currentStreamId);
+    const currentStreamKey = params.streamKey;
+    const currentStream = currentStreamKey === undefined ? null : parseStreamKey(currentStreamKey);
+    const currentIsAll = currentStream?.kind === "all";
+    const currentIsRead = currentStream?.kind === "read";
 
     // The group the current stream lives in: the category itself, or a feed's first category.
     const currentGroupId = ((): string | undefined => {
-      if (currentStreamId === undefined || currentIsGlobalAll || currentIsRead) return undefined;
-      if (!isFeedStreamId(currentStreamId)) return currentStreamId;
-      const subscription = subscriptionsQuery.data?.find((item) => item.id === currentStreamId);
-      return subscription?.categories[0]?.id;
+      if (currentStream?.kind === "folder") return currentStream.label;
+      if (currentStream?.kind !== "feed") return undefined;
+      return feedsQuery.data?.find((item) => item.id === currentStream.feedId)?.categoryIds[0];
     })();
 
     // Browsing starts with no row highlighted: a highlight there reads as "selected" on a touch
@@ -144,45 +127,39 @@ export const NavigatorPanel = forwardRef<NavigatorPanelHandle, NavigatorPanelPro
       });
     };
 
-    const subscriptionList = subscriptionsQuery.data ?? [];
-    // Until the subscriptions arrive every category may hold feeds, so the twisty stays put
-    // rather than flashing in once they load.
-    const canExpand = (feeds: Subscription[]): boolean =>
-      subscriptionsQuery.data === undefined || feeds.length > 0;
-    const feedsInCollection = (collectionId: string): Subscription[] =>
-      subscriptionList.filter((subscription) =>
-        subscription.categories.some((category) => category.id === collectionId),
-      );
+    const feedList = feedsQuery.data ?? [];
+    // Until the feeds arrive every category may hold feeds, so the twisty stays put rather than
+    // flashing in once they load.
+    const canExpand = (feeds: Feed[]): boolean => feedsQuery.data === undefined || feeds.length > 0;
+    const feedsInCategory = (categoryId: string): Feed[] =>
+      feedList.filter((feed) => feed.categoryIds.includes(categoryId));
 
-    const globalAllId = userId === undefined ? undefined : globalAllStreamId(userId);
-    const globalCount = unreadCountFor({ counts: unreadCounts.data, id: globalAllId });
+    const globalCount = unreadCountFor({ counts: counts.data, streamKey: "all" });
 
-    const visibleCollections = collectionsReady ? collectionList : [];
+    const visibleCategories = categoriesReady ? categoryList : [];
     const trimmedQuery = query.trim();
 
     const categoryMatches =
       trimmedQuery === ""
         ? []
-        : visibleCollections.filter((collection) =>
-            collection.label.toLowerCase().includes(trimmedQuery.toLowerCase()),
+        : visibleCategories.filter((category) =>
+            category.label.toLowerCase().includes(trimmedQuery.toLowerCase()),
           );
     const feedMatches =
       trimmedQuery === ""
         ? []
-        : subscriptionList.filter((subscription) =>
-            subscription.title.toLowerCase().includes(trimmedQuery.toLowerCase()),
-          );
+        : feedList.filter((feed) => feed.title.toLowerCase().includes(trimmedQuery.toLowerCase()));
 
     // Any typed text leads with the article-search row, so Enter searches straight away and the
-    // feed/collection matches stay one ArrowDown below.
+    // feed/category matches stay one ArrowDown below.
     const showSearchRow = trimmedQuery !== "";
     const leadingRows = showSearchRow ? 1 : 0;
     const noMatches = categoryMatches.length === 0 && feedMatches.length === 0;
 
     const results: ResultRow[] = [
       ...(showSearchRow ? [{ kind: "search" as const }] : []),
-      ...categoryMatches.map((collection) => ({ kind: "category" as const, collection })),
-      ...feedMatches.map((subscription) => ({ kind: "feed" as const, subscription })),
+      ...categoryMatches.map((category) => ({ kind: "category" as const, category })),
+      ...feedMatches.map((feed) => ({ kind: "feed" as const, feed })),
     ];
 
     // The browse tree as the keyboard sees it, in render order. It stays browsable while text is
@@ -191,19 +168,19 @@ export const NavigatorPanel = forwardRef<NavigatorPanelHandle, NavigatorPanelPro
       { key: "all", streamKey: "all" },
       { key: "read", streamKey: "read" },
     ];
-    for (const collection of visibleCollections) {
-      const feeds = feedsInCollection(collection.id);
+    for (const category of visibleCategories) {
+      const feeds = feedsInCategory(category.id);
       browseRows.push({
-        key: categoryRowKey(collection.id),
-        streamKey: toStreamKey(collection.id),
-        ...(canExpand(feeds) ? { expandId: collection.id } : {}),
+        key: categoryRowKey(category.id),
+        streamKey: categoryStreamKey(category.id),
+        ...(canExpand(feeds) ? { expandId: category.id } : {}),
       });
-      if (expandedIds.has(collection.id)) {
-        for (const subscription of feeds) {
+      if (expandedIds.has(category.id)) {
+        for (const feed of feeds) {
           browseRows.push({
-            key: feedRowKey(subscription.id),
-            streamKey: toStreamKey(subscription.id),
-            parentId: collection.id,
+            key: feedRowKey(feed.id),
+            streamKey: feedStreamKey(feed.id),
+            parentId: category.id,
           });
         }
       }
@@ -234,10 +211,6 @@ export const NavigatorPanel = forwardRef<NavigatorPanelHandle, NavigatorPanelPro
       onClose();
     };
 
-    const goTo = (streamId: string): void => {
-      goToKey(toStreamKey(streamId));
-    };
-
     const activate = (row: ResultRow | undefined): void => {
       if (!row) return;
       if (row.kind === "search") {
@@ -250,10 +223,10 @@ export const NavigatorPanel = forwardRef<NavigatorPanelHandle, NavigatorPanelPro
         return;
       }
       if (row.kind === "category") {
-        goTo(row.collection.id);
+        goToKey(categoryStreamKey(row.category.id));
         return;
       }
-      goTo(row.subscription.id);
+      goToKey(feedStreamKey(row.feed.id));
     };
 
     const goToSubscriptions = (): void => {
@@ -335,7 +308,7 @@ export const NavigatorPanel = forwardRef<NavigatorPanelHandle, NavigatorPanelPro
       <div>
         <button
           type="button"
-          data-current={currentIsGlobalAll || undefined}
+          data-current={currentIsAll || undefined}
           data-selected={selectedBrowseKey === "all" || undefined}
           onClick={() => {
             goToKey("all");
@@ -380,38 +353,44 @@ export const NavigatorPanel = forwardRef<NavigatorPanelHandle, NavigatorPanelPro
           </span>
         </button>
 
-        {collectionsReady ? null : <CategoryRowsSkeleton />}
-        {visibleCollections.map((collection) => {
-          const collapsed = !expandedIds.has(collection.id);
-          const feeds = feedsInCollection(collection.id);
+        {categoriesReady ? null : <CategoryRowsSkeleton />}
+        {visibleCategories.map((category) => {
+          const collapsed = !expandedIds.has(category.id);
+          const feeds = feedsInCategory(category.id);
           return (
-            <div key={collection.id} className="mt-0.5">
+            <div key={category.id} className="mt-0.5">
               <CategoryTreeRow
-                collection={collection}
-                count={unreadCountFor({ counts: unreadCounts.data, id: collection.id })}
-                isCurrent={currentStreamId === collection.id}
+                category={category}
+                count={unreadCountFor({
+                  counts: counts.data,
+                  streamKey: categoryStreamKey(category.id),
+                })}
+                isCurrent={currentStreamKey === categoryStreamKey(category.id)}
                 collapsed={collapsed}
                 expandable={canExpand(feeds)}
-                selected={selectedBrowseKey === categoryRowKey(collection.id)}
+                selected={selectedBrowseKey === categoryRowKey(category.id)}
                 onToggleCollapse={() => {
-                  toggleExpanded(collection.id);
+                  toggleExpanded(category.id);
                 }}
                 onSelect={() => {
-                  goTo(collection.id);
+                  goToKey(categoryStreamKey(category.id));
                 }}
                 onClose={onClose}
               />
               {collapsed ? null : (
                 <div className="flex flex-col pl-5">
-                  {feeds.map((subscription) => (
+                  {feeds.map((feed) => (
                     <FeedRow
-                      key={subscription.id}
-                      subscription={subscription}
-                      count={unreadCountFor({ counts: unreadCounts.data, id: subscription.id })}
-                      isCurrent={currentStreamId === subscription.id}
-                      selected={selectedBrowseKey === feedRowKey(subscription.id)}
+                      key={feed.id}
+                      feed={feed}
+                      count={unreadCountFor({
+                        counts: counts.data,
+                        streamKey: feedStreamKey(feed.id),
+                      })}
+                      isCurrent={currentStreamKey === feedStreamKey(feed.id)}
+                      selected={selectedBrowseKey === feedRowKey(feed.id)}
                       onSelect={() => {
-                        goTo(subscription.id);
+                        goToKey(feedStreamKey(feed.id));
                       }}
                       onClose={onClose}
                     />
@@ -458,30 +437,36 @@ export const NavigatorPanel = forwardRef<NavigatorPanelHandle, NavigatorPanelPro
                   </p>
                 ) : (
                   <div className="flex flex-col gap-0.5">
-                    {categoryMatches.map((collection, index) => (
+                    {categoryMatches.map((category, index) => (
                       <CategoryResultRow
-                        key={collection.id}
-                        collection={collection}
-                        count={unreadCountFor({ counts: unreadCounts.data, id: collection.id })}
-                        isCurrent={currentStreamId === collection.id}
+                        key={category.id}
+                        category={category}
+                        count={unreadCountFor({
+                          counts: counts.data,
+                          streamKey: categoryStreamKey(category.id),
+                        })}
+                        isCurrent={currentStreamKey === categoryStreamKey(category.id)}
                         selected={activeIndex === leadingRows + index}
                         matchQuery={trimmedQuery}
                         onSelect={() => {
-                          goTo(collection.id);
+                          goToKey(categoryStreamKey(category.id));
                         }}
                         onClose={onClose}
                       />
                     ))}
-                    {feedMatches.map((subscription, index) => (
+                    {feedMatches.map((feed, index) => (
                       <FeedRow
-                        key={subscription.id}
-                        subscription={subscription}
-                        count={unreadCountFor({ counts: unreadCounts.data, id: subscription.id })}
-                        isCurrent={currentStreamId === subscription.id}
+                        key={feed.id}
+                        feed={feed}
+                        count={unreadCountFor({
+                          counts: counts.data,
+                          streamKey: feedStreamKey(feed.id),
+                        })}
+                        isCurrent={currentStreamKey === feedStreamKey(feed.id)}
                         matchQuery={trimmedQuery}
                         selected={activeIndex === leadingRows + categoryMatches.length + index}
                         onSelect={() => {
-                          goTo(subscription.id);
+                          goToKey(feedStreamKey(feed.id));
                         }}
                         onClose={onClose}
                       />

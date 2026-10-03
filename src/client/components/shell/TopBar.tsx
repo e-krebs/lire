@@ -9,21 +9,20 @@ import {
   useRouter,
   useSearch,
 } from "@tanstack/react-router";
-import { fromStreamKey } from "shared/feedsApi/streamKey";
-import { useCollections, useProfile, useSubscriptions } from "client/api/queries";
+import { parseStreamKey } from "shared/feedsApi/streamKey";
+import { useCategories, useFeeds } from "client/api/queries";
 import { AccountMenu } from "client/components/shell/AccountMenu";
 import { Icon } from "client/components/ui/icons";
 import { LocationBar } from "client/components/navigation/LocationBar";
 import { Navigator } from "client/components/navigation/Navigator";
 import type { NavigatorPanelHandle } from "client/components/navigation/Navigator";
-import { ViewToggles, ViewTogglesSkeleton } from "client/components/navigation/ViewToggles";
+import { ViewToggles } from "client/components/navigation/ViewToggles";
 import { useT } from "client/i18n/useT";
 import { tip } from "client/utils/tooltip";
 import { useActiveOverlay } from "client/hooks/useOverlay";
 import { streamLabel } from "client/utils/streamLabel";
 import type { StreamLabel } from "client/utils/streamLabel";
 import { panelSearch } from "client/utils/subscriptionsSearch";
-import { isGlobalUncategorizedStreamId, isReadStreamId } from "shared/feedsApi/streams";
 
 // "Category › Feed" for a feed, the plain name otherwise.
 const scopeLabelOf = (named: StreamLabel): string =>
@@ -49,9 +48,8 @@ export const TopBar = () => {
   const router = useRouter();
   const canGoBack = useCanGoBack();
   const navigate = useNavigate();
-  const collections = useCollections();
-  const subscriptions = useSubscriptions();
-  const profile = useProfile();
+  const categories = useCategories();
+  const feeds = useFeeds();
   // Behind an open panel only that panel's own items stay live (LocationBar handles its pill).
   const activeOverlay = useActiveOverlay();
   const anyOverlay = activeOverlay !== null || undefined;
@@ -74,16 +72,14 @@ export const TopBar = () => {
 
   // Off a stream route (Subscriptions) the bar still names the widest scope.
   const scopeKey = streamKey ?? "all";
-  const userId = profile.data?.id;
-  // The key carries no user id, so the full stream id waits on the profile.
-  const scopeStreamId = userId === undefined ? undefined : fromStreamKey({ key: scopeKey, userId });
+  const scopeStream = parseStreamKey(scopeKey);
   const named =
-    scopeStreamId === undefined
+    scopeStream === null
       ? undefined
       : streamLabel({
-          streamId: scopeStreamId,
-          collections: collections.data,
-          subscriptions: subscriptions.data,
+          stream: scopeStream,
+          categories: categories.data,
+          feeds: feeds.data,
           labels: {
             allArticles: navigation.allArticles,
             recentlyRead: navigation.recentlyRead,
@@ -92,15 +88,14 @@ export const TopBar = () => {
         });
   // Until then the key is the best name at hand — for a category it usually *is* the label.
   const scopeLabel = named === undefined ? scopeKey : scopeLabelOf(named);
-  // Global Uncategorized has no Subscriptions panel to open.
   const edit =
-    scopeStreamId === undefined || named === undefined
+    scopeStream === null || named === undefined
       ? undefined
-      : named.kind === "feed"
-        ? { search: panelSearch({ kind: "feed", feedId: scopeStreamId }), label: named.label }
-        : named.kind === "category" && !isGlobalUncategorizedStreamId(scopeStreamId)
+      : scopeStream.kind === "feed" && named.kind === "feed"
+        ? { search: panelSearch({ kind: "feed", feedId: scopeStream.feedId }), label: named.label }
+        : scopeStream.kind === "folder" && named.kind === "category"
           ? {
-              search: panelSearch({ kind: "category", categoryId: scopeStreamId }),
+              search: panelSearch({ kind: "category", categoryId: scopeStream.label }),
               label: named.label,
             }
           : undefined;
@@ -212,10 +207,7 @@ export const TopBar = () => {
             edit={edit}
             viewControls={
               // The recently-read stream is read entries, newest first: nothing to filter or sort.
-              streamKey === undefined || streamKey === "read" ? undefined : scopeStreamId ===
-                undefined ? (
-                <ViewTogglesSkeleton />
-              ) : isReadStreamId(scopeStreamId) ? undefined : (
+              streamKey === undefined || streamKey === "read" ? undefined : (
                 <ViewToggles search={search} />
               )
             }

@@ -6,13 +6,12 @@ import type { Entry } from "shared/feedsApi/types";
 import { ReaderHeader } from "../ReaderHeader";
 
 const ENTRY: Entry = {
-  id: "entry-1",
-  fingerprint: "f1",
+  id: "101:entry1",
+  feedId: "101",
   title: "A long read",
-  crawled: Date.UTC(2026, 8, 1),
+  published: Date.UTC(2026, 8, 1),
   unread: true,
-  origin: { streamId: "feed/http://example-news.test/rss", title: "Example News" },
-  alternate: [{ href: "https://example-news.test/a-long-read", type: "text/html" }],
+  url: "https://example-news.test/a-long-read",
 };
 
 type Report = (records: Array<{ intersectionRatio: number; isIntersecting: boolean }>) => void;
@@ -109,7 +108,7 @@ describe("ReaderHeader", () => {
   });
 
   it("shows a plain title without an original to link to", () => {
-    setup({ entry: { ...ENTRY, alternate: undefined, title: undefined } });
+    setup({ entry: { ...ENTRY, url: undefined, title: undefined } });
 
     expect(ui.untitledHeading).toBeInTheDocument();
     expect(ui.queryLink).toBeNull();

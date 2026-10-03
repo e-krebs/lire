@@ -15,12 +15,12 @@ const meta = {
     ),
   ],
   argTypes: {
-    collection: { control: false },
+    category: { control: false },
     onSelect: { control: false },
     onClose: { control: false },
   },
   args: {
-    collection: { id: "user/1/category/tech", label: "Technology", feeds: [] },
+    category: { id: "Tech", label: "Tech", feedIds: [] },
     count: 24,
     isCurrent: false,
     selected: false,

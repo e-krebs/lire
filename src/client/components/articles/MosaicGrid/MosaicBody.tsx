@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
-import { isReadStreamId } from "shared/feedsApi/streams";
+import type { StreamKey } from "shared/feedsApi/streamKey";
 import type { Entry } from "shared/feedsApi/types";
 import { flattenStream, useMarkRead, useRefreshEntries } from "client/api/queries";
 import type { useStream } from "client/api/queries";
@@ -41,7 +41,7 @@ const ARROWS: Partial<Record<string, Direction>> = {
 type StreamResult = ReturnType<typeof useStream>;
 
 interface MosaicBodyProps {
-  streamId: string;
+  streamKey: StreamKey;
   unreadOnly: boolean;
   result: StreamResult;
   // The key the result runs under, so a refresh can trim and refetch that cache and no other.
@@ -51,7 +51,7 @@ interface MosaicBodyProps {
 }
 
 export const MosaicBody = ({
-  streamId,
+  streamKey,
   unreadOnly,
   result,
   queryKey,
@@ -459,9 +459,9 @@ export const MosaicBody = ({
                   return (
                     <MosaicTile
                       key={entry.id}
-                      streamId={streamId}
+                      streamKey={streamKey}
                       entry={entry}
-                      muteRead={!isReadStreamId(streamId)}
+                      muteRead={streamKey !== "read"}
                       slot={slot}
                       tabIndex={entry.id === tabbableId ? 0 : -1}
                       onFocus={() => {

@@ -3,7 +3,7 @@ import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 import { resetFixtureState } from "client/api/adapters/fixture";
 import { SubscribePanel } from "client/components/subscriptions/SubscribePanel";
 import { withQueryClient } from "stories/decorators";
-import { COLLECTIONS } from "stories/fixtures";
+import { CATEGORIES } from "stories/fixtures";
 
 const SLOW = { timeout: 10_000 };
 
@@ -16,7 +16,7 @@ const meta = {
     resetFixtureState();
   },
   argTypes: { onClose: { control: false } },
-  args: { collections: COLLECTIONS, categoryId: undefined, onClose: fn() },
+  args: { categories: CATEGORIES, categoryId: undefined, onClose: fn() },
 } satisfies Meta<typeof SubscribePanel>;
 
 export default meta;
@@ -25,7 +25,7 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
 
 export const Preselected: Story = {
-  args: { categoryId: COLLECTIONS[1].id },
+  args: { categoryId: CATEGORIES[1].id },
   play: async () => {
     const panel = await screen.findByRole("complementary", { name: "Add a feed" });
     await expect(within(panel).getByRole("checkbox", { name: "Design" })).toBeChecked();
@@ -38,10 +38,10 @@ export const Subscribe: Story = {
     const panel = await screen.findByRole("complementary", { name: "Add a feed" });
     await userEvent.type(
       within(panel).getByRole("textbox", { name: "Feed or site URL" }),
-      "example-news.test",
+      "tech.example.test",
     );
-    await within(panel).findByRole("radio", { name: /Example News — World Desk/ }, SLOW);
-    await userEvent.click(within(panel).getByRole("radio", { name: /World Desk/ }));
+    await within(panel).findByRole("radio", { name: /Example Tech Daily/ }, SLOW);
+    await userEvent.click(within(panel).getByRole("radio", { name: /Example Tech Daily/ }));
     await userEvent.type(
       within(panel).getByRole("searchbox", { name: "Filter categories" }),
       "Podcasts",

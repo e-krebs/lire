@@ -11,29 +11,22 @@ import {
 } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { directOpenKey } from "shared/feedsApi/preferences";
 import type { Entry } from "shared/feedsApi/types";
 import { keys } from "client/api/queries";
 import { MosaicTile, type TileSlot } from "../MosaicTile";
 
-// The key the official web app stores the setting under.
-const directOpenKey = (feedId: string): string => `subscription/${feedId}/entryNavigation`;
-
 const ORIGINAL = "https://example.test/posts/a-test-entry";
 
 const makeEntry = (overrides: Partial<Entry> = {}): Entry => ({
-  id: "entry-1",
-  originId: "origin-1",
-  fingerprint: "fp-1",
+  id: "101:entry1",
+  feedId: "101",
   title: "A test entry",
   published: Date.now(),
-  crawled: Date.now(),
   unread: true,
-  origin: { streamId: "feed/http://example.test/rss", title: "Example Feed" },
-  alternate: [{ href: ORIGINAL, type: "text/html" }],
+  url: ORIGINAL,
   ...overrides,
 });
-
-const GLOBAL_ALL = "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/global.all";
 
 const SLOT: TileSlot = { x: 0, y: 0, width: 300, height: 375 };
 
@@ -52,6 +45,9 @@ const setup = ({
   leavesWhenRead?: boolean;
   client?: QueryClient;
 }) => {
+  client.setQueryData(keys.feeds, [
+    { id: "101", title: "Example Feed", categoryIds: [], isNewsletter: false },
+  ]);
   const onToggleRead = vi.fn<() => void>();
   const onKeyDown = vi.fn<(event: KeyboardEvent<HTMLAnchorElement>) => void>();
   // The tile sits on the root route, so it stays mounted when its own link navigates away, as a
@@ -60,7 +56,7 @@ const setup = ({
     component: () => (
       <>
         <MosaicTile
-          streamId={GLOBAL_ALL}
+          streamKey="all"
           entry={entry}
           slot={slot}
           tabIndex={0}
@@ -142,33 +138,23 @@ describe("MosaicTile", () => {
     vi.useRealTimers();
   });
 
-  it("renders an image tile for an entry with a visual", async () => {
-    const { ui } = setup({
-      entry: makeEntry({
-        visual: { url: "https://example.test/photo.jpg", width: 700, height: 1000 },
-      }),
-    });
+  it("renders an image tile for an entry with an image", async () => {
+    const { ui } = setup({ entry: makeEntry({ imageUrl: "https://example.test/photo.jpg" }) });
     const wrapper = await ui.wrapper();
     expect(wrapper).toHaveAttribute("data-has-image");
     expect(wrapper.querySelector("img")).toHaveAttribute("src", "https://example.test/photo.jpg");
     expect(await ui.titleText()).toBeInTheDocument();
   });
 
-  it("falls back to the edge cache URL, then drops the image", async () => {
-    const url = "https://example.test/photo.jpg";
-    const edgeCacheUrl = "https://proxy.test/photo.jpg";
-    const { ui } = setup({ entry: makeEntry({ visual: { url, edgeCacheUrl } }) });
+  it("drops the image when it fails to load", async () => {
+    const { ui } = setup({ entry: makeEntry({ imageUrl: "https://example.test/photo.jpg" }) });
     const wrapper = await ui.wrapper();
-    const img = wrapper.querySelector("img");
-    expect(img).toHaveAttribute("src", url);
-    fireEvent.error(img!);
-    expect(wrapper.querySelector("img")).toHaveAttribute("src", edgeCacheUrl);
     fireEvent.error(wrapper.querySelector("img")!);
     expect(wrapper.querySelector("img")).toBeNull();
     expect(wrapper).not.toHaveAttribute("data-has-image");
   });
 
-  it("renders a text tile when the entry has no visual", async () => {
+  it("renders a text tile when the entry has no image", async () => {
     const { ui } = setup({ entry: makeEntry() });
     const wrapper = await ui.wrapper();
     expect(wrapper).not.toHaveAttribute("data-has-image");
@@ -188,7 +174,7 @@ describe("MosaicTile", () => {
 
   it("tags the wrapper with the entry id for the grid to focus", async () => {
     const { ui } = setup({ entry: makeEntry() });
-    expect(await ui.wrapper()).toHaveAttribute("data-entry-id", "entry-1");
+    expect(await ui.wrapper()).toHaveAttribute("data-entry-id", "101:entry1");
   });
 
   it("places itself at the slot the grid gave it", async () => {
@@ -254,22 +240,22 @@ describe("MosaicTile", () => {
 
     it("keeps the card routing to the reader", async () => {
       const { ui } = setup({ entry: makeEntry() });
-      expect(await ui.link()).toHaveAttribute("href", "/stream/all/entry/entry-1");
+      expect(await ui.link()).toHaveAttribute("href", "/stream/all/entry/101%3Aentry1");
     });
 
     it("leaves the title a plain span for a newsletter with no original", async () => {
-      const { ui } = setup({ entry: makeEntry({ alternate: undefined }) });
+      const { ui } = setup({ entry: makeEntry({ url: undefined }) });
       const titleText = await ui.titleText();
       expect(titleText.tagName).toBe("SPAN");
       expect(titleText).toHaveAttribute("data-tip", "A test entry");
-      expect(await ui.link()).toHaveAttribute("href", "/stream/all/entry/entry-1");
+      expect(await ui.link()).toHaveAttribute("href", "/stream/all/entry/101%3Aentry1");
     });
   });
 
   describe("when direct-open is set for the feed", () => {
     const flagged = (entry: Entry) => {
       const client = newQueryClient();
-      client.setQueryData(keys.preferences, { [directOpenKey(entry.origin.streamId)]: "visit" });
+      client.setQueryData(keys.preferences, { [directOpenKey(entry.feedId)]: "visit" });
       return setup({ entry, client });
     };
 
@@ -305,7 +291,7 @@ describe("MosaicTile", () => {
     });
 
     it("keeps the route card when the entry has no original to open", async () => {
-      const { ui } = flagged(makeEntry({ alternate: undefined }));
+      const { ui } = flagged(makeEntry({ url: undefined }));
       expect(await ui.link()).not.toHaveAttribute("href", ORIGINAL);
       expect(await ui.wrapper()).not.toHaveAttribute("data-direct-open");
     });

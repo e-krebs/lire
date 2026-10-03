@@ -10,17 +10,22 @@ import {
 } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
-import { EntrySchema } from "shared/feedsApi/types";
+import { EntrySchema, type Entry } from "shared/feedsApi/types";
+import { keys } from "client/api/queries";
+import { markReadQueue } from "client/api/markReadQueue";
+import { getEntry } from "client/api/client";
 import { fixtureTransport, resetFixtureState } from "client/api/adapters/fixture";
 import { Reader } from "../Reader";
 
-// Seed entries the panel's two origin states hang off: `news-0029` is unread with an original,
-// `design-0030` is already read, `letter-0003` is a newsletter with no `alternate`.
-const UNREAD_ID = "news-0029";
-const READ_ID = "design-0030";
-const NEWSLETTER_ID = "letter-0003";
-const TITLE = "Chipmaker unveils next generation of low-power silicon";
-const NEWSLETTER_TITLE = "Weekly Letter #3: what shipped, what slipped";
+// Seed entries the panel's two origin states hang off: `101:0dcd64` is unread with an original and
+// an image in its body, `101:1298af` is already read, `111:109bd3` is a newsletter with no `url`.
+const UNREAD_ID = "101:0dcd64";
+const READ_ID = "101:1298af";
+const HERO_ID = "101:0f667d";
+const NEWSLETTER_ID = "111:109bd3";
+const TITLE =
+  "A deliberately long article title that goes on well past the usual width of a header to test wrapping and the sticky title";
+const NEWSLETTER_TITLE = "Synthetic story 2 from feed 111";
 
 const ui = {
   async text(view: RenderResult, content: string) {
@@ -57,18 +62,21 @@ const ui = {
 
 // The read state as the adapter holds it, which is what the mutation actually changes.
 const fixtureUnread = async (entryId: string): Promise<boolean> => {
-  const response = await fixtureTransport({ method: "GET", path: `/v3/entries/${entryId}` });
-  const [entry] = EntrySchema.array().parse(await response.json());
-  return entry.unread;
+  const response = await fixtureTransport({
+    method: "GET",
+    path: `/api/entries/${encodeURIComponent(entryId)}`,
+  });
+  return EntrySchema.parse(await response.json()).unread;
 };
 
 // The panel lives on its own path: leaving it is a navigation to the stream route, so the stream
 // page showing up is the assertion that the exit worked.
-const setup = ({ entryId }: { entryId: string }) => {
+const setup = ({ entryId, seedEntry }: { entryId: string; seedEntry?: Entry }) => {
   vi.stubEnv("VITE_API_MODE", "mock");
   resetFixtureState();
 
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  if (seedEntry) client.setQueryData(keys.entry(seedEntry.id), seedEntry);
   const rootRoute = createRootRoute();
   const streamRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -105,12 +113,12 @@ describe("Reader", () => {
   it("renders the masthead, the title link and the author", async () => {
     const { view } = setup({ entryId: UNREAD_ID });
 
-    expect(await ui.text(view, "Example News")).toBeInTheDocument();
+    expect(await ui.text(view, "Example Tech Daily")).toBeInTheDocument();
     const title = await ui.link(view, TITLE);
-    expect(title).toHaveAttribute("href", "http://example-news.test/articles/29");
+    expect(title).toHaveAttribute("href", "https://example.test/101/1");
     expect(title).toHaveAttribute("target", "_blank");
     expect(title).toHaveAttribute("rel", "noopener");
-    expect(await ui.text(view, "Example News staff")).toBeInTheDocument();
+    expect(await ui.text(view, "Ada Writer")).toBeInTheDocument();
   });
 
   it("names both exits after the unread state the panel opened in", async () => {
@@ -130,31 +138,27 @@ describe("Reader", () => {
   });
 
   it("shows the hero once: above the body, or not at all when the body repeats it", async () => {
-    const repeated = setup({ entryId: NEWSLETTER_ID });
-    await ui.heading(repeated.view, { name: NEWSLETTER_TITLE });
+    const entry = await getEntry(UNREAD_ID);
+    const repeated = setup({
+      entryId: UNREAD_ID,
+      seedEntry: { ...entry, imageUrl: "https://images.example.test/long.png" },
+    });
+    await ui.link(repeated.view, TITLE);
     expect(hero(repeated.view)).toHaveLength(0);
-    expect(ui.frameDocument(repeated.view).images).toHaveLength(1);
     repeated.view.unmount();
 
-    const distinct = setup({ entryId: UNREAD_ID });
-    await ui.link(distinct.view, TITLE);
+    const distinct = setup({ entryId: HERO_ID });
+    await ui.link(distinct.view, "Synthetic story 2 from feed 101");
     expect(hero(distinct.view)).toHaveLength(1);
   });
 
-  it("retries the hero on the proxy copy, then drops it", async () => {
-    const { view } = setup({ entryId: UNREAD_ID });
-    await ui.link(view, TITLE);
+  it("drops the hero once it fails to load", async () => {
+    const { view } = setup({ entryId: HERO_ID });
+    await ui.link(view, "Synthetic story 2 from feed 101");
 
     const [first] = hero(view);
-    expect(first).toHaveAttribute("src", "https://picsum.photos/seed/news-0029/700/1000");
+    expect(first).toHaveAttribute("src", "https://images.example.test/101-2.png");
     fireEvent.error(first);
-    await waitFor(() => {
-      expect(hero(view)[0]).toHaveAttribute(
-        "src",
-        "https://picsum.photos/seed/news-0029-proxy/700/1000",
-      );
-    });
-    fireEvent.error(hero(view)[0]);
     await waitFor(() => {
       expect(hero(view)).toHaveLength(0);
     });
@@ -222,6 +226,7 @@ describe("Reader", () => {
     await user.click(await ui.button(view, "Mark as read"));
 
     expect(await ui.text(view, "stream page")).toBeInTheDocument();
+    await markReadQueue.flush();
     await waitFor(async () => {
       expect(await fixtureUnread(UNREAD_ID)).toBe(false);
     });

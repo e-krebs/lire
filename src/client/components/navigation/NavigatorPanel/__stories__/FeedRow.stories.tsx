@@ -15,15 +15,16 @@ const meta = {
     ),
   ],
   argTypes: {
-    subscription: { control: false },
+    feed: { control: false },
     onSelect: { control: false },
     onClose: { control: false },
   },
   args: {
-    subscription: {
-      id: "feed/https://example-news.test/rss",
-      title: "Example News",
-      categories: [],
+    feed: {
+      id: "101",
+      title: "Example Tech Daily",
+      categoryIds: [],
+      isNewsletter: false,
     },
     count: 12,
     isCurrent: false,
