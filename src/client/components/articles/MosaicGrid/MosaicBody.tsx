@@ -404,6 +404,9 @@ export const MosaicBody = ({
           </div>
           <MosaicSentinel sentinelRef={setSentinel} />
         </div>
+        {isFetchingNextPage && shown.length > 0 && layout ? (
+          <MosaicSkeleton label={t.articles.loadingMoreArticles} count={layout.columns} />
+        ) : null}
       </div>
     </div>
   );

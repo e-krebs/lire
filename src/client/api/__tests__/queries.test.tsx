@@ -16,7 +16,10 @@ import { markReadQueue } from "../markReadQueue";
 import {
   DeleteAndMoveError,
   flattenStream,
+  DESKTOP_FEED_COUNT,
+  DESKTOP_RIVER_COUNT,
   keys,
+  pageCountFor,
   unreadCountFor,
   useDeleteCategoryAndMove,
   useMarkRead,
@@ -88,6 +91,32 @@ describe("queries", () => {
     const entries = flattenStream(result.current.data);
     expect(entries).toHaveLength(17);
     expect(new Set(entries.map((item) => item.feedId))).toEqual(new Set(["101", "102", "103"]));
+  });
+
+  it.each<[Parameters<typeof pageCountFor>[0]["tier"], StreamKey, number | undefined]>([
+    ["desktop", "all", DESKTOP_RIVER_COUNT],
+    ["desktop", techKey, DESKTOP_RIVER_COUNT],
+    ["desktop", "read", DESKTOP_RIVER_COUNT],
+    ["desktop", "feed:101", DESKTOP_FEED_COUNT],
+    ["tablet", "all", undefined],
+    ["phone", "feed:101", undefined],
+  ])("sends a %s page of %s as count %s", (tier, streamKey, expected) => {
+    expect(pageCountFor({ tier, streamKey })).toBe(expected);
+  });
+
+  it("passes count to the adapter and keeps pages of two sizes apart", async () => {
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useStream({ streamKey: "all", count: 5 }), { wrapper });
+    const { result: unsized } = renderHook(() => useStream({ streamKey: "all" }), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess && unsized.current.isSuccess).toBe(true);
+    });
+    expect(result.current.data?.pages[0]?.items).toHaveLength(5);
+    expect(unsized.current.data?.pages[0]?.items).toHaveLength(12);
+    expect(keys.stream({ streamKey: "all", count: 5 })).not.toEqual(
+      keys.stream({ streamKey: "all" }),
+    );
   });
 
   it("drops a story repeated across pages", async () => {
