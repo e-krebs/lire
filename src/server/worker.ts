@@ -53,7 +53,14 @@ const readSessionId = (response: Response): string | undefined => {
   return undefined;
 };
 
-const sessionCookie = (sessionId: string) => ({ Cookie: `${SESSION_COOKIE}=${sessionId}` });
+// NewsBlur answers 403 "User agent banned: missing" to a request with no User-Agent, which is what a
+// Worker sends by default.
+const USER_AGENT = { "User-Agent": "Lire" };
+
+const sessionCookie = (sessionId: string) => ({
+  ...USER_AGENT,
+  Cookie: `${SESSION_COOKIE}=${sessionId}`,
+});
 
 const failLogin = (reason: string): StoredSession | undefined => {
   console.warn(`NewsBlur login failed: ${reason}`);
@@ -64,6 +71,7 @@ const logIn = async (env: Env): Promise<StoredSession | undefined> => {
   try {
     const loginResponse = await fetch(`${env.NEWSBLUR_HOST}/api/login`, {
       method: "POST",
+      headers: USER_AGENT,
       body: new URLSearchParams({
         username: env.NEWSBLUR_USERNAME,
         password: env.NEWSBLUR_PASSWORD,
