@@ -1,27 +1,56 @@
 # Deploy
 
 Lire ships three static sites to Cloudflare Pages and one Worker. All four deploy from CI on every
-push to `main`.
+push to `main` that touches what each one ships or depends on. A manual run deploys all four.
 
 ## What deploys how
 
 | Target | Script | Trigger | Pages project / Worker |
 | --- | --- | --- | --- |
-| SPA | `yarn deploy:spa` | CI, push to `main` | `lire` |
-| Demo | `yarn deploy:demo` | CI, push to `main` | `lire-demo` |
-| Storybook | `yarn deploy:storybook` | CI, push to `main` | `lire-storybook` |
-| Worker | `yarn worker:deploy` | CI, push to `main` | `lire-api` |
-| Android app | `./gradlew assembleRelease` in `android/` | CI, push to `main` that touches `android/` | A GitHub Release |
+| SPA | `yarn deploy:spa` | CI, push to `main` with `app` changes, or a manual run | `lire` |
+| Demo | `yarn deploy:demo` | CI, push to `main` with `app` changes, or a manual run | `lire-demo` |
+| Storybook | `yarn deploy:storybook` | CI, push to `main` with `storybook` changes, or a manual run | `lire-storybook` |
+| Worker | `yarn worker:deploy` | CI, push to `main` with `worker` changes, or a manual run | `lire-api` |
+| Android app | `./gradlew assembleRelease` in `android/` | CI, push to `main` that touches `android/`, or a manual run | A GitHub Release |
 
+## Change-based deploys
+
+The `changes` job in [ci.yml](../../.github/workflows/ci.yml) lists the files a push touched and
+sets one output per area. Each check and deploy job runs only when its area changed.
+
+| Area | Deploys and checks it turns on | Changed files that set it |
+| --- | --- | --- |
+| `app` | `verify`, `e2e`, SPA and demo deploys, `preflight` | `src/client/**`, `src/shared/**`, `public/**`, `index.html`, `vite.config.ts`, `fixtures/**`, the dist and demo-brand check scripts |
+| `storybook` | `verify`, `storybook`, Storybook deploy, `preflight` | `.storybook/**`, `src/client/**`, `src/shared/**`, `src/test/**`, `public/**`, `fixtures/**`, `vite.config.ts`, `vitest.config.ts`, the demo-brand check script |
+| `worker` | `verify`, `e2e`, Worker deploy, `preflight` | `src/server/**`, `src/shared/**`, `wrangler.toml` |
+| `tooling` | `verify`, `e2e` | `src/test/**`, `e2e/**`, `scripts/**`, Playwright, Vitest, knip, lint and format config |
+| `infra` | `preflight`, `check-live` | the provisioning, Access, Cloudflare API, live-check and deploy-targets scripts |
+
+A change to `package.json`, `yarn.lock`, `.yarnrc.yml`, `.yarn/`, `.nvmrc`, a tsconfig file, the
+[setup action](../../.github/actions/setup/action.yml) or ci.yml itself sets every area. So does a
+changed file that no area list and no ignore list names (docs, Markdown, `android/`, `.claude/`
+and a few dotfiles are ignored). A manual run sets every area. `preflight` runs when any deploy
+runs, and `check-live` runs when any deploy ran.
+
+## Force a full deploy
+
+Run the CI workflow by hand to deploy everything: open the Actions tab, pick CI, choose Run
+workflow and select `main`. The run skips the change filter, so every check and deploy runs. Use it
+when a deploy failed and later commits skipped it, or after a rotated secret. `cloudflare-gate`
+accepts a manual run only from `main`.
 
 ## CI gates
 
 The `cloudflare-gate` job checks that `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` exist and
 skips every Cloudflare job cleanly when they do not. The `preflight` job then runs
 `yarn check:access` and `yarn provision:pages`, and every deploy job needs it. The SPA, demo and
-Worker jobs need both `verify` and `e2e` green; the Storybook job needs the `storybook` job. The
-`check-live` job runs last, once all four deploys finish, and runs `yarn check:live`. `verify` runs the docs link gate, lockfile dedupe, lint, knip, format, every typecheck,
-both coverage runs, the export-coverage check, and the three build-and-secret gates. See
+Worker jobs need both `verify` and `e2e` green; the Storybook job needs the `storybook` job. A job
+skipped by the change filter does not block a deploy, but a failed one does. The `check-live` job
+runs last, once the deploys that ran finish, and runs `yarn check:live`. The `docs-links` job runs
+the docs link gate on every run, because docs link to code paths and a rename breaks them. `verify`
+runs lockfile dedupe, lint, knip, format, every typecheck, both coverage runs, the export-coverage
+check, and the three build-and-secret gates. It skips when only docs, Android or other ignored
+files changed. `e2e` also skips then, and runs on `app`, `worker` and `tooling` changes. See
 [Run the tests](run-the-tests.md).
 
 `yarn check:access`, `yarn provision:pages` and `yarn check:live` also run locally with the same
@@ -72,7 +101,8 @@ image type.
 ## Android app
 
 [.github/workflows/android.yml](../../.github/workflows/android.yml) builds the Trusted Web Activity
-in [android/](../../android/) on every push to `main` that touches it or the workflow. It signs the APK with the
+in [android/](../../android/) on every push to `main` that touches `android/`. Editing the workflow
+file alone releases nothing; a pull request that edits it still builds the debug APK. It signs the APK with the
 keystore secrets and attaches it to a new GitHub Release named `android-1.<run number>`. A pull
 request only builds the debug APK, without the secrets. To ship a release without an Android
 change, run the workflow by hand from the Actions tab.

@@ -58,7 +58,8 @@ project.
 ## Gates in scripts/
 
 Four Node scripts guard what lint and types cannot see. Each one exits non-zero on a hit, and CI
-runs all four in its `verify` job ([ci.yml](../../.github/workflows/ci.yml)).
+runs three in its `verify` job and the link gate in its own `docs-links` job
+([ci.yml](../../.github/workflows/ci.yml)).
 
 ### check-links
 
@@ -67,7 +68,7 @@ the repo's Markdown, tracked or not, while it skips gitignored files. A doc set 
 instead of repeating itself depends on those links, and a renamed heading breaks an anchor
 without any other signal. The script fails loudly on link-shaped text it cannot parse, and on an
 unclosed fence, rather than quietly checking less. GitHub-style line fragments such as `#L42`
-are accepted as is. CI runs it first, as the docs link gate.
+are accepted as is. CI runs it in the `docs-links` job on every run, whatever changed.
 
 ### check-dist-secrets
 
@@ -124,7 +125,7 @@ reports it reads.
 
 ## Where CI runs what
 
-The `verify` job runs the link gate, `yarn dedupe --check`, lint, both knip passes, the format
+The `docs-links` job runs the link gate on every run. The `verify` job runs `yarn dedupe --check`, lint, both knip passes, the format
 check, the four typecheck projects, both coverage runs and the export coverage gate. Then it
 builds three times, default, real and demo, and runs the secret gate after each and the demo
 brand gate after the demo build. The `e2e` and `storybook` jobs run the browser tests, and the
@@ -139,6 +140,16 @@ minutes. The Playwright install steps have their own 5-minute limit, because a s
 held the `e2e` job for 14 minutes. Playwright's `globalTimeout` ends a stuck run before the job
 limit, so the report still uploads. Every Cloudflare job is skipped when the gate finds no secrets. [ADR 0006](../adr/0006-ci-owns-cloudflare-setup.md)
 records why CI owns this setup.
+
+## Change-based gating
+
+A `changes` job decides which checks and deploys a push needs. Each area (app, Storybook, Worker,
+tooling, infra) is an inclusion list: a job runs only for files it ships or depends on, so a docs
+or Android change deploys nothing. Inclusion lists alone fail closed in the wrong direction, since
+a new file nobody listed would skip a deploy. A catch-all `unknown` filter matches any changed file
+that no area list and no ignore list names, and turns every area on. A manual run does the same.
+The cost is a full run for an unclassified file; the gain is that a deploy is never skipped by
+mistake. [deploy.md](../how-to/deploy.md) has the area table.
 
 ## Dependency updates
 
