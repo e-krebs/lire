@@ -456,7 +456,6 @@ export const MosaicTile = ({
             tile-glass
             group-not-data-has-image/tile:size-full group-not-data-has-image/tile:justify-end
             group-not-data-has-image/tile:p-3 group-not-data-has-image/tile:pt-10
-            group-data-read/tile:group-not-data-has-image/tile:opacity-70
           `}
           >
             <Masthead
