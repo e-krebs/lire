@@ -20,7 +20,7 @@ const get = async (path: string, query?: TransportRequest["query"]) =>
 
 const entries = async (streamKey: string, query?: TransportRequest["query"]) =>
   EntryPageSchema.parse(
-    await get(`/api/streams/${encodeURIComponent(streamKey)}/entries`, { count: 100, ...query }),
+    await get(`/api/streams/${encodeURIComponent(streamKey)}/entries`, { count: 50, ...query }),
   );
 
 const counts = async () => CountsSchema.parse(await get("/api/counts"));
