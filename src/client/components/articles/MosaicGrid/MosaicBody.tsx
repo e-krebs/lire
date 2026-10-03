@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { CSSProperties, KeyboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import type { StreamKey } from "shared/feedsApi/streamKey";
@@ -7,8 +7,6 @@ import { flattenStream, useMarkRead, useRefreshEntries } from "client/api/querie
 import type { useStream } from "client/api/queries";
 import { MosaicTile } from "client/components/articles/MosaicTile";
 import type { TileSlot } from "client/components/articles/MosaicTile";
-import { UNDO_STRIP_HEIGHT, UndoStrip } from "client/components/articles/UndoStrip";
-import type { StripAction } from "client/components/articles/UndoStrip";
 import { PullIndicator } from "client/components/articles/PullIndicator";
 import { Icon } from "client/components/ui/icons";
 import { useT } from "client/i18n/useT";
@@ -23,7 +21,7 @@ import { MosaicSentinel } from "./MosaicSentinel";
 import { MosaicSkeleton } from "./MosaicSkeleton";
 import { actionClassName } from "./shared";
 
-// Matches the leave transition of the tile and of the undo strip.
+// Matches the leave transition of the tile.
 const LEAVE_MS = 200;
 // Below `lg` the list is hidden while the reader is open, and the reader closes through a view
 // transition: a card turned read in there waits this long after the close before it leaves, so
@@ -84,24 +82,16 @@ export const MosaicBody = ({
   const [sentinel, setSentinel] = useState<HTMLDivElement | null>(null);
   const { attach, element: frame, width } = useElementWidth();
   const markRead = useMarkRead();
-  // A card marked read in an unread-only view goes through three states: `pending`, where the undo
-  // strip holds its place at the strip's own height; `leaving`, fading out in the slot it had,
-  // since the layout no longer places it; then `gone`, out of the layout for good.
-  const [pending, setPending] = useState<ReadonlySet<string>>(() => new Set());
+  // A card marked read in an unread-only view goes through two states: `leaving`, fading out in
+  // the slot it had, since the layout no longer places it; then `gone`, out of the layout for good.
   const [leaving, setLeaving] = useState<ReadonlyMap<string, TileSlot>>(() => new Map());
   const [gone, setGone] = useState<ReadonlySet<string>>(() => new Set());
-  // Undone entries, held until the optimistic flip back to unread lands, or the pass below would
-  // see a still-read entry and open a second strip for it.
-  const [undone, setUndone] = useState<ReadonlySet<string>>(() => new Set());
   // Entries this grid has shown unread. Only these can turn read under its eyes: one already read
-  // when it arrived (confirmed before a remount, or read in another view) stays out, with no strip.
+  // when it arrived (closed before a remount, or read in another view) stays out.
   const [seenUnread, setSeenUnread] = useState<ReadonlySet<string>>(() => new Set());
   const [activeId, setActiveId] = useState<string>();
-  // The strip whose card had focus when it turned read: its Undo takes focus on mount.
-  const [focusStripId, setFocusStripId] = useState<string>();
-  // An undone card to focus once it is back in the grid, a render after the strip left. A ref,
-  // since the card's own `onFocus` sets `activeId`.
-  const refocusId = useRef<string>(undefined);
+  // The card to focus once the render that closed the focused one has committed.
+  const [handoffId, setHandoffId] = useState<string>();
   // Whether the list is on screen: at `lg` it always is, below that the reader replaces it.
   const tier = useTier();
   const listCovered = readerOpen && tier !== "desktop";
@@ -151,15 +141,14 @@ export const MosaicBody = ({
   }, [allHidden, hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage]);
 
   useEffect(() => {
-    const id = refocusId.current;
-    if (id === undefined) return;
-    const link = frame
-      ?.querySelector(`[data-entry-id="${CSS.escape(id)}"]`)
-      ?.querySelector<HTMLElement>("a");
-    if (!link) return;
-    refocusId.current = undefined;
-    link.focus();
-  });
+    if (handoffId === undefined) return;
+    frame
+      ?.querySelector(`[data-entry-id="${CSS.escape(handoffId)}"]`)
+      ?.querySelector<HTMLElement>("a")
+      ?.focus();
+    // oxlint-disable-next-line react/set-state-in-effect -- consume the one-shot hand-off
+    setHandoffId(undefined);
+  }, [frame, handoffId]);
 
   useEffect(() => {
     if (leaving.size === 0) return undefined;
@@ -282,53 +271,11 @@ export const MosaicBody = ({
           items: placed.map((entry) => ({
             id: entry.id,
             aspect: tileAspect(entry),
-            height: pending.has(entry.id) ? UNDO_STRIP_HEIGHT : undefined,
           })),
         });
 
-  // A card turned read behind the grid's back (the reader's exits, the scrim, Escape, a direct
-  // open) gets the same undo strip as one toggled here: the optimistic cache flip is the signal.
-  // The grid stays mounted under the reader on every tier, so `shown` only holds entries seen
-  // unread here. Set during render, guarded, so it settles in one extra pass.
-  if (layout && unreadOnly && !holdLeave) {
-    const settled = [...undone].filter(
-      (id) => !placed.some((entry) => entry.id === id && !entry.unread),
-    );
-    if (settled.length > 0) {
-      setUndone((prev) => {
-        const next = new Set(prev);
-        for (const id of settled) next.delete(id);
-        return next;
-      });
-    }
-    // A failed request rolls the entry back to unread: whatever state it was in, it is a card again.
-    const revived = entries.filter(
-      (entry) =>
-        entry.unread &&
-        !undone.has(entry.id) &&
-        (pending.has(entry.id) || leaving.has(entry.id) || gone.has(entry.id)),
-    );
-    if (revived.length > 0) {
-      const ids = new Set(revived.map((entry) => entry.id));
-      setPending((prev) => new Set([...prev].filter((id) => !ids.has(id))));
-      setLeaving((prev) => new Map([...prev].filter(([id]) => !ids.has(id))));
-      setGone((prev) => new Set([...prev].filter((id) => !ids.has(id))));
-    }
-    const turned = placed.filter(
-      (entry) => !entry.unread && !pending.has(entry.id) && !undone.has(entry.id),
-    );
-    if (turned.length > 0) {
-      setPending((prev) => new Set([...prev, ...turned.map((entry) => entry.id)]));
-    }
-  }
-
-  // A strip holds a slot in the layout but is no card, so the arrows and Home/End step over it.
-  const navigable = placed.filter((entry) => !pending.has(entry.id));
-
   // Roving tabindex: one card is tabbable, the first until the user focuses another.
-  const tabbableId = navigable.some((entry) => entry.id === activeId)
-    ? activeId
-    : navigable.at(0)?.id;
+  const tabbableId = placed.some((entry) => entry.id === activeId) ? activeId : placed.at(0)?.id;
 
   const cardElement = (id: string): HTMLElement | null =>
     frame?.querySelector<HTMLElement>(`[data-entry-id="${CSS.escape(id)}"]`) ?? null;
@@ -338,79 +285,74 @@ export const MosaicBody = ({
     cardElement(id)?.querySelector("a")?.focus();
   };
 
-  // Keeps going the way it was asked until a card turns up: a run of strips is one hop, not a
-  // dead end on a slot with nothing to focus.
-  const cardNeighbour = ({ id, direction }: { id: string; direction: Direction }) => {
-    if (!layout) return undefined;
-    let target = neighbourOf({ layout, id, direction });
-    while (target !== undefined && pending.has(target)) {
-      target = neighbourOf({ layout, id: target, direction });
-    }
-    return target;
-  };
-
   const handleTileKeyDown = (id: string) => (event: KeyboardEvent<HTMLAnchorElement>) => {
     if (!layout) return;
     const direction = ARROWS[event.key];
     let target: string | undefined;
-    if (direction !== undefined) target = cardNeighbour({ id, direction });
-    else if (event.key === "Home") target = navigable.at(0)?.id;
-    else if (event.key === "End") target = navigable.at(-1)?.id;
+    if (direction !== undefined) target = neighbourOf({ layout, id, direction });
+    else if (event.key === "Home") target = placed.at(0)?.id;
+    else if (event.key === "End") target = placed.at(-1)?.id;
     else return;
     event.preventDefault();
     if (target !== undefined) focusTile(target);
   };
 
-  // The card to take focus from one that leaves: below, above, then the next and previous in
-  // order. Works whether the entry is a card still or already a strip.
+  // The card to take focus from one that leaves: below, above, then the next and previous in order.
   const leavingNeighbour = (id: string): string | undefined => {
+    if (!layout) return undefined;
     const index = placed.findIndex((candidate) => candidate.id === id);
-    const isCard = (candidate: Entry) => !pending.has(candidate.id) && candidate.id !== id;
-    return (
-      cardNeighbour({ id, direction: "down" }) ??
-      cardNeighbour({ id, direction: "up" }) ??
-      placed.slice(index + 1).find(isCard)?.id ??
-      placed.slice(0, Math.max(index, 0)).reverse().find(isCard)?.id
-    );
+    const candidates: Array<string | undefined> = [
+      neighbourOf({ layout, id, direction: "down" }),
+      neighbourOf({ layout, id, direction: "up" }),
+      placed[index + 1]?.id,
+      placed.slice(0, Math.max(index, 0)).at(-1)?.id,
+    ];
+    return candidates.find((candidate) => candidate !== undefined);
   };
+
+  const cardHasFocus = (id: string): boolean =>
+    cardElement(id)?.contains(document.activeElement) ?? false;
+
+  // A card turned read behind the grid's back (the reader's exits, the scrim, Escape, a direct
+  // open) leaves like one toggled here: the optimistic cache flip is the signal. The grid stays
+  // mounted under the reader on every tier, so `shown` only holds entries seen unread here. Set
+  // during render, guarded, so it settles in one extra pass.
+  if (layout && unreadOnly && !holdLeave) {
+    // A failed request rolls the entry back to unread: whatever state it was in, it is a card again.
+    const revived = entries.filter(
+      (entry) => entry.unread && (leaving.has(entry.id) || gone.has(entry.id)),
+    );
+    if (revived.length > 0) {
+      const ids = new Set(revived.map((entry) => entry.id));
+      setLeaving((prev) => new Map([...prev].filter(([id]) => !ids.has(id))));
+      setGone((prev) => new Set([...prev].filter((id) => !ids.has(id))));
+    }
+    const turned = placed.filter((entry) => !entry.unread);
+    if (turned.length > 0) {
+      for (const entry of turned) {
+        const next = cardHasFocus(entry.id) ? leavingNeighbour(entry.id) : undefined;
+        if (next !== undefined) setHandoffId(next);
+      }
+      setLeaving((prev) => {
+        const next = new Map(prev);
+        for (const entry of turned) {
+          const slot = layout.positions.get(entry.id);
+          if (slot) next.set(entry.id, slot);
+        }
+        return next;
+      });
+      const unplaced = turned.filter((entry) => !layout.positions.has(entry.id));
+      if (unplaced.length > 0) {
+        setGone((prev) => new Set([...prev, ...unplaced.map((entry) => entry.id)]));
+      }
+    }
+  }
 
   const toggleRead = (entry: Entry): void => {
     markRead.mutate({ entryIds: [entry.id], read: entry.unread });
-    // In an unread-only view a read card hands its slot to the undo strip.
-    if (!entry.unread || !unreadOnly) return;
-    // Focus was on that card (M key, or a click on its button): the strip's Undo takes it, so the
-    // one key that reverses the mistake is Enter.
-    setFocusStripId(cardElement(entry.id)?.contains(document.activeElement) ? entry.id : undefined);
-  };
-
-  // Confirm on the strip, or its countdown running out: the entry stays read and the slot closes,
-  // through the same fade a card gets.
-  const confirmRead = ({ entryId, hadFocus }: { entryId: string } & StripAction): void => {
-    setFocusStripId(undefined);
-    if (hadFocus) {
-      const next = leavingNeighbour(entryId);
-      if (next !== undefined) focusTile(next);
-    }
-    const slot = layout?.positions.get(entryId);
-    setPending((prev) => {
-      const next = new Set(prev);
-      next.delete(entryId);
-      return next;
-    });
-    if (slot) setLeaving((prev) => new Map(prev).set(entryId, slot));
-    else setGone((prev) => new Set(prev).add(entryId));
-  };
-
-  const undoRead = ({ entryId, hadFocus }: { entryId: string } & StripAction): void => {
-    setFocusStripId(undefined);
-    if (hadFocus) refocusId.current = entryId;
-    markRead.mutate({ entryIds: [entryId], read: false });
-    setUndone((prev) => new Set(prev).add(entryId));
-    setPending((prev) => {
-      const next = new Set(prev);
-      next.delete(entryId);
-      return next;
-    });
+    if (!entry.unread || !unreadOnly || !cardHasFocus(entry.id)) return;
+    const next = leavingNeighbour(entry.id);
+    if (next !== undefined) focusTile(next);
   };
 
   return (
@@ -438,24 +380,6 @@ export const MosaicBody = ({
               : shown.map((entry) => {
                   const slot = layout.positions.get(entry.id) ?? leaving.get(entry.id);
                   if (!slot) return null;
-                  // Read, and still recoverable: the strip holds the slot for the countdown, and
-                  // fades out of it once kept.
-                  if (pending.has(entry.id) || leaving.has(entry.id)) {
-                    return (
-                      <UndoStrip
-                        key={entry.id}
-                        slot={slot}
-                        leaving={leaving.has(entry.id)}
-                        autoFocus={entry.id === focusStripId}
-                        onUndo={({ hadFocus }) => {
-                          undoRead({ entryId: entry.id, hadFocus });
-                        }}
-                        onConfirm={({ hadFocus }) => {
-                          confirmRead({ entryId: entry.id, hadFocus });
-                        }}
-                      />
-                    );
-                  }
                   return (
                     <MosaicTile
                       key={entry.id}
@@ -473,6 +397,7 @@ export const MosaicBody = ({
                       }}
                       swipeable={layout.columns === 1}
                       leavesWhenRead={unreadOnly}
+                      leaving={leaving.has(entry.id)}
                     />
                   );
                 })}

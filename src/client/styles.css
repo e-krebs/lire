@@ -427,44 +427,6 @@ body {
   color: light-dark(#1f1f1f, #ffffff);
 }
 
-/* The undo strip that replaces a card marked read in an unread-only view. `--undo-p` runs from 1
-   to 0 over the delay; the animation is the clock, so hover and focus pause the countdown itself
-   and the grid commits the read on its `animationend`. It therefore runs under
-   `prefers-reduced-motion: reduce` too, where it is a timer rather than motion, and the bar it
-   drives only sweeps once. */
-@property --undo-p {
-  syntax: "<number>";
-  inherits: true;
-  initial-value: 1;
-}
-@keyframes undo-tick {
-  from {
-    --undo-p: 1;
-  }
-  to {
-    --undo-p: 0;
-  }
-}
-.undo-strip {
-  box-shadow: inset 0 0 0 1px var(--color-hairline);
-  animation: undo-tick var(--undo-ms) linear forwards;
-}
-/* Focus on Undo, where the strip puts it, does not pause: the countdown still runs out. A leaving
-   strip pauses so a late `animationend` cannot confirm it a second time mid-fade. */
-.undo-strip:hover,
-.undo-strip:has(.undo-confirm:focus),
-.undo-strip[data-leaving] {
-  animation-play-state: paused;
-}
-.undo-bar {
-  position: absolute;
-  inset: auto 0 0;
-  height: 3px;
-  background: var(--color-accent);
-  transform-origin: left;
-  scale: var(--undo-p) 1;
-}
-
 /* A scroll pane always shows its scrollbar, so the layout never shifts when content grows past
    the fold. Setting `scrollbar-color` also makes Chromium draw a classic (non-overlay) bar on
    macOS, which is what keeps it permanently visible there. */

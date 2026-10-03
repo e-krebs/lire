@@ -41,6 +41,8 @@ interface MosaicTileProps {
   swipeable?: boolean;
   /** In an unread-only view a card swiped read leaves the grid, so it flies out first. */
   leavesWhenRead?: boolean;
+  /** Read and out of the layout: the card fades out of the slot it had, then the grid drops it. */
+  leaving?: boolean;
 }
 
 // Past this the pointer is swiping, not tapping; past 40% of the card it commits.
@@ -206,6 +208,7 @@ export const MosaicTile = ({
   onToggleRead,
   swipeable = false,
   leavesWhenRead = false,
+  leaving = false,
 }: MosaicTileProps) => {
   const image = useImageFallback({ url: entry.imageUrl });
   const t = useT();
@@ -380,7 +383,10 @@ export const MosaicTile = ({
         width: slot.width,
         height: slot.height,
       }}
-      className={wrapperClassName}
+      inert={leaving || undefined}
+      className={
+        leaving ? `${wrapperClassName} scale-95 opacity-0 pointer-events-none` : wrapperClassName
+      }
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}

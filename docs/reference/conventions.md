@@ -6,7 +6,7 @@ How `src/client` is laid out and which rules a linter checks. Test style lives i
 ## Components
 
 Components live in theme folders under `src/client/components`: `shell` (app frame, top bar,
-tooltip), `navigation` (navigator, location bar, view toggles), `articles` (mosaic, tiles, undo,
+tooltip), `navigation` (navigator, location bar, view toggles), `articles` (mosaic, tiles,
 refresh), `reader`, `subscriptions` and `ui` (small shared controls, icons). A new component goes
 in the folder of the screen area it serves, not in a new top-level file.
 
