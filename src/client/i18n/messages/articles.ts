@@ -15,8 +15,6 @@ export const en = {
   markAsUnread: "Mark as unread",
   keepRead: "Keep read",
   keepUnread: "Keep unread",
-  keepReadAndClose: "Keep read, and close",
-  markedAsRead: "Marked as read",
   opensOriginalInNewTab: ({ title }: { title: string }) =>
     `${title} (opens the original in a new tab)`,
   opensOnItsSite: "Opens on its site",
@@ -51,8 +49,6 @@ export const fr = {
   markAsUnread: "Marquer comme non lu",
   keepRead: "Garder comme lu",
   keepUnread: "Garder comme non lu",
-  keepReadAndClose: "Garder comme lu et fermer",
-  markedAsRead: "Marqué comme lu",
   opensOriginalInNewTab: ({ title }) => `${title} (ouvre l'original dans un nouvel onglet)`,
   opensOnItsSite: "S'ouvre sur son site",
   openTheOriginal: "Ouvrir l'original",

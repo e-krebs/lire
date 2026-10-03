@@ -17,7 +17,6 @@ export const ICON_NAMES = [
   "refresh",
   "edit",
   "image-off",
-  "undo",
   "grip",
 ] as const;
 

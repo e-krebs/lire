@@ -26,12 +26,6 @@ const ui = {
   async unreadToggles(view: RenderResult) {
     return view.findAllByRole("button", { name: "Mark as read" });
   },
-  async undoButton(view: RenderResult) {
-    return view.findByRole("button", { name: "Undo" });
-  },
-  async confirmButton(view: RenderResult) {
-    return view.findByRole("button", { name: "Confirm" });
-  },
   refreshButton(view: RenderResult) {
     return view.getByRole("button", { name: "Refresh" });
   },
@@ -40,6 +34,12 @@ const ui = {
   },
   clearSearchLink(view: RenderResult) {
     return view.getByRole("link", { name: "Clear search" });
+  },
+  async noMatch(view: RenderResult) {
+    return view.findByText("No articles match “zzzzzzzz”.");
+  },
+  showAllLink(view: RenderResult) {
+    return view.getByRole("link", { name: "Show all articles" });
   },
   queryEmptyState(view: RenderResult) {
     return view.queryByText("Nothing to read here.");
@@ -82,11 +82,9 @@ const setup = ({
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
-  // The freshness row is a `status` too, so the strip goes by its own class.
-  const strip = () => view.container.querySelector<HTMLElement>(".undo-strip");
   const card = (entryId: string) =>
     view.container.querySelector(`[data-entry-id="${CSS.escape(entryId)}"]`);
-  return { view, strip, card, router };
+  return { view, card, router };
 };
 
 const firstUnreadCard = async (view: RenderResult) => {
@@ -96,21 +94,11 @@ const firstUnreadCard = async (view: RenderResult) => {
   return { toggle, entryId };
 };
 
-const findStrip = async (strip: () => HTMLElement | null) =>
-  waitFor(() => {
-    const found = strip();
-    if (!found) throw new Error("no undo strip yet");
-    return found;
+const closed = async (card: (entryId: string) => Element | null, entryId: string) => {
+  await waitFor(() => {
+    expect(card(entryId)).toBeNull();
   });
-
-// The countdown is a CSS animation, which jsdom never runs: its end is fired by hand.
-const runOutCountdown = async (strip: HTMLElement) => {
-  vi.useFakeTimers();
-  fireEvent.animationEnd(strip);
-  await act(async () => {
-    await vi.runAllTimersAsync();
-  });
-  vi.useRealTimers();
+  return true;
 };
 
 describe("MosaicGrid", () => {
@@ -131,55 +119,48 @@ describe("MosaicGrid", () => {
     expect(router.state.location.pathname).toBe("/");
   });
 
-  it("keeps a confirmed read gone after the grid remounts", async () => {
+  it("offers to clear the search and show all articles when nothing matches", async () => {
+    vi.stubEnv("VITE_API_MODE", "mock");
+    resetFixtureState();
+    const { view } = setup({ client: newQueryClient(), query: "zzzzzzzz" });
+
+    await ui.noMatch(view);
+    expect(ui.clearSearchLink(view)).toHaveAttribute("href", "/");
+    expect(ui.showAllLink(view)).toHaveAttribute("href", "/stream/all?unread=false");
+  });
+
+  it("closes a card marked read, and keeps it gone after the grid remounts", async () => {
     vi.stubEnv("VITE_API_MODE", "mock");
     resetFixtureState();
     const client = newQueryClient();
 
     const first = setup({ client });
-    const [toggle] = await ui.unreadToggles(first.view);
-    const entryId = toggle.closest<HTMLElement>("[data-entry-id]")?.dataset.entryId;
-    if (entryId === undefined) throw new Error("no unread card to mark");
-
+    const { toggle, entryId } = await firstUnreadCard(first.view);
     fireEvent.click(toggle);
-    const strip = await waitFor(() => {
-      const found = first.strip();
-      if (!found) throw new Error("no undo strip yet");
-      return found;
-    });
-    expect(first.card(entryId)).toBeNull();
-
-    // The countdown is a CSS animation, which jsdom never runs: its end is fired by hand.
-    vi.useFakeTimers();
-    fireEvent.animationEnd(strip);
-    await act(async () => {
-      await vi.runAllTimersAsync();
-    });
-    vi.useRealTimers();
-    expect(first.strip()).toBeNull();
+    await closed(first.card, entryId);
     first.view.unmount();
 
     const second = setup({ client });
     await ui.unreadToggles(second.view);
-    expect(second.strip()).toBeNull();
     expect(second.card(entryId)).toBeNull();
   });
 
-  it("brings the card back when the strip is undone", async () => {
+  it("closes a card marked read outside the grid", async () => {
     vi.stubEnv("VITE_API_MODE", "mock");
     resetFixtureState();
-    const { view, strip, card } = setup({ client: newQueryClient() });
-    const [toggle] = await ui.unreadToggles(view);
-    const entryId = toggle.closest<HTMLElement>("[data-entry-id]")?.dataset.entryId;
-    if (entryId === undefined) throw new Error("no unread card to mark");
+    const client = newQueryClient();
+    const { view, card } = setup({ client });
+    const { entryId } = await firstUnreadCard(view);
 
-    fireEvent.click(toggle);
-    fireEvent.click(await ui.undoButton(view));
-
-    await waitFor(() => {
-      expect(card(entryId)).not.toBeNull();
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
+    const { result } = renderHook(() => useMarkRead(), { wrapper });
+    act(() => {
+      result.current.mutate({ entryIds: [entryId], read: true });
     });
-    expect(strip()).toBeNull();
+
+    expect(await closed(card, entryId)).toBe(true);
   });
 
   it("keeps the card when the request to mark it read fails", async () => {
@@ -196,18 +177,17 @@ describe("MosaicGrid", () => {
       }),
     );
     resetFixtureState();
-    const { view, strip, card } = setup({ client: newQueryClient() });
+    const { view, card } = setup({ client: newQueryClient() });
     const { toggle, entryId } = await firstUnreadCard(view);
 
     fireEvent.click(toggle);
-    await findStrip(strip);
+    await closed(card, entryId);
     void markReadQueue.flush();
     release();
 
     await waitFor(() => {
       expect(card(entryId)).not.toBeNull();
     });
-    expect(strip()).toBeNull();
   });
 
   it("shows an entry marked unread elsewhere again when the view mounts", async () => {
@@ -218,7 +198,7 @@ describe("MosaicGrid", () => {
     const first = setup({ client });
     const { toggle, entryId } = await firstUnreadCard(first.view);
     fireEvent.click(toggle);
-    await runOutCountdown(await findStrip(first.strip));
+    await closed(first.card, entryId);
     first.view.unmount();
 
     const wrapper = ({ children }: { children: ReactNode }) => (
@@ -233,18 +213,16 @@ describe("MosaicGrid", () => {
     await waitFor(() => {
       expect(second.card(entryId)).not.toBeNull();
     });
-    expect(second.strip()).toBeNull();
   });
 
-  it("keeps the entry in the all-articles cache when unread-only is toggled off mid-countdown", async () => {
+  it("keeps the entry in the all-articles cache when unread-only is toggled off mid-leave", async () => {
     vi.stubEnv("VITE_API_MODE", "mock");
     resetFixtureState();
     const client = newQueryClient();
 
-    const { view, strip, card } = setup({ client });
+    const { view, card } = setup({ client });
     const { toggle, entryId } = await firstUnreadCard(view);
     fireEvent.click(toggle);
-    await findStrip(strip);
 
     act(() => {
       setViewPrefs({ unread: false });
@@ -252,9 +230,6 @@ describe("MosaicGrid", () => {
     await waitFor(() => {
       expect(card(entryId)).not.toBeNull();
     });
-    const leftover = strip();
-    if (leftover) await runOutCountdown(leftover);
-
     const all = client.getQueryData<InfiniteData<EntryPage>>(
       keys.stream({ streamKey: "all", unreadOnly: false, order: "newest" }),
     );
@@ -325,6 +300,35 @@ describe("MosaicGrid", () => {
     });
   });
 
+  describe("when a card is navigated from the keyboard", () => {
+    it("moves focus with the arrows, Home and End, and ignores other keys", async () => {
+      vi.stubEnv("VITE_API_MODE", "mock");
+      resetFixtureState();
+      const { view } = setup({ client: newQueryClient() });
+      await ui.unreadToggles(view);
+      const links = () =>
+        [...view.container.querySelectorAll("[data-entry-id]")].map((card) =>
+          card.querySelector("a"),
+        );
+      const first = links().at(0);
+      const last = links().at(-1);
+      if (!first || !last) throw new Error("no cards");
+      act(() => {
+        first.focus();
+      });
+
+      fireEvent.keyDown(first, { key: "End" });
+      expect(last).toHaveFocus();
+      fireEvent.keyDown(last, { key: "Home" });
+      expect(first).toHaveFocus();
+      fireEvent.keyDown(first, { key: "ArrowDown" });
+      fireEvent.keyDown(document.activeElement ?? first, { key: "ArrowRight" });
+      fireEvent.keyDown(document.activeElement ?? first, { key: "ArrowUp" });
+      fireEvent.keyDown(document.activeElement ?? first, { key: "ArrowLeft" });
+      expect(fireEvent.keyDown(first, { key: "x" })).toBe(true);
+    });
+  });
+
   describe("when a card is marked from the keyboard", () => {
     // `fireEvent.click` moves no focus, so the card is focused first and M marks it.
     const markFocused = async (view: RenderResult) => {
@@ -338,48 +342,15 @@ describe("MosaicGrid", () => {
       return { entryId };
     };
 
-    it("moves focus to Undo when M marks the focused card", async () => {
-      vi.stubEnv("VITE_API_MODE", "mock");
-      resetFixtureState();
-      const { view } = setup({ client: newQueryClient() });
-      await markFocused(view);
-      const undo = await ui.undoButton(view);
-      await waitFor(() => {
-        expect(undo).toHaveFocus();
-      });
-    });
-
-    it("hands focus back to the restored card after Undo", async () => {
+    it("moves focus to the next card when M marks the focused card", async () => {
       vi.stubEnv("VITE_API_MODE", "mock");
       resetFixtureState();
       const { view, card } = setup({ client: newQueryClient() });
       const { entryId } = await markFocused(view);
-      const undo = await ui.undoButton(view);
-      await waitFor(() => {
-        expect(undo).toHaveFocus();
-      });
-      fireEvent.click(undo);
-      await waitFor(() => {
-        expect(card(entryId)?.querySelector("a")).toHaveFocus();
-      });
-    });
-
-    it("hands focus to a neighbouring card after Confirm", async () => {
-      vi.stubEnv("VITE_API_MODE", "mock");
-      resetFixtureState();
-      const { view, strip, card } = setup({ client: newQueryClient() });
-      const { entryId } = await markFocused(view);
-      const found = await findStrip(strip);
-      const confirm = await ui.confirmButton(view);
-      act(() => {
-        confirm.focus();
-      });
-      fireEvent.click(confirm);
-      expect(found.contains(document.activeElement)).toBe(false);
+      await closed(card, entryId);
       const focused = document.activeElement?.closest<HTMLElement>("[data-entry-id]");
       expect(focused).not.toBeNull();
       expect(focused?.dataset.entryId).not.toBe(entryId);
-      expect(card(entryId)).toBeNull();
     });
   });
 });

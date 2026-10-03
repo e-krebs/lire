@@ -14,9 +14,6 @@ const SINGLE_COLUMN_MIN_ASPECT = 4 / 3;
 export interface MasonryItem {
   id: string;
   aspect: number;
-  // A fixed height in place of the aspect one: the undo strip keeps the card's column slot at its
-  // own height, so the neighbours close most of the gap while the strip is still there.
-  height?: number;
 }
 
 interface MasonryPosition {
@@ -75,7 +72,7 @@ export const layoutMasonry = ({
       if (columnHeights[i] < columnHeights[column]) column = i;
     }
     const aspect = fitting === 1 ? Math.max(item.aspect, SINGLE_COLUMN_MIN_ASPECT) : item.aspect;
-    const height = item.height ?? Math.round(columnWidth / aspect);
+    const height = Math.round(columnWidth / aspect);
     positions.set(item.id, {
       x: offsetX + column * (columnWidth + gap),
       y: columnHeights[column],

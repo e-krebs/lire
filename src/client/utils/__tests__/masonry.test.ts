@@ -131,18 +131,6 @@ describe("masonry", () => {
       expect(layout.positions.get("d")?.y).toBe(468);
     });
 
-    it("gives an item with a fixed height that height, whatever its aspect", () => {
-      const layout = layoutMasonry({
-        containerWidth: 1100,
-        items: [
-          { id: "a", aspect: 1, height: 60 },
-          { id: "b", aspect: 1 },
-        ],
-      });
-      expect(layout.positions.get("a")?.height).toBe(60);
-      expect(layout.positions.get("b")?.height).toBe(layout.columnWidth);
-    });
-
     it("reports the tallest column height without a trailing gap", () => {
       const layout = layoutMasonry({ containerWidth: 800, items: stacked });
       expect(layout.height).toBe(862);

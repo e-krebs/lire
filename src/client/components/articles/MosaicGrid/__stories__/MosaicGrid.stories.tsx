@@ -115,26 +115,14 @@ export const UnreadOnly: Story = {
   args: { unreadOnly: true, ranked: "oldest" },
   decorators: [Narrow],
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
     await tiles(canvasElement);
     const first = canvasElement.querySelector<HTMLElement>("[data-entry-id]");
     if (!first) throw new Error("no tile");
     const id = first.dataset.entryId;
     await swipe({ target: first, dx: 160 });
-    await userEvent.click(await canvas.findByRole("button", { name: /undo/i }, TIMEOUT));
     await waitFor(
       async () =>
-        expect(
-          canvasElement.querySelector(`[data-entry-id="${CSS.escape(id ?? "")}"]`),
-        ).not.toBeNull(),
-      TIMEOUT,
-    );
-    const again = canvasElement.querySelector<HTMLElement>("[data-entry-id]");
-    if (!again) throw new Error("no tile");
-    await swipe({ target: again, dx: -160 });
-    await userEvent.click(await canvas.findByRole("button", { name: /confirm/i }, TIMEOUT));
-    await waitFor(
-      async () => expect(canvas.queryByRole("button", { name: /undo/i })).toBeNull(),
+        expect(canvasElement.querySelector(`[data-entry-id="${CSS.escape(id ?? "")}"]`)).toBeNull(),
       TIMEOUT,
     );
   },
@@ -143,13 +131,13 @@ export const UnreadOnly: Story = {
 export const KeyboardMarkRead: Story = {
   args: { unreadOnly: true },
   play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
     const [first] = await tiles(canvasElement);
+    const id = first.closest<HTMLElement>("[data-entry-id]")?.dataset.entryId;
     first.focus();
     await userEvent.keyboard("m");
-    await userEvent.click(await canvas.findByRole("button", { name: /confirm/i }, TIMEOUT));
     await waitFor(
-      async () => expect(canvas.queryByRole("button", { name: /confirm/i })).toBeNull(),
+      async () =>
+        expect(canvasElement.querySelector(`[data-entry-id="${CSS.escape(id ?? "")}"]`)).toBeNull(),
       TIMEOUT,
     );
   },
