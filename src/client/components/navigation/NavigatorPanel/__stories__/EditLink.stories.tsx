@@ -20,8 +20,8 @@ const meta: Meta<Args> = {
   },
   args: {
     kind: "category",
-    targetId: "user/1/category/tech",
-    title: "Technology",
+    targetId: "Tech",
+    title: "Tech",
     visible: true,
     onClose: fn(),
   },

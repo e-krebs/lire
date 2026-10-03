@@ -1,0 +1,24 @@
+[
+  {
+    "story_hash": "105:0e4920",
+    "story_feed_id": 105,
+    "story_title": "Synthetic story 1 from feed 105",
+    "story_authors": "Ada Writer",
+    "story_content": "<p>Short synthetic body for story 1 of feed 105.</p>",
+    "story_permalink": "https://example.test/105/1",
+    "story_timestamp": "1759892000",
+    "image_urls": [],
+    "read_status": 0
+  },
+  {
+    "story_hash": "105:0fe239",
+    "story_feed_id": 105,
+    "story_title": "Synthetic story 2 from feed 105",
+    "story_authors": "Ada Writer",
+    "story_content": "<p>Short synthetic body for story 2 of feed 105.</p>",
+    "story_permalink": "https://example.test/105/2",
+    "story_timestamp": "1759886600",
+    "image_urls": ["https://images.example.test/105-2.png"],
+    "read_status": 0
+  }
+]

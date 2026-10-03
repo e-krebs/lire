@@ -1,13 +1,11 @@
-import { createFileRoute, Outlet, useChildMatches } from "@tanstack/react-router";
-import { fromStreamKey } from "shared/feedsApi/streamKey";
-import { isReadStreamId } from "shared/feedsApi/streams";
-import { useProfile } from "client/api/queries";
+import { createFileRoute, Outlet, redirect, useChildMatches } from "@tanstack/react-router";
+import { parseStreamKey, toStreamKey } from "shared/feedsApi/streamKey";
 import { Panes } from "client/components/shell/AppShell";
-import { MosaicGrid, MosaicSkeleton } from "client/components/articles/MosaicGrid";
+import { MosaicGrid } from "client/components/articles/MosaicGrid";
 import { useViewPrefs } from "client/utils/viewPrefs";
 
 export interface StreamSearch {
-  // Article search within the stream (feeds API /v3/search/contents); absent = plain stream.
+  // Article search within the stream (`GET /api/search`); absent = plain stream.
   q?: string;
 }
 
@@ -15,26 +13,26 @@ export const Route = createFileRoute("/stream/$streamKey")({
   validateSearch: (search: Record<string, unknown>): StreamSearch => ({
     q: typeof search.q === "string" && search.q.trim() !== "" ? search.q : undefined,
   }),
+  beforeLoad: ({ params }) => {
+    if (parseStreamKey(params.streamKey) === null) {
+      throw redirect({ to: "/stream/$streamKey", params: { streamKey: "all" } });
+    }
+  },
   component: StreamLayout,
 });
 
 function StreamLayout() {
   const { streamKey } = Route.useParams();
   const search = Route.useSearch();
-  const profile = useProfile();
   const prefs = useViewPrefs();
   const childMatches = useChildMatches();
 
-  // The key carries no user id, so the full stream id waits on the profile.
-  const userId = profile.data?.id;
-  // Same panes as the loaded state, so the scroll pane (and its bar) is there from the first frame.
-  if (userId === undefined) {
-    return <Panes list={<MosaicSkeleton />} reader={null} />;
-  }
+  const stream = parseStreamKey(streamKey);
+  // beforeLoad already redirected an unreadable key.
+  if (stream === null) return null;
 
-  const streamId = fromStreamKey({ key: streamKey, userId });
   // The recently-read stream is read entries by definition, always newest first.
-  const readStream = isReadStreamId(streamId);
+  const readStream = stream.kind === "read";
   const unreadOnly = readStream ? false : prefs.unread;
   const ranked = readStream ? "newest" : prefs.ranked;
   const readerOpen = childMatches.length > 0;
@@ -43,7 +41,7 @@ function StreamLayout() {
     <Panes
       list={
         <MosaicGrid
-          streamId={streamId}
+          streamKey={toStreamKey(stream)}
           unreadOnly={unreadOnly}
           ranked={ranked}
           query={search.q}

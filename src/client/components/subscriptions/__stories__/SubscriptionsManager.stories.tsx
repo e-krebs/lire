@@ -60,9 +60,9 @@ export const FeedsTab: Story = {
   args: { tab: "feeds" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await canvas.findByRole("button", { name: "Example News" }, SLOW);
-    await userEvent.type(canvas.getByRole("searchbox", { name: "Filter feeds" }), "typeface");
-    await expect(canvas.queryByRole("button", { name: "Example News" })).toBeNull();
+    await canvas.findByRole("button", { name: "Example Daily News" }, SLOW);
+    await userEvent.type(canvas.getByRole("searchbox", { name: "Filter feeds" }), "foundry");
+    await expect(canvas.queryByRole("button", { name: "Example Daily News" })).toBeNull();
     await userEvent.clear(canvas.getByRole("searchbox", { name: "Filter feeds" }));
     await userEvent.type(canvas.getByRole("searchbox", { name: "Filter feeds" }), "zzzz");
     await expect(await canvas.findByText("No feed matches “zzzz”")).toBeVisible();
@@ -135,7 +135,7 @@ export const CancelNewCategory: Story = {
 export const ReorderCategories: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const handle = await canvas.findByRole("button", { name: "Reorder Tech News" }, SLOW);
+    const handle = await canvas.findByRole("button", { name: "Reorder Tech" }, SLOW);
     handle.focus();
     await userEvent.keyboard(" ");
     await userEvent.keyboard("{ArrowDown}");
@@ -143,7 +143,7 @@ export const ReorderCategories: Story = {
     await waitFor(async () => {
       const labels = canvas.getAllByRole("listitem").map((item) => item.textContent);
       await expect(labels[0]).toContain("Design");
-      await expect(labels[1]).toContain("Tech News");
+      await expect(labels[1]).toContain("Tech");
     }, SLOW);
   },
 };
@@ -151,16 +151,16 @@ export const ReorderCategories: Story = {
 export const DeleteCategoryAndMoveFeeds: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole("button", { name: "Archive" }, SLOW));
-    const panel = await screen.findByRole("complementary", { name: "Archive" }, SLOW);
+    await userEvent.click(await canvas.findByRole("button", { name: "News" }, SLOW));
+    const panel = await screen.findByRole("complementary", { name: "News" }, SLOW);
     await userEvent.click(await within(panel).findByRole("button", { name: "Delete category…" }));
-    const dialog = await screen.findByRole("dialog", { name: "Delete Archive?" });
-    const confirm = within(dialog).getByRole("button", { name: "Delete and move 1 feed" });
+    const dialog = await screen.findByRole("dialog", { name: "Delete News?" });
+    const confirm = within(dialog).getByRole("button", { name: "Delete and move 4 feeds" });
     await expect(confirm).toBeDisabled();
     await userEvent.click(within(dialog).getByRole("radio", { name: "Design" }));
     await userEvent.click(confirm);
     await waitFor(async () => {
-      await expect(canvas.queryByRole("button", { name: "Archive" })).toBeNull();
+      await expect(canvas.queryByRole("button", { name: "News" })).toBeNull();
     }, SLOW);
   },
 };
@@ -172,23 +172,27 @@ export const UnsubscribeFromCategory: Story = {
     const panel = await screen.findByRole("complementary", { name: "Newsletters" }, SLOW);
     await userEvent.click(
       await within(panel).findByRole("button", {
-        name: "Remove Example Weekly Letter from Newsletters",
+        name: "Remove Example Weekly from Newsletters",
       }),
     );
     const dialog = await screen.findByRole("dialog", {
-      name: "Unsubscribe from Example Weekly Letter?",
+      name: "Unsubscribe from Example Weekly?",
     });
     await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
     await waitFor(async () => {
       await expect(screen.queryByRole("dialog")).toBeNull();
     });
     await userEvent.click(
-      within(panel).getByRole("button", { name: "Remove Example Weekly Letter from Newsletters" }),
+      within(panel).getByRole("button", { name: "Remove Example Weekly from Newsletters" }),
     );
     await userEvent.click(
       within(await screen.findByRole("dialog")).getByRole("button", { name: "Unsubscribe" }),
     );
-    await screen.findByText("No feeds in this category yet.", undefined, SLOW);
+    await waitFor(async () => {
+      await expect(
+        within(panel).queryByRole("button", { name: "Remove Example Weekly from Newsletters" }),
+      ).toBeNull();
+    }, SLOW);
   },
 };
 
@@ -196,15 +200,21 @@ export const EditFeed: Story = {
   args: { tab: "feeds" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole("button", { name: "Example UX Notes" }, SLOW));
-    const panel = await screen.findByRole("complementary", { name: "Example UX Notes" }, SLOW);
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "Example Design Journal" }, SLOW),
+    );
+    const panel = await screen.findByRole(
+      "complementary",
+      { name: "Example Design Journal" },
+      SLOW,
+    );
     const title = within(panel).getByRole("textbox", { name: "Title" });
     await userEvent.clear(title);
     await userEvent.click(within(panel).getByRole("button", { name: "Save changes" }));
     await expect(
       await within(panel).findByText("Enter a title for this feed."),
     ).toBeInTheDocument();
-    await userEvent.type(title, "UX Notes Renamed");
+    await userEvent.type(title, "Design Journal Renamed");
     await userEvent.click(
       await within(panel).findByRole("checkbox", { name: "Newsletters" }, SLOW),
     );
@@ -220,7 +230,7 @@ export const EditFeed: Story = {
     await userEvent.click(direct);
     await expect(direct).toBeChecked();
     await userEvent.click(within(panel).getByRole("button", { name: "Save changes" }));
-    await canvas.findByRole("button", { name: "UX Notes Renamed" }, SLOW);
+    await canvas.findByRole("button", { name: "Design Journal Renamed" }, SLOW);
   },
 };
 
@@ -228,10 +238,12 @@ export const SwitchFeed: Story = {
   args: { tab: "feeds" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(await canvas.findByRole("button", { name: "Example UX Notes" }, SLOW));
-    await screen.findByRole("complementary", { name: "Example UX Notes" }, SLOW);
-    await userEvent.click(canvas.getByRole("button", { name: "Example Longform" }));
-    await screen.findByRole("complementary", { name: "Example Longform" }, SLOW);
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "Example Design Journal" }, SLOW),
+    );
+    await screen.findByRole("complementary", { name: "Example Design Journal" }, SLOW);
+    await userEvent.click(canvas.getByRole("button", { name: "Example Type Foundry" }));
+    await screen.findByRole("complementary", { name: "Example Type Foundry" }, SLOW);
   },
 };
 
@@ -241,7 +253,7 @@ export const UnsubscribeFromFeed: Story = {
     const canvas = within(canvasElement);
     await userEvent.click(await canvas.findByRole("button", { name: "Example Longform" }, SLOW));
     const panel = await screen.findByRole("complementary", { name: "Example Longform" }, SLOW);
-    await userEvent.click(await within(panel).findByRole("checkbox", { name: "Archive" }, SLOW));
+    await userEvent.click(await within(panel).findByRole("checkbox", { name: "Tech" }, SLOW));
     await userEvent.click(within(panel).getByRole("button", { name: "Unsubscribe…" }));
     const dialog = await screen.findByRole("dialog", {
       name: "Unsubscribe from Example Longform?",
@@ -257,26 +269,26 @@ export const SubscribeByUrl: Story = {
   args: { tab: "feeds" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await canvas.findByRole("button", { name: "Example News" }, SLOW);
+    await canvas.findByRole("button", { name: "Example Daily News" }, SLOW);
     await userEvent.click(canvas.getByRole("button", { name: "＋ Add sources" }));
     await userEvent.click(await screen.findByRole("button", { name: "Add website" }));
     const panel = await screen.findByRole("complementary", { name: "Add a feed" }, SLOW);
     const url = within(panel).getByRole("textbox", { name: "Feed or site URL" });
-    await userEvent.type(url, "https://fresh-site.test/rss");
-    await within(panel).findByRole("radio", { name: /fresh-site/ }, SLOW);
-    await userEvent.click(within(panel).getByRole("radio", { name: /fresh-site/ }));
+    await userEvent.type(url, "https://gardening.example.test/rss");
+    await within(panel).findByRole("radio", { name: /Example Gardening/ }, SLOW);
+    await userEvent.click(within(panel).getByRole("radio", { name: /Example Gardening/ }));
     await userEvent.click(within(panel).getByRole("checkbox", { name: "Design" }));
     const fast = userEvent.setup({ delay: null });
     await fast.clear(url);
     await fast.type(url, "ab");
     await fast.click(within(panel).getByRole("button", { name: "Subscribe" }));
     await expect(await within(panel).findByText("Enter a feed or site URL.")).toBeVisible();
-    await fast.type(url, "{Backspace}{Backspace}https://fresh-site.test/rss");
+    await fast.type(url, "{Backspace}{Backspace}https://gardening.example.test/rss");
     await fast.click(within(panel).getByRole("button", { name: "Subscribe" }));
-    await within(panel).findByRole("radio", { name: /fresh-site/ }, SLOW);
-    await userEvent.click(within(panel).getByRole("radio", { name: /fresh-site/ }));
+    await within(panel).findByRole("radio", { name: /Example Gardening/ }, SLOW);
+    await userEvent.click(within(panel).getByRole("radio", { name: /Example Gardening/ }));
     await userEvent.click(within(panel).getByRole("button", { name: "Subscribe" }));
-    await canvas.findByRole("button", { name: "https://fresh-site.test/rss" }, SLOW);
+    await canvas.findByRole("button", { name: "Example Gardening" }, SLOW);
   },
 };
 

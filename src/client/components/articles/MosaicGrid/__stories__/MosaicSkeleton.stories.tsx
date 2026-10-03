@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { MosaicSkeleton } from "client/components/articles/MosaicGrid";
+import { MosaicSkeleton } from "client/components/articles/MosaicGrid/MosaicSkeleton";
 
 const meta = {
   title: "Components/MosaicSkeleton",

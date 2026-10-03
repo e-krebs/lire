@@ -5,17 +5,25 @@ compatibility_date = "2025-01-01"
 routes = [{ pattern = "lire.krebs.tech/api/*", zone_name = "krebs.tech" }]
 
 [[durable_objects.bindings]]
-name = "FEEDLY_AUTH"
-class_name = "FeedlyAuth"
+name = "NEWSBLUR_AUTH"
+class_name = "NewsblurAuth"
 
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["FeedlyAuth"]
 
+# The Feedly refresh token FeedlyAuth stored has no use on NewsBlur.
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["NewsblurAuth"]
+deleted_classes = ["FeedlyAuth"]
+
 [vars]
-FEEDLY_HOST = "https://cloud.feedly.com"
-FEEDLY_CLIENT_ID = "feedly"
+NEWSBLUR_HOST = "https://newsblur.com"
+# Empty until NewsBlur issues the OAuth client; CI preflight fails while it is.
+NEWSBLUR_CLIENT_ID = ""
 ACCESS_TEAM_DOMAIN = "lire-6s2-pages.cloudflareaccess.com"
 ACCESS_AUD = "80a2c7fef3de869a12354a2a822ae8ef803a29a2953ad24f41ce690c955cad0a"
 
-# Owner pin: CI sets ACCESS_ALLOWED_EMAIL from the GitHub secret of the same name
+# Secrets: CI sets ACCESS_ALLOWED_EMAIL, NEWSBLUR_CLIENT_SECRET and NEWSBLUR_NEWSLETTER_ADDRESS from
+# the GitHub secrets of the same names

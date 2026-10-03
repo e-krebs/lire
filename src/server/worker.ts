@@ -1,14 +1,17 @@
-import { matchAllowed } from "shared/feedsApi/paths";
+import { z } from "zod";
+import { handle, type FeedsCache } from "shared/bff/handle";
+import { encodeParams, type NewsblurFetch } from "shared/bff/upstream";
+import { matchRoute } from "shared/feedsApi/routes";
 import { AccessError, verifyAccess } from "./access";
 import type { Env } from "./env";
-import type { AccessTokenResult } from "./feedlyAuth";
+import type { StoredToken } from "./newsblurAuth";
 
-export { FeedlyAuth } from "./feedlyAuth";
+export { NewsblurAuth } from "./newsblurAuth";
 
 const LOGIN_PATH = "/api/auth/login";
-const CSRF_COOKIE = "lire_csrf";
-const CSRF_FIELD = "csrf";
-const TOKEN_FIELD = "refreshToken";
+const CALLBACK_PATH = "/api/auth/callback";
+const STATE_COOKIE = "lire_oauth_state";
+const STATE_COOKIE_ATTRIBUTES = "HttpOnly; Secure; SameSite=Lax; Path=/api/auth";
 
 const json = ({ body, status = 200 }: { body: unknown; status?: number }): Response =>
   new Response(JSON.stringify(body), {
@@ -16,7 +19,7 @@ const json = ({ body, status = 200 }: { body: unknown; status?: number }): Respo
     headers: { "Content-Type": "application/json" },
   });
 
-const feedlyAuth = (env: Env) => env.FEEDLY_AUTH.get(env.FEEDLY_AUTH.idFromName("singleton"));
+const newsblurAuth = (env: Env) => env.NEWSBLUR_AUTH.get(env.NEWSBLUR_AUTH.idFromName("singleton"));
 
 const randomToken = (): string =>
   Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) =>
@@ -38,43 +41,120 @@ const readCookie = ({ request, name }: { request: Request; name: string }): stri
   return undefined;
 };
 
-const loginPage = ({
-  error,
-  status = 200,
-}: { error?: boolean; status?: number } = {}): Response => {
-  const csrf = randomToken();
-  const html = `<!doctype html>
+const clearStateCookie = `${STATE_COOKIE}=; ${STATE_COOKIE_ATTRIBUTES}; Max-Age=0`;
+
+const redirectUri = (request: Request): string => `${new URL(request.url).origin}${CALLBACK_PATH}`;
+
+const handleLogin = ({ request, env }: { request: Request; env: Env }): Response => {
+  const state = randomToken();
+  const authorize = new URL("/oauth/authorize", env.NEWSBLUR_HOST);
+  authorize.search = new URLSearchParams({
+    response_type: "code",
+    client_id: env.NEWSBLUR_CLIENT_ID,
+    redirect_uri: redirectUri(request),
+    scope: "read write",
+    state,
+  }).toString();
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: authorize.toString(),
+      "Cache-Control": "no-store",
+      "Set-Cookie": `${STATE_COOKIE}=${state}; ${STATE_COOKIE_ATTRIBUTES}; Max-Age=600`,
+    },
+  });
+};
+
+const signInFailedPage = (): Response =>
+  new Response(
+    `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sign in to Lire</title>
+<title>Sign-in failed</title>
 <style>
   :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
   body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px; box-sizing: border-box; }
-  form { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 360px; }
-  input, button { font: inherit; padding: 8px 12px; border-radius: 6px; }
-  button { cursor: pointer; }
-  .error { color: #c62828; margin: 0; }
 </style>
 </head>
 <body>
-<form method="post" action="${LOGIN_PATH}">
-  <label for="${TOKEN_FIELD}">Feedly refresh token</label>
-  <input id="${TOKEN_FIELD}" name="${TOKEN_FIELD}" type="password" autocomplete="off" required>
-  <input type="hidden" name="${CSRF_FIELD}" value="${csrf}">
-  ${error ? `<p class="error" role="alert">Sign-in failed, try again.</p>` : ""}
-  <button type="submit">Sign in</button>
-</form>
+<p role="alert">Sign-in to NewsBlur failed. <a href="${LOGIN_PATH}">Try again</a>.</p>
 </body>
-</html>`;
-  return new Response(html, {
-    status,
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "no-store",
-      "Set-Cookie": `${CSRF_COOKIE}=${csrf}; Path=${LOGIN_PATH}; HttpOnly; Secure; SameSite=Strict`,
+</html>`,
+    {
+      status: 400,
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
+        "Set-Cookie": clearStateCookie,
+      },
     },
+  );
+
+const TokenAnswerSchema = z.object({ access_token: z.string().min(1) });
+const ProfileAnswerSchema = z.object({ user_profile: z.object({ user_id: z.number() }) });
+
+const exchangeCode = async ({
+  request,
+  env,
+  code,
+}: {
+  request: Request;
+  env: Env;
+  code: string;
+}): Promise<StoredToken | undefined> => {
+  const tokenResponse = await fetch(`${env.NEWSBLUR_HOST}/oauth/token`, {
+    method: "POST",
+    body: new URLSearchParams({
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: redirectUri(request),
+      client_id: env.NEWSBLUR_CLIENT_ID,
+      client_secret: env.NEWSBLUR_CLIENT_SECRET,
+    }),
+  });
+  if (!tokenResponse.ok) return undefined;
+  const token = TokenAnswerSchema.safeParse(await tokenResponse.json());
+  if (!token.success) return undefined;
+
+  // The user id pins every later read answer to this account.
+  const profileResponse = await fetch(`${env.NEWSBLUR_HOST}/social/load_user_profile`, {
+    headers: { Authorization: `Bearer ${token.data.access_token}` },
+  });
+  if (!profileResponse.ok) return undefined;
+  const profile = ProfileAnswerSchema.safeParse(await profileResponse.json());
+  if (!profile.success) return undefined;
+  return { accessToken: token.data.access_token, userId: profile.data.user_profile.user_id };
+};
+
+const handleCallback = async ({
+  request,
+  env,
+}: {
+  request: Request;
+  env: Env;
+}): Promise<Response> => {
+  const params = new URL(request.url).searchParams;
+  const code = params.get("code");
+  const state = params.get("state");
+  const cookieState = readCookie({ request, name: STATE_COOKIE });
+  if (!code || !state || !cookieState || !safeEqual({ a: state, b: cookieState })) {
+    return signInFailedPage();
+  }
+
+  let token: StoredToken | undefined;
+  try {
+    token = await exchangeCode({ request, env, code });
+  } catch {
+    token = undefined;
+  }
+  if (!token) return signInFailedPage();
+
+  await newsblurAuth(env).setToken(token);
+  return new Response(null, {
+    status: 302,
+    headers: { Location: "/", "Set-Cookie": clearStateCookie },
   });
 };
 
@@ -91,94 +171,73 @@ const isSameOrigin = (request: Request): boolean => {
   }
 };
 
-const formString = ({ form, name }: { form: FormData; name: string }): string | undefined => {
-  const value = form.get(name);
-  return typeof value === "string" ? value : undefined;
-};
+const bearerUpstream =
+  ({ env, accessToken }: { env: Env; accessToken: string }): NewsblurFetch =>
+  async ({ method, path, query, form }) => {
+    const url = new URL(path, env.NEWSBLUR_HOST);
+    if (query) url.search = encodeParams(query).toString();
+    const headers = { Authorization: `Bearer ${accessToken}` };
+    return fetch(
+      url,
+      form ? { method: "POST", headers, body: encodeParams(form) } : { method, headers },
+    );
+  };
 
-const handleLogin = async ({ request, env }: { request: Request; env: Env }): Promise<Response> => {
-  if (!isSameOrigin(request)) return json({ body: { error: "forbidden" }, status: 403 });
-
-  const form = await request.formData();
-  const cookieToken = readCookie({ request, name: CSRF_COOKIE });
-  const formToken = formString({ form, name: CSRF_FIELD });
-  if (!cookieToken || !formToken || !safeEqual({ a: cookieToken, b: formToken })) {
-    return json({ body: { error: "forbidden" }, status: 403 });
-  }
-
-  const refreshToken = formString({ form, name: TOKEN_FIELD })?.trim();
-  if (!refreshToken) return loginPage({ error: true, status: 400 });
-
-  const result = await feedlyAuth(env).replaceRefreshToken(refreshToken);
-  if (!result.ok) {
-    return loginPage({ error: true, status: result.reason === "unavailable" ? 503 : 400 });
-  }
-  return new Response(null, { status: 302, headers: { Location: "/" } });
-};
-
-const refreshFailed = (reason: Exclude<AccessTokenResult, { ok: true }>["reason"]): Response =>
-  reason === "unavailable"
-    ? json({ body: { error: "upstream_unavailable" }, status: 503 })
-    : json({ body: { error: "sign_in_required" }, status: 401 });
-
-const proxy = async ({ request, env }: { request: Request; env: Env }): Promise<Response> => {
+const serve = async ({ request, env }: { request: Request; env: Env }): Promise<Response> => {
   const url = new URL(request.url);
-  const pathname = url.pathname.slice("/api".length);
-  if (!matchAllowed({ method: request.method, pathname }))
-    return json({ body: { error: "not_found" }, status: 404 });
+  const match = matchRoute({ method: request.method, pathname: url.pathname });
+  if (!match) return json({ body: { error: "not_found" }, status: 404 });
 
   // Access attaches its JWT to any request carrying its cookie, so writes need their own CSRF check.
-  const hasBody = request.method === "POST";
+  const hasBody = request.method === "POST" || request.method === "PATCH";
   if (request.method !== "GET" && !isSameOrigin(request))
     return json({ body: { error: "forbidden" }, status: 403 });
   if (hasBody && !request.headers.get("Content-Type")?.startsWith("application/json")) {
     return json({ body: { error: "forbidden" }, status: 403 });
   }
 
-  const auth = feedlyAuth(env);
-  const first = await auth.getAccessToken();
-  if (!first.ok) return refreshFailed(first.reason);
-
-  const body = hasBody ? await request.arrayBuffer() : undefined;
-  const send = async (token: string): Promise<Response> =>
-    fetch(`${env.FEEDLY_HOST}${pathname}${url.search}`, {
-      method: request.method,
-      headers: {
-        Authorization: `OAuth ${token}`,
-        ...(hasBody ? { "Content-Type": "application/json" } : {}),
-      },
-      body,
-    });
-
-  let upstream = await send(first.token);
-  if (upstream.status === 401) {
-    await upstream.body?.cancel();
-    const retry = await auth.getAccessToken({ rejectedAccessToken: first.token });
-    if (!retry.ok) return refreshFailed(retry.reason);
-    upstream = await send(retry.token);
-    // The feeds API just accepted the refresh token, so a 401 here is not a reason to drop it.
-    if (upstream.status === 401) {
-      await upstream.body?.cancel();
-      return json({ body: { error: "sign_in_required" }, status: 401 });
+  let body: unknown;
+  if (hasBody) {
+    try {
+      body = await request.json();
+    } catch {
+      return json({ body: { error: "bad_request", message: "Invalid JSON body." }, status: 400 });
     }
   }
 
-  const headers = new Headers();
-  for (const [name, value] of upstream.headers) {
-    if (name === "content-type") headers.set(name, value);
+  const auth = newsblurAuth(env);
+  const token = await auth.getToken();
+  if (!token) {
+    if (match.route.path === "/api/auth/status") return json({ body: { signedIn: false } });
+    return json({ body: { error: "sign_in_required" }, status: 401 });
   }
-  return new Response(upstream.body, { status: upstream.status, headers });
+
+  const cache: FeedsCache = {
+    get: async () => auth.getFeedsCache(),
+    set: async (input) => auth.setFeedsCache(input),
+    clear: async () => auth.clearFeedsCache(),
+  };
+  const result = await handle({
+    route: match.route,
+    params: match.params,
+    query: url.searchParams,
+    body,
+    upstream: bearerUpstream({ env, accessToken: token.accessToken }),
+    config: { newsletterAddress: env.NEWSBLUR_NEWSLETTER_ADDRESS, userId: token.userId },
+    cache,
+  });
+  // NewsBlur rejected the token, or answered as another user, so the owner signs in again.
+  if (result.status === 401) await auth.clearToken();
+  if (result.body === null) return new Response(null, { status: result.status });
+  return json({ body: result.body, status: result.status });
 };
 
 const route = async ({ request, env }: { request: Request; env: Env }): Promise<Response> => {
   const { pathname } = new URL(request.url);
-  if (pathname === "/api/auth/status" && request.method === "GET") {
-    return json({ body: { signedIn: await feedlyAuth(env).hasRefreshToken() } });
-  }
-  if (pathname === LOGIN_PATH && request.method === "GET") return loginPage();
-  if (pathname === LOGIN_PATH && request.method === "POST") return handleLogin({ request, env });
-  if (pathname.startsWith("/api/v3/")) return proxy({ request, env });
-  return json({ body: { error: "not_found" }, status: 404 });
+  if (pathname === LOGIN_PATH && request.method === "GET") return handleLogin({ request, env });
+  if (pathname === CALLBACK_PATH && request.method === "GET")
+    return handleCallback({ request, env });
+  return serve({ request, env });
 };
 
 export default {

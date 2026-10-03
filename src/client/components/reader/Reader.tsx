@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import DOMPurify from "dompurify";
 import { useNavigate } from "@tanstack/react-router";
-import { useEntry, useMarkRead } from "client/api/queries";
+import { useEntry, useFeeds, useMarkRead } from "client/api/queries";
 import { NewsletterFrame } from "client/components/reader/NewsletterFrame";
 import { ReaderHeader } from "client/components/reader/ReaderHeader";
 import { readingTime } from "client/utils/readingTime";
@@ -52,11 +52,6 @@ const bodyHasImage = ({ html, url }: { html: string; url: string }): boolean => 
   });
 };
 
-// Feedly wraps every email feed body in this class.
-const isNewsletter = (html: string): boolean =>
-  new DOMParser().parseFromString(html, "text/html").querySelector(".webfeeds--newsletter") !==
-  null;
-
 const isTypingTarget = (target: EventTarget | null): boolean =>
   target instanceof HTMLInputElement ||
   target instanceof HTMLTextAreaElement ||
@@ -75,6 +70,7 @@ interface ReaderProps {
 export const Reader = ({ entryId, streamKey }: ReaderProps) => {
   const t = useT();
   const entry = useEntry(entryId);
+  const feeds = useFeeds();
   const { mutate } = useMarkRead();
   const navigate = useNavigate();
   const paneRef = useRef<HTMLDivElement>(null);
@@ -115,17 +111,18 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
   }, [close]);
 
   const { data } = entry;
-  const bodyHtml = data?.fullContent ?? data?.content?.content ?? data?.summary?.content ?? "";
+  const bodyHtml = data?.content ?? data?.summary ?? "";
   const html = useMemo(() => (bodyHtml === "" ? "" : sanitize(bodyHtml)), [bodyHtml]);
   const minutes = useMemo(() => (html === "" ? 0 : readingTime(bodyText(html))), [html]);
-  const newsletter = useMemo(() => html !== "" && isNewsletter(html), [html]);
-  const heroUrl = data?.visual?.url;
+  const newsletter =
+    html !== "" && feeds.data?.find((feed) => feed.id === data?.feedId)?.isNewsletter === true;
+  const heroUrl = data?.imageUrl;
   const heroInBody = useMemo(
     () => heroUrl !== undefined && html !== "" && bodyHasImage({ html, url: heroUrl }),
     [html, heroUrl],
   );
 
-  const hero = useImageFallback({ url: heroUrl, fallbackUrl: data?.visual?.edgeCacheUrl });
+  const hero = useImageFallback({ url: heroUrl });
 
   // `error` does not bubble, so it is caught in the capture phase on the article.
   const watchBodyImages = useCallback(
@@ -141,8 +138,6 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
     },
     [t],
   );
-
-  const dir = (data?.content?.direction ?? data?.summary?.direction) === "rtl" ? "rtl" : "ltr";
 
   let body: ReactNode;
   if (data === undefined) {
@@ -170,25 +165,22 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
         />
         <div className="px-4 pt-3 pb-16 sm:px-6">
           {data.author ? <p className="text-[13px] text-muted">{data.author}</p> : null}
-          {hero.src && data.visual && !heroInBody ? (
+          {hero.src && !heroInBody ? (
             <img
               src={hero.src}
               alt=""
-              width={data.visual.width}
-              height={data.visual.height}
               onError={hero.onError}
               className="mx-auto mt-3 mb-5 block h-auto max-h-[45vh] w-auto max-w-full rounded-xl outline outline-hairline-image -outline-offset-1"
             />
           ) : null}
           {newsletter ? (
             <article className="-mx-4 mt-4 sm:-mx-6">
-              <NewsletterFrame html={html} dir={dir} />
+              <NewsletterFrame html={html} dir="ltr" />
             </article>
           ) : (
             <article
               ref={watchBodyImages}
               className="prose-reader mt-4"
-              dir={dir}
               dangerouslySetInnerHTML={{ __html: html }}
             />
           )}

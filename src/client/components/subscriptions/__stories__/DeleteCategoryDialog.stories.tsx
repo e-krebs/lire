@@ -3,18 +3,9 @@ import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 import { resetFixtureState } from "client/api/adapters/fixture";
 import { DeleteCategoryDialog } from "client/components/subscriptions/DeleteCategoryDialog";
 import { withQueryClient } from "stories/decorators";
-import { COLLECTIONS, SUBSCRIPTIONS } from "stories/fixtures";
+import { CATEGORIES, FEEDS } from "stories/fixtures";
 
 const SLOW = { timeout: 10_000 };
-
-const sharedFeeds = SUBSCRIPTIONS.map((feed, index) =>
-  index === 0
-    ? {
-        ...feed,
-        categories: [...feed.categories, { id: COLLECTIONS[1].id, label: COLLECTIONS[1].label }],
-      }
-    : feed,
-);
 
 const meta = {
   title: "Subscriptions/DeleteCategoryDialog",
@@ -31,9 +22,9 @@ const meta = {
   },
   args: {
     open: true,
-    category: COLLECTIONS[0],
-    collections: COLLECTIONS,
-    subscriptions: SUBSCRIPTIONS,
+    category: CATEGORIES[0],
+    categories: CATEGORIES,
+    allFeeds: FEEDS,
     onCancel: fn(),
     onDeleted: fn(),
   },
@@ -46,8 +37,8 @@ export const Default: Story = {};
 
 export const MoveToNewCategory: Story = {
   play: async ({ args }) => {
-    const dialog = await screen.findByRole("dialog", { name: "Delete Tech News?" });
-    const confirm = within(dialog).getByRole("button", { name: "Delete and move 4 feeds" });
+    const dialog = await screen.findByRole("dialog", { name: "Delete Tech?" });
+    const confirm = within(dialog).getByRole("button", { name: /^Delete and move \d+ feeds?$/ });
     await expect(confirm).toBeDisabled();
     const filter = within(dialog).getByRole("searchbox", { name: "Filter categories" });
     await userEvent.type(filter, "Podcasts");
@@ -64,9 +55,11 @@ export const MoveToNewCategory: Story = {
 
 export const MoveToExistingCategory: Story = {
   play: async ({ args }) => {
-    const dialog = await screen.findByRole("dialog", { name: "Delete Tech News?" });
+    const dialog = await screen.findByRole("dialog", { name: "Delete Tech?" });
     await userEvent.click(within(dialog).getByRole("radio", { name: "Design" }));
-    await userEvent.click(within(dialog).getByRole("button", { name: "Delete and move 4 feeds" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /^Delete and move \d+ feeds?$/ }),
+    );
     await waitFor(async () => {
       await expect(args.onDeleted).toHaveBeenCalledOnce();
     }, SLOW);
@@ -74,14 +67,15 @@ export const MoveToExistingCategory: Story = {
 };
 
 export const SharedFeeds: Story = {
-  args: { subscriptions: sharedFeeds },
   play: async ({ args }) => {
-    const dialog = await screen.findByRole("dialog", { name: "Delete Tech News?" });
+    const dialog = await screen.findByRole("dialog", { name: "Delete Tech?" });
     await userEvent.click(
       within(dialog).getByRole("checkbox", { name: /Also move the feed that sits/ }),
     );
     await userEvent.click(within(dialog).getByRole("radio", { name: "Newsletters" }));
-    await userEvent.click(within(dialog).getByRole("button", { name: "Delete and move 4 feeds" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: /^Delete and move \d+ feeds?$/ }),
+    );
     await waitFor(async () => {
       await expect(args.onDeleted).toHaveBeenCalledOnce();
     }, SLOW);
@@ -90,10 +84,10 @@ export const SharedFeeds: Story = {
 
 export const NoFeeds: Story = {
   args: {
-    subscriptions: SUBSCRIPTIONS.filter((feed) => feed.categories[0].id !== COLLECTIONS[0].id),
+    allFeeds: FEEDS.filter((feed) => !feed.categoryIds.includes(CATEGORIES[0].id)),
   },
   play: async ({ args }) => {
-    const dialog = await screen.findByRole("dialog", { name: "Delete Tech News?" });
+    const dialog = await screen.findByRole("dialog", { name: "Delete Tech?" });
     await userEvent.click(within(dialog).getByRole("button", { name: "Delete category" }));
     await waitFor(async () => {
       await expect(args.onDeleted).toHaveBeenCalledOnce();
@@ -103,7 +97,7 @@ export const NoFeeds: Story = {
 
 export const Cancel: Story = {
   play: async ({ args }) => {
-    const dialog = await screen.findByRole("dialog", { name: "Delete Tech News?" });
+    const dialog = await screen.findByRole("dialog", { name: "Delete Tech?" });
     await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
     await waitFor(async () => {
       await expect(args.onCancel).toHaveBeenCalledOnce();

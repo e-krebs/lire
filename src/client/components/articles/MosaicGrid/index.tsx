@@ -1,12 +1,13 @@
 import { Link } from "@tanstack/react-router";
+import type { StreamKey } from "shared/feedsApi/streamKey";
 import { useT } from "client/i18n/useT";
 import { MIN_SEARCH_LENGTH, keys, useSearchContents, useStream } from "client/api/queries";
 import { MosaicBody } from "./MosaicBody";
 import { actionClassName } from "./shared";
 
 interface MosaicGridProps {
-  /** Full id of the stream to list. */
-  streamId: string;
+  /** The stream to list. */
+  streamKey: StreamKey;
   /** Hide entries already read. */
   unreadOnly: boolean;
   /** Date sort order. */
@@ -17,10 +18,10 @@ interface MosaicGridProps {
   readerOpen?: boolean;
 }
 
-// Searching swaps the stream query for /v3/search/contents. Both hooks always run, since a hook
+// Searching swaps the stream query for `GET /api/search`. Both hooks always run, since a hook
 // can't be conditional, and the one that isn't wanted stays disabled.
 export const MosaicGrid = ({
-  streamId,
+  streamKey,
   unreadOnly,
   ranked,
   query = "",
@@ -28,8 +29,8 @@ export const MosaicGrid = ({
 }: MosaicGridProps) => {
   const t = useT();
   const searching = query.trim() !== "";
-  const streamResult = useStream({ streamId, unreadOnly, ranked, enabled: !searching });
-  const searchResult = useSearchContents({ streamId, query, unreadOnly, enabled: searching });
+  const streamResult = useStream({ streamKey, unreadOnly, order: ranked, enabled: !searching });
+  const searchResult = useSearchContents({ streamKey, query, unreadOnly, enabled: searching });
 
   // The search hook stays disabled below the minimum, so `isPending` would otherwise spin forever.
   if (searching && query.trim().length < MIN_SEARCH_LENGTH) {
@@ -44,12 +45,12 @@ export const MosaicGrid = ({
   }
 
   const queryKey = searching
-    ? keys.search({ streamId, query, unreadOnly })
-    : keys.stream({ streamId, unreadOnly, ranked });
+    ? keys.search({ streamKey, query, unreadOnly })
+    : keys.stream({ streamKey, unreadOnly, order: ranked });
   return (
     <MosaicBody
       key={JSON.stringify(queryKey)}
-      streamId={streamId}
+      streamKey={streamKey}
       unreadOnly={unreadOnly}
       result={searching ? searchResult : streamResult}
       queryKey={queryKey}

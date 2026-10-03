@@ -3,7 +3,7 @@ import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 import { resetFixtureState } from "client/api/adapters/fixture";
 import { FeedPanel } from "client/components/subscriptions/FeedPanel";
 import { withQueryClient } from "stories/decorators";
-import { COLLECTIONS, SUBSCRIPTIONS } from "stories/fixtures";
+import { CATEGORIES, FEEDS } from "stories/fixtures";
 
 const SLOW = { timeout: 10_000 };
 
@@ -16,7 +16,7 @@ const meta = {
     resetFixtureState();
   },
   argTypes: { feed: { control: false }, onClose: { control: false } },
-  args: { feed: SUBSCRIPTIONS[0], collections: COLLECTIONS, onClose: fn() },
+  args: { feed: FEEDS[0], categories: CATEGORIES, onClose: fn() },
 } satisfies Meta<typeof FeedPanel>;
 
 export default meta;
@@ -26,14 +26,14 @@ export const Default: Story = {};
 
 export const Save: Story = {
   play: async ({ args }) => {
-    const panel = await screen.findByRole("complementary", { name: "Example News" });
+    const panel = await screen.findByRole("complementary", { name: "Example Tech Daily" });
     const title = within(panel).getByRole("textbox", { name: "Title" });
     await userEvent.clear(title);
     await userEvent.click(within(panel).getByRole("button", { name: "Save changes" }));
     await expect(
       await within(panel).findByText("Enter a title for this feed."),
     ).toBeInTheDocument();
-    await userEvent.type(title, "Example News Renamed");
+    await userEvent.type(title, "Example Tech Daily Renamed");
     await userEvent.click(within(panel).getByRole("checkbox", { name: "Design" }));
     await userEvent.click(within(panel).getByRole("checkbox", { name: "Opens on its site" }));
     await userEvent.click(within(panel).getByRole("button", { name: "Save changes" }));
@@ -45,14 +45,16 @@ export const Save: Story = {
 
 export const Unsubscribe: Story = {
   play: async ({ args }) => {
-    const panel = await screen.findByRole("complementary", { name: "Example News" });
+    const panel = await screen.findByRole("complementary", { name: "Example Tech Daily" });
     await userEvent.click(within(panel).getByRole("button", { name: "Unsubscribe…" }));
-    const dialog = await screen.findByRole("dialog", { name: "Unsubscribe from Example News?" });
+    const dialog = await screen.findByRole("dialog", {
+      name: "Unsubscribe from Example Tech Daily?",
+    });
     await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
     await waitFor(async () => {
       await expect(screen.queryByRole("dialog")).toBeNull();
     });
-    await userEvent.click(within(panel).getByRole("checkbox", { name: "Tech News" }));
+    await userEvent.click(within(panel).getByRole("checkbox", { name: "Tech" }));
     await expect(
       within(panel).getByText("Clearing every box unsubscribes this feed."),
     ).toBeVisible();

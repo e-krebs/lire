@@ -4,24 +4,13 @@ import type { ComponentProps } from "react";
 import type { Decorator, Meta, StoryObj } from "@storybook/react-vite";
 import { useArgs } from "storybook/preview-api";
 import { fn } from "storybook/test";
+import { directOpenKey } from "shared/feedsApi/preferences";
 import { MosaicTile } from "client/components/articles/MosaicTile";
 import { withRouter } from "stories/decorators";
 import { ENTRY } from "stories/fixtures";
 import { swipe } from "./swipe";
 
 const PHOTO = "https://picsum.photos/id/1015/700/1000";
-
-// The text card's color is a hue derived from the feed id, so another feed is another color.
-// Each id here hashes to a distinct hue.
-const FEEDS = [
-  "feed/http://example-news.test/rss",
-  "feed/http://blog.test/atom",
-  "feed/http://science.test/rss",
-  "feed/http://games.test/rss",
-  "feed/http://cooking.test/atom",
-  "feed/http://news.test/rss",
-  "feed/http://music.test/atom",
-];
 
 type Args = ComponentProps<typeof MosaicTile> & {
   gesture: "none" | "swipe" | "hold";
@@ -35,7 +24,7 @@ const WithPreferences: Decorator<Args> = function WithPreferences(Story, { args 
   );
   client.setQueryData(
     ["preferences"],
-    args.directOpen ? { [`subscription/${args.streamId}/entryNavigation`]: "visit" } : {},
+    args.directOpen ? { [directOpenKey(args.entry.feedId)]: "visit" } : {},
   );
   return (
     <QueryClientProvider client={client}>
@@ -57,13 +46,12 @@ const meta = {
     ),
   ],
   argTypes: {
-    streamId: { control: "select", options: FEEDS },
     entry: { control: "object" },
     slot: { control: false },
     gesture: { control: "inline-radio", options: ["none", "swipe", "hold"] },
   },
   args: {
-    streamId: ENTRY.origin.streamId,
+    streamKey: "all",
     entry: ENTRY,
     slot: { x: 0, y: 0, width: 384, height: 256 },
     tabIndex: 0,
@@ -82,11 +70,7 @@ const meta = {
   render: function Render({ gesture, image, directOpen: _directOpen, ...args }) {
     const [, updateArgs] = useArgs();
     const [generation, setGeneration] = useState(0);
-    const entry = {
-      ...args.entry,
-      origin: { ...args.entry.origin, streamId: args.streamId },
-      visual: image ? { url: PHOTO, width: 700, height: 1000 } : undefined,
-    };
+    const entry = { ...args.entry, imageUrl: image ? PHOTO : undefined };
 
     // A fresh tile per gesture, then a finger drags it 160px: "swipe" lifts, "hold" stays down.
     useEffect(() => {

@@ -43,7 +43,7 @@ const meta = {
   ],
   parameters: { layout: "fullscreen" },
   args: {
-    streamId: "user/5f3d4b2a-1234-4c56-8def-9876543210ab/category/global.all",
+    streamKey: "all",
     unreadOnly: false,
     ranked: "newest",
   },
@@ -156,7 +156,7 @@ export const KeyboardMarkRead: Story = {
 };
 
 export const Empty: Story = {
-  args: { streamId: "feed/http://nothing.test/rss" },
+  args: { streamKey: "feed:999" },
   play: async ({ canvasElement }) => {
     await within(canvasElement).findByText("Nothing to read here.", {}, TIMEOUT);
     const pane = canvasElement.querySelector(".scroll-pane");
@@ -169,8 +169,8 @@ export const Empty: Story = {
 };
 
 export const LoadFailed: Story = {
-  // The fixture search answers 400 for an empty stream id, which the stream endpoint accepts.
-  args: { streamId: "", query: "news" },
+  // The search answers 400 for a feed key that isn't numeric.
+  args: { streamKey: "feed:abc", query: "news" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByRole("alert", {}, TIMEOUT);

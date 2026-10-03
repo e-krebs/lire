@@ -1,13 +1,13 @@
 import { useId, useState } from "react";
 import {
   DeleteAndMoveError,
-  useCreateCollection,
+  useCreateCategory,
   useDeleteCategoryAndMove,
-  useDeleteCollection,
+  useDeleteCategory,
 } from "client/api/queries";
 import { feedsInCategory, orphansOf } from "client/api/selectors";
 import { useT } from "client/i18n/useT";
-import type { Collection, Subscription } from "shared/feedsApi/types";
+import type { Category, Feed } from "shared/feedsApi/types";
 import { CategoryPicker } from "./CategoryPicker";
 import { ConfirmDialog } from "./ConfirmDialog";
 
@@ -49,11 +49,11 @@ interface DeleteCategoryDialogProps {
   /** Dialog is shown. */
   open: boolean;
   /** The category to delete. */
-  category: Collection;
+  category: Category;
   /** All categories, for the orphans' target. */
-  collections: Collection[];
-  /** All subscriptions, to find the feeds left without a category. */
-  subscriptions: Subscription[];
+  categories: Category[];
+  /** All feeds, to find the feeds left without a category. */
+  allFeeds: Feed[];
   /** Dialog dismissed without deleting. */
   onCancel: () => void;
   /** Delete request succeeded. */
@@ -63,8 +63,8 @@ interface DeleteCategoryDialogProps {
 export const DeleteCategoryDialog = ({
   open,
   category,
-  collections,
-  subscriptions,
+  categories,
+  allFeeds,
   onCancel,
   onDeleted,
 }: DeleteCategoryDialogProps) => {
@@ -73,28 +73,28 @@ export const DeleteCategoryDialog = ({
   const [targetId, setTargetId] = useState<string | undefined>(undefined);
   const [moveAll, setMoveAll] = useState(false);
   const deleteAndMove = useDeleteCategoryAndMove();
-  const deleteCollection = useDeleteCollection();
-  const createCollection = useCreateCollection();
+  const deleteCategory = useDeleteCategory();
+  const createCategory = useCreateCategory();
 
-  const total = feedsInCategory({ subscriptions, categoryId: category.id }).length;
-  const orphans = orphansOf({ subscriptions, categoryId: category.id }).length;
+  const total = feedsInCategory({ feeds: allFeeds, categoryId: category.id }).length;
+  const orphans = orphansOf({ feeds: allFeeds, categoryId: category.id }).length;
   const shared = total - orphans;
   const moveCount = moveAll ? total : orphans;
-  const pending = deleteAndMove.isPending || deleteCollection.isPending;
-  const deleteError = deleteAndMove.error ?? deleteCollection.error;
+  const pending = deleteAndMove.isPending || deleteCategory.isPending;
+  const deleteError = deleteAndMove.error ?? deleteCategory.error;
 
   const cancel = (): void => {
     setTargetId(undefined);
     setMoveAll(false);
     deleteAndMove.reset();
-    deleteCollection.reset();
-    createCollection.reset();
+    deleteCategory.reset();
+    createCategory.reset();
     onCancel();
   };
 
   const confirm = (): void => {
     if (moveCount === 0) {
-      deleteCollection.mutate(category.id, { onSuccess: onDeleted });
+      deleteCategory.mutate({ categoryId: category.id }, { onSuccess: onDeleted });
       return;
     }
     if (targetId === undefined) return;
@@ -117,7 +117,7 @@ export const DeleteCategoryDialog = ({
               <p className="text-xs font-semibold text-muted">{t.moveTo({ count: moveCount })}</p>
               <CategoryPicker
                 key={category.id}
-                categories={collections}
+                categories={categories}
                 selected={targetId === undefined ? [] : [targetId]}
                 onChange={([id]) => {
                   setTargetId(id);
@@ -125,10 +125,10 @@ export const DeleteCategoryDialog = ({
                 mode="single"
                 exclude={[category.id]}
                 onCreate={(label) => {
-                  createCollection.mutate(label, {
-                    onSuccess: (collection) => {
+                  createCategory.mutate(label, {
+                    onSuccess: (created) => {
                       // Creating the doomed category's own name returns its id.
-                      if (collection.id !== category.id) setTargetId(collection.id);
+                      if (created.id !== category.id) setTargetId(created.id);
                     },
                   });
                 }}
@@ -157,14 +157,14 @@ export const DeleteCategoryDialog = ({
               {errorCopy({ error: deleteError, label: category.label, t })}
             </p>
           )}
-          {createCollection.data?.id === category.id && targetId === undefined ? (
+          {createCategory.data?.id === category.id && targetId === undefined ? (
             <p role="alert" className="text-sm text-danger">
               {t.pickAnother({ label: category.label })}
             </p>
           ) : null}
-          {createCollection.isError ? (
+          {createCategory.isError ? (
             <p role="alert" className="text-sm text-danger">
-              {t.createCategoryFailed({ message: createCollection.error.message })}
+              {t.createCategoryFailed({ message: createCategory.error.message })}
             </p>
           ) : null}
         </div>

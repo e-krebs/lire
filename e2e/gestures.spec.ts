@@ -1,9 +1,9 @@
 import { expect, test, type Locator, type Page } from "./fixtures";
 
-// The seed holds 35 unread entries and a stream page holds 20, so the unread-only default view
-// has exactly two pages.
-const FIRST_PAGE = 20;
-const UNREAD_TOTAL = 35;
+// The seed holds 38 unread entries and a river page holds 12, so the unread-only default view
+// has four pages.
+const FIRST_PAGE = 12;
+const UNREAD_TOTAL = 38;
 
 const ui = (page: Page) => ({
   get entriesRegion() {
@@ -82,13 +82,15 @@ test.describe("gestures", () => {
     await expect(pageUi.tiles.first()).toBeVisible();
     await expect(pageUi.tiles).toHaveCount(FIRST_PAGE);
 
-    await pageUi.tiles.last().scrollIntoViewIfNeeded();
-    await pageUi.entriesRegion.evaluate((element) => {
-      const pane = element.closest(".scroll-pane") ?? element.querySelector(".scroll-pane");
-      pane?.scrollTo({ top: pane.scrollHeight });
-    });
-
-    await expect(pageUi.tiles).toHaveCount(UNREAD_TOTAL);
+    // Each scroll to the end loads one more page.
+    await expect(async () => {
+      await pageUi.tiles.last().scrollIntoViewIfNeeded();
+      await pageUi.entriesRegion.evaluate((element) => {
+        const pane = element.closest(".scroll-pane") ?? element.querySelector(".scroll-pane");
+        pane?.scrollTo({ top: pane.scrollHeight });
+      });
+      await expect(pageUi.tiles).toHaveCount(UNREAD_TOTAL, { timeout: 1_000 });
+    }).toPass();
   });
 
   test("resizes the reader panel by drag and by keys, and keeps the width", async ({

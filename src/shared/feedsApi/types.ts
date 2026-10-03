@@ -1,204 +1,144 @@
 import { z } from "zod";
 
-// Feeds API shapes. Zod schemas cover response bodies the client actually parses
-// (Collection, Subscription, MarkerCounts, StreamContents, Entry, FeedSearchResponse) and stay
-// `.loose()` all the way down so a field the API adds later doesn't get silently dropped.
+// Lire API shapes, shared by the client and the Worker. Objects stay `.loose()` all the way down
+// so a field the Worker adds later doesn't get silently dropped by an older client.
+
+export const AuthStatusSchema = z.object({ signedIn: z.boolean() }).loose();
+export type AuthStatus = z.infer<typeof AuthStatusSchema>;
 
 export const ProfileSchema = z
   .object({
-    id: z.string(),
+    username: z.string(),
     email: z.string().optional(),
-    fullName: z.string().optional(),
-    picture: z.string().optional(),
   })
   .loose();
 export type Profile = z.infer<typeof ProfileSchema>;
 
+// A category is a top-level folder; its id is the folder title.
 const CategorySchema = z
   .object({
     id: z.string(),
-    label: z.string().optional(),
+    label: z.string(),
+    feedIds: z.array(z.string()),
   })
   .loose();
+export type Category = z.infer<typeof CategorySchema>;
+
+export const CategoriesSchema = z.array(CategorySchema);
 
 const FeedSchema = z
   .object({
     id: z.string(),
-    // Present on collections[].feeds and search results, absent on subscription-list items.
-    feedId: z.string().optional(),
     title: z.string(),
-    website: z.string().optional(),
+    siteUrl: z.string().optional(),
+    feedUrl: z.string().optional(),
     iconUrl: z.string().optional(),
-    visualUrl: z.string().optional(),
-    subscribers: z.number().optional(),
-    updated: z.number().optional(),
-    velocity: z.number().optional(),
-    topics: z.array(z.string()).optional(),
-    state: z.string().optional(),
+    categoryIds: z.array(z.string()),
+    isNewsletter: z.boolean(),
   })
   .loose();
 export type Feed = z.infer<typeof FeedSchema>;
 
-export const CollectionSchema = z
+export const FeedsSchema = z.array(FeedSchema);
+
+export const CountsSchema = z
   .object({
-    id: z.string(),
-    label: z.string(),
-    description: z.string().optional(),
-    cover: z.string().optional(),
-    // Older categories with a slug id (…/category/<slug>) carry no `created`.
-    created: z.number().optional(),
-    feeds: z.array(FeedSchema),
+    all: z.number(),
+    feeds: z.record(z.string(), z.number()),
+    categories: z.record(z.string(), z.number()),
   })
   .loose();
-export type Collection = z.infer<typeof CollectionSchema>;
+export type Counts = z.infer<typeof CountsSchema>;
 
-export const SubscriptionSchema = FeedSchema.extend({
-  categories: z.array(CategorySchema),
-}).loose();
-export type Subscription = z.infer<typeof SubscriptionSchema>;
-
-const UnreadCountSchema = z
-  .object({
-    id: z.string(),
-    count: z.number(),
-    updated: z.number(),
-  })
-  .loose();
-
-export const MarkerCountsSchema = z
-  .object({
-    unreadcounts: z.array(UnreadCountSchema),
-    updated: z.number(),
-  })
-  .loose();
-export type MarkerCounts = z.infer<typeof MarkerCountsSchema>;
-
-// Email newsletters (origin feed/…/email/…) come without `direction` and
-// without `published`; every other entry has both.
-const EntryContentSchema = z
-  .object({
-    content: z.string(),
-    direction: z.string().optional(),
-  })
-  .loose();
-
-const EntryOriginSchema = z
-  .object({
-    streamId: z.string(),
-    title: z.string().optional(),
-    htmlUrl: z.string().optional(),
-  })
-  .loose();
-
-const EntryLinkSchema = z
-  .object({
-    href: z.string(),
-    type: z.string().optional(),
-  })
-  .loose();
-
-const EntryVisualSchema = z
-  .object({
-    url: z.string(),
-    edgeCacheUrl: z.string().optional(),
-    width: z.number().optional(),
-    height: z.number().optional(),
-    contentType: z.string().optional(),
-    processor: z.string().optional(),
-  })
-  .loose();
-
+// `summary` and `content` are HTML. `published` is epoch milliseconds.
 export const EntrySchema = z
   .object({
     id: z.string(),
-    // Absent on some bridged feeds (e.g. Twitter mirrors).
-    originId: z.string().optional(),
-    fingerprint: z.string(),
+    feedId: z.string(),
     title: z.string().optional(),
     author: z.string().optional(),
-    published: z.number().optional(),
-    crawled: z.number(),
-    updated: z.number().optional(),
-    actionTimestamp: z.number().optional(),
+    summary: z.string().optional(),
+    content: z.string().optional(),
+    published: z.number(),
+    url: z.string().optional(),
+    imageUrl: z.string().optional(),
     unread: z.boolean(),
-    keywords: z.array(z.string()).optional(),
-    summary: EntryContentSchema.optional(),
-    content: EntryContentSchema.optional(),
-    fullContent: z.string().optional(),
-    origin: EntryOriginSchema,
-    alternate: z.array(EntryLinkSchema).optional(),
-    canonical: z.array(EntryLinkSchema).optional(),
-    canonicalUrl: z.string().optional(),
-    visual: EntryVisualSchema.optional(),
-    tags: z.array(CategorySchema).optional(),
-    categories: z.array(CategorySchema).optional(),
-    engagement: z.number().optional(),
-    engagementRate: z.number().optional(),
   })
   .loose();
 export type Entry = z.infer<typeof EntrySchema>;
 
-export const StreamContentsSchema = z
+export const EntryPageSchema = z
   .object({
-    id: z.string(),
-    title: z.string().optional(),
-    direction: z.string().optional(),
-    updated: z.number().optional(),
-    continuation: z.string().optional(),
     items: z.array(EntrySchema),
+    cursor: z.string().optional(),
   })
   .loose();
-export type StreamContents = z.infer<typeof StreamContentsSchema>;
+export type EntryPage = z.infer<typeof EntryPageSchema>;
 
 const FeedSearchResultSchema = z
   .object({
-    feedId: z.string(),
+    feedUrl: z.string(),
     title: z.string(),
-    website: z.string().optional(),
-    iconUrl: z.string().optional(),
-    visualUrl: z.string().optional(),
     subscribers: z.number().optional(),
-    description: z.string().optional(),
-    language: z.string().optional(),
   })
   .loose();
+export type FeedSearchResult = z.infer<typeof FeedSearchResultSchema>;
 
-export const FeedSearchResponseSchema = z
-  .object({
-    results: z.array(FeedSearchResultSchema),
-    hint: z.string().optional(),
-    related: z.array(z.string()).optional(),
-  })
-  .loose();
-export type FeedSearchResponse = z.infer<typeof FeedSearchResponseSchema>;
+export const FeedSearchResultsSchema = z.array(FeedSearchResultSchema);
 
-export const NewsletterAddressSchema = z
-  .object({ emailAddress: z.string(), feedId: z.string() })
-  .loose();
+export const NewsletterAddressSchema = z.object({ emailAddress: z.string() }).loose();
 export type NewsletterAddress = z.infer<typeof NewsletterAddressSchema>;
 
-// The account-wide key/value bucket behind the preferences endpoint. Other clients store
-// strings, arrays and objects in there; lire only ever writes strings.
-export const PreferencesSchema = z.record(z.string(), z.unknown());
+export const PreferencesSchema = z.record(z.string(), z.string());
 export type Preferences = z.infer<typeof PreferencesSchema>;
 
-// Request body for the markers POST. keepUnread only ever targets entries; "mark all read" is
-// markAsRead on feeds/categories — the feeds API answers 400 "unknown action parameter" to
-// `markAllRead`.
-interface MarkerActionCommon {
-  asOf?: number;
-}
+// `null` deletes the key.
+export const PreferencesUpdateSchema = z.record(z.string(), z.string().nullable());
+export type PreferencesUpdate = z.infer<typeof PreferencesUpdateSchema>;
 
-export type MarkerAction =
-  | ({ action: "markAsRead"; type: "entries"; entryIds: string[] } & MarkerActionCommon)
-  | ({ action: "markAsRead"; type: "feeds"; feedIds: string[] } & MarkerActionCommon)
-  | ({ action: "markAsRead"; type: "categories"; categoryIds: string[] } & MarkerActionCommon)
-  | ({ action: "keepUnread"; type: "entries"; entryIds: string[] } & MarkerActionCommon);
+// Query strings. Every field is optional; the Worker picks the defaults.
+const countParam = z.coerce.number().int().positive().optional();
+const unreadOnlyParam = z.stringbool().optional();
 
-// From the X-Ratelimit-* response headers. Only consumed by scripts/record-fixtures.ts.
-/** @public */
-export interface RateLimit {
-  count: number;
-  limit: number;
-  reset: number;
-}
+export const StreamEntriesQuerySchema = z
+  .object({
+    count: countParam,
+    unreadOnly: unreadOnlyParam,
+    order: z.enum(["newest", "oldest"]).optional(),
+    cursor: z.string().optional(),
+  })
+  .loose();
+
+export const SearchEntriesQuerySchema = z
+  .object({
+    streamKey: z.string(),
+    q: z.string().min(1),
+    count: countParam,
+    unreadOnly: unreadOnlyParam,
+    cursor: z.string().optional(),
+  })
+  .loose();
+
+export const SearchFeedsQuerySchema = z.object({ q: z.string().min(1) }).loose();
+
+export const DeleteCategoryQuerySchema = z.object({ moveTo: z.string().optional() }).loose();
+
+// Request bodies.
+export const MarkEntriesBodySchema = z.object({ entryIds: z.array(z.string()).min(1) }).loose();
+
+export const CreateFeedBodySchema = z
+  .object({
+    feedUrl: z.string(),
+    title: z.string().optional(),
+    categoryIds: z.array(z.string()),
+  })
+  .loose();
+
+export const UpdateFeedBodySchema = z
+  .object({
+    title: z.string().optional(),
+    categoryIds: z.array(z.string()).optional(),
+  })
+  .loose();
+
+export const CategoryBodySchema = z.object({ label: z.string().min(1) }).loose();

@@ -1,0 +1,24 @@
+{
+  "feeds": [
+    {
+      "value": "https://tech.example.test/feed.xml",
+      "label": "Example Tech Daily",
+      "num_subscribers": 1200
+    },
+    {
+      "value": "https://gardening.example.test/rss",
+      "label": "Example Gardening",
+      "num_subscribers": 310
+    },
+    {
+      "value": "https://cooking.example.test/feed",
+      "label": "Example Cooking Notes",
+      "num_subscribers": 87
+    },
+    {
+      "value": "https://design.example.test/feed",
+      "label": "Example Design Journal",
+      "num_subscribers": 540
+    }
+  ]
+}

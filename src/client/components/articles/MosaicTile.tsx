@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, MouseEvent, PointerEvent } from "react";
-import { toStreamKey } from "shared/feedsApi/streamKey";
+import type { StreamKey } from "shared/feedsApi/streamKey";
 import type { Entry } from "shared/feedsApi/types";
 import { useDirectOpen } from "client/hooks/useDirectOpen";
 import { useOriginTitle } from "client/hooks/useOriginTitle";
@@ -22,8 +22,8 @@ export interface TileSlot {
 }
 
 interface MosaicTileProps {
-  /** The full id of the stream the tile was listed in; the link carries its route key. */
-  streamId: string;
+  /** The stream the tile was listed in; the link carries its route key. */
+  streamKey: StreamKey;
   entry: Entry;
   /** Off in the recently-read stream, where every tile is read and dimming would say nothing. */
   muteRead?: boolean;
@@ -108,7 +108,7 @@ const buttonClassName = `
 
 // The masthead names the feed, so the chip carries the age alone.
 const Chip = ({ entry }: { entry: Entry }) => {
-  const timestamp = entry.published ?? entry.crawled;
+  const timestamp = entry.published;
   const locale = useLocale();
 
   return (
@@ -196,7 +196,7 @@ const Masthead = ({
 };
 
 export const MosaicTile = ({
-  streamId,
+  streamKey,
   entry,
   muteRead = true,
   slot,
@@ -207,23 +207,19 @@ export const MosaicTile = ({
   swipeable = false,
   leavesWhenRead = false,
 }: MosaicTileProps) => {
-  const image = useImageFallback({
-    url: entry.visual?.url,
-    fallbackUrl: entry.visual?.edgeCacheUrl,
-  });
+  const image = useImageFallback({ url: entry.imageUrl });
   const t = useT();
   const hasImage = image.src !== undefined;
   const isRead = muteRead && !entry.unread;
-  const { width, height } = entry.visual ?? {};
   const title = entry.title ? decodeEntities(entry.title) : t.articles.untitled;
-  const originTitle = useOriginTitle(entry.origin);
-  const original = entry.alternate?.[0]?.href;
+  const originTitle = useOriginTitle({ feedId: entry.feedId });
+  const original = entry.url;
   // A newsletter has no page of its own, so the flag has nothing to open: the card stays a route.
-  const directOpen = useDirectOpen(entry.origin.streamId) && original !== undefined;
+  const directOpen = useDirectOpen(entry.feedId) && original !== undefined;
   // The custom property feeds every colour in styles.css; typed as an intersection, since
   // React's CSSProperties has no index for `--*` keys.
   const hueStyle: CSSProperties & { "--hue": string } = {
-    "--hue": String(feedHue(entry.origin.streamId)),
+    "--hue": String(feedHue(entry.feedId)),
   };
   const toggleLabel = entry.unread ? t.articles.markAsRead : t.articles.markAsUnread;
 
@@ -424,7 +420,7 @@ export const MosaicTile = ({
         ) : (
           <Link
             to="/stream/$streamKey/entry/$entryId"
-            params={{ streamKey: toStreamKey(streamId), entryId: entry.id }}
+            params={{ streamKey, entryId: entry.id }}
             search={(prev) => prev}
             viewTransition
             aria-label={title}
@@ -448,8 +444,6 @@ export const MosaicTile = ({
               alt=""
               loading="lazy"
               decoding="async"
-              // The slot already fixes the box; the intrinsic aspect only matters before it applies.
-              style={{ aspectRatio: width && height ? `${width} / ${height}` : undefined }}
               className={`
               block size-full object-cover object-top
               group-data-read/tile:grayscale group-data-read/tile:opacity-70
@@ -462,7 +456,6 @@ export const MosaicTile = ({
             tile-glass
             group-not-data-has-image/tile:size-full group-not-data-has-image/tile:justify-end
             group-not-data-has-image/tile:p-3 group-not-data-has-image/tile:pt-10
-            group-data-read/tile:opacity-70
           `}
           >
             <Masthead

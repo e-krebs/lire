@@ -1,9 +1,8 @@
 # Auth
 
 Lire has one user, its owner, and two layers of auth. Cloudflare Access decides who may reach the
-Worker at all. A refresh token for the feeds API, pasted once by the owner, decides what the
-Worker may do upstream. There is no OAuth redirect flow: the owner copies a refresh token from a
-signed-in session of the feeds API and pastes it into a form the Worker serves.
+Worker at all. A NewsBlur OAuth token, obtained once through the code flow, decides what the Worker
+may do upstream ([ADR 0010](../adr/0010-newsblur-oauth.md)).
 
 ## Layer 1: Cloudflare Access and the owner pin
 
@@ -29,51 +28,48 @@ lives in a dashboard, and a broadened policy (a new rule, a group, a one-time PI
 would otherwise reach the owner's token. The pin keeps the Worker's own idea of "the owner" in
 the Worker. Unset, the Worker trusts the Access policy alone; a CI deploy fails without it.
 
-## Layer 2: the pasted refresh token
+## Layer 2: the NewsBlur OAuth token
 
-### The login form
+### The sign-in flow
 
-`GET /api/auth/login` returns a small HTML form built by the Worker
-([worker.ts](../../src/server/worker.ts#L41-L79)), not by the SPA. The form holds a password
-field for the refresh token and a hidden CSRF token, and the response sets the same CSRF token in
-an `HttpOnly`, `Secure`, `SameSite=Strict` cookie scoped to the login path. It is sent with
-`Cache-Control: no-store`. The SPA's `SignIn` screen is just a link to this page, and the PWA
-service worker is told not to answer it (see [architecture.md](architecture.md#pwa)).
+The SPA's `SignIn` screen is a link to `GET /api/auth/login`, which the PWA service worker is told
+not to answer (see [architecture.md](architecture.md#pwa)).
 
-`POST /api/auth/login` ([worker.ts](../../src/server/worker.ts#L99-L117)) checks the request
-origin and the CSRF pair, trims the pasted token, and hands it to the Durable Object. On success
-it redirects to `/`. On a rejected token it re-renders the form with an error and a `400`, or a
-`503` when the feeds API is unavailable.
+1. `/api/auth/login` ([worker.ts](../../src/server/worker.ts)) sets a random `lire_oauth_state`
+   cookie and answers `302` to `${NEWSBLUR_HOST}/oauth/authorize` with `response_type=code`, the
+   client id, the callback as `redirect_uri`, `scope=read write` and the same `state`. The cookie is
+   `HttpOnly; Secure; SameSite=Lax; Path=/api/auth` and lives ten minutes. `Lax` lets the browser
+   send it back on the top-level redirect from NewsBlur, which `Strict` would block.
+2. NewsBlur asks the owner to approve, then redirects to `/api/auth/callback?code&state`.
+3. The callback compares `state` with the cookie in a constant-time compare. It then posts the code
+   and the `NEWSBLUR_CLIENT_SECRET` to `/oauth/token`, and reads the NewsBlur user id from
+   `/social/load_user_profile` with the new token.
+4. It stores the token and the user id in the Durable Object, clears the state cookie and redirects
+   to `/`.
 
-### Token storage and refresh
+Any failure in the callback (a `state` mismatch, a refused exchange, a malformed answer) clears the
+cookie and answers `400` with a short page that links back to `/api/auth/login`.
 
-The tokens live in one Durable Object, [FeedlyAuth](../../src/server/feedlyAuth.ts), addressed by
-the fixed name `singleton` ([worker.ts](../../src/server/worker.ts#L19)). One user means one
-object, so every request in every isolate sees the same token state, and the refresh runs in one
-place. The object stores the refresh token, the current access token and its expiry under one
-key in its SQLite-backed storage.
+### Token storage
 
-- `replaceRefreshToken` refreshes with the candidate before it stores anything. A bad paste
-  therefore keeps the current, working sign-in.
-- `getAccessToken` serves the cached access token until one minute before it expires, then
-  refreshes. A refresh that the upstream answers with `400`, `401` or `403` clears the stored
-  tokens; any other failure is `unavailable` and keeps them, so an upstream outage does not sign
-  the owner out.
-- Overlapping callers on the same refresh token share one in-flight refresh. Awaits interleave
-  even inside a Durable Object, and two parallel refreshes would rotate the token against each
-  other and leave one of them holding a dead token.
-- A login, or a clear, that lands while a refresh is in flight wins over the refresh result: the
-  result is written only when the stored refresh token is still the one it started from.
+The token lives in one Durable Object, [NewsblurAuth](../../src/server/newsblurAuth.ts), addressed
+by the fixed name `singleton` ([worker.ts](../../src/server/worker.ts)). One user means one object,
+so every request in every isolate sees the same token. The object stores `{accessToken, userId}`
+under one key in its SQLite-backed storage. The token is valid for ten years and has no refresh:
+the Worker sends it as `Authorization: Bearer <token>` and never renews it.
 
-### The one retry on a 401
+The same object holds the cache of the folder tree (see
+[architecture.md](architecture.md#worker)). Storing or clearing the token drops the cache.
 
-When the upstream answers a proxied call with `401`, the Worker asks the Durable Object for a
-fresh token, passing the rejected one, and sends the call once more
-([worker.ts](../../src/server/worker.ts#L153-L164)). If the rejected token is no longer the cached
-one, a login happened in between, and the object serves the login's token instead of refreshing.
-A second `401` returns `sign_in_required` to the client without dropping the refresh token, since
-the upstream has just accepted it. A refresh failure maps to `401 sign_in_required` or
-`503 upstream_unavailable`.
+### When NewsBlur rejects the token
+
+An upstream `401` or `403` makes `handle` answer `401 sign_in_required`, and the Worker clears the
+stored token. The next `/api/auth/status` answers `{signedIn: false}`, and the owner signs in
+again.
+
+NewsBlur's read views do not always answer `401` on a bad token: they answer `200` with the data of
+a fallback user. So `handle` also checks every read answer against the user id stored at sign-in,
+and a mismatch is treated as a rejected token.
 
 ## CSRF checks
 
@@ -84,26 +80,28 @@ call:
 
 - [isSameOrigin](../../src/server/worker.ts#L81-L92) compares `Origin`, or `Referer` when
   `Origin` is absent, with the Worker's own origin. A request with neither fails.
-- The login post must pass `isSameOrigin`, and its form CSRF token must equal the cookie one in a
-  constant-time compare ([worker.ts](../../src/server/worker.ts#L100-L107)).
-- On the proxy, every method other than `GET` must pass `isSameOrigin`, and a `POST` must carry a
-  JSON `Content-Type` ([worker.ts](../../src/server/worker.ts#L130-L136)). A cross-site HTML form
-  cannot send `application/json`, so this closes the simple-request path. It is also why the
-  client sends `{}` as the body of a bodiless POST.
+- On the contract routes, every method other than `GET` must pass `isSameOrigin`, and a `POST` or
+  `PATCH` must carry a JSON `Content-Type` ([worker.ts](../../src/server/worker.ts)). A cross-site
+  HTML form cannot send `application/json`, so this closes the simple-request path. It is also why
+  the client sends `{}` as the body of a bodiless POST.
+- The login and callback routes are `GET` redirects that change nothing until the callback, and the
+  callback is protected by the `state` cookie instead.
 
-`GET /api/auth/status` and proxied `GET` calls change nothing, so they skip these checks.
+`GET /api/auth/status` and every other `GET` call change nothing, so they skip these checks.
 
 ## Limitations
 
-- **One user.** The singleton Durable Object holds one token set. A second user would need a key
-  per Access identity and is out of scope.
-- **Manual re-auth.** When the upstream revokes the refresh token, the SPA shows the sign-in
-  screen and the owner pastes a new token. Nothing renews it without the owner.
-- **No sign-out route.** The Worker exposes no endpoint that clears the stored tokens; the
-  Durable Object clears them only when a refresh is rejected.
-- **Tokens at rest.** The refresh token sits in Durable Object storage in plain form, protected by
+- **One user.** The singleton Durable Object holds one token. A second user would need a key per
+  Access identity and is out of scope.
+- **Manual re-auth.** When NewsBlur revokes the token, the SPA shows the sign-in screen and the
+  owner signs in again. Nothing renews it without the owner.
+- **No sign-out route.** The Worker exposes no endpoint that clears the stored token; it clears it
+  only when NewsBlur rejects it.
+- **Token at rest.** The token sits in Durable Object storage in plain form, protected by
   Cloudflare's storage and by the Worker being its only reader. It is not encrypted with a key of
   the app's own.
+- **Client secret.** `NEWSBLUR_CLIENT_SECRET` is a Worker secret, set by CI from a GitHub secret.
+  It never reaches the client.
 - **Pin is required for a CI deploy only.** The code treats the `ACCESS_ALLOWED_EMAIL` secret as
   optional, and a Worker deployed without it relies on the Access policy alone. CI fails both the
   Access check and the Worker deploy when the pin is unset.

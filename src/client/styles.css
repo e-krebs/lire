@@ -381,9 +381,14 @@ body {
   --tile-label: light-dark(oklch(0.4 0.17 var(--hue)), oklch(0.85 0.15 var(--hue)));
 }
 /* A read text card goes nearly grayscale, keeping only a trace of its hue. */
-[data-read] [data-entry-id]:not([data-has-image]) .tile-card {
+[data-entry-id][data-read]:not([data-has-image]) .tile-card {
   background: light-dark(oklch(0.94 0.006 var(--hue)), oklch(0.27 0.012 var(--hue)));
   --tile-label: light-dark(oklch(0.5 0.05 var(--hue)), oklch(0.75 0.05 var(--hue)));
+}
+/* A read photo card fades its glass through the background: dimming the whole element would
+   take the label under 4.5:1. */
+[data-read][data-has-image] .tile-glass {
+  background: light-dark(oklch(0.97 0.02 var(--hue) / 55%), oklch(0.22 0.03 var(--hue) / 50%));
 }
 .tile-label {
   color: var(--tile-label);

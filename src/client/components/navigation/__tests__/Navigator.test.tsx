@@ -16,15 +16,16 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http, type HttpHandler } from "msw";
 import { describe, expect, it, vi } from "vitest";
-import { fromStreamKey, toStreamKey } from "shared/feedsApi/streamKey";
+import { parseStreamKey, toStreamKey } from "shared/feedsApi/streamKey";
 import { resetFixtureState } from "client/api/adapters/fixture";
 import { updatePreferences } from "client/api/client";
-import { keys, useCollections, useProfile, useSubscriptions } from "client/api/queries";
+import { CATEGORY_ORDER_KEY } from "shared/feedsApi/preferences";
+import { keys, useCategories, useFeeds } from "client/api/queries";
 import { setLocalePreference } from "client/i18n/locale";
 import { setBarPosition } from "client/hooks/utils/barPosition";
 import { catalogs } from "client/i18n/messages";
 import { streamLabel } from "client/utils/streamLabel";
-import type { Collection, Subscription } from "shared/feedsApi/types";
+import type { Category, Feed } from "shared/feedsApi/types";
 import { fixtureBackend } from "test/fixtureBackend";
 import { server } from "test/msw";
 import { seedCategoryId, seedCategoryKey } from "test/seedCategories";
@@ -32,8 +33,8 @@ import { LocationBar } from "../LocationBar";
 import { Navigator } from "../Navigator";
 import type { NavigatorPanelHandle } from "../Navigator";
 
-const TECH_NEWS_KEY = seedCategoryKey("Tech News");
-const FEED_KEY = "feed:http://example-news.test/rss";
+const TECH_KEY = seedCategoryKey("Tech");
+const FEED_KEY = "feed:101";
 // Navigator's own gap between the pill and the panel.
 const POPOVER_GAP = 6;
 
@@ -62,7 +63,7 @@ const ui = {
   get buttons() {
     return screen.queryAllByRole("button");
   },
-  // A typed query shows the matches *and* the tree below them, so a feed or collection can
+  // A typed query shows the matches *and* the tree below them, so a feed or category can
   // legitimately hold two rows at once.
   async rows(name: string | RegExp) {
     return screen.findAllByRole("button", { name });
@@ -93,10 +94,10 @@ const ui = {
     return screen.getByRole("button", { name: "Clear search text" });
   },
   async feedRow() {
-    return screen.findByRole("button", { name: /^Example News/ });
+    return screen.findByRole("button", { name: /^Example Tech Daily/ });
   },
   async categoryRow() {
-    return screen.findByRole("button", { name: /^Tech News/ });
+    return screen.findByRole("button", { name: /^Tech\b/ });
   },
   async clearScope(label: string) {
     return screen.findByRole("button", { name: `Search everywhere instead of ${label}` });
@@ -199,24 +200,22 @@ const setup = ({
     </QueryClientProvider>,
   );
 
-  const subscriptionTitled = (title: string): Subscription => {
-    const found = client
-      .getQueryData<Subscription[]>(keys.subscriptions)
-      ?.find((subscription) => subscription.title === title);
-    if (!found) throw new Error(`no subscription titled ${title}`);
+  const feedTitled = (title: string): Feed => {
+    const found = client.getQueryData<Feed[]>(keys.feeds)?.find((feed) => feed.title === title);
+    if (!found) throw new Error(`no feed titled ${title}`);
     return found;
   };
-  const collectionLabeled = (label: string): Collection => {
+  const categoryLabeled = (label: string): Category => {
     const found = client
-      .getQueryData<Collection[]>(keys.collections)
-      ?.find((collection) => collection.label === label);
-    if (!found) throw new Error(`no collection labeled ${label}`);
+      .getQueryData<Category[]>(keys.categories)
+      ?.find((category) => category.label === label);
+    if (!found) throw new Error(`no category labeled ${label}`);
     return found;
   };
-  // Every seed feed sits in a category, so no row appears only once subscriptions load.
-  const subscriptionsLoaded = async () =>
+  // Every seed feed sits in a category, so no row appears only once feeds load.
+  const feedsLoaded = async () =>
     waitFor(() => {
-      expect(client.getQueryState(keys.subscriptions)?.status).toBe("success");
+      expect(client.getQueryState(keys.feeds)?.status).toBe("success");
     });
 
   const switchTier = (next: "phone" | "desktop"): void => {
@@ -229,9 +228,9 @@ const setup = ({
   return {
     router,
     switchTier,
-    subscriptionTitled,
-    collectionLabeled,
-    subscriptionsLoaded,
+    feedTitled,
+    categoryLabeled,
+    feedsLoaded,
     user: userEvent.setup(),
   };
 };
@@ -259,9 +258,8 @@ const Harness = () => {
   const params = useParams({ strict: false });
   const search = useSearch({ strict: false });
   const navigate = useNavigate();
-  const collections = useCollections();
-  const subscriptions = useSubscriptions();
-  const profile = useProfile();
+  const categories = useCategories();
+  const feeds = useFeeds();
   const streamKey = params.streamKey;
   const articleQuery = typeof search.q === "string" ? search.q : undefined;
   const [panelOpen, setPanelOpen] = useState(true);
@@ -271,21 +269,17 @@ const Harness = () => {
   const panelHandleRef = useRef<NavigatorPanelHandle>(null);
 
   const scopeKey = streamKey ?? "all";
-  const userId = profile.data?.id;
-  const scopeStreamId = userId === undefined ? undefined : fromStreamKey({ key: scopeKey, userId });
-  const scopeLabel =
-    scopeStreamId === undefined
-      ? scopeKey
-      : streamLabel({
-          streamId: scopeStreamId,
-          collections: collections.data,
-          subscriptions: subscriptions.data,
-          labels: {
-            allArticles: catalogs.en.navigation.allArticles,
-            recentlyRead: catalogs.en.navigation.recentlyRead,
-            uncategorized: catalogs.en.shell.uncategorized,
-          },
-        }).label;
+  const scopeStream = parseStreamKey(scopeKey) ?? { kind: "all" as const };
+  const scopeLabel = streamLabel({
+    stream: scopeStream,
+    categories: categories.data,
+    feeds: feeds.data,
+    labels: {
+      allArticles: catalogs.en.navigation.allArticles,
+      recentlyRead: catalogs.en.navigation.recentlyRead,
+      uncategorized: catalogs.en.shell.uncategorized,
+    },
+  }).label;
 
   const openPanel = (): void => {
     if (panelOpen) return;
@@ -359,19 +353,19 @@ describe("Navigator", () => {
         expect(ui.allArticles?.textContent).toMatch(/\d+/);
       });
 
-      await waitFor(() => expect(ui.queryButton("Tech News")).toBeInTheDocument());
+      await waitFor(() => expect(ui.queryButton("Tech")).toBeInTheDocument());
       // Groups start collapsed: the feed shows only after its category is expanded.
-      expect(ui.queryButton("Example News")).not.toBeInTheDocument();
-      await user.click(await ui.toggle("Tech News"));
-      await waitFor(() => expect(ui.queryButton("Example News")).toBeInTheDocument());
+      expect(ui.queryButton("Example Tech Daily")).not.toBeInTheDocument();
+      await user.click(await ui.toggle("Tech"));
+      await waitFor(() => expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument());
     });
 
     it("filters on typing, pre-selecting the article-search row", async () => {
-      const { user, subscriptionsLoaded } = setup();
-      // Wait for both the collections and the subscriptions queries to resolve — typing "tech"
+      const { user, feedsLoaded } = setup();
+      // Wait for both the categories and the feeds queries to resolve — typing "tech"
       // before then would filter over an empty tree and match nothing.
-      await waitFor(() => expect(ui.queryButton("Tech News")).toBeInTheDocument());
-      await subscriptionsLoaded();
+      await waitFor(() => expect(ui.queryButton("Tech")).toBeInTheDocument());
+      await feedsLoaded();
 
       await user.type(await ui.search, "tech");
 
@@ -380,53 +374,53 @@ describe("Navigator", () => {
       // land a tick after the row itself.
       expect(await ui.text("in All articles")).toBeInTheDocument();
       // The matches are still there, one ArrowDown below — and the tree stays browsable under
-      // them, so "Tech News" now holds two rows: the match and the tree row.
-      expect(await ui.rows("Tech News")).toHaveLength(2);
+      // them, so "Tech" now holds two rows: the match and the tree row.
+      expect(await ui.rows("Tech")).toHaveLength(2);
       expect(ui.queryButton("Recently read")).toBeInTheDocument();
     });
 
     it("reaches the browse tree with ArrowDown past the matches of a typed query", async () => {
-      const { user, subscriptionsLoaded } = setup();
-      await waitFor(() => expect(ui.queryButton("Tech News")).toBeInTheDocument());
-      await subscriptionsLoaded();
+      const { user, feedsLoaded } = setup();
+      await waitFor(() => expect(ui.queryButton("Tech")).toBeInTheDocument());
+      await feedsLoaded();
 
       await user.type(await ui.search, "tech");
-      // The search row, then the two matches — "Tech News" and "Example Tech Daily".
+      // The search row, then the two matches — "Tech" and "Example Tech Daily".
       await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
 
       await waitFor(() => expect(ui.selected).toHaveTextContent("All articles"));
     });
 
     it("collapses the surrounding collection when ArrowLeft leaves a feed row", async () => {
-      const { user, subscriptionsLoaded } = setup();
-      await subscriptionsLoaded();
+      const { user, feedsLoaded } = setup();
+      await feedsLoaded();
 
-      await user.click(await ui.toggle("Tech News"));
-      await waitFor(() => expect(ui.queryButton("Example News")).toBeInTheDocument());
+      await user.click(await ui.toggle("Tech"));
+      await waitFor(() => expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument());
 
       await user.click(await ui.search);
-      // All articles, Recently read, Tech News, then the collection's first feed.
+      // All articles, Recently read, Tech, then the collection's first feed.
       await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowLeft}");
 
-      expect(ui.queryButton("Example News")).not.toBeInTheDocument();
-      await waitFor(() => expect(ui.selected).toHaveTextContent("Tech News"));
+      expect(ui.queryButton("Example Tech Daily")).not.toBeInTheDocument();
+      await waitFor(() => expect(ui.selected).toHaveTextContent("Tech"));
     });
 
     it("keeps only Manage subscriptions in the footer", async () => {
-      const { subscriptionsLoaded } = setup();
-      await subscriptionsLoaded();
+      const { feedsLoaded } = setup();
+      await feedsLoaded();
 
       expect(ui.manageLink).toBeInTheDocument();
       expect(ui.queryButton("Add a feed…")).not.toBeInTheDocument();
     });
 
     it("browses only: management lives on the subscriptions page, one edit link away", async () => {
-      const { user, subscriptionsLoaded } = setup();
-      await subscriptionsLoaded();
-      await user.click(await ui.toggle("Tech News"));
-      await waitFor(() => expect(ui.queryButton("Example News")).toBeInTheDocument());
+      const { user, feedsLoaded } = setup();
+      await feedsLoaded();
+      await user.click(await ui.toggle("Tech"));
+      await waitFor(() => expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument());
 
-      expect(ui.editLink("Example News")).toBeInTheDocument();
+      expect(ui.editLink("Example Tech Daily")).toBeInTheDocument();
       const names = ui.buttons.map(
         (button) => button.getAttribute("aria-label") ?? button.textContent,
       );
@@ -435,30 +429,31 @@ describe("Navigator", () => {
     });
 
     it("links a feed row to its panel on the subscriptions page", async () => {
-      const { user, subscriptionTitled, subscriptionsLoaded } = setup();
-      await subscriptionsLoaded();
-      await user.click(await ui.toggle("Tech News"));
-      await waitFor(() => expect(ui.editLink("Example News")).toBeInTheDocument());
+      const { user, feedTitled, feedsLoaded } = setup();
+      await feedsLoaded();
+      await user.click(await ui.toggle("Tech"));
+      await waitFor(() => expect(ui.editLink("Example Tech Daily")).toBeInTheDocument());
 
-      const params = searchParamsOf(ui.editLink("Example News")!);
+      const params = searchParamsOf(ui.editLink("Example Tech Daily")!);
       expect(params.get("tab")).toBe("feeds");
-      expect(params.get("feed")).toBe(subscriptionTitled("Example News").id);
+      // The router JSON-encodes a numeric-looking string in the search.
+      expect(params.get("feed")).toBe(JSON.stringify(feedTitled("Example Tech Daily").id));
     });
 
     it("links a category row to its panel on the subscriptions page", async () => {
-      const { collectionLabeled, subscriptionsLoaded } = setup();
-      await subscriptionsLoaded();
-      await waitFor(() => expect(ui.editLink("Tech News")).toBeInTheDocument());
+      const { categoryLabeled, feedsLoaded } = setup();
+      await feedsLoaded();
+      await waitFor(() => expect(ui.editLink("Tech")).toBeInTheDocument());
 
-      const params = searchParamsOf(ui.editLink("Tech News")!);
+      const params = searchParamsOf(ui.editLink("Tech")!);
       expect(params.get("tab")).toBe("categories");
-      expect(params.get("category")).toBe(collectionLabeled("Tech News").id);
+      expect(params.get("category")).toBe(categoryLabeled("Tech").id);
     });
 
     it("gives All articles and Recently read no edit link", async () => {
-      const { subscriptionsLoaded } = setup();
-      await subscriptionsLoaded();
-      await waitFor(() => expect(ui.editLink("Tech News")).toBeInTheDocument());
+      const { feedsLoaded } = setup();
+      await feedsLoaded();
+      await waitFor(() => expect(ui.editLink("Tech")).toBeInTheDocument());
 
       expect(ui.editLink("All articles")).not.toBeInTheDocument();
       expect(ui.editLink("Recently read")).not.toBeInTheDocument();
@@ -466,13 +461,13 @@ describe("Navigator", () => {
 
     // jsdom has no layout, so the shared right gutter stands in for the badges lining up.
     it("keeps the edit link's gutter on every row, so the counts line up", async () => {
-      const { user, subscriptionsLoaded } = setup();
-      await subscriptionsLoaded();
-      await waitFor(() => expect(ui.queryButton("Tech News")).toBeInTheDocument());
+      const { user, feedsLoaded } = setup();
+      await feedsLoaded();
+      await waitFor(() => expect(ui.queryButton("Tech")).toBeInTheDocument());
 
       expect(ui.allArticles).toHaveClass("pr-10");
       expect(ui.queryButton("Recently read")).toHaveClass("pr-10");
-      expect(ui.queryButton("Tech News")).toHaveClass("pr-10");
+      expect(ui.queryButton("Tech")).toHaveClass("pr-10");
 
       await user.type(await ui.search, "tech");
       const searchRow = await ui.searchRow("tech");
@@ -481,31 +476,31 @@ describe("Navigator", () => {
     });
 
     it("links both rows of a typed match to the same panel", async () => {
-      const { user, collectionLabeled, subscriptionsLoaded } = setup();
-      await waitFor(() => expect(ui.queryButton("Tech News")).toBeInTheDocument());
-      await subscriptionsLoaded();
+      const { user, categoryLabeled, feedsLoaded } = setup();
+      await waitFor(() => expect(ui.queryButton("Tech")).toBeInTheDocument());
+      await feedsLoaded();
 
       await user.type(await ui.search, "tech");
 
-      const links = await ui.editLinks("Tech News");
+      const links = await ui.editLinks("Tech");
       expect(links).toHaveLength(2);
       for (const link of links) {
-        expect(searchParamsOf(link).get("category")).toBe(collectionLabeled("Tech News").id);
+        expect(searchParamsOf(link).get("category")).toBe(categoryLabeled("Tech").id);
       }
     });
 
     it("opens the panel and closes the navigator when an edit link is clicked", async () => {
-      const { user, router, subscriptionTitled, subscriptionsLoaded } = setup();
-      await subscriptionsLoaded();
-      await user.click(await ui.toggle("Tech News"));
-      await waitFor(() => expect(ui.editLink("Example News")).toBeInTheDocument());
+      const { user, router, feedTitled, feedsLoaded } = setup();
+      await feedsLoaded();
+      await user.click(await ui.toggle("Tech"));
+      await waitFor(() => expect(ui.editLink("Example Tech Daily")).toBeInTheDocument());
 
-      await user.click(ui.editLink("Example News")!);
+      await user.click(ui.editLink("Example Tech Daily")!);
 
       expect(await ui.text("subscriptions page")).toBeInTheDocument();
       expect(router.state.location.search).toMatchObject({
         tab: "feeds",
-        feed: subscriptionTitled("Example News").id,
+        feed: feedTitled("Example Tech Daily").id,
       });
       await waitFor(() => {
         expect(ui.dialog).not.toBeInTheDocument();
@@ -513,9 +508,9 @@ describe("Navigator", () => {
     });
 
     it("searches articles in the scope when Enter follows a typed query", async () => {
-      const { user, subscriptionsLoaded } = setup();
-      await waitFor(() => expect(ui.queryButton("Tech News")).toBeInTheDocument());
-      await subscriptionsLoaded();
+      const { user, feedsLoaded } = setup();
+      await waitFor(() => expect(ui.queryButton("Tech")).toBeInTheDocument());
+      await feedsLoaded();
 
       await user.type(await ui.search, "tech");
       await user.keyboard("{Enter}");
@@ -524,8 +519,8 @@ describe("Navigator", () => {
     });
 
     it("highlights no browse row until an arrow key asks for one", async () => {
-      const { user, subscriptionsLoaded } = setup();
-      await subscriptionsLoaded();
+      const { user, feedsLoaded } = setup();
+      await feedsLoaded();
 
       await user.click(await ui.search);
       expect(ui.selected).toBeNull();
@@ -535,8 +530,8 @@ describe("Navigator", () => {
     });
 
     it("walks the browse rows with ArrowDown when no query narrows the panel", async () => {
-      const { user, subscriptionsLoaded } = setup();
-      await subscriptionsLoaded();
+      const { user, feedsLoaded } = setup();
+      await feedsLoaded();
 
       await user.click(await ui.search);
       await user.keyboard("{ArrowDown}{ArrowDown}");
@@ -549,8 +544,8 @@ describe("Navigator", () => {
     });
 
     it("highlights Manage subscriptions as the last browse row, Enter opening it", async () => {
-      const { user, subscriptionsLoaded } = setup();
-      await subscriptionsLoaded();
+      const { user, feedsLoaded } = setup();
+      await feedsLoaded();
 
       await user.click(await ui.search);
       // The order doesn't wrap and clamps on its last row, so overshooting lands on the footer
@@ -568,9 +563,9 @@ describe("Navigator", () => {
     });
 
     it("clears a non-default scope from the chip, widening to every article", async () => {
-      const { user } = setup({ streamKey: TECH_NEWS_KEY });
+      const { user } = setup({ streamKey: TECH_KEY });
 
-      await user.click(await ui.clearScope("Tech News"));
+      await user.click(await ui.clearScope("Tech"));
 
       expect(await ui.text("received:all")).toBeInTheDocument();
     });
@@ -585,16 +580,14 @@ describe("Navigator", () => {
     });
 
     it("activates a feed result with ArrowDown then Enter, keeping the text as its search", async () => {
-      const { user, subscriptionsLoaded } = setup();
-      await waitFor(() => expect(ui.queryButton("Tech News")).toBeInTheDocument());
-      await subscriptionsLoaded();
+      const { user, feedsLoaded } = setup();
+      await waitFor(() => expect(ui.queryButton("Tech")).toBeInTheDocument());
+      await feedsLoaded();
 
-      await user.type(await ui.search, "gadgets");
+      await user.type(await ui.search, "Longform");
       await user.keyboard("{ArrowDown}{Enter}");
 
-      expect(
-        await ui.text("received:feed:http://example-gadgets.test/rss.xml?q=gadgets"),
-      ).toBeInTheDocument();
+      expect(await ui.text("received:feed:109?q=Longform")).toBeInTheDocument();
     });
   });
 
@@ -605,7 +598,7 @@ describe("Navigator", () => {
       const held = new Promise<void>((resolve) => {
         release = resolve;
       });
-      const handler = http.get("/api/v3/preferences", async () => {
+      const handler = http.get("/api/preferences", async () => {
         await held;
       });
       return { handler, release };
@@ -613,14 +606,14 @@ describe("Navigator", () => {
 
     it("holds the category rows behind a placeholder until the stored order loads", async () => {
       const { handler, release } = holdPreferences();
-      const { subscriptionsLoaded } = setup({ handlers: [handler] });
-      const stored = ["Archive", "Newsletters", "Design", "Tech News"];
-      await updatePreferences({ categoriesOrderingId: JSON.stringify(stored.map(seedCategoryId)) });
+      const { feedsLoaded } = setup({ handlers: [handler] });
+      const stored = ["Newsletters", "News", "Design", "Tech"];
+      await updatePreferences({ [CATEGORY_ORDER_KEY]: JSON.stringify(stored.map(seedCategoryId)) });
 
       await waitFor(() => expect(ui.allArticles).toBeInTheDocument());
-      await subscriptionsLoaded();
+      await feedsLoaded();
       expect(ui.loadingCategories).toHaveAttribute("aria-busy", "true");
-      expect(ui.queryButton("Tech News")).not.toBeInTheDocument();
+      expect(ui.queryButton("Tech")).not.toBeInTheDocument();
 
       release();
       await waitFor(() => {
@@ -634,8 +627,8 @@ describe("Navigator", () => {
 
     it("skips the held category rows when ArrowDown walks the browse tree", async () => {
       const { handler, release } = holdPreferences();
-      const { user, subscriptionsLoaded } = setup({ handlers: [handler] });
-      await subscriptionsLoaded();
+      const { user, feedsLoaded } = setup({ handlers: [handler] });
+      await feedsLoaded();
 
       await user.click(await ui.search);
       await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
@@ -650,13 +643,13 @@ describe("Navigator", () => {
   describe("when the tier changes while open", () => {
     it("keeps the panel's state", async () => {
       const { user, switchTier } = setup();
-      await user.click(await ui.toggle("Tech News"));
-      await waitFor(() => expect(ui.queryButton("Example News")).toBeInTheDocument());
+      await user.click(await ui.toggle("Tech"));
+      await waitFor(() => expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument());
 
       switchTier("desktop");
 
       expect(ui.dialog).not.toBeInTheDocument();
-      expect(ui.queryButton("Example News")).toBeInTheDocument();
+      expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument();
     });
   });
 
@@ -668,9 +661,7 @@ describe("Navigator", () => {
       await user.type(await ui.frenchSearch, "zzz");
 
       expect(await ui.text("Rechercher des articles pour « zzz »")).toBeInTheDocument();
-      expect(
-        await ui.text("Aucun flux ni collection ne correspond à « zzz »."),
-      ).toBeInTheDocument();
+      expect(await ui.text("Aucun flux ni catégorie ne correspond à « zzz ».")).toBeInTheDocument();
     });
 
     it("keeps the field, and its focus, when Escape closes the panel", async () => {
@@ -679,17 +670,17 @@ describe("Navigator", () => {
       expect(ui.dialog).not.toBeInTheDocument();
       const field = await ui.search;
       await user.click(field);
-      await waitFor(() => expect(ui.queryButton("Tech News")).toBeInTheDocument());
+      await waitFor(() => expect(ui.queryButton("Tech")).toBeInTheDocument());
 
       await user.keyboard("{Escape}");
 
       expect(await ui.search).toBe(field);
       expect(field).toHaveFocus();
-      expect(ui.queryButton("Tech News")).not.toBeInTheDocument();
+      expect(ui.queryButton("Tech")).not.toBeInTheDocument();
     });
 
     it("clears the scope on Backspace at the start of the field", async () => {
-      const { user } = setup({ tier: "desktop", streamKey: TECH_NEWS_KEY });
+      const { user } = setup({ tier: "desktop", streamKey: TECH_KEY });
 
       await user.click(await ui.search);
       await user.keyboard("{Backspace}");
@@ -698,23 +689,23 @@ describe("Navigator", () => {
     });
 
     it("keeps the typed text as the article search of the stream picked", async () => {
-      const { user, router, subscriptionsLoaded } = setup({ tier: "desktop" });
-      await waitFor(() => expect(ui.queryButton("Tech News")).toBeInTheDocument());
-      await subscriptionsLoaded();
+      const { user, router, feedsLoaded } = setup({ tier: "desktop" });
+      await waitFor(() => expect(ui.queryButton("Tech")).toBeInTheDocument());
+      await feedsLoaded();
 
       await user.type(await ui.search, "tech");
       // The match row first, the tree row below it.
-      const [matchRow] = await ui.rows("Tech News");
+      const [matchRow] = await ui.rows("Tech");
       await user.click(matchRow);
 
-      expect(await ui.text(`received:${TECH_NEWS_KEY}?q=tech`)).toBeInTheDocument();
-      // The category rides in one path segment — its id's last segment, not the full stream id.
-      expect(router.state.location.pathname).toBe(`/stream/${TECH_NEWS_KEY}`);
+      expect(await ui.text(`received:${TECH_KEY}?q=tech`)).toBeInTheDocument();
+      // The category rides in one path segment.
+      expect(decodeURIComponent(router.state.location.pathname)).toBe(`/stream/${TECH_KEY}`);
     });
 
     it("activates the highlighted row with Space while browsing", async () => {
-      const { user, subscriptionsLoaded } = setup({ tier: "desktop" });
-      await subscriptionsLoaded();
+      const { user, feedsLoaded } = setup({ tier: "desktop" });
+      await feedsLoaded();
 
       await user.click(await ui.search);
       await user.keyboard("{ArrowDown}{ArrowDown}[Space]");
@@ -725,8 +716,8 @@ describe("Navigator", () => {
 
   describe("when a row is picked", () => {
     it("opens All articles and Recently read on click", async () => {
-      const { user, subscriptionsLoaded } = setup({ streamKey: TECH_NEWS_KEY });
-      await subscriptionsLoaded();
+      const { user, feedsLoaded } = setup({ streamKey: TECH_KEY });
+      await feedsLoaded();
 
       await user.click(ui.allArticles!);
 
@@ -734,8 +725,8 @@ describe("Navigator", () => {
     });
 
     it("opens Recently read on click", async () => {
-      const { user, subscriptionsLoaded } = setup();
-      await subscriptionsLoaded();
+      const { user, feedsLoaded } = setup();
+      await feedsLoaded();
 
       await user.click(ui.recentlyRead);
 
@@ -743,27 +734,29 @@ describe("Navigator", () => {
     });
 
     it("opens a category and one of its feeds on click", async () => {
-      const { user, subscriptionsLoaded, subscriptionTitled } = setup();
-      await subscriptionsLoaded();
+      const { user, feedsLoaded, feedTitled } = setup();
+      await feedsLoaded();
 
-      await user.click(await ui.toggle("Tech News"));
+      await user.click(await ui.toggle("Tech"));
       await user.click(await ui.feedRow());
-      const feed = subscriptionTitled("Example News");
-      expect(await ui.text(`received:${toStreamKey(feed.id)}`)).toBeInTheDocument();
+      const feed = feedTitled("Example Tech Daily");
+      expect(
+        await ui.text(`received:${toStreamKey({ kind: "feed", feedId: feed.id })}`),
+      ).toBeInTheDocument();
     });
 
     it("opens a category on click", async () => {
-      const { user, subscriptionsLoaded } = setup();
-      await subscriptionsLoaded();
+      const { user, feedsLoaded } = setup();
+      await feedsLoaded();
 
       await user.click(await ui.categoryRow());
 
-      expect(await ui.text(`received:${TECH_NEWS_KEY}`)).toBeInTheDocument();
+      expect(await ui.text(`received:${TECH_KEY}`)).toBeInTheDocument();
     });
 
     it("opens the article search on click of its row", async () => {
-      const { user, subscriptionsLoaded } = setup();
-      await subscriptionsLoaded();
+      const { user, feedsLoaded } = setup();
+      await feedsLoaded();
 
       await user.type(await ui.search, "tech");
       await user.click((await ui.searchRow("tech"))!);
@@ -772,24 +765,24 @@ describe("Navigator", () => {
     });
 
     it("opens a matched feed on click, keeping the text as its search", async () => {
-      const { user, router, subscriptionsLoaded } = setup();
-      await subscriptionsLoaded();
+      const { user, router, feedsLoaded } = setup();
+      await feedsLoaded();
 
-      await user.type(await ui.search, "Example News");
-      const [matchRow] = await ui.rows(/^Example News/);
+      await user.type(await ui.search, "Example Tech Daily");
+      const [matchRow] = await ui.rows(/^Example Tech Daily/);
       await user.click(matchRow);
 
       await waitFor(() => {
         expect(decodeURIComponent(router.state.location.pathname)).toBe(`/stream/${FEED_KEY}`);
       });
-      expect(router.state.location.search).toEqual({ q: "Example News" });
+      expect(router.state.location.search).toEqual({ q: "Example Tech Daily" });
     });
 
     it("opens the feed behind a highlighted match with Enter", async () => {
-      const { user, router, subscriptionsLoaded } = setup();
-      await subscriptionsLoaded();
+      const { user, router, feedsLoaded } = setup();
+      await feedsLoaded();
 
-      await user.type(await ui.search, "Example News");
+      await user.type(await ui.search, "Example Tech Daily");
       await user.keyboard("{ArrowDown}{Enter}");
 
       await waitFor(() => {
@@ -800,36 +793,38 @@ describe("Navigator", () => {
 
   describe("when the tree is walked with the keyboard", () => {
     it("expands a group with ArrowRight, then steps into it and out again", async () => {
-      const { user, subscriptionsLoaded } = setup();
-      await subscriptionsLoaded();
+      const { user, feedsLoaded } = setup();
+      await feedsLoaded();
 
       await user.click(await ui.search);
       await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowRight}");
-      await waitFor(() => expect(ui.queryButton("Example News")).toBeInTheDocument());
+      await waitFor(() => expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument());
 
       await user.keyboard("{ArrowRight}");
-      await waitFor(() => expect(ui.selected).toHaveTextContent("Example News"));
+      await waitFor(() => expect(ui.selected).toHaveTextContent("Example Tech Daily"));
 
       await user.keyboard("{ArrowUp}{ArrowLeft}");
-      await waitFor(() => expect(ui.queryButton("Example News")).not.toBeInTheDocument());
+      await waitFor(() => expect(ui.queryButton("Example Tech Daily")).not.toBeInTheDocument());
     });
 
     it("expands a group with ArrowRight, and leaves a feed row with Enter", async () => {
-      const { user, subscriptionsLoaded, subscriptionTitled } = setup();
-      await subscriptionsLoaded();
+      const { user, feedsLoaded, feedTitled } = setup();
+      await feedsLoaded();
 
       await user.click(await ui.search);
       await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowRight}");
-      await waitFor(() => expect(ui.queryButton("Example News")).toBeInTheDocument());
+      await waitFor(() => expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument());
       await user.keyboard("{ArrowRight}{Enter}");
 
-      const feed = subscriptionTitled("Example News");
-      expect(await ui.text(`received:${toStreamKey(feed.id)}`)).toBeInTheDocument();
+      const feed = feedTitled("Example Tech Daily");
+      expect(
+        await ui.text(`received:${toStreamKey({ kind: "feed", feedId: feed.id })}`),
+      ).toBeInTheDocument();
     });
 
     it("ignores ArrowLeft and ArrowRight on a built-in row", async () => {
-      const { user, subscriptionsLoaded } = setup();
-      await subscriptionsLoaded();
+      const { user, feedsLoaded } = setup();
+      await feedsLoaded();
 
       await user.click(await ui.search);
       await user.keyboard("{ArrowDown}{ArrowRight}{ArrowLeft}");
@@ -838,10 +833,10 @@ describe("Navigator", () => {
     });
 
     it("marks the current feed once its group is open", async () => {
-      const { user, subscriptionsLoaded } = setup({ streamKey: FEED_KEY });
-      await subscriptionsLoaded();
+      const { user, feedsLoaded } = setup({ streamKey: FEED_KEY });
+      await feedsLoaded();
 
-      await user.click(await ui.toggle("Tech News"));
+      await user.click(await ui.toggle("Tech"));
 
       const row = await ui.feedRow();
       expect(row.closest("[data-current]")).not.toBeNull();
@@ -861,7 +856,7 @@ describe("Navigator", () => {
     });
 
     it("clears the scope on Backspace at the start of the field", async () => {
-      const { user } = setup({ streamKey: TECH_NEWS_KEY });
+      const { user } = setup({ streamKey: TECH_KEY });
 
       await user.click(await ui.search);
       await user.keyboard("{Backspace}");
@@ -943,7 +938,7 @@ describe("Navigator", () => {
   describe("when the app bar is at the bottom", () => {
     it("stands the popover on the location pill instead of hanging it below", async () => {
       setup({ tier: "desktop", barPosition: "bottom" });
-      await waitFor(() => expect(ui.queryButton("Tech News")).toBeInTheDocument());
+      await waitFor(() => expect(ui.queryButton("Tech")).toBeInTheDocument());
 
       // jsdom measures the pill as a zero box at the origin, so its top edge is the viewport's.
       expect(ui.popover.style.bottom).toBe(`${window.innerHeight + POPOVER_GAP}px`);

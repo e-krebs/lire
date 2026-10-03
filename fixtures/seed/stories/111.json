@@ -1,0 +1,24 @@
+[
+  {
+    "story_hash": "111:0f02ba",
+    "story_feed_id": 111,
+    "story_title": "Synthetic story 1 from feed 111",
+    "story_authors": "",
+    "story_content": "<table width=\"600\" bgcolor=\"#ffffff\" cellpadding=\"0\" cellspacing=\"0\"><tr><td><img src=\"https://images.example.test/header.png\" width=\"600\" alt=\"\"></td></tr><tr><td><h1>This week</h1><p>Two short items from a synthetic newsletter.</p></td></tr><tr><td bgcolor=\"#2255cc\"><a href=\"https://letters.example.test/read\">Read online</a></td></tr><tr><td><small><a href=\"https://letters.example.test/unsubscribe\">Unsubscribe</a> · <a href=\"https://letters.example.test/preferences\">Preferences</a></small></td></tr></table>",
+    "story_permalink": null,
+    "story_timestamp": "1759789400",
+    "image_urls": [],
+    "read_status": 0
+  },
+  {
+    "story_hash": "111:109bd3",
+    "story_feed_id": 111,
+    "story_title": "Synthetic story 2 from feed 111",
+    "story_authors": "",
+    "story_content": "<table width=\"600\" bgcolor=\"#ffffff\" cellpadding=\"0\" cellspacing=\"0\"><tr><td><img src=\"https://images.example.test/header.png\" width=\"600\" alt=\"\"></td></tr><tr><td><h1>This week</h1><p>Two short items from a synthetic newsletter.</p></td></tr><tr><td bgcolor=\"#2255cc\"><a href=\"https://letters.example.test/read\">Read online</a></td></tr><tr><td><small><a href=\"https://letters.example.test/unsubscribe\">Unsubscribe</a> · <a href=\"https://letters.example.test/preferences\">Preferences</a></small></td></tr></table>",
+    "story_permalink": null,
+    "story_timestamp": "1759784000",
+    "image_urls": ["https://images.example.test/111-2.png"],
+    "read_status": 0
+  }
+]

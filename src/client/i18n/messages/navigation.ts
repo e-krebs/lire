@@ -28,7 +28,7 @@ export const en = {
   allArticles: "All articles",
   recentlyRead: "Recently read",
   matches: "Matches",
-  noMatches: ({ query }: { query: string }) => `No feeds or collections match “${query}”.`,
+  noMatches: ({ query }: { query: string }) => `No feeds or categories match “${query}”.`,
   manageSubscriptions: "Manage subscriptions",
 } as const;
 
@@ -59,6 +59,6 @@ export const fr = {
   allArticles: "Tous les articles",
   recentlyRead: "Lus récemment",
   matches: "Correspondances",
-  noMatches: ({ query }) => `Aucun flux ni collection ne correspond à « ${query} ».`,
+  noMatches: ({ query }) => `Aucun flux ni catégorie ne correspond à « ${query} ».`,
   manageSubscriptions: "Gérer les abonnements",
 } satisfies Messages<typeof en>;

@@ -1,0 +1,46 @@
+[
+  {
+    "story_hash": "101:1298af",
+    "story_feed_id": 101,
+    "story_title": "Synthetic story 4 from feed 101",
+    "story_authors": "Ada Writer",
+    "story_content": "<p>Short synthetic body for story 4 of feed 101.</p>",
+    "story_permalink": "https://example.test/101/4",
+    "story_timestamp": "1759978400",
+    "image_urls": ["https://images.example.test/101-4.png"],
+    "read_status": 1
+  },
+  {
+    "story_hash": "102:111e85",
+    "story_feed_id": 102,
+    "story_title": "Synthetic story 3 from feed 102",
+    "story_authors": "Ada Writer",
+    "story_content": "<p>Short synthetic body for story 3 of feed 102.</p>",
+    "story_permalink": "https://example.test/102/3",
+    "story_timestamp": "1759940600",
+    "image_urls": [],
+    "read_status": 1
+  },
+  {
+    "story_hash": "104:12f57c",
+    "story_feed_id": 104,
+    "story_title": "Synthetic story 4 from feed 104",
+    "story_authors": "Ada Writer",
+    "story_content": "<p>Short synthetic body for story 4 of feed 104.</p>",
+    "story_permalink": "https://example.test/104/4",
+    "story_timestamp": "1759897400",
+    "image_urls": ["https://images.example.test/104-4.png"],
+    "read_status": 1
+  },
+  {
+    "story_hash": "110:1215fd",
+    "story_feed_id": 110,
+    "story_title": "Synthetic story 3 from feed 110",
+    "story_authors": "Ada Writer",
+    "story_content": "<p>Short synthetic body for story 3 of feed 110.</p>",
+    "story_permalink": "https://example.test/110/3",
+    "story_timestamp": "1759794800",
+    "image_urls": [],
+    "read_status": 1
+  }
+]

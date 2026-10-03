@@ -4,20 +4,20 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resetFixtureState } from "client/api/adapters/fixture";
 import { renderApp } from "test/renderApp";
 
-const FEED_ID = "feed/http://example-news.test/rss";
+const FEED_ID = "101";
 
 const ui = {
   get feedsTab() {
-    return screen.findByRole("tab", { name: "Feeds · 9" });
+    return screen.findByRole("tab", { name: "Feeds · 12" });
   },
   get categoriesTab() {
     return screen.findByRole("tab", { name: "Categories · 4" });
   },
   get feedPanel() {
-    return screen.findByRole("complementary", { name: "Example News" });
+    return screen.findByRole("complementary", { name: "Example Tech Daily" });
   },
   get feedRow() {
-    return screen.findByRole("button", { name: "Example News" });
+    return screen.findByRole("button", { name: "Example Tech Daily" });
   },
 };
 

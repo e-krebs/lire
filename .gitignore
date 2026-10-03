@@ -70,6 +70,9 @@ dev-dist
 /fixtures/real.tmp/
 /fixtures/real-raw/
 
+# Exported OPML files may contain private data (feed IDs, token references)
+*.opml
+
 # Local-only secrets (feeds API dev token) for scripts/record-fixtures.ts — already covered by
 # .env*.local above, kept explicit since it's the one contributors reach for by name.
 .env.local

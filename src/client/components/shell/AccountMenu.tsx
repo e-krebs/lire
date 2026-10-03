@@ -170,11 +170,11 @@ export const AccountMenu = () => {
       >
         <div className="px-3 py-1.5">
           <p
-            data-tip={profile.data?.fullName}
+            data-tip={profile.data?.username}
             data-tip-overflow=""
             className="truncate text-sm font-semibold text-ink"
           >
-            {profile.data?.fullName ?? "—"}
+            {profile.data?.username ?? "—"}
           </p>
           <p
             data-tip={profile.data?.email}

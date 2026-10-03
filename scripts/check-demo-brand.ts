@@ -8,11 +8,10 @@ const EXCERPT = 40;
 // The recorded profile is gitignored, so this only bites on a machine that holds it.
 const profileNeedles = existsSync(REAL_PROFILE)
   ? (() => {
-      const { id, email } = JSON.parse(readFileSync(REAL_PROFILE, "utf8")) as {
-        id?: string;
-        email?: string;
+      const { user_profile } = JSON.parse(readFileSync(REAL_PROFILE, "utf8")) as {
+        user_profile?: { username?: string; email?: string };
       };
-      return [id, email].filter((v): v is string => Boolean(v));
+      return [user_profile?.username, user_profile?.email].filter((v): v is string => Boolean(v));
     })()
   : [];
 

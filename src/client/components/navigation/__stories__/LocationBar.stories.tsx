@@ -64,7 +64,7 @@ type Story = StoryObj<Args>;
 export const Default: Story = {};
 
 export const Typing: Story = {
-  args: { clearable: true, scopeLabel: "Tech News", draft: "rss" },
+  args: { clearable: true, scopeLabel: "Tech", draft: "rss" },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     const field = canvas.getByRole("searchbox", { name: "Search articles and feeds" });
@@ -96,7 +96,7 @@ export const Shortcuts: Story = {
 };
 
 export const Phone: Story = {
-  args: { tier: "phone", draft: "rss", clearable: true, scopeLabel: "Tech News" },
+  args: { tier: "phone", draft: "rss", clearable: true, scopeLabel: "Tech" },
   play: async ({ canvasElement, args }) => {
     await userEvent.click(within(canvasElement).getByRole("button", { name: "Open navigator" }));
     await expect(args.onOpen).toHaveBeenCalled();

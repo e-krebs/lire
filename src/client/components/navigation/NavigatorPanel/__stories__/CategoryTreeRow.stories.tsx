@@ -15,13 +15,13 @@ const meta = {
     ),
   ],
   argTypes: {
-    collection: { control: false },
+    category: { control: false },
     onToggleCollapse: { control: false },
     onSelect: { control: false },
     onClose: { control: false },
   },
   args: {
-    collection: { id: "user/1/category/tech", label: "Technology" },
+    category: { id: "Tech", label: "Tech" },
     count: 24,
     isCurrent: false,
     collapsed: true,

@@ -1,7 +1,8 @@
 # Architecture
 
-Lire is a single-user reader for the feeds API: a static PWA on Cloudflare Pages, and a small
-Worker that holds the credentials and forwards an allowlisted set of calls upstream.
+Lire is a single-user reader over NewsBlur: a static PWA on Cloudflare Pages, and a small Worker
+that holds the credentials and serves a Lire-owned API, translated to NewsBlur calls (a
+backend-for-frontend, [ADR 0009](../adr/0009-newsblur-bff.md)).
 
 ## Diagram
 
@@ -13,16 +14,19 @@ Browser (lire.krebs.tech)
 ┌──────────────────────────────┐      ┌─────────────────────────────────────┐
 │ Pages: static SPA            │      │ Worker lire-api (lire.krebs.tech/   │
 │ React · TanStack Router ·    │ /api │ api/*)                              │
-│ TanStack Query · Tailwind    ├─────►│ verifyAccess → route → proxy        │
-│ PWA service worker           │      │   path allowlist (shared/feedsApi)  │
-└──────────────────────────────┘      │   FeedlyAuth Durable Object         │
-                                      │   (refresh + access token)          │
+│ TanStack Query · Tailwind    ├─────►│ verifyAccess → matchRoute → handle  │
+│ PWA service worker           │      │   contract: shared/feedsApi         │
+└──────────────────────────────┘      │   translation: shared/bff           │
+                                      │   NewsblurAuth Durable Object       │
+                                      │   (OAuth token, feed-list cache)    │
                                       └──────────────────┬──────────────────┘
-                                                         │ FEEDLY_HOST /v3/*
+                                                         │ NEWSBLUR_HOST
+                                                         │ Bearer token
                                                          ▼
-                                                     feeds API
+                                                     newsblur.com
 
-Mock mode / demo build: the SPA swaps the HTTP transport for fixtures and never calls /api.
+Mock mode / demo build: the SPA swaps the HTTP transport for the same shared/bff core running
+over a fake NewsBlur fed by fixtures, and never calls /api.
 ```
 
 ## Components
@@ -38,7 +42,7 @@ styles, and Zod to parse every response against the schemas in
 [src/client/api/client.ts](../../src/client/api/client.ts).
 
 The reader sanitizes every article body with DOMPurify. A blog post renders inline under
-`.prose-reader`. A newsletter, recognized by the `webfeeds--newsletter` wrapper Feedly adds, renders
+`.prose-reader`. A newsletter, recognized by the `webfeeds--newsletter` wrapper in its HTML, renders
 in a sandboxed `srcdoc` iframe on a full-width white band, so the sender's own layout and colors
 apply and the app's article styles cannot break it. The parent sizes the frame to its content and forwards key
 presses out of it. The reasons and limits are in
@@ -87,10 +91,17 @@ one. Chrome hides its address bar only when
 [assetlinks.json](../../public/.well-known/assetlinks.json) lists the app's signing key. How the
 app ships is in [deploy.md](../how-to/deploy.md#android-app).
 
+Sign-in in the TWA crosses origins. The listener never sees it, because the link to
+`/api/auth/login` is same-origin and the redirect to `newsblur.com` happens server side. Chrome
+opens that off-origin page in a Custom Tab, and the callback lands back on `lire.krebs.tech`, which
+returns to the app. The flow is in [auth.md](auth.md).
+
 That module sits on a transport seam ([transport.ts](../../src/client/api/transport.ts)). The
 HTTP transport ([adapters/http.ts](../../src/client/api/adapters/http.ts)) is a same-origin
 `fetch` to `/api` with the session cookie; the fixture transport
-([adapters/fixture.ts](../../src/client/api/adapters/fixture.ts)) answers from JSON files. The
+([adapters/fixture.ts](../../src/client/api/adapters/fixture.ts)) runs the Worker's translation core
+over a fake NewsBlur ([adapters/fakeNewsblur.ts](../../src/client/api/adapters/fakeNewsblur.ts)),
+which replays JSON files. The
 client maps a `401` to a `sign_in_required` error, and the root route
 ([\_\_root.tsx](../../src/client/routes/__root.tsx)) watches the whole query cache for it, so a
 sign-in failure on any query swaps the shell to the sign-in screen.
@@ -100,19 +111,26 @@ sign-in failure on any query swaps the shell to the sign-in screen.
 The Worker `lire-api` ([wrangler.toml](../../wrangler.toml),
 [src/server/worker.ts](../../src/server/worker.ts)) is bound to the route
 `lire.krebs.tech/api/*`, so it shares the SPA's origin and needs no CORS. It answers only paths
-under `/api/`: the auth status and login routes, and `/api/v3/*`, which it proxies to
-`FEEDLY_HOST` after it strips the `/api` prefix. How it authenticates is the subject of
-[auth.md](auth.md).
+under `/api/`: the two sign-in routes, and the routes of the Lire contract. How it authenticates
+is the subject of [auth.md](auth.md).
 
-The proxy forwards a request only when its method and path match the allowlist in
-[src/shared/feedsApi/paths.ts](../../src/shared/feedsApi/paths.ts#L11). Anything else gets a
-`404` before any token is read. The list lives in `shared/` because it is pure string matching
-with no runtime dependency: the Worker and the fixture transport both match against it, so mock
-mode answers exactly the calls the real proxy lets through, and a `404` for anything else. The
-allowlist bounds what a compromised or buggy client can do with the owner's token: it can read
-and mark entries, and manage subscriptions, collections and preferences, but it cannot reach any
-other upstream endpoint. The proxy also returns only the upstream `Content-Type` header, never the
-rest.
+The contract is the list in [src/shared/feedsApi/routes.ts](../../src/shared/feedsApi/routes.ts):
+`matchRoute` maps a method and path to a route and its params, and anything else gets a `404` before
+any token is read. The Worker never forwards a client path. It passes the matched route to
+`handle` ([src/shared/bff/handle.ts](../../src/shared/bff/handle.ts)), which makes the NewsBlur
+calls the route needs and answers in Lire's shapes. The client never sees a NewsBlur id or answer
+shape: a feed id is the numeric NewsBlur id, a category is a top-level folder named by its title,
+and an entry is a `story_hash`. The reasons and the rules the core enforces (counts, paging, the
+user check, the `code < 1` failure) are in [ADR 0009](../adr/0009-newsblur-bff.md).
+
+The core lives in `shared/` because it is pure and takes its `fetch` as an argument. The Worker
+passes a `fetch` that adds the bearer token and calls `NEWSBLUR_HOST`; mock mode passes the fake
+NewsBlur. A new route is a contract entry plus a handler. The contract bounds what a compromised
+or buggy client can do with the owner's token: it cannot reach any other NewsBlur endpoint. The
+Worker answers with its own JSON, never with upstream headers.
+
+The Durable Object also caches the folder tree (`/reader/feeds`) for five minutes, since most
+reads need it, and drops it on every subscription or folder write.
 
 ## Mock mode is the default
 
@@ -120,6 +138,11 @@ rest.
 `real` as mock mode. `yarn dev`, the unit tests, Storybook and the device e2e projects therefore run on fixtures with
 no Worker, no Access and no account, and only the production deploy sets `real` explicitly. The
 default errs toward the mode that cannot leak personal data or spend upstream quota.
+
+In mock mode the fixture transport matches the same routes and runs the same `handle` as the
+Worker, over `createFakeNewsblur`: an in-memory NewsBlur that answers every upstream call the core
+makes, and keeps read state and folder changes. A fixture therefore exercises the real translation,
+not a parallel one.
 
 The same file compares the literal env value rather than calling `isMockMode()`, so that the
 bundler drops the fixture chunk from a real build. A secret gate in CI checks that the real
@@ -135,7 +158,7 @@ then renders `DemoBanner` and never shows the sign-in screen
 no recorded profile value; the demo brand gate enforces both.
 
 The showcase is not read-only. The fixture transport applies writes (mark as read, subscription
-and collection edits, preferences) to in-memory state, and nothing in the demo build blocks them.
+and category edits, preferences) to in-memory state, and nothing in the demo build blocks them.
 A reload restores the seed, except the preferences bucket, which persists in `localStorage`; the
 banner's Reset button clears both ([DemoBanner.tsx](../../src/client/components/shell/DemoBanner.tsx)).
 Nothing a visitor does reaches an account.
@@ -144,7 +167,7 @@ Nothing a visitor does reaches an account.
 | --- | --- | --- |
 | Build command and env | [`build:demo`](../../package.json): `VITE_API_MODE=mock`, `VITE_DEMO=true`, `VITE_FIXTURES=seed` | [`deploy:spa`](../../package.json): `VITE_API_MODE=real` only |
 | Data source | Seed fixtures ([fixture.ts](../../src/client/api/adapters/fixture.ts)) | The owner's live account, through the Worker |
-| Network | No `/api` calls ([client.ts](../../src/client/api/client.ts#L43)) | Same-origin `/api`, proxied by the Worker |
+| Network | No `/api` calls ([client.ts](../../src/client/api/client.ts#L43)) | Same-origin `/api`, served by the Worker |
 | Auth | None ([\_\_root.tsx](../../src/client/routes/__root.tsx#L34)) | Cloudflare Access with the owner pin ([auth.md](auth.md)) |
 | Host and visibility | `demo.lire.krebs.tech`, public | `lire.krebs.tech`, private |
 | Pages project | `lire-demo` | `lire` |

@@ -1,6 +1,6 @@
 # Record the fixtures
 
-Replace the synthetic seed with your own feed data. Background on the two sets is in
+Replace the synthetic seed with your own NewsBlur data. Background on the two sets is in
 [Fixtures](../reference/fixtures.md).
 
 ## Record
@@ -11,15 +11,17 @@ Replace the synthetic seed with your own feed data. Background on the two sets i
    cp .env.sample .env.local
    ```
 
-2. Set `FEEDLY_DEV_TOKEN` in `.env.local` to your personal developer token.
+2. Set `NEWSBLUR_USERNAME` and `NEWSBLUR_PASSWORD` in `.env.local` to your NewsBlur login.
 3. Run the recorder:
 
    ```sh
    yarn fixtures:record
    ```
 
-The script calls the live feeds API and writes `fixtures/real/`, which is gitignored. Never run
-it in CI.
+The script logs in with `POST /api/login` and keeps the session cookie, so it works before the
+OAuth app exists. It calls the same upstream endpoints as the fake NewsBlur, reads at most three
+pages of stories per feed, and writes `fixtures/real/`, which is gitignored. A wrong password
+answers `200` with `code: -1`, and the script stops on it. Never run it in CI.
 
 The recorder writes into `fixtures/real.tmp/` first. When every required file has been written,
 it deletes `fixtures/real/` and renames the scratch directory into its place. A run that fails

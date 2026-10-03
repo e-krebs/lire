@@ -55,7 +55,7 @@ export const BrowseKeyboard: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     const field = canvas.getByRole("searchbox", { name: "Search" });
-    await canvas.findByText("Tech News", {}, LOADED);
+    await canvas.findByText("Tech", {}, LOADED);
     await userEvent.click(field);
     await userEvent.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
     await userEvent.keyboard("{ArrowRight}");
@@ -125,7 +125,7 @@ export const NoMatches: Story = {
   args: { query: "zzzz" },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await canvas.findByText(/No feeds or collections match/, {}, LOADED);
+    await canvas.findByText(/No feeds or categories match/, {}, LOADED);
     await userEvent.click(canvas.getByRole("searchbox", { name: "Search" }));
     await userEvent.keyboard("{Enter}");
   },
@@ -134,7 +134,7 @@ export const NoMatches: Story = {
 export const RowClicks: Story = {
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
-    await canvas.findByText("Tech News", {}, LOADED);
+    await canvas.findByText("Tech", {}, LOADED);
     await userEvent.click(canvas.getByRole("button", { name: /Recently read/ }));
     await userEvent.click(canvas.getByRole("button", { name: /All articles/ }));
     await userEvent.click(canvas.getByRole("link", { name: "Manage subscriptions" }));

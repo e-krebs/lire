@@ -21,15 +21,16 @@ import { CSS } from "@dnd-kit/utilities";
 import { useId, useRef, useState } from "react";
 import {
   unreadCountFor,
-  useCreateCollection,
+  useCreateCategory,
   usePreferences,
   useReorderCategories,
   useSavingPreferences,
-  useUnreadCounts,
+  useCounts,
 } from "client/api/queries";
 import { Icon } from "client/components/ui/icons";
 import { useT } from "client/i18n/useT";
-import type { Collection } from "shared/feedsApi/types";
+import { toStreamKey } from "shared/feedsApi/streamKey";
+import type { Category } from "shared/feedsApi/types";
 import {
   EmptyLine,
   FilterRow,
@@ -52,25 +53,29 @@ const textButtonClassName = `
 `;
 
 interface NewCategoryFormProps {
+  categories: Category[];
   onCancel: () => void;
   onCreated: (categoryId: string) => void;
 }
 
 // Asks for the name in place, and keeps the draft on blur: only Cancel or Escape drops it.
-const NewCategoryForm = ({ onCancel, onCreated }: NewCategoryFormProps) => {
+const NewCategoryForm = ({ categories, onCancel, onCreated }: NewCategoryFormProps) => {
   const t = useT();
   const inputId = useId();
   const errorId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
   const [empty, setEmpty] = useState(false);
-  const createCollection = useCreateCollection();
+  const [duplicate, setDuplicate] = useState(false);
+  const createCategory = useCreateCategory();
 
   const errorMessage = empty
     ? t.subscriptions.enterCategoryName
-    : createCollection.isError
-      ? t.subscriptions.createCategoryFailed({ message: createCollection.error.message })
-      : null;
+    : duplicate
+      ? t.subscriptions.categoryExists
+      : createCategory.isError
+        ? t.subscriptions.createCategoryFailed({ message: createCategory.error.message })
+        : null;
 
   return (
     <form
@@ -83,9 +88,14 @@ const NewCategoryForm = ({ onCancel, onCreated }: NewCategoryFormProps) => {
           inputRef.current?.focus();
           return;
         }
-        createCollection.mutate(label, {
-          onSuccess: (collection) => {
-            onCreated(collection.id);
+        if (categories.some((c) => c.id === label)) {
+          setDuplicate(true);
+          inputRef.current?.focus();
+          return;
+        }
+        createCategory.mutate(label, {
+          onSuccess: (created) => {
+            onCreated(created.id);
           },
         });
       }}
@@ -106,6 +116,7 @@ const NewCategoryForm = ({ onCancel, onCreated }: NewCategoryFormProps) => {
         onChange={(event) => {
           setName(event.target.value);
           setEmpty(false);
+          setDuplicate(false);
         }}
         onKeyDown={(event) => {
           if (event.key === "Escape") onCancel();
@@ -127,7 +138,7 @@ const NewCategoryForm = ({ onCancel, onCreated }: NewCategoryFormProps) => {
         </button>
         <button
           type="submit"
-          disabled={createCollection.isPending}
+          disabled={createCategory.isPending}
           className={`${textButtonClassName} bg-accent font-semibold text-on-accent`}
         >
           {t.subscriptions.createCategory}
@@ -137,9 +148,9 @@ const NewCategoryForm = ({ onCancel, onCreated }: NewCategoryFormProps) => {
   );
 };
 
-const byIds = ({ collections, ids }: { collections: Collection[]; ids: string[] }) => {
+const byIds = ({ categories, ids }: { categories: Category[]; ids: string[] }) => {
   const rank = new Map(ids.map((id, index) => [id, index]));
-  return [...collections].sort(
+  return [...categories].sort(
     (a, b) => (rank.get(a.id) ?? ids.length) - (rank.get(b.id) ?? ids.length),
   );
 };
@@ -147,7 +158,7 @@ const byIds = ({ collections, ids }: { collections: Collection[]; ids: string[] 
 const verticalOnly: Modifier = ({ transform }) => ({ ...transform, x: 0 });
 
 interface CategoryRowProps {
-  collection: Collection;
+  category: Category;
   unread: number;
   selected: boolean;
   sortable: boolean;
@@ -156,7 +167,7 @@ interface CategoryRowProps {
 }
 
 const CategoryRow = ({
-  collection,
+  category,
   unread,
   selected,
   sortable,
@@ -171,9 +182,9 @@ const CategoryRow = ({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: collection.id, disabled: !sortable || saving });
+  } = useSortable({ id: category.id, disabled: !sortable || saving });
   const t = useT().subscriptions;
-  const feedCount = collection.feeds.length;
+  const feedCount = category.feedIds.length;
   const detailId = useId();
   const unreadId = useId();
 
@@ -193,7 +204,7 @@ const CategoryRow = ({
           type="button"
           {...attributes}
           {...listeners}
-          aria-label={t.reorder({ label: collection.label })}
+          aria-label={t.reorder({ label: category.label })}
           className={`
             grid size-11 flex-none cursor-grab touch-none place-items-center rounded-xl text-faint
             hover:text-muted
@@ -209,21 +220,21 @@ const CategoryRow = ({
         type="button"
         data-selected={selected || undefined}
         aria-current={selected || undefined}
-        aria-label={collection.label}
+        aria-label={category.label}
         aria-describedby={`${detailId} ${unreadId}`}
         onClick={(event) => {
           markPanelOrigin(event.currentTarget);
-          onOpen(collection.id);
+          onOpen(category.id);
         }}
         className={`${listRowClassName} min-w-0`}
       >
         <span className="flex min-w-0 flex-1 flex-col">
           <span
-            data-tip={collection.label}
+            data-tip={category.label}
             data-tip-overflow=""
             className="morph-name max-w-full self-start truncate text-sm font-medium text-ink"
           >
-            {collection.label}
+            {category.label}
           </span>
           <span id={detailId} className="morph-detail self-start text-xs text-faint tabular-nums">
             {t.feedCount({ count: feedCount })}
@@ -246,7 +257,7 @@ const CategoryRow = ({
 };
 
 interface CategoriesTabProps {
-  collections: Collection[];
+  categories: Category[];
   /** Category whose panel is open, if any. */
   openCategoryId: string | undefined;
   /** Category row clicked. */
@@ -254,7 +265,7 @@ interface CategoriesTabProps {
 }
 
 export const CategoriesTab = ({
-  collections,
+  categories,
   openCategoryId,
   onOpenCategory,
 }: CategoriesTabProps) => {
@@ -263,7 +274,7 @@ export const CategoriesTab = ({
   const [creating, setCreating] = useState(false);
   // dnd-kit clears the drag transforms on drop, so the list must take the new order in that same render.
   const [droppedIds, setDroppedIds] = useState<string[] | null>(null);
-  const unreadCounts = useUnreadCounts();
+  const counts = useCounts();
   const preferences = usePreferences();
   const reorder = useReorderCategories();
   // Read from the mutation cache, so a save started before a tab switch still holds the handles.
@@ -272,18 +283,16 @@ export const CategoriesTab = ({
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
-  const ordered = droppedIds === null ? collections : byIds({ collections, ids: droppedIds });
-  const shown = ordered.filter((collection) =>
-    matchesFilter({ filter, texts: [collection.label] }),
-  );
+  const ordered = droppedIds === null ? categories : byIds({ categories, ids: droppedIds });
+  const shown = ordered.filter((category) => matchesFilter({ filter, texts: [category.label] }));
   // Before preferences load, a drop would write the API order over the stored one.
-  const sortable = preferences.data !== undefined && shown.length === collections.length;
+  const sortable = preferences.data !== undefined && shown.length === categories.length;
 
   const labelOf = (id: UniqueIdentifier): string =>
-    ordered.find((collection) => collection.id === id)?.label ?? "";
+    ordered.find((category) => category.id === id)?.label ?? "";
   const positionOf = (id: UniqueIdentifier): string =>
     t.positionOf({
-      index: ordered.findIndex((collection) => collection.id === id) + 1,
+      index: ordered.findIndex((category) => category.id === id) + 1,
       total: ordered.length,
     });
   const announcements: Announcements = {
@@ -300,7 +309,7 @@ export const CategoriesTab = ({
 
   const onDragEnd = ({ active, over }: DragEndEvent): void => {
     if (!over || active.id === over.id || saving) return;
-    const ids = ordered.map((collection) => collection.id);
+    const ids = ordered.map((category) => category.id);
     const categoryIds = arrayMove(
       ids,
       ids.indexOf(String(active.id)),
@@ -338,6 +347,7 @@ export const CategoriesTab = ({
       </div>
       {creating ? (
         <NewCategoryForm
+          categories={categories}
           onCancel={() => {
             setCreating(false);
           }}
@@ -348,7 +358,7 @@ export const CategoriesTab = ({
           }}
         />
       ) : null}
-      {collections.length === 0 ? (
+      {categories.length === 0 ? (
         <EmptyLine>{t.noCategories}</EmptyLine>
       ) : shown.length === 0 ? (
         <EmptyLine>{t.noCategoryMatches({ query: filter.trim() })}</EmptyLine>
@@ -367,16 +377,19 @@ export const CategoriesTab = ({
             onDragEnd={onDragEnd}
           >
             <SortableContext
-              items={shown.map((collection) => collection.id)}
+              items={shown.map((category) => category.id)}
               strategy={verticalListSortingStrategy}
             >
               <ul className="flex flex-col">
-                {shown.map((collection) => (
+                {shown.map((category) => (
                   <CategoryRow
-                    key={collection.id}
-                    collection={collection}
-                    unread={unreadCountFor({ counts: unreadCounts.data, id: collection.id })}
-                    selected={collection.id === openCategoryId}
+                    key={category.id}
+                    category={category}
+                    unread={unreadCountFor({
+                      counts: counts.data,
+                      streamKey: toStreamKey({ kind: "folder", label: category.id }),
+                    })}
+                    selected={category.id === openCategoryId}
                     sortable={sortable}
                     saving={saving}
                     onOpen={onOpenCategory}

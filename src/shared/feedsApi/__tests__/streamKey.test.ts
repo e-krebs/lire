@@ -1,55 +1,30 @@
 import { describe, expect, it } from "vitest";
-import {
-  categoryStreamId,
-  feedStreamId,
-  globalAllStreamId,
-  globalReadStreamId,
-} from "shared/feedsApi/streams";
-import { fromStreamKey, toStreamKey } from "shared/feedsApi/streamKey";
-
-const userId = "5f3d4b2a-1234-4c56-8def-9876543210ab";
+import { parseStreamKey, toStreamKey, type Stream } from "shared/feedsApi/streamKey";
 
 describe("streamKey", () => {
-  it("shortens the built-in streams", () => {
-    expect(toStreamKey(globalAllStreamId(userId))).toBe("all");
-    expect(toStreamKey(globalReadStreamId(userId))).toBe("read");
+  it("writes each stream kind", () => {
+    expect(toStreamKey({ kind: "all" })).toBe("all");
+    expect(toStreamKey({ kind: "read" })).toBe("read");
+    expect(toStreamKey({ kind: "folder", label: "Tech News" })).toBe("folder:Tech News");
+    expect(toStreamKey({ kind: "feed", feedId: "42" })).toBe("feed:42");
   });
 
-  it("keeps a category's last id segment, whatever shape it has", () => {
-    expect(toStreamKey(categoryStreamId({ userId, label: "Tech News" }))).toBe("Tech News");
-    expect(toStreamKey(categoryStreamId({ userId, label: "0efbd7ec-1111" }))).toBe("0efbd7ec-1111");
-    expect(toStreamKey(categoryStreamId({ userId, label: "high-tech" }))).toBe("high-tech");
+  it.for<Stream>([
+    { kind: "all" },
+    { kind: "read" },
+    { kind: "folder", label: "Tech News" },
+    { kind: "folder", label: "100% Design & Code" },
+    { kind: "folder", label: "all" },
+    { kind: "folder", label: "a/b: c" },
+    { kind: "feed", feedId: "6106374" },
+  ])("survives %o", (stream) => {
+    expect(parseStreamKey(toStreamKey(stream))).toEqual(stream);
   });
 
-  it("prefixes a feed url", () => {
-    expect(toStreamKey(feedStreamId("http://example-news.test/rss.xml"))).toBe(
-      "feed:http://example-news.test/rss.xml",
-    );
-  });
-
-  it("rebuilds the built-in streams from the user id", () => {
-    expect(fromStreamKey({ key: "all", userId })).toBe(globalAllStreamId(userId));
-    expect(fromStreamKey({ key: "read", userId })).toBe(globalReadStreamId(userId));
-  });
-
-  it("reads a bare key as a category segment", () => {
-    expect(fromStreamKey({ key: "Tech News", userId })).toBe(`user/${userId}/category/Tech News`);
-  });
-
-  it("reads a feed key as a feed url", () => {
-    expect(fromStreamKey({ key: "feed:http://example-news.test/rss.xml", userId })).toBe(
-      "feed/http://example-news.test/rss.xml",
-    );
-  });
-
-  it.for([
-    globalAllStreamId(userId),
-    globalReadStreamId(userId),
-    categoryStreamId({ userId, label: "Tech News" }),
-    feedStreamId("http://example-news.test/rss.xml"),
-    categoryStreamId({ userId, label: "Design (and type)" }),
-    categoryStreamId({ userId, label: "100% Design & Code" }),
-  ])("survives %s", (streamId) => {
-    expect(fromStreamKey({ key: toStreamKey(streamId), userId })).toBe(streamId);
-  });
+  it.for(["", "Tech News", "folder:", "feed:", "feed:abc", "feed:12a", "feed:http://x.test/rss"])(
+    "rejects %j",
+    (key) => {
+      expect(parseStreamKey(key)).toBeNull();
+    },
+  );
 });

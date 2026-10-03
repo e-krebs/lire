@@ -15,9 +15,9 @@ Code touched → doc to check (update if the change is user- or reader-visible):
 
 | Code area | Type | Doc to check |
 |---|---|---|
-| `src/server/**` (Worker, Durable Object, Access pin, refresh-token auth) | explanation; reference | [docs/explanation/auth.md](docs/explanation/auth.md); [docs/explanation/architecture.md](docs/explanation/architecture.md); [docs/reference/api.md](docs/reference/api.md) |
-| `src/shared/feedsApi/**` (client↔Worker contract) | reference; explanation; adr | [docs/reference/api.md](docs/reference/api.md); [docs/reference/glossary.md](docs/reference/glossary.md); [docs/explanation/architecture.md](docs/explanation/architecture.md); [docs/adr/0009-newsblur-bff.md](docs/adr/0009-newsblur-bff.md) |
-| `src/client/api/**`, `fixtures/**`, `.env.sample` (adapters, seed and recorded fixtures, env vars) | reference | [docs/reference/fixtures.md](docs/reference/fixtures.md); [docs/reference/api.md](docs/reference/api.md) |
+| `src/server/**` (Worker, Durable Object, Access pin, OAuth auth) | explanation; reference | [docs/explanation/auth.md](docs/explanation/auth.md); [docs/adr/0010-newsblur-oauth.md](docs/adr/0010-newsblur-oauth.md); [docs/explanation/architecture.md](docs/explanation/architecture.md); [docs/reference/api.md](docs/reference/api.md) |
+| `src/shared/feedsApi/**` (client↔Worker contract), `src/shared/bff/**` (the NewsBlur translation core) | reference; explanation; adr | [docs/reference/api.md](docs/reference/api.md); [docs/reference/glossary.md](docs/reference/glossary.md); [docs/explanation/architecture.md](docs/explanation/architecture.md); [docs/adr/0009-newsblur-bff.md](docs/adr/0009-newsblur-bff.md) |
+| `src/client/api/**` (adapters, the fake NewsBlur), `fixtures/**`, `.env.sample` (seed and recorded fixtures, env vars) | reference | [docs/reference/fixtures.md](docs/reference/fixtures.md); [docs/reference/api.md](docs/reference/api.md) |
 | `scripts/record-fixtures.ts` | how-to | [docs/how-to/record-fixtures.md](docs/how-to/record-fixtures.md) |
 | `src/client/routes/**`, `vite.config.ts`, `.storybook/**`, `public/**`, `scripts/render-icons.ts` | explanation | [docs/explanation/architecture.md](docs/explanation/architecture.md) |
 | `src/client/components/**`, `src/client/hooks/**`, `src/client/utils/**` | reference; explanation | [docs/reference/conventions.md](docs/reference/conventions.md); [docs/explanation/architecture.md](docs/explanation/architecture.md) |

@@ -1,10 +1,10 @@
 import { useId, useRef, useState } from "react";
-import { useRenameCollection, useSaveSubscription, useUnsubscribe } from "client/api/queries";
+import { useRenameCategory, useUpdateFeed, useUnsubscribe } from "client/api/queries";
 import { feedsInCategory, orphansOf } from "client/api/selectors";
 import { Icon } from "client/components/ui/icons";
 import { useT } from "client/i18n/useT";
 import { tip } from "client/utils/tooltip";
-import type { Collection, Subscription } from "shared/feedsApi/types";
+import type { Category, Feed } from "shared/feedsApi/types";
 import { AddSourcesMenu } from "./AddSourcesMenu";
 import { ChipSet } from "./ChipSet";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -31,26 +31,36 @@ const dangerSoftClassName = `${actionClassName} bg-danger-soft text-danger`;
 
 interface CategoryNameFormProps {
   formId: string;
-  category: Collection;
+  category: Category;
+  categories: Category[];
   // Owned by the panel, which holds the delete back while a rename runs.
-  rename: ReturnType<typeof useRenameCollection>;
+  rename: ReturnType<typeof useRenameCategory>;
   onSaved: () => void;
 }
 
 // Keeps the draft on blur and submit enabled; an empty name only marks the field invalid.
-export const CategoryNameForm = ({ formId, category, rename, onSaved }: CategoryNameFormProps) => {
+export const CategoryNameForm = ({
+  formId,
+  category,
+  categories,
+  rename,
+  onSaved,
+}: CategoryNameFormProps) => {
   const t = useT().subscriptions;
   const inputId = useId();
   const errorId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(category.label);
   const [empty, setEmpty] = useState(false);
+  const [duplicate, setDuplicate] = useState(false);
 
   const message = empty
     ? t.enterCategoryNameForPanel
-    : rename.isError
-      ? t.renameFailed({ message: rename.error.message })
-      : null;
+    : duplicate
+      ? t.categoryExists
+      : rename.isError
+        ? t.renameFailed({ message: rename.error.message })
+        : null;
 
   return (
     <form
@@ -65,7 +75,12 @@ export const CategoryNameForm = ({ formId, category, rename, onSaved }: Category
           inputRef.current?.focus();
           return;
         }
-        rename.mutate({ id: category.id, label }, { onSuccess: onSaved });
+        if (categories.some((c) => c.id === label && c.id !== category.id)) {
+          setDuplicate(true);
+          inputRef.current?.focus();
+          return;
+        }
+        rename.mutate({ categoryId: category.id, label }, { onSuccess: onSaved });
       }}
     >
       <label htmlFor={inputId} className="text-xs font-semibold text-muted">
@@ -78,11 +93,12 @@ export const CategoryNameForm = ({ formId, category, rename, onSaved }: Category
         autoComplete="off"
         enterKeyHint="done"
         value={name}
-        aria-invalid={empty || undefined}
+        aria-invalid={empty || duplicate || undefined}
         aria-describedby={message === null ? undefined : errorId}
         onChange={(event) => {
           setName(event.target.value);
           setEmpty(false);
+          setDuplicate(false);
         }}
         className={`
           min-h-11 w-full rounded-xl bg-surface px-3 text-sm text-ink ring-1 ring-hairline
@@ -100,24 +116,24 @@ export const CategoryNameForm = ({ formId, category, rename, onSaved }: Category
   );
 };
 
-// The feeds API keeps no feed without a category, so the last one's feeds would have nowhere to go.
+// The last category cannot go while it holds feeds: they would have nowhere to go.
 const isDeleteLocked = ({
   category,
-  collections,
-  subscriptions,
+  categories,
+  allFeeds,
 }: {
-  category: Collection;
-  collections: Collection[];
-  subscriptions: Subscription[];
+  category: Category;
+  categories: Category[];
+  allFeeds: Feed[];
 }): boolean =>
-  collections.length === 1 &&
-  feedsInCategory({ subscriptions, categoryId: category.id }).length > 0;
+  categories.length === 1 &&
+  feedsInCategory({ feeds: allFeeds, categoryId: category.id }).length > 0;
 
 interface CategoryActionsProps {
   formId: string;
-  category: Collection;
-  collections: Collection[];
-  subscriptions: Subscription[];
+  category: Category;
+  categories: Category[];
+  allFeeds: Feed[];
   // A rename's success closes the panel, which would drop the delete dialog mid-request. The
   // dialog is modal, so no rename starts while it is up.
   renaming: boolean;
@@ -127,14 +143,14 @@ interface CategoryActionsProps {
 export const CategoryActions = ({
   formId,
   category,
-  collections,
-  subscriptions,
+  categories,
+  allFeeds,
   renaming,
   onDelete,
 }: CategoryActionsProps) => {
   const t = useT().subscriptions;
   const reasonId = useId();
-  const locked = isDeleteLocked({ category, collections, subscriptions });
+  const locked = isDeleteLocked({ category, categories, allFeeds });
 
   return (
     <>
@@ -167,11 +183,11 @@ export const CategoryActions = ({
 
 interface CategoryPanelProps {
   /** The category being edited. */
-  category: Collection;
+  category: Category;
   /** All categories, for the delete's orphan target. */
-  collections: Collection[];
-  /** All subscriptions, to list this category's feeds. */
-  subscriptions: Subscription[];
+  categories: Category[];
+  /** All feeds, to list this category's feeds. */
+  allFeeds: Feed[];
   /** Panel dismissed, or the category was renamed or deleted. */
   onClose: () => void;
   /** Feed row clicked. */
@@ -184,8 +200,8 @@ interface CategoryPanelProps {
 
 export const CategoryPanel = ({
   category,
-  collections,
-  subscriptions,
+  categories,
+  allFeeds,
   onClose,
   onOpenFeed,
   onAddWebsite,
@@ -196,23 +212,23 @@ export const CategoryPanel = ({
   const feedsHeadingId = useId();
   const [filter, setFilter] = useState("");
   const [deleting, setDeleting] = useState(false);
-  const [unsubscribing, setUnsubscribing] = useState<Subscription | undefined>(undefined);
-  const save = useSaveSubscription();
+  const [unsubscribing, setUnsubscribing] = useState<Feed | undefined>(undefined);
+  const save = useUpdateFeed();
   const unsubscribe = useUnsubscribe();
-  const rename = useRenameCollection();
+  const rename = useRenameCategory();
 
-  const feeds = feedsInCategory({ subscriptions, categoryId: category.id });
-  const orphans = orphansOf({ subscriptions, categoryId: category.id }).length;
+  const feeds = feedsInCategory({ feeds: allFeeds, categoryId: category.id });
+  const orphans = orphansOf({ feeds: allFeeds, categoryId: category.id }).length;
   const shared = feeds.length - orphans;
   const feedCount = t.feedCount({ count: feeds.length });
   const rowId = useId();
   const shown = feeds.filter((feed) =>
-    matchesFilter({ filter, texts: [feed.title, feed.website] }),
+    matchesFilter({ filter, texts: [feed.title, feed.siteUrl] }),
   );
-  const labelOf = new Map(collections.map((collection) => [collection.id, collection.label]));
+  const labelOf = new Map(categories.map((entry) => [entry.id, entry.label]));
 
-  const remove = (feed: Subscription): void => {
-    const others = feed.categories.filter((entry) => entry.id !== category.id);
+  const remove = (feed: Feed): void => {
+    const others = feed.categoryIds.filter((id) => id !== category.id);
     if (others.length === 0) {
       unsubscribe.reset();
       setUnsubscribing(feed);
@@ -221,7 +237,7 @@ export const CategoryPanel = ({
     save.mutate({
       feedId: feed.id,
       title: feed.title,
-      categoryIds: others.map((entry) => entry.id),
+      categoryIds: others,
     });
   };
 
@@ -241,8 +257,8 @@ export const CategoryPanel = ({
           <CategoryActions
             formId={formId}
             category={category}
-            collections={collections}
-            subscriptions={subscriptions}
+            categories={categories}
+            allFeeds={allFeeds}
             renaming={rename.isPending}
             onDelete={() => {
               setDeleting(true);
@@ -251,7 +267,13 @@ export const CategoryPanel = ({
         }
       >
         <div className="flex flex-col gap-4 px-4 py-4">
-          <CategoryNameForm formId={formId} category={category} rename={rename} onSaved={onClose} />
+          <CategoryNameForm
+            formId={formId}
+            category={category}
+            categories={categories}
+            rename={rename}
+            onSaved={onClose}
+          />
           <section aria-labelledby={feedsHeadingId} className="flex flex-col gap-2">
             <h3 id={feedsHeadingId} className="text-xs font-semibold text-muted tabular-nums">
               {t.feedsHeading({ count: feeds.length })}
@@ -274,12 +296,12 @@ export const CategoryPanel = ({
             ) : (
               <ul className="flex flex-col">
                 {shown.map((feed, index) => {
-                  const host = hostOf(feed.website);
+                  const host = hostOf(feed.siteUrl);
                   const hostId = `${rowId}-host-${index}`;
                   const chipsId = `${rowId}-chips-${index}`;
-                  const others = feed.categories
-                    .filter((entry) => entry.id !== category.id)
-                    .map((entry) => labelOf.get(entry.id) ?? entry.label ?? entry.id);
+                  const others = feed.categoryIds
+                    .filter((id) => id !== category.id)
+                    .map((id) => labelOf.get(id) ?? id);
                   const removing = save.isPending && save.variables.feedId === feed.id;
                   return (
                     <li key={feed.id} className="flex items-center gap-1">
@@ -355,7 +377,7 @@ export const CategoryPanel = ({
             ) : null}
           </section>
           <p className="text-xs text-faint text-pretty">
-            {orphans === 0 || isDeleteLocked({ category, collections, subscriptions })
+            {orphans === 0 || isDeleteLocked({ category, categories, allFeeds })
               ? t.removeHint
               : t.removeHintOrphans({ count: orphans })}
           </p>
@@ -364,8 +386,8 @@ export const CategoryPanel = ({
       <DeleteCategoryDialog
         open={deleting}
         category={category}
-        collections={collections}
-        subscriptions={subscriptions}
+        categories={categories}
+        allFeeds={allFeeds}
         onCancel={() => {
           setDeleting(false);
         }}

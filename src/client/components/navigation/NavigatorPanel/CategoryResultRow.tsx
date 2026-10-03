@@ -1,4 +1,4 @@
-import type { Collection } from "shared/feedsApi/types";
+import type { Category } from "shared/feedsApi/types";
 import { EditLink } from "./EditLink";
 import { highlightMatch } from "./highlightMatch";
 import {
@@ -9,7 +9,7 @@ import {
 } from "./shared";
 
 interface CategoryResultRowProps {
-  collection: Collection;
+  category: Category;
   /** Unread count in the badge. */
   count: number;
   /** The category is the stream currently open. */
@@ -25,7 +25,7 @@ interface CategoryResultRowProps {
 }
 
 export const CategoryResultRow = ({
-  collection,
+  category,
   count,
   isCurrent,
   selected,
@@ -40,11 +40,11 @@ export const CategoryResultRow = ({
   >
     <button type="button" onClick={onSelect} className={rowButtonClassName}>
       <span
-        data-tip={collection.label}
+        data-tip={category.label}
         data-tip-overflow=""
         className="min-w-0 flex-1 truncate text-sm font-bold text-ink"
       >
-        {highlightMatch({ text: collection.label, query: matchQuery })}
+        {highlightMatch({ text: category.label, query: matchQuery })}
       </span>
       {count > 0 ? (
         <span aria-hidden="true" className={countBadgeClassName}>
@@ -58,8 +58,8 @@ export const CategoryResultRow = ({
       ) : null}
     </button>
     <EditLink
-      target={{ kind: "category", categoryId: collection.id }}
-      title={collection.label}
+      target={{ kind: "category", categoryId: category.id }}
+      title={category.label}
       onClose={onClose}
     />
   </div>

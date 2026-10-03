@@ -3,7 +3,6 @@ import { fn } from "storybook/test";
 import { resetFixtureState } from "client/api/adapters/fixture";
 import { NewsletterPanel } from "client/components/subscriptions/NewsletterPanel";
 import { withQueryClient } from "stories/decorators";
-import { COLLECTIONS } from "stories/fixtures";
 
 const meta = {
   title: "Subscriptions/NewsletterPanel",
@@ -14,7 +13,7 @@ const meta = {
     resetFixtureState();
   },
   argTypes: { onClose: { control: false } },
-  args: { collections: COLLECTIONS, categoryId: undefined, onClose: fn() },
+  args: { onClose: fn() },
 } satisfies Meta<typeof NewsletterPanel>;
 
 export default meta;

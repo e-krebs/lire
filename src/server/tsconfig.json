@@ -6,6 +6,7 @@
     "paths": {
       "shared/*": ["../shared/*"],
       "client/*": ["../client/*"],
+      "test/*": ["../test/*"],
       "server/*": ["./*"]
     }
   },

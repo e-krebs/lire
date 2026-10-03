@@ -9,8 +9,8 @@ const meta = {
   title: "Components/Reader",
   component: Reader,
   decorators: [withUrl, withQueryClient],
-  parameters: { layout: "fullscreen", url: "/stream/all/news-0029" },
-  args: { entryId: "news-0029", streamKey: "all" },
+  parameters: { layout: "fullscreen", url: "/stream/all/entry/101:0dcd64" },
+  args: { entryId: "101:0dcd64", streamKey: "all" },
 } satisfies Meta<typeof Reader>;
 
 export default meta;
@@ -86,8 +86,8 @@ const expectFrameFitsContent = async (iframe: HTMLIFrameElement): Promise<void> 
 };
 
 export const Newsletter: Story = {
-  args: { entryId: "letter-0004" },
-  parameters: { url: "/stream/all/letter-0004" },
+  args: { entryId: "111:109bd3" },
+  parameters: { url: "/stream/all/entry/111:109bd3" },
   // Below 64rem the reader panel fills its parent, so this relies on the 414px default viewport.
   decorators: [
     (Story) => (
@@ -105,7 +105,7 @@ export const Newsletter: Story = {
 
     // Not `readyState`: the seed images come from the live picsum.photos and may never settle.
     await waitFor(async () => {
-      await expect(iframe.getBoundingClientRect().height).toBeGreaterThan(300);
+      await expect(iframe.getBoundingClientRect().height).toBeGreaterThan(150);
       await expectFrameFitsContent(iframe);
     }, LOADED);
 

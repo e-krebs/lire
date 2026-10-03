@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { layoutMasonry, neighbourOf, tileAspect, type MasonryItem } from "../masonry";
 
-const MIN_ASPECT = 1;
-const MAX_ASPECT = 16 / 9;
+const IMAGE_ASPECT = 3 / 2;
 const TEXT_ASPECT = 16 / 9;
 
 const squares = (count: number): MasonryItem[] =>
@@ -18,28 +17,13 @@ const stacked: MasonryItem[] = [
 
 describe("masonry", () => {
   describe("when sizing a tile", () => {
-    it("clamps a very tall image up to MIN_ASPECT", () => {
-      expect(tileAspect({ visual: { url: "i.jpg", width: 600, height: 1200 } })).toBe(MIN_ASPECT);
+    it("gives an entry with an image the image aspect", () => {
+      expect(tileAspect({ imageUrl: "i.jpg" })).toBe(IMAGE_ASPECT);
     });
 
-    it("clamps a very wide image down to MAX_ASPECT", () => {
-      expect(tileAspect({ visual: { url: "i.jpg", width: 2000, height: 500 } })).toBe(MAX_ASPECT);
-    });
-
-    it("keeps an aspect already inside the range", () => {
-      expect(tileAspect({ visual: { url: "i.jpg", width: 1200, height: 800 } })).toBe(1.5);
-    });
-
-    it("falls back to TEXT_ASPECT without a visual", () => {
+    it("falls back to TEXT_ASPECT without an image", () => {
       expect(tileAspect({})).toBe(TEXT_ASPECT);
-      expect(tileAspect({ visual: undefined })).toBe(TEXT_ASPECT);
-    });
-
-    it("falls back to TEXT_ASPECT when the intrinsic size is missing or zero", () => {
-      expect(tileAspect({ visual: { url: "i.jpg" } })).toBe(TEXT_ASPECT);
-      expect(tileAspect({ visual: { url: "i.jpg", width: 800 } })).toBe(TEXT_ASPECT);
-      expect(tileAspect({ visual: { url: "i.jpg", width: 0, height: 800 } })).toBe(TEXT_ASPECT);
-      expect(tileAspect({ visual: { url: "i.jpg", width: 800, height: 0 } })).toBe(TEXT_ASPECT);
+      expect(tileAspect({ imageUrl: "" })).toBe(TEXT_ASPECT);
     });
   });
 
