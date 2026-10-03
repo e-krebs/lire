@@ -4,20 +4,179 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      app: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.app == 'true' || steps.unknown.outputs.unknown == 'true' }}
+      storybook: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.storybook == 'true' || steps.unknown.outputs.unknown == 'true' }}
+      worker: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.worker == 'true' || steps.unknown.outputs.unknown == 'true' }}
+      tooling: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.tooling == 'true' || steps.unknown.outputs.unknown == 'true' }}
+      infra: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.infra == 'true' || steps.unknown.outputs.unknown == 'true' }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Filter changed areas
+        id: filter
+        if: github.event_name != 'workflow_dispatch'
+        uses: dorny/paths-filter@v4
+        with:
+          filters: |
+            app:
+              - 'src/client/**'
+              - 'src/shared/**'
+              - 'public/**'
+              - 'index.html'
+              - 'vite.config.ts'
+              - 'fixtures/**'
+              - 'scripts/check-dist-secrets.ts'
+              - 'scripts/check-demo-brand.ts'
+              - 'package.json'
+              - 'yarn.lock'
+              - '.yarnrc.yml'
+              - '.yarn/**'
+              - '.nvmrc'
+              - '**/tsconfig*.json'
+              - '.github/actions/setup/**'
+              - '.github/workflows/ci.yml'
+            storybook:
+              - '.storybook/**'
+              - 'src/client/**'
+              - 'src/shared/**'
+              - 'public/**'
+              - 'fixtures/**'
+              - 'vite.config.ts'
+              - 'vitest.config.ts'
+              - 'scripts/check-demo-brand.ts'
+              - 'src/test/**'
+              - 'package.json'
+              - 'yarn.lock'
+              - '.yarnrc.yml'
+              - '.yarn/**'
+              - '.nvmrc'
+              - '**/tsconfig*.json'
+              - '.github/actions/setup/**'
+              - '.github/workflows/ci.yml'
+            worker:
+              - 'src/server/**'
+              - 'src/shared/**'
+              - 'wrangler.toml'
+              - 'package.json'
+              - 'yarn.lock'
+              - '.yarnrc.yml'
+              - '.yarn/**'
+              - '.nvmrc'
+              - '**/tsconfig*.json'
+              - '.github/actions/setup/**'
+              - '.github/workflows/ci.yml'
+            tooling:
+              - 'src/test/**'
+              - 'e2e/**'
+              - 'scripts/**'
+              - 'playwright.config.ts'
+              - 'vitest.config.ts'
+              - 'knip.json'
+              - '.oxlintrc.json'
+              - '.oxfmtrc.json'
+              - 'package.json'
+              - 'yarn.lock'
+              - '.yarnrc.yml'
+              - '.yarn/**'
+              - '.nvmrc'
+              - '**/tsconfig*.json'
+              - '.github/actions/setup/**'
+              - '.github/workflows/ci.yml'
+            infra:
+              - 'scripts/provision-pages.ts'
+              - 'scripts/check-access.ts'
+              - 'scripts/cloudflare-api.ts'
+              - 'scripts/check-live.ts'
+              - 'scripts/deploy-targets.ts'
+              - 'package.json'
+              - 'yarn.lock'
+              - '.yarnrc.yml'
+              - '.yarn/**'
+              - '.nvmrc'
+              - '**/tsconfig*.json'
+              - '.github/actions/setup/**'
+              - '.github/workflows/ci.yml'
+      # Fail-open guard: a changed file that no list or ignore list names turns every output on.
+      - name: Detect unclassified files
+        id: unknown
+        if: github.event_name != 'workflow_dispatch'
+        uses: dorny/paths-filter@v4
+        with:
+          predicate-quantifier: every
+          filters: |
+            unknown:
+              - '**'
+              - '!src/client/**'
+              - '!src/shared/**'
+              - '!public/**'
+              - '!index.html'
+              - '!vite.config.ts'
+              - '!fixtures/**'
+              - '!scripts/check-dist-secrets.ts'
+              - '!scripts/check-demo-brand.ts'
+              - '!package.json'
+              - '!yarn.lock'
+              - '!.yarnrc.yml'
+              - '!.yarn/**'
+              - '!.nvmrc'
+              - '!**/tsconfig*.json'
+              - '!.github/actions/setup/**'
+              - '!.github/workflows/ci.yml'
+              - '!android/**'
+              - '!docs/**'
+              - '!**/*.md'
+              - '!.claude/**'
+              - '!.editorconfig'
+              - '!.gitignore'
+              - '!.env.sample'
+              - '!.github/dependabot.yml'
+              - '!.github/workflows/android.yml'
+              - '!.storybook/**'
+              - '!vitest.config.ts'
+              - '!src/test/**'
+              - '!src/server/**'
+              - '!wrangler.toml'
+              - '!e2e/**'
+              - '!scripts/**'
+              - '!playwright.config.ts'
+              - '!knip.json'
+              - '!.oxlintrc.json'
+              - '!.oxfmtrc.json'
+              - '!scripts/provision-pages.ts'
+              - '!scripts/check-access.ts'
+              - '!scripts/cloudflare-api.ts'
+              - '!scripts/check-live.ts'
+              - '!scripts/deploy-targets.ts'
+
+  docs-links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: yarn check:links
+
   verify:
+    needs: [changes]
+    if: needs.changes.outputs.app == 'true' || needs.changes.outputs.worker == 'true' || needs.changes.outputs.storybook == 'true' || needs.changes.outputs.tooling == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
-      - name: Docs link gate
-        run: yarn check:links
       - name: Lockfile dedupe gate
         run: yarn dedupe --check
       - run: yarn lint
@@ -47,6 +206,8 @@ jobs:
         run: yarn check:secrets
 
   e2e:
+    needs: [changes]
+    if: needs.changes.outputs.app == 'true' || needs.changes.outputs.worker == 'true' || needs.changes.outputs.tooling == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -73,6 +234,8 @@ jobs:
           retention-days: 7
 
   storybook:
+    needs: [changes]
+    if: needs.changes.outputs.storybook == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -96,7 +259,7 @@ jobs:
 
   # Every Cloudflare job reads this output — they skip cleanly on PRs, forks and until the repo secrets are set.
   cloudflare-gate:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 2
     outputs:
@@ -117,8 +280,8 @@ jobs:
 
   # Checks the Access config and creates missing Pages projects, domains and DNS records before any deploy.
   preflight:
-    needs: [cloudflare-gate]
-    if: needs.cloudflare-gate.outputs.enabled == 'true'
+    needs: [changes, cloudflare-gate]
+    if: needs.cloudflare-gate.outputs.enabled == 'true' && (needs.changes.outputs.app == 'true' || needs.changes.outputs.storybook == 'true' || needs.changes.outputs.worker == 'true' || needs.changes.outputs.infra == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     concurrency:
@@ -138,8 +301,8 @@ jobs:
 
   # Gated by cloudflare-gate, after preflight.
   deploy:
-    needs: [cloudflare-gate, verify, e2e, preflight]
-    if: needs.cloudflare-gate.outputs.enabled == 'true'
+    needs: [changes, cloudflare-gate, verify, e2e, preflight]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.cloudflare-gate.outputs.enabled == 'true' && needs.changes.outputs.app == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     concurrency:
@@ -157,8 +320,8 @@ jobs:
 
   # Gated by cloudflare-gate, after preflight.
   deploy-demo:
-    needs: [cloudflare-gate, verify, e2e, preflight]
-    if: needs.cloudflare-gate.outputs.enabled == 'true'
+    needs: [changes, cloudflare-gate, verify, e2e, preflight]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.cloudflare-gate.outputs.enabled == 'true' && needs.changes.outputs.app == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     concurrency:
@@ -175,8 +338,8 @@ jobs:
 
   # Gated by cloudflare-gate, after preflight.
   deploy-storybook:
-    needs: [cloudflare-gate, storybook, preflight]
-    if: needs.cloudflare-gate.outputs.enabled == 'true'
+    needs: [changes, cloudflare-gate, storybook, preflight]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.cloudflare-gate.outputs.enabled == 'true' && needs.changes.outputs.storybook == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     concurrency:
@@ -193,8 +356,8 @@ jobs:
 
   # Gated by cloudflare-gate, after preflight. --secrets-file adds or updates the pin, never deletes other secrets.
   deploy-worker:
-    needs: [cloudflare-gate, verify, e2e, preflight]
-    if: needs.cloudflare-gate.outputs.enabled == 'true'
+    needs: [changes, cloudflare-gate, verify, e2e, preflight]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.cloudflare-gate.outputs.enabled == 'true' && needs.changes.outputs.worker == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     concurrency:
@@ -220,8 +383,8 @@ jobs:
 
   # Node built-ins only, so no install.
   check-live:
-    needs: [cloudflare-gate, deploy, deploy-demo, deploy-storybook, deploy-worker]
-    if: needs.cloudflare-gate.outputs.enabled == 'true'
+    needs: [changes, cloudflare-gate, deploy, deploy-demo, deploy-storybook, deploy-worker]
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && needs.cloudflare-gate.outputs.enabled == 'true' && (needs.changes.outputs.infra == 'true' || needs.deploy.result == 'success' || needs.deploy-demo.result == 'success' || needs.deploy-storybook.result == 'success' || needs.deploy-worker.result == 'success') }}
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
