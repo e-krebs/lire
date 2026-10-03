@@ -2,7 +2,7 @@
 
 Lire is a single-user reader over NewsBlur: a static PWA on Cloudflare Pages, and a small Worker
 that holds the credentials and serves a Lire-owned API, translated to NewsBlur calls (a
-backend-for-frontend, [ADR 0011](../adr/0011-newsblur-bff.md)).
+backend-for-frontend, [ADR 0009](../adr/0009-newsblur-bff.md)).
 
 ## Diagram
 
@@ -121,7 +121,7 @@ any token is read. The Worker never forwards a client path. It passes the matche
 calls the route needs and answers in Lire's shapes. The client never sees a NewsBlur id or answer
 shape: a feed id is the numeric NewsBlur id, a category is a top-level folder named by its title,
 and an entry is a `story_hash`. The reasons and the rules the core enforces (counts, paging, the
-user check, the `code < 1` failure) are in [ADR 0011](../adr/0011-newsblur-bff.md).
+user check, the `code < 1` failure) are in [ADR 0009](../adr/0009-newsblur-bff.md).
 
 The core lives in `shared/` because it is pure and takes its `fetch` as an argument. The Worker
 passes a `fetch` that adds the bearer token and calls `NEWSBLUR_HOST`; mock mode passes the fake

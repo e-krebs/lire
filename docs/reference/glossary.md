@@ -26,6 +26,6 @@ Terms used across the code and the docs.
 | Category | A top-level folder as the client sees it, with `{id, label, feedIds}`. |
 | Feed | A followed feed, with the numeric NewsBlur feed id as a string. |
 | Story hash | NewsBlur's id for one story. It is the entry id in the contract. |
-| Unread counts | Per feed, `ps + nt + ng` from `/reader/refresh_feeds`, summed per category and for `all`. See [ADR 0011](../adr/0011-newsblur-bff.md). |
+| Unread counts | Per feed, `ps + nt + ng` from `/reader/refresh_feeds`, summed per category and for `all`. See [ADR 0009](../adr/0009-newsblur-bff.md). |
 | Cursor | The opaque paging token in a stream or search response. It is base64url JSON of the page number, and of the query for search. |
 | Seed category | A seed folder named by its label in tests ([seedCategories.ts](../../src/test/seedCategories.ts)). |

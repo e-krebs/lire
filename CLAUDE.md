@@ -31,8 +31,9 @@ Code touched → doc to check (update if the change is user- or reader-visible):
 | README's Status / Documentation sections | — | keep in step with `docs/` (don't let them contradict) |
 
 A new architectural decision — or reversing an existing one — gets an ADR under
-[docs/adr/](docs/adr/). Don't rewrite a superseded decision's history: add a new ADR that supersedes
-it and mark the old one.
+[docs/adr/](docs/adr/). To reverse a decision, carry the old ADR's still-valid reasons into the new
+one, delete the old ADR and renumber the later ones with no gaps, then grep the repo for stale
+links. Git history keeps the old record.
 
 When unsure whether a code change needs a doc edit, check the mapped doc and either update it or
 confirm it still reads true — a two-minute check beats silent drift.

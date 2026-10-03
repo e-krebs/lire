@@ -2,7 +2,7 @@
 
 Lire has one user, its owner, and two layers of auth. Cloudflare Access decides who may reach the
 Worker at all. A NewsBlur OAuth token, obtained once through the code flow, decides what the Worker
-may do upstream ([ADR 0012](../adr/0012-newsblur-oauth.md)).
+may do upstream ([ADR 0010](../adr/0010-newsblur-oauth.md)).
 
 ## Layer 1: Cloudflare Access and the owner pin
 

@@ -3,7 +3,7 @@
 The Worker ([worker.ts](../../src/server/worker.ts)) answers only under `/api/`. Any other path
 gets a 404. Every `/api/` request first passes the Access check. The routes are the Lire contract
 in [routes.ts](../../src/shared/feedsApi/routes.ts), translated to NewsBlur by the core in
-[src/shared/bff/](../../src/shared/bff/) ([ADR 0011](../adr/0011-newsblur-bff.md)).
+[src/shared/bff/](../../src/shared/bff/) ([ADR 0009](../adr/0009-newsblur-bff.md)).
 
 ## Sign-in routes
 
