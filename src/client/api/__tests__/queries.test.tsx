@@ -16,8 +16,6 @@ import { markReadQueue } from "../markReadQueue";
 import {
   DeleteAndMoveError,
   flattenStream,
-  DESKTOP_FEED_COUNT,
-  DESKTOP_RIVER_COUNT,
   keys,
   pageCountFor,
   unreadCountFor,
@@ -94,10 +92,10 @@ describe("queries", () => {
   });
 
   it.each<[Parameters<typeof pageCountFor>[0]["tier"], StreamKey, number | undefined]>([
-    ["desktop", "all", DESKTOP_RIVER_COUNT],
-    ["desktop", techKey, DESKTOP_RIVER_COUNT],
-    ["desktop", "read", DESKTOP_RIVER_COUNT],
-    ["desktop", "feed:101", DESKTOP_FEED_COUNT],
+    ["desktop", "all", 24],
+    ["desktop", techKey, 24],
+    ["desktop", "read", 24],
+    ["desktop", "feed:101", 12],
     ["tablet", "all", undefined],
     ["phone", "feed:101", undefined],
   ])("sends a %s page of %s as count %s", (tier, streamKey, expected) => {

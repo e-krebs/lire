@@ -217,8 +217,8 @@ export const flattenStream = (data: InfiniteData<EntryPage> | undefined): Entry[
     .filter((entry) => !seen.has(entry.id) && seen.add(entry.id));
 };
 
-export const DESKTOP_RIVER_COUNT = 24;
-export const DESKTOP_FEED_COUNT = 12;
+const DESKTOP_RIVER_COUNT = 24;
+const DESKTOP_FEED_COUNT = 12;
 
 // Phone and tablet keep the server's default page size.
 export const pageCountFor = ({

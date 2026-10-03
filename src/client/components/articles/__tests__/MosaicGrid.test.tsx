@@ -16,7 +16,7 @@ import type { EntryPage } from "shared/feedsApi/types";
 import { resetFixtureState } from "client/api/adapters/fixture";
 import { markReadQueue } from "client/api/markReadQueue";
 import { getStreamEntries } from "client/api/client";
-import { DESKTOP_RIVER_COUNT, keys, useMarkRead } from "client/api/queries";
+import { keys, useMarkRead } from "client/api/queries";
 import { fixtureBackend } from "test/fixtureBackend";
 import { server } from "test/msw";
 import { setViewPrefs, useViewPrefs } from "client/utils/viewPrefs";
@@ -241,7 +241,7 @@ describe("MosaicGrid", () => {
         streamKey: "all",
         unreadOnly: false,
         order: "newest",
-        count: DESKTOP_RIVER_COUNT,
+        count: 24,
       }),
     );
     expect(all?.pages.flatMap((page) => page.items).some((item) => item.id === entryId)).toBe(true);
@@ -259,13 +259,13 @@ describe("MosaicGrid", () => {
       streamKey: "all",
       unreadOnly: true,
       order: "newest",
-      count: DESKTOP_RIVER_COUNT,
+      count: 24,
     });
     const firstPage = await getStreamEntries({
       streamKey: "all",
       unreadOnly: true,
       order: "newest",
-      count: DESKTOP_RIVER_COUNT,
+      count: 24,
     });
     expect(firstPage.cursor).toBeDefined();
     client.setQueryData<InfiniteData<EntryPage, string | undefined>>(queryKey, {
@@ -334,7 +334,7 @@ describe("MosaicGrid", () => {
       streamKey: "all",
       unreadOnly: true,
       order: "newest",
-      count: DESKTOP_RIVER_COUNT,
+      count: 24,
     });
     const { view } = setup({ client: newQueryClient(), observer: ReportingIntersectionObserver });
     const cards = () => view.container.querySelectorAll("[data-entry-id]").length;
