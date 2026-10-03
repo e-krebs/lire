@@ -1,7 +1,7 @@
 import { expect, test, type Locator, type Page } from "./fixtures";
 
-const SEED_ORDER = ["Tech News", "Design", "Newsletters", "Archive"];
-const MOVED_ORDER = ["Design", "Tech News", "Newsletters", "Archive"];
+const SEED_ORDER = ["Tech", "Design", "News", "Newsletters"];
+const MOVED_ORDER = ["Design", "Tech", "News", "Newsletters"];
 
 // Below `sm` (640px) the panel is a bottom sheet on a <dialog>; from `sm` up it floats as an
 // <aside>. Only pixel-9-pro sits below `sm`.
@@ -56,9 +56,9 @@ const ui = (page: Page) => ({
   async waitForSavedOrder(): Promise<void> {
     await expect
       .poll(async () =>
-        page.evaluate(() => window.localStorage.getItem("lire.fixture.preferences") ?? ""),
+        page.evaluate(() => window.localStorage.getItem("lire.fixture.preferences.v2") ?? ""),
       )
-      .toContain("categoriesOrderingId");
+      .toContain("lire.categoryOrder");
   },
   async navigatorOrder({ phone }: { phone: boolean }): Promise<void> {
     await page.goto("/");
@@ -90,13 +90,13 @@ test.describe("Subscriptions manager", () => {
     await expect(pageUi.categoriesTab).toHaveAttribute("aria-selected", "true");
     await expect(pageUi.feedsTab).toHaveAttribute("aria-selected", "false");
 
-    const techNews = pageUi.categoryRow("Tech News");
-    await techNews.focus();
-    await techNews.click();
+    const tech = pageUi.categoryRow("Tech");
+    await tech.focus();
+    await tech.click();
 
-    const panel = pageUi.panel({ phone, title: "Tech News" });
+    const panel = pageUi.panel({ phone, title: "Tech" });
     await expect(panel).toBeVisible();
-    const count = await pageUi.rowCountText(techNews).textContent();
+    const count = await pageUi.rowCountText(tech).textContent();
     await expect(panel.getByText(count ?? "", { exact: true }).first()).toBeVisible();
     await expect(page).toHaveURL(/[?&]category=/);
 
@@ -121,15 +121,14 @@ test.describe("Subscriptions manager", () => {
       expect((await edges()).width).toBeLessThan(viewport.width / 2);
     }
 
-    await pageUi.closeButton({ phone, title: "Tech News" }).click();
+    await pageUi.closeButton({ phone, title: "Tech" }).click();
     await expect(panel).toBeHidden();
-    await expect(techNews).toBeFocused();
+    await expect(tech).toBeFocused();
   });
 
-  test("subscribes to a newsletter from the Add sources menu", async ({ page }, testInfo) => {
+  test("shows the newsletter address from the Add sources menu", async ({ page }, testInfo) => {
     const phone = testInfo.project.name === "pixel-9-pro";
     const pageUi = ui(page);
-    const name = "E2E Weekly";
 
     await page.goto("/subscriptions");
     await pageUi.feedsTab.click();
@@ -138,14 +137,11 @@ test.describe("Subscriptions manager", () => {
 
     const panel = pageUi.panel({ phone, title: "Add a newsletter" });
     await expect(panel).toBeVisible();
-    await panel.getByRole("button", { name: "Generate address" }).click();
-    await expect(panel.getByText(/@newsletters\.example/)).toBeVisible();
-    await panel.getByLabel("Name").fill(name);
-    await panel.getByRole("checkbox", { name: "Design", exact: true }).check();
-    await panel.getByRole("button", { name: "Subscribe" }).click();
+    await expect(panel.getByText(/@newsletters\.newsblur\.com/)).toBeVisible();
+    await expect(panel.getByRole("button", { name: "Copy" })).toBeVisible();
 
+    await pageUi.closeButton({ phone, title: "Add a newsletter" }).click();
     await expect(panel).toBeHidden();
-    await expect(pageUi.feedRow(name)).toBeVisible();
   });
 
   test("a second row stays clickable while the panel is open", async ({ page }, testInfo) => {
@@ -153,16 +149,16 @@ test.describe("Subscriptions manager", () => {
     const pageUi = ui(page);
 
     await page.goto("/subscriptions");
-    await pageUi.categoryRow("Tech News").click();
-    await expect(pageUi.panel({ phone: false, title: "Tech News" })).toBeVisible();
+    await pageUi.categoryRow("Tech").click();
+    await expect(pageUi.panel({ phone: false, title: "Tech" })).toBeVisible();
 
     await pageUi.categoryRow("Design").click();
     const design = pageUi.panel({ phone: false, title: "Design" });
     await expect(design).toBeVisible();
-    await expect(pageUi.panel({ phone: false, title: "Tech News" })).toBeHidden();
+    await expect(pageUi.panel({ phone: false, title: "Tech" })).toBeHidden();
 
     // The list's own gutter, left of its rows, is empty space.
-    const row = await pageUi.categoryRow("Tech News").boundingBox();
+    const row = await pageUi.categoryRow("Tech").boundingBox();
     if (!row) throw new Error("Row has no box");
     await page.mouse.click(row.x - 8, row.y + row.height / 2);
     await expect(design).toBeHidden();
@@ -175,8 +171,8 @@ test.describe("Subscriptions manager", () => {
     const pageUi = ui(page);
 
     await page.goto("/subscriptions");
-    await pageUi.categoryRow("Tech News").click();
-    const panel = pageUi.panel({ phone, title: "Tech News" });
+    await pageUi.categoryRow("Tech").click();
+    const panel = pageUi.panel({ phone, title: "Tech" });
     await expect(panel).toBeVisible();
 
     // Escape closes the menu, not the panel behind it.
@@ -198,33 +194,23 @@ test.describe("Subscriptions manager", () => {
 
     await page.goto("/subscriptions");
 
-    // The seed has no feed in two categories, so give one a second category first. The mock
-    // backend lives in the page, so every step stays in-app: a reload would reset it.
-    await pageUi.feedsTab.click();
-    await pageUi.feedRow("Example News").click();
-    const feedPanel = pageUi.panel({ phone, title: "Example News" });
-    await expect(feedPanel).toBeVisible();
-    await feedPanel.getByRole("checkbox", { name: "Design", exact: true }).check();
-    await feedPanel.getByRole("button", { name: "Save changes" }).click();
-    await expect(feedPanel).toBeHidden();
-
-    await pageUi.categoriesTab.click();
-    await pageUi.categoryRow("Tech News").click();
-    const categoryPanel = pageUi.panel({ phone, title: "Tech News" });
+    // Feed 103 sits in Tech and Design.
+    await pageUi.categoryRow("Tech").click();
+    const categoryPanel = pageUi.panel({ phone, title: "Tech" });
     await expect(categoryPanel).toBeVisible();
     await categoryPanel.getByRole("button", { name: "Delete category…" }).click();
 
-    const modal = pageUi.deleteModal("Tech News");
+    const modal = pageUi.deleteModal("Tech");
     await expect(modal).toBeVisible();
-    await expect(modal.getByRole("button", { name: "Delete and move 3 feeds" })).toBeDisabled();
+    await expect(modal.getByRole("button", { name: "Delete and move 2 feeds" })).toBeDisabled();
 
     const moveAll = modal.getByRole("checkbox", {
       name: "Also move the feed that sits in another category",
     });
     await moveAll.check();
-    await expect(modal.getByRole("button", { name: "Delete and move 4 feeds" })).toBeVisible();
-    await moveAll.uncheck();
     await expect(modal.getByRole("button", { name: "Delete and move 3 feeds" })).toBeVisible();
+    await moveAll.uncheck();
+    await expect(modal.getByRole("button", { name: "Delete and move 2 feeds" })).toBeVisible();
   });
 
   test("a category moved by keyboard keeps its place after a reload", async ({
@@ -269,7 +255,7 @@ test.describe("Subscriptions manager", () => {
     const handle = pageUi.reorderHandle("Design");
     await expect(handle).toBeVisible();
     const from = await handle.boundingBox();
-    const to = await pageUi.reorderHandle("Tech News").boundingBox();
+    const to = await pageUi.reorderHandle("Tech").boundingBox();
     if (!from || !to) throw new Error("Handle has no box");
 
     await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);

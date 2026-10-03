@@ -5,7 +5,7 @@ import { COVERAGE, coverageOptions } from "./fixtures";
 const warmSeed = async ({ browser, baseURL }: { browser: Browser; baseURL: string }) => {
   const page = await browser.newPage({ baseURL });
   page.setDefaultTimeout(60_000);
-  await page.goto("/stream/all/entry/news-0029");
+  await page.goto("/stream/all/entry/106%3A0e680f");
   await page.getByRole("heading", { level: 1 }).waitFor();
   await page.goto("/subscriptions");
   await page.getByRole("tab", { name: /^Categories · / }).waitFor();
@@ -25,7 +25,7 @@ const warmRealMode = async ({ browser, baseURL }: { browser: Browser; baseURL: s
     route.fulfill({ json: { signedIn: false } }),
   );
   await page.goto("/stream/all");
-  await page.getByRole("link", { name: "Sign in", exact: true }).waitFor();
+  await page.getByRole("link", { name: "Sign in with NewsBlur", exact: true }).waitFor();
   await page.waitForLoadState("networkidle");
 };
 

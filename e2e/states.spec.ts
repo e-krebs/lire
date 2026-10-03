@@ -22,10 +22,10 @@ const test = base.extend<{ unmockedApi: string[] }>({
 
 const ui = (page: Page) => ({
   get signInText() {
-    return page.getByText("Sign in to read your subscriptions.");
+    return page.getByText("Sign in with NewsBlur to read your subscriptions.");
   },
   get signInLink() {
-    return page.getByRole("link", { name: "Sign in", exact: true });
+    return page.getByRole("link", { name: "Sign in with NewsBlur", exact: true });
   },
   get entriesRegion() {
     return page.getByRole("region", { name: "Entries" });
@@ -38,17 +38,17 @@ const ui = (page: Page) => ({
   },
 });
 
-// An empty signed-in account, every /v3 read answering 429 when `limited()` returns true.
+// An empty signed-in account, every read answering 429 when `limited()` returns true.
 const mockSignedIn = async ({ page, limited }: { page: Page; limited: () => boolean }) => {
   const bodies: Record<string, unknown> = {
-    "/api/v3/profile": { id: "user/e2e" },
-    "/api/v3/collections": [],
-    "/api/v3/subscriptions": [],
-    "/api/v3/markers/counts": { unreadcounts: [], updated: 0 },
-    "/api/v3/streams/contents": { id: "user/e2e/category/global.all", items: [] },
-    "/api/v3/preferences": {},
+    "/api/profile": { username: "e2e" },
+    "/api/categories": [],
+    "/api/feeds": [],
+    "/api/counts": { all: 0, feeds: {}, categories: {} },
+    "/api/streams/all/entries": { items: [] },
+    "/api/preferences": {},
   };
-  await page.route("**/api/v3/**", async (route) => {
+  await page.route(isApi, async (route) => {
     const { pathname } = new URL(route.request().url());
     if (route.request().method() !== "GET" || !(pathname in bodies)) return route.fallback();
     if (limited()) return route.fulfill({ status: 429, json: {} });
@@ -62,7 +62,7 @@ const mockSignedIn = async ({ page, limited }: { page: Page; limited: () => bool
 test.describe("app-level states", () => {
   test("shows the sign-in screen when signed out", async ({ page }) => {
     const pageUi = ui(page);
-    await page.route("**/api/v3/**", async (route) => route.fulfill({ status: 401, json: {} }));
+    await page.route(isApi, async (route) => route.fulfill({ status: 401, json: {} }));
     await page.route("**/api/auth/status", async (route) =>
       route.fulfill({ json: { signedIn: false } }),
     );

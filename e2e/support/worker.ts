@@ -9,13 +9,17 @@ import { Miniflare, Response, type Request } from "miniflare";
 import { expect, test as base } from "e2e/fixtures";
 
 // Reserved .test names: every outbound fetch lands in outboundService, and nothing reaches a real
-// Access team or feeds API.
+// Access team or NewsBlur.
 const TEAM_DOMAIN = "access.test";
-const FEEDLY_HOST = "https://api.test";
+const NEWSBLUR_HOST = "https://newsblur.test";
 const AUDIENCE = "lire-e2e";
 export const OWNER = "owner@example.com";
 export const CLIENT_ID = "test-client";
-export const GOOD_REFRESH_TOKEN = "refresh-accepted";
+export const CLIENT_SECRET = "test-secret";
+export const NEWSBLUR_ORIGIN = NEWSBLUR_HOST;
+export const GOOD_CODE = "code-accepted";
+export const ACCESS_TOKEN = "access-e2e";
+const USER_ID = 42;
 const KID = "e2e-key";
 
 type Keys = { privateKey: CryptoKey; publicJwk: JWK };
@@ -38,12 +42,18 @@ export const signAccessToken = async ({
     .sign(key);
 
 // Bodies are read eagerly, before the worker's request is gone.
-type OutboundCall = { url: string; body: string };
+type OutboundCall = { url: string; body: string; authorization: string | null };
 
-const tokenEndpoint = async (request: Request): Promise<Response> => {
-  const refreshToken = new URLSearchParams(await request.clone().text()).get("refresh_token");
-  if (refreshToken !== GOOD_REFRESH_TOKEN) return Response.json({}, { status: 400 });
-  return Response.json({ access_token: "access-e2e", expires_in: 3600 });
+const tokenEndpoint = (call: OutboundCall): Response => {
+  if (new URLSearchParams(call.body).get("code") !== GOOD_CODE) {
+    return Response.json({ error: "invalid_grant" }, { status: 400 });
+  }
+  return Response.json({ access_token: ACCESS_TOKEN, token_type: "Bearer" });
+};
+
+const profileEndpoint = (call: OutboundCall): Response => {
+  if (call.authorization !== `Bearer ${ACCESS_TOKEN}`) return Response.json({}, { status: 403 });
+  return Response.json({ code: 1, user_profile: { user_id: USER_ID } });
 };
 
 type WorkerServer = {
@@ -88,10 +98,12 @@ export const test = base.extend<{ worker: WorkerServer }, { bundle: string; keys
       modulesRoot: dirname(bundle),
       // Mirrors wrangler.toml.
       compatibilityDate: "2025-01-01",
-      durableObjects: { FEEDLY_AUTH: { className: "FeedlyAuth", useSQLite: true } },
+      durableObjects: { NEWSBLUR_AUTH: { className: "NewsblurAuth", useSQLite: true } },
       bindings: {
-        FEEDLY_HOST,
-        FEEDLY_CLIENT_ID: CLIENT_ID,
+        NEWSBLUR_HOST,
+        NEWSBLUR_CLIENT_ID: CLIENT_ID,
+        NEWSBLUR_CLIENT_SECRET: CLIENT_SECRET,
+        NEWSBLUR_NEWSLETTER_ADDRESS: "newsletters@newsblur.test",
         ACCESS_TEAM_DOMAIN: TEAM_DOMAIN,
         ACCESS_AUD: AUDIENCE,
         ACCESS_ALLOWED_EMAIL: OWNER,
@@ -100,9 +112,21 @@ export const test = base.extend<{ worker: WorkerServer }, { bundle: string; keys
         if (request.url === `https://${TEAM_DOMAIN}/cdn-cgi/access/certs`) {
           return Response.json({ keys: [keys.publicJwk] });
         }
-        if (request.url === `${FEEDLY_HOST}/v3/auth/token` && request.method === "POST") {
-          outbound.push({ url: request.url, body: await request.clone().text() });
-          return tokenEndpoint(request);
+        const endpoint = new URL(request.url);
+        if (endpoint.origin === NEWSBLUR_HOST) {
+          const call: OutboundCall = {
+            url: request.url,
+            body: await request.clone().text(),
+            authorization: request.headers.get("Authorization"),
+          };
+          if (endpoint.pathname === "/oauth/token" && request.method === "POST") {
+            outbound.push(call);
+            return tokenEndpoint(call);
+          }
+          if (endpoint.pathname === "/social/load_user_profile" && request.method === "GET") {
+            outbound.push(call);
+            return profileEndpoint(call);
+          }
         }
         unexpected.push(`${request.method} ${request.url}`);
         return new Response("unexpected outbound fetch", { status: 599 });

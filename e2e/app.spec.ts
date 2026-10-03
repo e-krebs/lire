@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { expect, test, type Page } from "./fixtures";
-import seedCollections from "fixtures/seed/collections.json" with { type: "json" };
+import seedFeeds from "fixtures/seed/feeds.json" with { type: "json" };
 
 const ui = (page: Page) => ({
   get locationBar() {
@@ -73,14 +73,14 @@ const ui = (page: Page) => ({
 
 const SHOTS_DIR = "/tmp/lire-shots";
 
-// Category ids end in a uuid, so the URL key is read back from the seed rather than typed out.
+// A folder's id is its title, and the router percent-encodes its stream key.
 const seedCategoryKey = (label: string): string => {
-  const collection = seedCollections.find((candidate) => candidate.label === label);
-  if (!collection) throw new Error(`No seed category labelled "${label}"`);
-  return collection.id.slice(collection.id.lastIndexOf("/") + 1);
+  const folder = seedFeeds.folders.find((candidate) => label in candidate);
+  if (!folder) throw new Error(`No seed category titled "${label}"`);
+  return encodeURIComponent(`folder:${label}`);
 };
 
-const TECH_NEWS_KEY = seedCategoryKey("Tech News");
+const TECH_NEWS_KEY = seedCategoryKey("Tech");
 
 const shot = async ({
   page,
@@ -170,46 +170,46 @@ test.describe("the app", () => {
     if (popoverTier) {
       await expect(pageUi.navigatorDialog).toHaveCount(0);
       await pageUi.searchField.click();
-      // The tree's rows only appear once the collections/subscriptions fixtures resolve — wait
+      // The tree's rows only appear once the feeds fixture resolve — wait
       // for one before typing, or the query below could filter over an empty tree.
-      await expect(pageUi.categoryButton("Tech News")).toBeVisible();
+      await expect(pageUi.categoryButton("Tech")).toBeVisible();
       await shot({ page, project, screen: "navigator" });
 
       await pageUi.searchField.fill("tech");
-      // Typing keeps the tree browsable below the matches, so "Tech News" holds two rows: the
+      // Typing keeps the tree browsable below the matches, so "Tech" holds two rows: the
       // match first, the tree row under the divider.
-      await pageUi.categoryButton("Tech News").first().click();
+      await pageUi.categoryButton("Tech").first().click();
 
       // Picking the category keeps the typed text as that stream's article search — and the
       // category rides in the URL as one segment, its id's last, not the full stream id.
       await expect(page).toHaveURL(new RegExp(`/stream/${TECH_NEWS_KEY}\\?`));
-      await expect(pageUi.locationBar).toContainText("Tech News");
+      await expect(pageUi.locationBar).toContainText("Tech");
       await expect(pageUi.searchField).toHaveValue("tech");
 
       await expect(pageUi.firstEntryLink).toBeVisible();
 
       // Clearing the text drops `q` and reopens the tree, with the current group expanded.
       await pageUi.clearSearchButton.click();
-      await pageUi.categoryButton("Example News").click();
+      await pageUi.categoryButton("Example Tech Daily").click();
 
       await expect(pageUi.searchField).toHaveValue("");
-      await expect(pageUi.locationBar).toContainText("Example News");
-      await expect(page).toHaveURL(/\/stream\/feed%3Ahttp%3A%2F%2Fexample-news\.test%2Frss$/);
+      await expect(pageUi.locationBar).toContainText("Example Tech Daily");
+      await expect(page).toHaveURL(/\/stream\/feed%3A101$/);
       return;
     }
 
     await pageUi.openNavigatorButton.click();
 
     await expect(pageUi.navigatorDialog).toBeVisible();
-    await expect(pageUi.navigatorCategoryButton("Tech News")).toBeVisible();
+    await expect(pageUi.navigatorCategoryButton("Tech")).toBeVisible();
     await shot({ page, project, screen: "navigator" });
 
     await pageUi.searchField.fill("tech");
-    await pageUi.navigatorCategoryButton("Tech News").first().click();
+    await pageUi.navigatorCategoryButton("Tech").first().click();
 
     await expect(pageUi.navigatorDialog).toBeHidden();
     await expect(page).toHaveURL(new RegExp(`/stream/${TECH_NEWS_KEY}\\?`));
-    await expect(pageUi.locationBar).toContainText("Tech News");
+    await expect(pageUi.locationBar).toContainText("Tech");
     await expect(pageUi.locationBar).toContainText("tech");
 
     await expect(pageUi.firstEntryLink).toBeVisible();
@@ -217,11 +217,11 @@ test.describe("the app", () => {
     await pageUi.openNavigatorButton.click();
     await expect(pageUi.navigatorDialog).toBeVisible();
     await pageUi.navigatorClearSearchButton.click();
-    await pageUi.navigatorCategoryButton("Example News").click();
+    await pageUi.navigatorCategoryButton("Example Tech Daily").click();
 
     await expect(pageUi.navigatorDialog).toBeHidden();
-    await expect(pageUi.locationBar).toContainText("Example News");
-    await expect(page).toHaveURL(/\/stream\/feed%3Ahttp%3A%2F%2Fexample-news\.test%2Frss$/);
+    await expect(pageUi.locationBar).toContainText("Example Tech Daily");
+    await expect(page).toHaveURL(/\/stream\/feed%3A101$/);
   });
 
   test("moves between cards with the arrow keys and marks one read with M", async ({ page }) => {

@@ -140,7 +140,7 @@ test.describe("flows", () => {
   }, testInfo) => {
     const phone = testInfo.project.name === "pixel-9-pro";
     const pageUi = ui(page);
-    const feedUrl = "https://flows-blog.test/rss";
+    const feedTitle = "Example Gardening";
     const feedPanel = (title: string): Locator =>
       phone ? pageUi.panel(title) : pageUi.complementary(title);
 
@@ -158,22 +158,22 @@ test.describe("flows", () => {
 
     const subscribe = addPanel.getByRole("button", { name: "Subscribe" });
     await expect(subscribe).toBeDisabled();
-    await addPanel.getByLabel("Feed or site URL").fill(feedUrl);
-    await addPanel.getByRole("radio", { name: feedUrl }).check();
+    await addPanel.getByLabel("Feed or site URL").fill("gardening");
+    await addPanel.getByRole("radio", { name: new RegExp(feedTitle) }).check();
     await addPanel.getByRole("checkbox", { name: "Design", exact: true }).check();
     await expect(subscribe).toBeEnabled();
     await subscribe.click();
     await expect(addPanel).toBeHidden();
 
-    const feedRow = pageUi.feedRow(feedUrl);
+    const feedRow = pageUi.feedRow(feedTitle);
     await expect(feedRow).toBeVisible();
 
     const navigatorHas = async (count: number): Promise<void> => {
       await pageUi.goBackButton.click();
       await expect(page).toHaveURL(/\/stream\//);
       const scope = await pageUi.openNavigator({ phone });
-      await pageUi.searchField.fill("flows-blog");
-      await expect(scope.getByRole("button", { name: feedUrl, exact: true })).toHaveCount(count);
+      await pageUi.searchField.fill("gardening");
+      await expect(scope.getByRole("button", { name: feedTitle, exact: true })).toHaveCount(count);
       await page.keyboard.press("Escape");
     };
     await navigatorHas(1);
@@ -182,10 +182,10 @@ test.describe("flows", () => {
     await pageUi.manageSubscriptionsLink.click();
     await pageUi.feedsTab.click();
     await feedRow.click();
-    const openFeedPanel = feedPanel(feedUrl);
+    const openFeedPanel = feedPanel(feedTitle);
     await expect(openFeedPanel).toBeVisible();
     await openFeedPanel.getByRole("button", { name: "Unsubscribe…" }).click();
-    const confirm = pageUi.unsubscribeConfirmDialog(feedUrl);
+    const confirm = pageUi.unsubscribeConfirmDialog(feedTitle);
     await expect(confirm).toBeVisible();
     await confirm.getByRole("button", { name: "Unsubscribe", exact: true }).click();
     await expect(confirm).toBeHidden();
@@ -272,7 +272,7 @@ test.describe("flows", () => {
       const pageUi = ui(page);
       await page.goto("/");
       await expect(pageUi.tiles.first()).toBeVisible();
-      const techNews = pageUi.categoryButton("Tech News");
+      const techNews = pageUi.categoryButton("Tech");
       await expect(pageUi.searchField).not.toBeFocused();
 
       await pageUi.pressOnBody("/");
@@ -296,21 +296,21 @@ test.describe("flows", () => {
       await page.keyboard.press("ArrowUp");
       await expect.poll(async () => pageUi.selectedLabel()).toBe(top);
 
-      // Walk down to the Tech News group, expand it, then step onto its first feed.
+      // Walk down to the Tech group, expand it, then step onto its first feed.
       await expect(async () => {
         await page.keyboard.press("ArrowDown");
-        expect(await pageUi.selectedLabel()).toBe("Tech News");
+        expect(await pageUi.selectedLabel()).toBe("Tech");
       }).toPass();
-      const toggle = pageUi.toggleGroupButton("Tech News");
+      const toggle = pageUi.toggleGroupButton("Tech");
       await expect(toggle).toHaveAttribute("aria-expanded", "false");
       await page.keyboard.press("ArrowRight");
       await expect(toggle).toHaveAttribute("aria-expanded", "true");
       await page.keyboard.press("ArrowRight");
-      await expect.poll(async () => pageUi.selectedLabel()).not.toBe("Tech News");
+      await expect.poll(async () => pageUi.selectedLabel()).not.toBe("Tech");
       const feedLabel = (await pageUi.selectedLabel()) ?? "";
       // Out of a feed, ArrowLeft closes the group and lands on its row.
       await page.keyboard.press("ArrowLeft");
-      await expect.poll(async () => pageUi.selectedLabel()).toBe("Tech News");
+      await expect.poll(async () => pageUi.selectedLabel()).toBe("Tech");
       await expect(toggle).toHaveAttribute("aria-expanded", "false");
       await page.keyboard.press("ArrowRight");
       await page.keyboard.press("ArrowRight");
@@ -326,9 +326,9 @@ test.describe("flows", () => {
       const pageUi = ui(page);
       await page.goto("/");
       await pageUi.searchField.click();
-      await pageUi.categoryButton("Tech News").click();
+      await pageUi.categoryButton("Tech").click();
       await expect(page).toHaveURL(/\/stream\/(?!all)/);
-      const chip = pageUi.clearScopeChip("Tech News");
+      const chip = pageUi.clearScopeChip("Tech");
       await expect(chip).toBeVisible();
 
       await pageUi.searchField.focus();

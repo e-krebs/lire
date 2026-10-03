@@ -1,30 +1,18 @@
 import { generateKeyPair } from "jose";
-import type { Page } from "./fixtures";
 import {
+  ACCESS_TOKEN,
   CLIENT_ID,
+  CLIENT_SECRET,
   expect,
-  GOOD_REFRESH_TOKEN,
+  GOOD_CODE,
+  NEWSBLUR_ORIGIN,
   OWNER,
   signAccessToken,
   test,
 } from "./support/worker";
 
 const ACCESS_HEADER = "Cf-Access-Jwt-Assertion";
-
-const ui = (page: Page) => ({
-  get csrfField() {
-    return page.locator('input[name="csrf"]');
-  },
-  get refreshTokenField() {
-    return page.getByLabel("Feedly refresh token");
-  },
-  get signInButton() {
-    return page.getByRole("button", { name: "Sign in" });
-  },
-  get errorAlert() {
-    return page.getByRole("alert");
-  },
-});
+const STATE_COOKIE = "lire_oauth_state";
 
 test.describe("Login", () => {
   test("the worker refuses any /api request without a valid Access token", async ({
@@ -41,6 +29,7 @@ test.describe("Login", () => {
     for (const [name, token] of Object.entries(rejected)) {
       const response = await request.get(`${worker.url}/api/auth/login`, {
         headers: token ? { [ACCESS_HEADER]: token } : {},
+        maxRedirects: 0,
       });
       expect(response.status(), name).toBe(403);
     }
@@ -52,72 +41,118 @@ test.describe("Login", () => {
   });
 
   test.describe("when using the owner's Access token", () => {
-    test.beforeEach(async ({ context, worker }) => {
-      // Access adds this header at the edge in production.
-      await context.setExtraHTTPHeaders({ [ACCESS_HEADER]: worker.ownerToken });
+    // Raw requests, so the Secure state cookie is sent by hand instead of through a cookie jar.
+    const headers = ({ ownerToken, state }: { ownerToken: string; state?: string }) => ({
+      [ACCESS_HEADER]: ownerToken,
+      ...(state ? { Cookie: `${STATE_COOKIE}=${state}` } : {}),
     });
 
-    const signedIn = async ({ page, url }: { page: Page; url: string }): Promise<unknown> =>
-      (await page.request.get(`${url}/api/auth/status`)).json();
-
-    test("the login form's CSRF field must match its cookie", async ({ page, worker }) => {
-      const pageUi = ui(page);
-      await page.goto(`${worker.url}/api/auth/login`);
-      // A URL filter drops Secure cookies on plain http, though the browser still sends them to 127.0.0.1.
-      const cookies = await page.context().cookies();
-      expect(cookies.find((cookie) => cookie.name === "lire_csrf")?.value).toBe(
-        await pageUi.csrfField.inputValue(),
-      );
-
-      await pageUi.csrfField.evaluate((input: HTMLInputElement) => {
-        input.value = "forged";
+    const startLogin = async ({
+      request,
+      worker,
+    }: Pick<Parameters<Parameters<typeof test>[2]>[0], "request" | "worker">) => {
+      const response = await request.get(`${worker.url}/api/auth/login`, {
+        headers: headers({ ownerToken: worker.ownerToken }),
+        maxRedirects: 0,
       });
-      await pageUi.refreshTokenField.fill(GOOD_REFRESH_TOKEN);
-      const posted = page.waitForResponse((response) => response.request().method() === "POST");
-      await pageUi.signInButton.click();
+      const authorize = new URL(response.headers().location);
+      return { response, authorize, state: authorize.searchParams.get("state") ?? "" };
+    };
 
-      expect((await posted).status()).toBe(403);
+    const callback = async ({
+      request,
+      worker,
+      query,
+      state,
+    }: Pick<Parameters<Parameters<typeof test>[2]>[0], "request" | "worker"> & {
+      query: Record<string, string>;
+      state?: string;
+    }) =>
+      request.get(`${worker.url}/api/auth/callback?${new URLSearchParams(query)}`, {
+        headers: headers({ ownerToken: worker.ownerToken, state }),
+        maxRedirects: 0,
+      });
+
+    const signedIn = async ({
+      request,
+      worker,
+    }: Pick<Parameters<Parameters<typeof test>[2]>[0], "request" | "worker">): Promise<unknown> =>
+      (
+        await request.get(`${worker.url}/api/auth/status`, {
+          headers: headers({ ownerToken: worker.ownerToken }),
+        })
+      ).json();
+
+    test("login redirects to the NewsBlur authorize page with a state cookie", async ({
+      request,
+      worker,
+    }) => {
+      const { response, authorize, state } = await startLogin({ request, worker });
+
+      expect(response.status()).toBe(302);
+      expect(authorize.origin).toBe(NEWSBLUR_ORIGIN);
+      expect(authorize.pathname).toBe("/oauth/authorize");
+      expect(authorize.searchParams.get("client_id")).toBe(CLIENT_ID);
+      expect(authorize.searchParams.get("redirect_uri")).toBe(`${worker.url}/api/auth/callback`);
+      expect(state).not.toBe("");
+      expect(response.headers()["set-cookie"]).toContain(`${STATE_COOKIE}=${state}`);
       expect(worker.outbound).toEqual([]);
-      expect(await signedIn({ page, url: worker.url })).toEqual({ signedIn: false });
     });
 
-    test("a refresh token the feeds API rejects shows the error and stays signed out", async ({
-      page,
+    test("a callback whose state does not match its cookie fails without calling NewsBlur", async ({
+      request,
       worker,
     }) => {
-      const pageUi = ui(page);
-      await page.goto(`${worker.url}/api/auth/login`);
-      await pageUi.refreshTokenField.fill("refresh-rejected");
-      const posted = page.waitForResponse((response) => response.request().method() === "POST");
-      await pageUi.signInButton.click();
+      const { state } = await startLogin({ request, worker });
+      const response = await callback({
+        request,
+        worker,
+        query: { code: GOOD_CODE, state: "forged" },
+        state,
+      });
 
-      expect((await posted).status()).toBe(400);
-      await expect(pageUi.errorAlert).toHaveText("Sign-in failed, try again.");
+      expect(response.status()).toBe(400);
+      expect(response.headers()["set-cookie"]).toContain("Max-Age=0");
+      expect(worker.outbound).toEqual([]);
+      expect(await signedIn({ request, worker })).toEqual({ signedIn: false });
+    });
+
+    test("a code NewsBlur rejects fails and stays signed out", async ({ request, worker }) => {
+      const { state } = await startLogin({ request, worker });
+      const response = await callback({
+        request,
+        worker,
+        query: { code: "code-rejected", state },
+        state,
+      });
+
+      expect(response.status()).toBe(400);
+      expect(response.headers()["set-cookie"]).toContain("Max-Age=0");
       expect(worker.outbound).toHaveLength(1);
-      expect(await signedIn({ page, url: worker.url })).toEqual({ signedIn: false });
+      expect(await signedIn({ request, worker })).toEqual({ signedIn: false });
     });
 
-    test("a refresh token the feeds API accepts signs in and redirects home", async ({
-      page,
-      worker,
-    }) => {
-      const pageUi = ui(page);
-      await page.goto(`${worker.url}/api/auth/login`);
-      await pageUi.refreshTokenField.fill(GOOD_REFRESH_TOKEN);
-      const posted = page.waitForResponse((response) => response.request().method() === "POST");
-      await pageUi.signInButton.click();
+    test("a code NewsBlur accepts signs in and redirects home", async ({ request, worker }) => {
+      const { state } = await startLogin({ request, worker });
+      const response = await callback({
+        request,
+        worker,
+        query: { code: GOOD_CODE, state },
+        state,
+      });
 
-      const response = await posted;
       expect(response.status()).toBe(302);
       expect(response.headers().location).toBe("/");
-      expect(worker.outbound).toHaveLength(1);
-      const [call] = worker.outbound;
-      expect(Object.fromEntries(new URLSearchParams(call.body))).toEqual({
+      const [exchange, profile] = worker.outbound;
+      expect(Object.fromEntries(new URLSearchParams(exchange.body))).toEqual({
+        grant_type: "authorization_code",
+        code: GOOD_CODE,
+        redirect_uri: `${worker.url}/api/auth/callback`,
         client_id: CLIENT_ID,
-        grant_type: "refresh_token",
-        refresh_token: GOOD_REFRESH_TOKEN,
+        client_secret: CLIENT_SECRET,
       });
-      expect(await signedIn({ page, url: worker.url })).toEqual({ signedIn: true });
+      expect(profile.authorization).toBe(`Bearer ${ACCESS_TOKEN}`);
+      expect(await signedIn({ request, worker })).toEqual({ signedIn: true });
     });
   });
 });
