@@ -46,6 +46,14 @@
             </intent-filter>
         </activity>
 
+        <!-- LauncherActivity (androidbrowserhelper 2.6+) toggles this component on every launch and
+             crashes when the manifest does not declare it. -->
+        <activity android:name="com.google.androidbrowserhelper.trusted.ManageDataLauncherActivity">
+            <meta-data
+                android:name="android.support.customtabs.trusted.MANAGE_SPACE_URL"
+                android:value="@string/launch_url" />
+        </activity>
+
         <!-- Chrome renders the TWA, so a link back to Chrome stays in a Custom Tab. An intent to
              this other app gets out: it re-opens the link in the browser the page names. -->
         <activity
