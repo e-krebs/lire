@@ -55,6 +55,11 @@ const readSessionId = (response: Response): string | undefined => {
 
 const sessionCookie = (sessionId: string) => ({ Cookie: `${SESSION_COOKIE}=${sessionId}` });
 
+const failLogin = (reason: string): StoredSession | undefined => {
+  console.warn(`NewsBlur login failed: ${reason}`);
+  return undefined;
+};
+
 const logIn = async (env: Env): Promise<StoredSession | undefined> => {
   try {
     const loginResponse = await fetch(`${env.NEWSBLUR_HOST}/api/login`, {
@@ -64,21 +69,23 @@ const logIn = async (env: Env): Promise<StoredSession | undefined> => {
         password: env.NEWSBLUR_PASSWORD,
       }),
     });
-    if (!loginResponse.ok) return undefined;
+    if (!loginResponse.ok) return failLogin(`login answered ${loginResponse.status}`);
     const login = LoginAnswerSchema.safeParse(await loginResponse.json());
     const sessionId = readSessionId(loginResponse);
-    if (!login.success || !login.data.authenticated || !sessionId) return undefined;
+    if (!login.success) return failLogin("login answer has an unexpected shape");
+    if (!login.data.authenticated) return failLogin("credentials refused");
+    if (!sessionId) return failLogin("no session cookie in the login answer");
 
     // The user id pins every later read answer to this account.
     const profileResponse = await fetch(`${env.NEWSBLUR_HOST}/social/load_user_profile`, {
       headers: sessionCookie(sessionId),
     });
-    if (!profileResponse.ok) return undefined;
+    if (!profileResponse.ok) return failLogin(`profile answered ${profileResponse.status}`);
     const profile = ProfileAnswerSchema.safeParse(await profileResponse.json());
-    if (!profile.success) return undefined;
+    if (!profile.success) return failLogin("profile answer has an unexpected shape");
     return { sessionId, userId: profile.data.user_profile.user_id };
-  } catch {
-    return undefined;
+  } catch (error) {
+    return failLogin(String(error));
   }
 };
 

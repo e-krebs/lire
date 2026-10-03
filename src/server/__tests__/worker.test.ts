@@ -243,6 +243,7 @@ describe("worker", () => {
         "NewsBlur refuses the credentials",
         () => Response.json({ authenticated: false, code: -1, errors: { __all__: ["Bad"] } }),
       ],
+      ["the login answer has an unexpected shape", () => Response.json({ code: 1 })],
       ["the login answer sets no session cookie", () => Response.json({ authenticated: true })],
       [
         "the profile call fails",
