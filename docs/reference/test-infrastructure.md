@@ -24,8 +24,8 @@ worker starts, so the time tests do not depend on the host timezone. The locale 
 | File | Role |
 | --- | --- |
 | [setup.ts](../../src/test/setup.ts) | Starts MSW, runs cleanup, restores timers, `localStorage`, the locale preference and the `HTMLElement` and `Element` prototypes after each test |
-| [msw.ts](../../src/test/msw.ts) | MSW server with baseline handlers over the seed fixtures |
-| [fixtureBackend.ts](../../src/test/fixtureBackend.ts) | Serves `fixtureTransport` over MSW at `/api` |
+| [msw.ts](../../src/test/msw.ts) | MSW server with baseline `GET /api/{profile,categories,feeds,counts,search/feeds}` handlers, answered by the shared core over the fake NewsBlur on the seed |
+| [fixtureBackend.ts](../../src/test/fixtureBackend.ts) | Serves `fixtureTransport` over MSW for every `/api/*` path |
 | [renderApp.tsx](../../src/test/renderApp.tsx) | Renders the app with a memory router and a query client |
 | [advanceTimers.ts](../../src/test/advanceTimers.ts) | `advance`, fake timers wrapped in `act` |
 | [seedCategories.ts](../../src/test/seedCategories.ts) | Seed category id and URL key by label |
@@ -33,7 +33,8 @@ worker starts, so the time tests do not depend on the host timezone. The locale 
 ### Worker pool
 
 The `server` project runs through `cloudflareTest` with [wrangler.toml](../../wrangler.toml) and
-binds `ACCESS_ALLOWED_EMAIL` for the tests. Tests are in
+binds `ACCESS_ALLOWED_EMAIL`, `NEWSBLUR_CLIENT_SECRET` and `NEWSBLUR_NEWSLETTER_ADDRESS` for the tests. The
+Worker tests stub `fetch` for the NewsBlur calls. Tests are in
 [src/server/__tests__](../../src/server/__tests__).
 
 ### Storybook
@@ -67,7 +68,7 @@ block. [locale.spec.ts](../../e2e/locale.spec.ts) switches the language and chec
 | [global-setup.ts](../../e2e/global-setup.ts) | Loads every route once per server, and clears stale coverage |
 | [global-teardown.ts](../../e2e/global-teardown.ts) | Writes the e2e coverage report |
 | [fixtures.ts](../../e2e/fixtures.ts) | Extended `test` that collects JS coverage on `desktop`; holds the report options |
-| [support/worker.ts](../../e2e/support/worker.ts) | Bundles the Worker with `wrangler deploy --dry-run`, runs it in Miniflare, signs Access JWTs, stubs outbound fetches |
+| [support/worker.ts](../../e2e/support/worker.ts) | Bundles the Worker with `wrangler deploy --dry-run`, runs it in Miniflare, signs Access JWTs, and answers outbound fetches from a fake NewsBlur at `https://newsblur.test` |
 
 ## Coverage
 

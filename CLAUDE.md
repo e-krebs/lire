@@ -15,9 +15,9 @@ Code touched → doc to check (update if the change is user- or reader-visible):
 
 | Code area | Type | Doc to check |
 |---|---|---|
-| `src/server/**` (Worker, Durable Object, Access pin, refresh-token auth) | explanation; reference | [docs/explanation/auth.md](docs/explanation/auth.md); [docs/explanation/architecture.md](docs/explanation/architecture.md); [docs/reference/api.md](docs/reference/api.md) |
-| `src/shared/feedsApi/**` (client↔Worker contract) | reference; explanation; adr | [docs/reference/api.md](docs/reference/api.md); [docs/reference/glossary.md](docs/reference/glossary.md); [docs/explanation/architecture.md](docs/explanation/architecture.md); [docs/adr/0009-newsblur-bff.md](docs/adr/0009-newsblur-bff.md) |
-| `src/client/api/**`, `fixtures/**`, `.env.sample` (adapters, seed and recorded fixtures, env vars) | reference | [docs/reference/fixtures.md](docs/reference/fixtures.md); [docs/reference/api.md](docs/reference/api.md) |
+| `src/server/**` (Worker, Durable Object, Access pin, OAuth auth) | explanation; reference | [docs/explanation/auth.md](docs/explanation/auth.md); [docs/adr/0010-newsblur-oauth.md](docs/adr/0010-newsblur-oauth.md); [docs/explanation/architecture.md](docs/explanation/architecture.md); [docs/reference/api.md](docs/reference/api.md) |
+| `src/shared/feedsApi/**` (client↔Worker contract), `src/shared/bff/**` (the NewsBlur translation core) | reference; explanation; adr | [docs/reference/api.md](docs/reference/api.md); [docs/reference/glossary.md](docs/reference/glossary.md); [docs/explanation/architecture.md](docs/explanation/architecture.md); [docs/adr/0009-newsblur-bff.md](docs/adr/0009-newsblur-bff.md) |
+| `src/client/api/**` (adapters, the fake NewsBlur), `fixtures/**`, `.env.sample` (seed and recorded fixtures, env vars) | reference | [docs/reference/fixtures.md](docs/reference/fixtures.md); [docs/reference/api.md](docs/reference/api.md) |
 | `scripts/record-fixtures.ts` | how-to | [docs/how-to/record-fixtures.md](docs/how-to/record-fixtures.md) |
 | `src/client/routes/**`, `vite.config.ts`, `.storybook/**`, `public/**`, `scripts/render-icons.ts` | explanation | [docs/explanation/architecture.md](docs/explanation/architecture.md) |
 | `src/client/components/**`, `src/client/hooks/**`, `src/client/utils/**` | reference; explanation | [docs/reference/conventions.md](docs/reference/conventions.md); [docs/explanation/architecture.md](docs/explanation/architecture.md) |
@@ -31,9 +31,8 @@ Code touched → doc to check (update if the change is user- or reader-visible):
 | README's Status / Documentation sections | — | keep in step with `docs/` (don't let them contradict) |
 
 A new architectural decision — or reversing an existing one — gets an ADR under
-[docs/adr/](docs/adr/). To reverse a decision, carry the old ADR's still-valid reasons into the new
-one, delete the old ADR and renumber the later ones with no gaps, then grep the repo for stale
-links. Git history keeps the old record.
+[docs/adr/](docs/adr/). Don't rewrite a superseded decision's history: add a new ADR that supersedes
+it and mark the old one.
 
 When unsure whether a code change needs a doc edit, check the mapped doc and either update it or
 confirm it still reads true — a two-minute check beats silent drift.

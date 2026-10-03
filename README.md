@@ -1,16 +1,20 @@
 # Lire
 
 Lire is a personal feed reader PWA — a phone/tablet/desktop reader, served as a static SPA and
-backed by a Cloudflare Worker that proxies the feeds API behind Cloudflare Access.
+backed by a Cloudflare Worker that serves a Lire API over NewsBlur, behind Cloudflare Access.
 
 ## Status
 
-The app runs in mock mode by default, against recorded or synthetic fixtures: collections, unread
-counts, streams with continuation, an article reader, mark read and mark-all-read, subscription
-add, move and unsubscribe. Three layout tiers (phone, tablet, desktop) and a PWA shell. The UI is in English and French,
-following the browser unless the account menu picks one. The Worker
-exists: Cloudflare Access with an owner email pin guards it, and a pasted refresh token, kept in a
-Durable Object, authenticates the upstream calls.
+The app runs in mock mode by default, against recorded or synthetic NewsBlur fixtures: categories,
+unread counts, streams with paging, an article reader, mark read and mark-all-read, subscription
+add, move and unsubscribe. Three layout tiers (phone, tablet, desktop) and a PWA shell. The UI is in
+English and French, following the browser unless the account menu picks one. The Worker exists:
+Cloudflare Access with an owner email pin guards it, the NewsBlur OAuth code flow signs the owner in,
+and the token, kept in a Durable Object, authenticates the upstream calls.
+
+Setting up a deployment needs a NewsBlur OAuth client and three values in the repo; see
+[docs/how-to/deploy.md](docs/how-to/deploy.md#newsblur-oauth-app). Recording your own fixtures needs
+`NEWSBLUR_USERNAME` and `NEWSBLUR_PASSWORD` in `.env.local`.
 
 ## Quickstart
 

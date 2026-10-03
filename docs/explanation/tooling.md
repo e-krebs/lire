@@ -77,7 +77,7 @@ are accepted as is. CI runs it in the `docs-links` job on every run, whatever ch
 - git tracks an env file other than `.env.sample`, since `.gitignore` alone keeps them out and a
   mistyped pattern fails silently;
 - a `VITE_` env var has a secret-shaped name, because Vite would inline it into the bundle;
-- `dist/` contains a named secret such as `FEEDLY_CLIENT_ID`, or a secret-key pattern;
+- `dist/` contains a named secret such as `NEWSBLUR_CLIENT_SECRET`, or a secret-key pattern;
 - in a real build (`VITE_API_MODE=real`), a JS chunk still carries seed fixture markers, which
   would mean the fixture transport was not dropped.
 

@@ -261,6 +261,10 @@ const setup = () => {
 }
 ```
 
+A read mark is batched client side ([markReadQueue.ts](../../src/client/api/markReadQueue.ts)): the
+request leaves at 5 ids or after 10 s, and on `pagehide`. A test that asserts the request calls
+`markReadQueue.flush()` first.
+
 ## Enforcement
 
 oxlint checks these rules on every Vitest and Playwright test file:
