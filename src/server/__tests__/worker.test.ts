@@ -10,7 +10,7 @@ const ORIGIN = "https://lire.krebs.tech";
 const OWNER = "owner@example.com";
 const KID = "test-key";
 const USER_ID = 42;
-const CALLBACK_URI = `${ORIGIN}/api/auth/callback`;
+const SESSION_ID = "session-1";
 
 let privateKey: CryptoKey;
 let publicJwk: JWK;
@@ -50,11 +50,21 @@ const auth = () => env.NEWSBLUR_AUTH.get(env.NEWSBLUR_AUTH.idFromName("singleton
 
 const pathOf = (request: Request) => new URL(request.url).pathname;
 
-// The answers a successful sign-in reads: the code exchange, then the profile that names the user.
+const loginReply = (sessionId: string) =>
+  Response.json(
+    { authenticated: true, code: 1, errors: {} },
+    { headers: { "Set-Cookie": `newsblur_sessionid=${sessionId}; Path=/; HttpOnly` } },
+  );
+
+// The answers a successful sign-in reads: the login that sets the cookie, then the profile that
+// names the user.
 const signInUpstream =
-  ({ userId = USER_ID }: { userId?: number } = {}): Upstream =>
+  ({
+    userId = USER_ID,
+    sessionId = SESSION_ID,
+  }: { userId?: number; sessionId?: string } = {}): Upstream =>
   (request) => {
-    if (pathOf(request) === "/oauth/token") return Response.json({ access_token: "access-1" });
+    if (pathOf(request) === "/api/login") return loginReply(sessionId);
     return Response.json({
       user_profile: { user_id: userId, username: "owner" },
       authenticated: true,
@@ -62,36 +72,11 @@ const signInUpstream =
     });
   };
 
-const startLogin = async () => {
-  const response = await authed("/api/auth/login");
-  const state = /lire_oauth_state=([0-9a-f]+)/.exec(response.headers.get("Set-Cookie") ?? "")?.[1];
-  if (!state) throw new Error("login set no state cookie");
-  return { response, state };
-};
-
-const callback = async ({
-  code = "code-1",
-  state,
-  cookie = state,
-}: {
-  code?: string;
-  state?: string;
-  cookie?: string;
-}) => {
-  const query = new URLSearchParams();
-  if (code) query.set("code", code);
-  if (state) query.set("state", state);
-  return authed(`/api/auth/callback?${query.toString()}`, {
-    headers: cookie ? { Cookie: `other=1; lire_oauth_state=${cookie}` } : {},
-  });
-};
-
 const status = async () => (await authed("/api/auth/status")).json();
 
 const signIn = async () => {
   upstream = signInUpstream();
-  const { state } = await startLogin();
-  const response = await callback({ state });
+  const response = await authed("/api/auth/login");
   expect(response.status).toBe(302);
   upstreamCalls.length = 0;
 };
@@ -115,7 +100,7 @@ const generateKeys = async () => {
 const setup = async () => {
   keysReady ??= generateKeys();
   await keysReady;
-  await auth().clearToken();
+  await auth().clearSession();
   upstreamCalls.length = 0;
   upstream = () => new Response("unexpected upstream call", { status: 599 });
   // The main worker and its DO share the test isolate, so a global fetch stub reaches both.
@@ -199,102 +184,78 @@ describe("worker", () => {
   });
 
   describe("when the owner signs in", () => {
-    it("redirects to the NewsBlur authorize page with a state cookie", async () => {
-      await setup();
-      const { response, state } = await startLogin();
-      expect(response.status).toBe(302);
-      expect(response.headers.get("Cache-Control")).toBe("no-store");
-
-      const location = new URL(response.headers.get("Location") ?? "");
-      expect(`${location.origin}${location.pathname}`).toBe(`${env.NEWSBLUR_HOST}/oauth/authorize`);
-      expect(Object.fromEntries(location.searchParams)).toEqual({
-        response_type: "code",
-        client_id: env.NEWSBLUR_CLIENT_ID,
-        redirect_uri: CALLBACK_URI,
-        scope: "read write",
-        state,
-      });
-      expect(response.headers.get("Set-Cookie")).toBe(
-        `lire_oauth_state=${state}; HttpOnly; Secure; SameSite=Lax; Path=/api/auth; Max-Age=600`,
-      );
-      expect(upstreamCalls).toHaveLength(0);
-    });
-
-    it("exchanges the code, stores the token and user, and reports signedIn", async () => {
+    it("logs in with the stored credentials, keeps the session and reports signedIn", async () => {
       await setup();
       upstream = signInUpstream();
-      expect(await status()).toEqual({ signedIn: false });
 
-      const { state } = await startLogin();
-      const response = await callback({ state });
+      const response = await authed("/api/auth/login");
       expect(response.status).toBe(302);
       expect(response.headers.get("Location")).toBe("/");
-      expect(response.headers.get("Set-Cookie")).toContain("lire_oauth_state=;");
-      expect(response.headers.get("Set-Cookie")).toContain("Max-Age=0");
+      expect(response.headers.get("Cache-Control")).toBe("no-store");
 
-      const [exchange, profile] = upstreamCalls;
-      expect(exchange.url).toBe(`${env.NEWSBLUR_HOST}/oauth/token`);
-      expect(exchange.method).toBe("POST");
-      expect(Object.fromEntries(new URLSearchParams(exchange.body))).toEqual({
-        grant_type: "authorization_code",
-        code: "code-1",
-        redirect_uri: CALLBACK_URI,
-        client_id: env.NEWSBLUR_CLIENT_ID,
-        client_secret: env.NEWSBLUR_CLIENT_SECRET,
+      const [login, profile] = upstreamCalls;
+      expect(login.url).toBe(`${env.NEWSBLUR_HOST}/api/login`);
+      expect(login.method).toBe("POST");
+      expect(Object.fromEntries(new URLSearchParams(login.body))).toEqual({
+        username: env.NEWSBLUR_USERNAME,
+        password: env.NEWSBLUR_PASSWORD,
       });
       expect(profile.url).toBe(`${env.NEWSBLUR_HOST}/social/load_user_profile`);
-      expect(profile.headers.get("Authorization")).toBe("Bearer access-1");
+      expect(profile.headers.get("Cookie")).toBe(`newsblur_sessionid=${SESSION_ID}`);
 
-      expect(await auth().getToken()).toEqual({ accessToken: "access-1", userId: USER_ID });
+      expect(await auth().getSession()).toEqual({ sessionId: SESSION_ID, userId: USER_ID });
       expect(await status()).toEqual({ signedIn: true });
     });
 
-    it("rejects a state that does not match the cookie", async () => {
+    it("finds the session cookie among other Set-Cookie lines", async () => {
+      await setup();
+      upstream = async (request) => {
+        if (pathOf(request) !== "/api/login") return signInUpstream()(request);
+        const headers = new Headers();
+        headers.append("Set-Cookie", "csrftoken=abc; Path=/");
+        headers.append("Set-Cookie", `newsblur_sessionid=${SESSION_ID}; Path=/; HttpOnly`);
+        return new Response(JSON.stringify({ authenticated: true }), { headers });
+      };
+
+      const response = await authed("/api/auth/login");
+      expect(response.status).toBe(302);
+      expect((await auth().getSession())?.sessionId).toBe(SESSION_ID);
+    });
+
+    it("logs in on its own when a request finds no session", async () => {
       await setup();
       upstream = signInUpstream();
-      const { state } = await startLogin();
-      const response = await callback({ state, cookie: `${state.slice(1)}0` });
-      expect(response.status).toBe(400);
-      expect(await response.text()).toContain('href="/api/auth/login"');
-      expect(upstreamCalls).toHaveLength(0);
-      expect(await auth().hasToken()).toBe(false);
-    });
 
-    it("rejects a state of another length than the cookie", async () => {
-      await setup();
-      const response = await callback({ state: "short", cookie: "longer-value" });
-      expect(response.status).toBe(400);
-      await response.text();
-    });
-
-    it.each([
-      ["a missing code", { code: "", state: "s", cookie: "s" }],
-      ["a missing state", { cookie: "s" }],
-      ["a missing cookie", { state: "s", cookie: "" }],
-    ])("rejects a callback with %s", async (_label, args) => {
-      await setup();
-      const response = await callback(args);
-      expect(response.status).toBe(400);
-      expect(response.headers.get("Content-Type")).toContain("text/html");
-      await response.text();
-      expect(upstreamCalls).toHaveLength(0);
+      const response = await authed("/api/profile");
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ username: "owner" });
+      expect(upstreamCalls.map((call) => pathOf(new Request(call.url)))).toEqual([
+        "/api/login",
+        "/social/load_user_profile",
+        "/social/load_user_profile",
+      ]);
+      expect(upstreamCalls[2].headers.get("Cookie")).toBe(`newsblur_sessionid=${SESSION_ID}`);
     });
 
     it.each<[string, Upstream]>([
-      ["the code exchange fails", () => new Response("denied", { status: 400 })],
-      ["the token answer has no access token", () => Response.json({ error: "invalid_grant" })],
+      ["NewsBlur answers the login with an error", () => new Response("down", { status: 500 })],
+      [
+        "NewsBlur refuses the credentials",
+        () => Response.json({ authenticated: false, code: -1, errors: { __all__: ["Bad"] } }),
+      ],
+      ["the login answer sets no session cookie", () => Response.json({ authenticated: true })],
       [
         "the profile call fails",
         (request) =>
-          pathOf(request) === "/oauth/token"
-            ? Response.json({ access_token: "access-1" })
+          pathOf(request) === "/api/login"
+            ? loginReply(SESSION_ID)
             : new Response("nope", { status: 403 }),
       ],
       [
         "the profile answer has no user id",
         (request) =>
-          pathOf(request) === "/oauth/token"
-            ? Response.json({ access_token: "access-1" })
+          pathOf(request) === "/api/login"
+            ? loginReply(SESSION_ID)
             : Response.json({ user_profile: {} }),
       ],
       [
@@ -306,26 +267,26 @@ describe("worker", () => {
     ])("answers 400 and stays signed out when %s", async (_label, reply) => {
       await setup();
       upstream = reply;
-      const { state } = await startLogin();
-      const response = await callback({ state });
+      const response = await authed("/api/auth/login");
       expect(response.status).toBe(400);
       expect(await response.text()).toContain("Sign-in to NewsBlur failed");
-      expect(await auth().hasToken()).toBe(false);
+      expect(await auth().hasSession()).toBe(false);
+      expect(await status()).toEqual({ signedIn: false });
     });
   });
 
   describe("when serving a contract route", () => {
     const sameOrigin = { Origin: ORIGIN };
 
-    it("answers 401 sign_in_required without a token", async () => {
+    it("answers 401 sign_in_required when the login fails", async () => {
       await setup();
       const response = await authed("/api/profile");
       expect(response.status).toBe(401);
       expect(await response.json()).toEqual({ error: "sign_in_required" });
-      expect(upstreamCalls).toHaveLength(0);
+      expect(upstreamCalls.map((call) => new URL(call.url).pathname)).toEqual(["/api/login"]);
     });
 
-    it("calls NewsBlur with the bearer token and answers the contract shape", async () => {
+    it("calls NewsBlur with the session cookie and answers the contract shape", async () => {
       await setup();
       await signIn();
       upstream = () =>
@@ -342,7 +303,7 @@ describe("worker", () => {
       const [call] = upstreamCalls;
       expect(call.url).toBe(`${env.NEWSBLUR_HOST}/social/load_user_profile`);
       expect(call.method).toBe("GET");
-      expect(call.headers.get("Authorization")).toBe("Bearer access-1");
+      expect(call.headers.get("Cookie")).toBe(`newsblur_sessionid=${SESSION_ID}`);
     });
 
     it("sends query params and form bodies, and caches the feed list until a write", async () => {
@@ -394,7 +355,60 @@ describe("worker", () => {
       ]);
     });
 
-    it("clears the token when NewsBlur rejects it", async () => {
+    it("logs in again when NewsBlur rejects the session", async () => {
+      await setup();
+      await signIn();
+      upstream = async (request) => {
+        if (pathOf(request) === "/api/login") return loginReply("session-2");
+        if (request.headers.get("Cookie") === "newsblur_sessionid=session-2") {
+          return signInUpstream()(request);
+        }
+        return new Response("unauthorized", { status: 401 });
+      };
+
+      const response = await authed("/api/profile");
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ username: "owner" });
+      expect((await auth().getSession())?.sessionId).toBe("session-2");
+    });
+
+    it("does not retry a write when NewsBlur rejects the session", async () => {
+      await setup();
+      await signIn();
+      upstream = () => new Response("unauthorized", { status: 401 });
+
+      const response = await authed("/api/preferences", {
+        method: "POST",
+        headers: { Origin: ORIGIN, "Content-Type": "application/json" },
+        body: JSON.stringify({ "lire.categoryOrder": "[]" }),
+      });
+      expect(response.status).toBe(401);
+      await response.text();
+      expect(
+        upstreamCalls.filter((call) => new URL(call.url).pathname === "/api/login"),
+      ).toHaveLength(0);
+      expect(await auth().hasSession()).toBe(false);
+    });
+
+    it("logs in only once per request when the fresh session is rejected too", async () => {
+      await setup();
+      upstream = async (request) => {
+        const path = pathOf(request);
+        if (path === "/api/login") return loginReply(SESSION_ID);
+        if (path === "/social/load_user_profile") return signInUpstream()(request);
+        return new Response("unauthorized", { status: 401 });
+      };
+
+      const response = await authed("/api/categories");
+      expect(response.status).toBe(401);
+      await response.text();
+      expect(
+        upstreamCalls.filter((call) => new URL(call.url).pathname === "/api/login"),
+      ).toHaveLength(1);
+      expect(await auth().hasSession()).toBe(false);
+    });
+
+    it("clears the session when NewsBlur rejects it and the login fails", async () => {
       await setup();
       await signIn();
       upstream = () => new Response("unauthorized", { status: 401 });
@@ -402,11 +416,11 @@ describe("worker", () => {
       const response = await authed("/api/profile");
       expect(response.status).toBe(401);
       expect(await response.json()).toMatchObject({ error: "sign_in_required" });
-      expect(await auth().hasToken()).toBe(false);
+      expect(await auth().hasSession()).toBe(false);
       expect(await status()).toEqual({ signedIn: false });
     });
 
-    it("clears the token when NewsBlur answers as another user", async () => {
+    it("clears the session when NewsBlur answers as another user", async () => {
       await setup();
       await signIn();
       upstream = () =>
@@ -415,10 +429,10 @@ describe("worker", () => {
       const response = await authed("/api/profile");
       expect(response.status).toBe(401);
       await response.text();
-      expect(await auth().hasToken()).toBe(false);
+      expect(await auth().hasSession()).toBe(false);
     });
 
-    it("keeps the token on a non-auth failure", async () => {
+    it("keeps the session on a non-auth failure", async () => {
       await setup();
       await signIn();
       upstream = () => new Response("down", { status: 500 });
@@ -426,7 +440,7 @@ describe("worker", () => {
       const response = await authed("/api/profile");
       expect(response.status).toBe(502);
       await response.text();
-      expect(await auth().hasToken()).toBe(true);
+      expect(await auth().hasSession()).toBe(true);
     });
 
     it("returns 404 for an unknown /api/ path without calling upstream", async () => {
@@ -509,12 +523,12 @@ describe("worker", () => {
   });
 
   describe("when the NewsblurAuth feed cache is read", () => {
-    it("serves a fresh entry and drops it on a token change", async () => {
+    it("serves a fresh entry and drops it on a session change", async () => {
       await setup();
       const { generation } = await auth().getFeedsCache();
       await auth().setFeedsCache({ value: feedsAnswer, generation });
       expect((await auth().getFeedsCache()).value).toEqual(feedsAnswer);
-      await auth().setToken({ accessToken: "access-2", userId: USER_ID });
+      await auth().setSession({ sessionId: "session-2", userId: USER_ID });
       expect((await auth().getFeedsCache()).value).toBeUndefined();
     });
 
@@ -526,6 +540,15 @@ describe("worker", () => {
       const after = await auth().getFeedsCache();
       expect(after.value).toBeUndefined();
       expect(after.generation).toBe(generation + 1);
+    });
+
+    it("clears a session only when it is still the one that failed", async () => {
+      await setup();
+      await auth().setSession({ sessionId: "session-2", userId: USER_ID });
+      await auth().clearSession({ onlySessionId: "session-1" });
+      expect(await auth().hasSession()).toBe(true);
+      await auth().clearSession({ onlySessionId: "session-2" });
+      expect(await auth().hasSession()).toBe(false);
     });
 
     it("drops an entry older than five minutes", async () => {

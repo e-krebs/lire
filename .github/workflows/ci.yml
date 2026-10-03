@@ -291,14 +291,14 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       ACCESS_ALLOWED_EMAIL: ${{ secrets.ACCESS_ALLOWED_EMAIL }}
-      NEWSBLUR_CLIENT_ID: ${{ secrets.NEWSBLUR_CLIENT_ID }}
+      NEWSBLUR_USERNAME: ${{ secrets.NEWSBLUR_USERNAME }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
-      - name: Require the NewsBlur OAuth client id
+      - name: Require the NewsBlur username
         run: |
-          if [ -z "$NEWSBLUR_CLIENT_ID" ]; then
-            echo "::error::NEWSBLUR_CLIENT_ID secret not set — sign-in cannot reach NewsBlur."
+          if [ -z "$NEWSBLUR_USERNAME" ]; then
+            echo "::error::NEWSBLUR_USERNAME secret not set — sign-in cannot reach NewsBlur."
             exit 1
           fi
       - name: Access config check
@@ -374,8 +374,8 @@ jobs:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
       ACCESS_ALLOWED_EMAIL: ${{ secrets.ACCESS_ALLOWED_EMAIL }}
-      NEWSBLUR_CLIENT_ID: ${{ secrets.NEWSBLUR_CLIENT_ID }}
-      NEWSBLUR_CLIENT_SECRET: ${{ secrets.NEWSBLUR_CLIENT_SECRET }}
+      NEWSBLUR_USERNAME: ${{ secrets.NEWSBLUR_USERNAME }}
+      NEWSBLUR_PASSWORD: ${{ secrets.NEWSBLUR_PASSWORD }}
       NEWSBLUR_NEWSLETTER_ADDRESS: ${{ secrets.NEWSBLUR_NEWSLETTER_ADDRESS }}
     steps:
       - name: Require the Access email pin
@@ -384,18 +384,18 @@ jobs:
             echo "::error::ACCESS_ALLOWED_EMAIL secret not set — the Worker would fall back to the Access policy alone."
             exit 1
           fi
-      - name: Require the NewsBlur client secret
+      - name: Require the NewsBlur login
         run: |
-          if [ -z "$NEWSBLUR_CLIENT_SECRET" ]; then
-            echo "::error::NEWSBLUR_CLIENT_SECRET secret not set — the OAuth code exchange would fail."
+          if [ -z "$NEWSBLUR_USERNAME" ] || [ -z "$NEWSBLUR_PASSWORD" ]; then
+            echo "::error::NEWSBLUR_USERNAME or NEWSBLUR_PASSWORD secret not set — the Worker could not log in to NewsBlur."
             exit 1
           fi
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - name: Write Worker secrets file
         run: |
-          printf 'ACCESS_ALLOWED_EMAIL=%s\nNEWSBLUR_CLIENT_ID=%s\nNEWSBLUR_CLIENT_SECRET=%s\nNEWSBLUR_NEWSLETTER_ADDRESS=%s\n' \
-            "$ACCESS_ALLOWED_EMAIL" "$NEWSBLUR_CLIENT_ID" "$NEWSBLUR_CLIENT_SECRET" "$NEWSBLUR_NEWSLETTER_ADDRESS" \
+          printf 'ACCESS_ALLOWED_EMAIL=%s\nNEWSBLUR_USERNAME=%s\nNEWSBLUR_PASSWORD=%s\nNEWSBLUR_NEWSLETTER_ADDRESS=%s\n' \
+            "$ACCESS_ALLOWED_EMAIL" "$NEWSBLUR_USERNAME" "$NEWSBLUR_PASSWORD" "$NEWSBLUR_NEWSLETTER_ADDRESS" \
             > "$RUNNER_TEMP/worker.env"
       - name: Deploy Worker
         run: yarn worker:deploy --secrets-file "$RUNNER_TEMP/worker.env"

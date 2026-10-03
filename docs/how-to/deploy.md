@@ -44,7 +44,7 @@ accepts a manual run only from `main`.
 The `cloudflare-gate` job checks that `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` exist and
 skips every Cloudflare job cleanly when they do not. The `preflight` job then runs
 `yarn check:access` and `yarn provision:pages`, and every deploy job needs it. `preflight` also
-fails while the `NEWSBLUR_CLIENT_ID` secret is not set. The SPA, demo and
+fails while the `NEWSBLUR_USERNAME` secret is not set. The SPA, demo and
 Worker jobs need both `verify` and `e2e` green; the Storybook job needs the `storybook` job. A job
 skipped by the change filter does not block a deploy, but a failed one does. The `check-live` job
 runs last, once the deploys that ran finish, and runs `yarn check:live`. The `docs-links` job runs
@@ -68,8 +68,8 @@ uploads.
 | `ACCESS_TEAM_DOMAIN` | `[vars]` in [wrangler.toml](../../wrangler.toml) | Access team domain |
 | `ACCESS_AUD` | `[vars]` in wrangler.toml | Access application audience |
 | `NEWSBLUR_HOST` | `[vars]` in wrangler.toml | NewsBlur base URL |
-| `NEWSBLUR_CLIENT_ID` | GitHub repo secret, Worker secret | OAuth client id |
-| `NEWSBLUR_CLIENT_SECRET` | GitHub repo secret, Worker secret | OAuth client secret |
+| `NEWSBLUR_USERNAME` | GitHub repo secret, Worker secret | NewsBlur login the Worker uses |
+| `NEWSBLUR_PASSWORD` | GitHub repo secret, Worker secret | Password of that NewsBlur account |
 | `NEWSBLUR_NEWSLETTER_ADDRESS` | GitHub repo secret, Worker secret | The newsletter address the app shows |
 | `LIRE_KEYSTORE_BASE64` | GitHub repo secret | Android signing keystore, base64 |
 | `LIRE_KEYSTORE_PASSWORD` | GitHub repo secret | Password of that keystore and its `lire` key |
@@ -80,31 +80,28 @@ The API token carries these scopes:
   Organizations, Identity Providers, and Groups Read.
 - Zone `krebs.tech` only: Workers Routes Edit, DNS Edit, Zone Read.
 
-CI passes `ACCESS_ALLOWED_EMAIL`, `NEWSBLUR_CLIENT_SECRET` and `NEWSBLUR_NEWSLETTER_ADDRESS` to the
-Worker with `wrangler deploy --secrets-file`, which never deletes existing secrets. The
-`deploy-worker` job fails when `NEWSBLUR_CLIENT_SECRET` is empty. The newsletter address holds
+CI passes `ACCESS_ALLOWED_EMAIL`, `NEWSBLUR_USERNAME`, `NEWSBLUR_PASSWORD` and
+`NEWSBLUR_NEWSLETTER_ADDRESS` to the Worker with `wrangler deploy --secrets-file`, which never
+deletes existing secrets. The `deploy-worker` job fails when `NEWSBLUR_USERNAME` or `NEWSBLUR_PASSWORD` is empty. The newsletter address holds
 NewsBlur's secret token, so anyone who has it can post into the feed list: keep it out of logs and
 commits. `[vars]` come from wrangler.toml on every deploy. A CI deploy fails
 without the pin; a Worker deployed without it trusts the Access policy alone. Never commit a
 secret value.
 
-## NewsBlur OAuth app
+## NewsBlur account
 
-Sign-in needs an OAuth client from NewsBlur, and three GitHub secrets before the Worker deploys.
-Until they exist, `preflight` fails on the missing client id and the Worker job fails on the empty
-secret.
+Sign-in needs the NewsBlur account's login and three GitHub secrets before the Worker deploys. The
+account must have a password: `/api/login` rejects an account that has none. Until the secrets
+exist, `preflight` fails on the missing username and the Worker job fails on the empty password.
 
-1. Ask NewsBlur (samuel@newsblur.com) for an OAuth client. Give it the redirect URI
-   `https://lire.krebs.tech/api/auth/callback` and the scopes `read` and `write`.
-2. Add the GitHub repo secret `NEWSBLUR_CLIENT_ID` with the client id:
-   `gh secret set NEWSBLUR_CLIENT_ID --repo e-krebs/lire`. The id is not secret, because the
-   sign-in redirect shows it, but a secret keeps it out of the public repo.
-3. Add the GitHub repo secret `NEWSBLUR_CLIENT_SECRET` with the client secret.
-4. Add the GitHub repo secret `NEWSBLUR_NEWSLETTER_ADDRESS`. Copy the address
+1. Add the GitHub repo secret `NEWSBLUR_USERNAME` with the account's username:
+   `gh secret set NEWSBLUR_USERNAME --repo e-krebs/lire`.
+2. Add the GitHub repo secret `NEWSBLUR_PASSWORD` with the account's password.
+3. Add the GitHub repo secret `NEWSBLUR_NEWSLETTER_ADDRESS`. Copy the address
    (`<username>-<token>@newsletters.newsblur.com`) from the NewsBlur settings.
 
-The recorder needs none of these. It logs in with a username and a password in `.env.local` (see
-[Record the fixtures](record-fixtures.md)).
+After a password change, update `NEWSBLUR_PASSWORD` and redeploy the Worker. The recorder reads the
+same two names from `.env.local` (see [Record the fixtures](record-fixtures.md)).
 
 ## Cloudflare Access
 
@@ -165,7 +162,8 @@ auth class and the token it stored. The first deploy after the move applies it.
 
 CI deploys the Worker through the `deploy-worker` job. To deploy from a machine instead, set
 `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, write `ACCESS_ALLOWED_EMAIL=<owner email>`,
-`NEWSBLUR_CLIENT_SECRET=<secret>` and `NEWSBLUR_NEWSLETTER_ADDRESS=<address>` to a file and run:
+`NEWSBLUR_USERNAME=<username>`, `NEWSBLUR_PASSWORD=<password>` and
+`NEWSBLUR_NEWSLETTER_ADDRESS=<address>` to a file and run:
 
 ```sh
 yarn worker:deploy --secrets-file <file>
@@ -218,11 +216,12 @@ It returns `200` with no Access redirect.
 
 ## Re-auth
 
-When NewsBlur revokes the token, the SPA shows the sign-in screen and `/api/auth/status` returns
-`false`. No redeploy is needed.
+When the Worker cannot log in to NewsBlur, the SPA shows the sign-in screen and
+`/api/auth/status` returns `false`. The usual cause is a changed password: update the
+`NEWSBLUR_PASSWORD` secret and redeploy the Worker (see [NewsBlur account](#newsblur-account)).
 
 1. Open `https://lire.krebs.tech/api/auth/login` and pass Access.
-2. Approve the app on NewsBlur. The callback stores the new token and redirects to `/`.
+2. The Worker logs in and redirects to `/`. A `400` page means NewsBlur refused the credentials.
 3. Confirm `https://lire.krebs.tech/api/auth/status` returns `{"signedIn":true}`.
 
 ## Local Worker limits

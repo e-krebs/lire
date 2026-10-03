@@ -18,10 +18,10 @@ Browser (lire.krebs.tech)
 │ PWA service worker           │      │   contract: shared/feedsApi         │
 └──────────────────────────────┘      │   translation: shared/bff           │
                                       │   NewsblurAuth Durable Object       │
-                                      │   (OAuth token, feed-list cache)    │
+                                      │   (session cookie, feed-list cache)│
                                       └──────────────────┬──────────────────┘
                                                          │ NEWSBLUR_HOST
-                                                         │ Bearer token
+                                                         │ session cookie
                                                          ▼
                                                      newsblur.com
 
@@ -91,10 +91,8 @@ one. Chrome hides its address bar only when
 [assetlinks.json](../../public/.well-known/assetlinks.json) lists the app's signing key. How the
 app ships is in [deploy.md](../how-to/deploy.md#android-app).
 
-Sign-in in the TWA crosses origins. The listener never sees it, because the link to
-`/api/auth/login` is same-origin and the redirect to `newsblur.com` happens server side. Chrome
-opens that off-origin page in a Custom Tab, and the callback lands back on `lire.krebs.tech`, which
-returns to the app. The flow is in [auth.md](auth.md).
+Sign-in in the TWA stays on one origin. The link to `/api/auth/login` is same-origin, and the
+Worker logs in to NewsBlur server side before it redirects home. The flow is in [auth.md](auth.md).
 
 That module sits on a transport seam ([transport.ts](../../src/client/api/transport.ts)). The
 HTTP transport ([adapters/http.ts](../../src/client/api/adapters/http.ts)) is a same-origin
@@ -116,7 +114,7 @@ is the subject of [auth.md](auth.md).
 
 The contract is the list in [src/shared/feedsApi/routes.ts](../../src/shared/feedsApi/routes.ts):
 `matchRoute` maps a method and path to a route and its params, and anything else gets a `404` before
-any token is read. The Worker never forwards a client path. It passes the matched route to
+any session is read. The Worker never forwards a client path. It passes the matched route to
 `handle` ([src/shared/bff/handle.ts](../../src/shared/bff/handle.ts)), which makes the NewsBlur
 calls the route needs and answers in Lire's shapes. The client never sees a NewsBlur id or answer
 shape: a feed id is the numeric NewsBlur id, a category is a top-level folder named by its title,
@@ -124,9 +122,9 @@ and an entry is a `story_hash`. The reasons and the rules the core enforces (cou
 user check, the `code < 1` failure) are in [ADR 0009](../adr/0009-newsblur-bff.md).
 
 The core lives in `shared/` because it is pure and takes its `fetch` as an argument. The Worker
-passes a `fetch` that adds the bearer token and calls `NEWSBLUR_HOST`; mock mode passes the fake
+passes a `fetch` that adds the session cookie and calls `NEWSBLUR_HOST`; mock mode passes the fake
 NewsBlur. A new route is a contract entry plus a handler. The contract bounds what a compromised
-or buggy client can do with the owner's token: it cannot reach any other NewsBlur endpoint. The
+or buggy client can do with the owner's session: it cannot reach any other NewsBlur endpoint. The
 Worker answers with its own JSON, never with upstream headers.
 
 The Durable Object also caches the folder tree (`/reader/feeds`) for five minutes, since most
@@ -196,7 +194,7 @@ fixtures, which the gate checks rather than assumes.
 [vite.config.ts](../../vite.config.ts) registers a service worker through `vite-plugin-pwa` with
 `autoUpdate`, precaches the built assets, and falls back to `index.html` for navigation. The
 fallback denylists `/api/`, because the Worker serves `/api/auth/login` as an HTML page: if the
-service worker answered that navigation with the SPA shell, the login form would never appear.
+service worker answered that navigation with the SPA shell, the login would never run.
 
 The build bakes the short git commit into `VITE_APP_VERSION`
 ([vite.config.ts](../../vite.config.ts)), and the account menu shows it as Version. After a deploy, it
@@ -221,7 +219,7 @@ holds that rule.
 ### One sign-in switch
 
 Sign-in state has no route of its own. The shell shows `SignIn` when `/api/auth/status` says
-signed out, or when any query fails with `sign_in_required`. The cache-wide check means a token
+signed out, or when any query fails with `sign_in_required`. The cache-wide check means a session
 the upstream revokes mid-session still lands the reader on the sign-in screen, whichever query
 noticed first. Queries never retry a `401` or a `429`
 ([queryClient.ts](../../src/client/api/queryClient.ts#L8-L11)).

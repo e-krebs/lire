@@ -61,8 +61,8 @@ export default defineConfig({
             miniflare: {
               bindings: {
                 ACCESS_ALLOWED_EMAIL: "owner@example.com",
-                NEWSBLUR_CLIENT_ID: "test-client-id",
-                NEWSBLUR_CLIENT_SECRET: "test-client-secret",
+                NEWSBLUR_USERNAME: "owner",
+                NEWSBLUR_PASSWORD: "test-password",
                 NEWSBLUR_NEWSLETTER_ADDRESS: "demo-0000@newsletters.newsblur.com",
               },
             },

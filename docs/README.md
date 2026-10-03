@@ -30,8 +30,8 @@ these docs live in the `diataxis-docs` skill (`.claude/skills/diataxis-docs/SKIL
 ## Explanation: understanding
 
 - [explanation/architecture.md](explanation/architecture.md) - the SPA, the Worker and how they fit.
-- [explanation/auth.md](explanation/auth.md) - Cloudflare Access, the owner pin and the NewsBlur OAuth
-  code flow.
+- [explanation/auth.md](explanation/auth.md) - Cloudflare Access, the owner pin and the NewsBlur session
+  cookie.
 - [explanation/tooling.md](explanation/tooling.md) - why the toolchain and the gates are set up as
   they are.
 
@@ -56,4 +56,4 @@ Architecture decision records sit outside the four quadrants as their own genre 
   catalog and `Intl`, no library
 - [adr/0009-newsblur-bff.md](adr/0009-newsblur-bff.md) - Serve a Lire-owned contract from the Worker
   over NewsBlur
-- [adr/0010-newsblur-oauth.md](adr/0010-newsblur-oauth.md) - Sign in with the NewsBlur OAuth code flow
+- [adr/0010-newsblur-session-cookie.md](adr/0010-newsblur-session-cookie.md) - Sign in with the NewsBlur session cookie

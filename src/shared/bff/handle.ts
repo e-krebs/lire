@@ -402,7 +402,7 @@ type KeyOf<R> = R extends { method: infer M extends string; path: infer P extend
 type RouteKey = KeyOf<Route>;
 
 const HANDLERS: Record<RouteKey, Handler> = {
-  // The Worker answers this one itself when it holds no token; reaching the core means signed in.
+  // The Worker answers this one itself when it has no session and the login fails; reaching the core means signed in.
   "GET /api/auth/status": () => ok({ signedIn: true }),
 
   "GET /api/profile": async ({ ctx }) => {

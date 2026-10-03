@@ -1,15 +1,15 @@
 # Auth
 
 Lire has one user, its owner, and two layers of auth. Cloudflare Access decides who may reach the
-Worker at all. A NewsBlur OAuth token, obtained once through the code flow, decides what the Worker
-may do upstream ([ADR 0010](../adr/0010-newsblur-oauth.md)).
+Worker at all. A NewsBlur session cookie, obtained by logging in with the owner's credentials, decides what the
+Worker may do upstream ([ADR 0010](../adr/0010-newsblur-session-cookie.md)).
 
 ## Layer 1: Cloudflare Access and the owner pin
 
 Access sits in front of `lire.krebs.tech`. It runs the login, applies its policy, and adds a
 signed JWT to each request it lets through. The Worker does not trust that the request passed
 Access; it checks the JWT itself on every `/api/` request before any routing
-([worker.ts](../../src/server/worker.ts#L184-L195)), and answers `403` on any failure.
+([worker.ts](../../src/server/worker.ts#L190-L201)), and answers `403` on any failure.
 
 [verifyAccess](../../src/server/access.ts) does four things:
 
@@ -25,51 +25,51 @@ Access; it checks the JWT itself on every `/api/` request before any routing
 
 That last check is the owner pin. The Access policy already admits only the owner, but the policy
 lives in a dashboard, and a broadened policy (a new rule, a group, a one-time PIN for a guest)
-would otherwise reach the owner's token. The pin keeps the Worker's own idea of "the owner" in
+would otherwise reach the owner's session. The pin keeps the Worker's own idea of "the owner" in
 the Worker. Unset, the Worker trusts the Access policy alone; a CI deploy fails without it.
 
-## Layer 2: the NewsBlur OAuth token
+## Layer 2: the NewsBlur session cookie
 
-### The sign-in flow
+### The login
 
-The SPA's `SignIn` screen is a link to `GET /api/auth/login`, which the PWA service worker is told
-not to answer (see [architecture.md](architecture.md#pwa)).
+The Worker holds the owner's NewsBlur username and password as the `NEWSBLUR_USERNAME` and
+`NEWSBLUR_PASSWORD` secrets. It signs in without any browser step:
 
-1. `/api/auth/login` ([worker.ts](../../src/server/worker.ts)) sets a random `lire_oauth_state`
-   cookie and answers `302` to `${NEWSBLUR_HOST}/oauth/authorize` with `response_type=code`, the
-   client id, the callback as `redirect_uri`, `scope=read write` and the same `state`. The cookie is
-   `HttpOnly; Secure; SameSite=Lax; Path=/api/auth` and lives ten minutes. `Lax` lets the browser
-   send it back on the top-level redirect from NewsBlur, which `Strict` would block.
-2. NewsBlur asks the owner to approve, then redirects to `/api/auth/callback?code&state`.
-3. The callback compares `state` with the cookie in a constant-time compare. It then posts the code
-   and the `NEWSBLUR_CLIENT_SECRET` to `/oauth/token`, and reads the NewsBlur user id from
-   `/social/load_user_profile` with the new token.
-4. It stores the token and the user id in the Durable Object, clears the state cookie and redirects
-   to `/`.
+1. It posts both to `${NEWSBLUR_HOST}/api/login`. NewsBlur answers `authenticated: true` and sets
+   the `newsblur_sessionid` cookie when the credentials are right.
+2. It reads the NewsBlur user id from `/social/load_user_profile` with the new cookie.
+3. It stores the cookie and the user id in the Durable Object.
 
-Any failure in the callback (a `state` mismatch, a refused exchange, a malformed answer) clears the
-cookie and answers `400` with a short page that links back to `/api/auth/login`.
+Any `/api` request that finds no stored session runs this login first, so the owner never sees a
+sign-in step while the credentials hold. `GET /api/auth/login`
+([worker.ts](../../src/server/worker.ts)) runs the same login by hand and redirects to `/`. The
+SPA's `SignIn` screen links to it and appears only when the login fails. A failure answers `400`
+with a short page that links back to `/api/auth/login`. The PWA service worker is told not to
+answer that route (see [architecture.md](architecture.md#pwa)).
 
-### Token storage
+### Session storage
 
-The token lives in one Durable Object, [NewsblurAuth](../../src/server/newsblurAuth.ts), addressed
+The session lives in one Durable Object, [NewsblurAuth](../../src/server/newsblurAuth.ts), addressed
 by the fixed name `singleton` ([worker.ts](../../src/server/worker.ts)). One user means one object,
-so every request in every isolate sees the same token. The object stores `{accessToken, userId}`
-under one key in its SQLite-backed storage. The token is valid for ten years and has no refresh:
-the Worker sends it as `Authorization: Bearer <token>` and never renews it.
+so every request in every isolate sees the same session. The object stores `{sessionId, userId}`
+under one key in its SQLite-backed storage. The Worker sends the cookie as
+`Cookie: newsblur_sessionid=<id>` on each upstream call and never forwards it to the client.
 
 The same object holds the cache of the folder tree (see
-[architecture.md](architecture.md#worker)). Storing or clearing the token drops the cache.
+[architecture.md](architecture.md#worker)). Storing or clearing the session drops the cache.
 
-### When NewsBlur rejects the token
+### When NewsBlur rejects the session
 
-An upstream `401` or `403` makes `handle` answer `401 sign_in_required`, and the Worker clears the
-stored token. The next `/api/auth/status` answers `{signedIn: false}`, and the owner signs in
-again.
+NewsBlur documents no cookie lifetime. An upstream `401` or `403` makes `handle` answer
+`401 sign_in_required`. The Worker then logs in once more and runs the request again with the new
+session. Only a `GET` retries, because a write may have partly landed before the rejection. If the
+retry fails, or the login fails, the Worker clears the stored session, unless another request has
+already stored a newer one, and answers `401 sign_in_required`. A request that has just logged in
+does not log in a second time.
 
-NewsBlur's read views do not always answer `401` on a bad token: they answer `200` with the data of
-a fallback user. So `handle` also checks every read answer against the user id stored at sign-in,
-and a mismatch is treated as a rejected token.
+NewsBlur's read views do not always answer `401` on a bad session: they answer `200` with the data
+of a fallback user. So `handle` also checks every read answer against the user id stored at login,
+and a mismatch is treated as a rejected session.
 
 ## CSRF checks
 
@@ -78,30 +78,31 @@ cookie on a cross-site form post too. A valid JWT alone therefore does not prove
 owner's own page sent the request, so the Worker adds its own checks on every state-changing
 call:
 
-- [isSameOrigin](../../src/server/worker.ts#L81-L92) compares `Origin`, or `Referer` when
+- [isSameOrigin](../../src/server/worker.ts#L95-L106) compares `Origin`, or `Referer` when
   `Origin` is absent, with the Worker's own origin. A request with neither fails.
 - On the contract routes, every method other than `GET` must pass `isSameOrigin`, and a `POST` or
   `PATCH` must carry a JSON `Content-Type` ([worker.ts](../../src/server/worker.ts)). A cross-site
   HTML form cannot send `application/json`, so this closes the simple-request path. It is also why
   the client sends `{}` as the body of a bodiless POST.
-- The login and callback routes are `GET` redirects that change nothing until the callback, and the
-  callback is protected by the `state` cookie instead.
+- The login route is a `GET` that only logs in with the Worker's own credentials and redirects
+  home. A cross-site request can trigger a login but gains nothing, so it skips these checks.
 
 `GET /api/auth/status` and every other `GET` call change nothing, so they skip these checks.
 
 ## Limitations
 
-- **One user.** The singleton Durable Object holds one token. A second user would need a key per
+- **One user.** The singleton Durable Object holds one session. A second user would need a key per
   Access identity and is out of scope.
-- **Manual re-auth.** When NewsBlur revokes the token, the SPA shows the sign-in screen and the
-  owner signs in again. Nothing renews it without the owner.
-- **No sign-out route.** The Worker exposes no endpoint that clears the stored token; it clears it
-  only when NewsBlur rejects it.
-- **Token at rest.** The token sits in Durable Object storage in plain form, protected by
+- **Password required.** `/api/login` needs a NewsBlur account with a password. An account that
+  only signs in through a third party cannot use it.
+- **Password changes.** A new NewsBlur password breaks the login until CI deploys the new secret.
+- **No sign-out route.** The Worker exposes no endpoint that clears the stored session; it clears
+  it only when NewsBlur rejects it.
+- **Session at rest.** The cookie sits in Durable Object storage in plain form, protected by
   Cloudflare's storage and by the Worker being its only reader. It is not encrypted with a key of
   the app's own.
-- **Client secret.** `NEWSBLUR_CLIENT_SECRET` is a Worker secret, set by CI from a GitHub secret.
-  It never reaches the client.
+- **Credentials.** `NEWSBLUR_USERNAME` and `NEWSBLUR_PASSWORD` are Worker secrets, set by CI from
+  GitHub secrets. The password has full account power and no scope. It never reaches the client.
 - **Pin is required for a CI deploy only.** The code treats the `ACCESS_ALLOWED_EMAIL` secret as
   optional, and a Worker deployed without it relies on the Access policy alone. CI fails both the
   Access check and the Worker deploy when the pin is unset.

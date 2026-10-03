@@ -33,7 +33,7 @@ worker starts, so the time tests do not depend on the host timezone. The locale 
 ### Worker pool
 
 The `server` project runs through `cloudflareTest` with [wrangler.toml](../../wrangler.toml) and
-binds `ACCESS_ALLOWED_EMAIL`, `NEWSBLUR_CLIENT_SECRET` and `NEWSBLUR_NEWSLETTER_ADDRESS` for the tests. The
+binds `ACCESS_ALLOWED_EMAIL`, `NEWSBLUR_USERNAME`, `NEWSBLUR_PASSWORD` and `NEWSBLUR_NEWSLETTER_ADDRESS` for the tests. The
 Worker tests stub `fetch` for the NewsBlur calls. Tests are in
 [src/server/__tests__](../../src/server/__tests__).
 
