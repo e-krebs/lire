@@ -4,14 +4,12 @@ import { encodeParams, type NewsblurFetch } from "shared/bff/upstream";
 import { matchRoute } from "shared/feedsApi/routes";
 import { AccessError, verifyAccess } from "./access";
 import type { Env } from "./env";
-import type { StoredToken } from "./newsblurAuth";
+import type { StoredSession } from "./newsblurAuth";
 
 export { NewsblurAuth } from "./newsblurAuth";
 
 const LOGIN_PATH = "/api/auth/login";
-const CALLBACK_PATH = "/api/auth/callback";
-const STATE_COOKIE = "lire_oauth_state";
-const STATE_COOKIE_ATTRIBUTES = "HttpOnly; Secure; SameSite=Lax; Path=/api/auth";
+const SESSION_COOKIE = "newsblur_sessionid";
 
 const json = ({ body, status = 200 }: { body: unknown; status?: number }): Response =>
   new Response(JSON.stringify(body), {
@@ -20,50 +18,6 @@ const json = ({ body, status = 200 }: { body: unknown; status?: number }): Respo
   });
 
 const newsblurAuth = (env: Env) => env.NEWSBLUR_AUTH.get(env.NEWSBLUR_AUTH.idFromName("singleton"));
-
-const randomToken = (): string =>
-  Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) =>
-    b.toString(16).padStart(2, "0"),
-  ).join("");
-
-const safeEqual = ({ a, b }: { a: string; b: string }): boolean => {
-  const encoder = new TextEncoder();
-  const left = encoder.encode(a);
-  const right = encoder.encode(b);
-  return left.byteLength === right.byteLength && crypto.subtle.timingSafeEqual(left, right);
-};
-
-const readCookie = ({ request, name }: { request: Request; name: string }): string | undefined => {
-  for (const part of request.headers.get("Cookie")?.split(";") ?? []) {
-    const [key, ...value] = part.trim().split("=");
-    if (key === name) return value.join("=");
-  }
-  return undefined;
-};
-
-const clearStateCookie = `${STATE_COOKIE}=; ${STATE_COOKIE_ATTRIBUTES}; Max-Age=0`;
-
-const redirectUri = (request: Request): string => `${new URL(request.url).origin}${CALLBACK_PATH}`;
-
-const handleLogin = ({ request, env }: { request: Request; env: Env }): Response => {
-  const state = randomToken();
-  const authorize = new URL("/oauth/authorize", env.NEWSBLUR_HOST);
-  authorize.search = new URLSearchParams({
-    response_type: "code",
-    client_id: env.NEWSBLUR_CLIENT_ID,
-    redirect_uri: redirectUri(request),
-    scope: "read write",
-    state,
-  }).toString();
-  return new Response(null, {
-    status: 302,
-    headers: {
-      Location: authorize.toString(),
-      "Cache-Control": "no-store",
-      "Set-Cookie": `${STATE_COOKIE}=${state}; ${STATE_COOKIE_ATTRIBUTES}; Max-Age=600`,
-    },
-  });
-};
 
 const signInFailedPage = (): Response =>
   new Response(
@@ -84,77 +38,57 @@ const signInFailedPage = (): Response =>
 </html>`,
     {
       status: 400,
-      headers: {
-        "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "no-store",
-        "Set-Cookie": clearStateCookie,
-      },
+      headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
     },
   );
 
-const TokenAnswerSchema = z.object({ access_token: z.string().min(1) });
+const LoginAnswerSchema = z.object({ authenticated: z.boolean() });
 const ProfileAnswerSchema = z.object({ user_profile: z.object({ user_id: z.number() }) });
 
-const exchangeCode = async ({
-  request,
-  env,
-  code,
-}: {
-  request: Request;
-  env: Env;
-  code: string;
-}): Promise<StoredToken | undefined> => {
-  const tokenResponse = await fetch(`${env.NEWSBLUR_HOST}/oauth/token`, {
-    method: "POST",
-    body: new URLSearchParams({
-      grant_type: "authorization_code",
-      code,
-      redirect_uri: redirectUri(request),
-      client_id: env.NEWSBLUR_CLIENT_ID,
-      client_secret: env.NEWSBLUR_CLIENT_SECRET,
-    }),
-  });
-  if (!tokenResponse.ok) return undefined;
-  const token = TokenAnswerSchema.safeParse(await tokenResponse.json());
-  if (!token.success) return undefined;
-
-  // The user id pins every later read answer to this account.
-  const profileResponse = await fetch(`${env.NEWSBLUR_HOST}/social/load_user_profile`, {
-    headers: { Authorization: `Bearer ${token.data.access_token}` },
-  });
-  if (!profileResponse.ok) return undefined;
-  const profile = ProfileAnswerSchema.safeParse(await profileResponse.json());
-  if (!profile.success) return undefined;
-  return { accessToken: token.data.access_token, userId: profile.data.user_profile.user_id };
+const readSessionId = (response: Response): string | undefined => {
+  for (const line of response.headers.getSetCookie()) {
+    const match = new RegExp(`^${SESSION_COOKIE}=([^;]+)`).exec(line);
+    if (match) return match[1];
+  }
+  return undefined;
 };
 
-const handleCallback = async ({
-  request,
-  env,
-}: {
-  request: Request;
-  env: Env;
-}): Promise<Response> => {
-  const params = new URL(request.url).searchParams;
-  const code = params.get("code");
-  const state = params.get("state");
-  const cookieState = readCookie({ request, name: STATE_COOKIE });
-  if (!code || !state || !cookieState || !safeEqual({ a: state, b: cookieState })) {
-    return signInFailedPage();
-  }
+const sessionCookie = (sessionId: string) => ({ Cookie: `${SESSION_COOKIE}=${sessionId}` });
 
-  let token: StoredToken | undefined;
+const logIn = async (env: Env): Promise<StoredSession | undefined> => {
   try {
-    token = await exchangeCode({ request, env, code });
-  } catch {
-    token = undefined;
-  }
-  if (!token) return signInFailedPage();
+    const loginResponse = await fetch(`${env.NEWSBLUR_HOST}/api/login`, {
+      method: "POST",
+      body: new URLSearchParams({
+        username: env.NEWSBLUR_USERNAME,
+        password: env.NEWSBLUR_PASSWORD,
+      }),
+    });
+    if (!loginResponse.ok) return undefined;
+    const login = LoginAnswerSchema.safeParse(await loginResponse.json());
+    const sessionId = readSessionId(loginResponse);
+    if (!login.success || !login.data.authenticated || !sessionId) return undefined;
 
-  await newsblurAuth(env).setToken(token);
+    // The user id pins every later read answer to this account.
+    const profileResponse = await fetch(`${env.NEWSBLUR_HOST}/social/load_user_profile`, {
+      headers: sessionCookie(sessionId),
+    });
+    if (!profileResponse.ok) return undefined;
+    const profile = ProfileAnswerSchema.safeParse(await profileResponse.json());
+    if (!profile.success) return undefined;
+    return { sessionId, userId: profile.data.user_profile.user_id };
+  } catch {
+    return undefined;
+  }
+};
+
+const handleLogin = async ({ env }: { env: Env }): Promise<Response> => {
+  const session = await logIn(env);
+  if (!session) return signInFailedPage();
+  await newsblurAuth(env).setSession(session);
   return new Response(null, {
     status: 302,
-    headers: { Location: "/", "Set-Cookie": clearStateCookie },
+    headers: { Location: "/", "Cache-Control": "no-store" },
   });
 };
 
@@ -171,12 +105,12 @@ const isSameOrigin = (request: Request): boolean => {
   }
 };
 
-const bearerUpstream =
-  ({ env, accessToken }: { env: Env; accessToken: string }): NewsblurFetch =>
+const cookieUpstream =
+  ({ env, sessionId }: { env: Env; sessionId: string }): NewsblurFetch =>
   async ({ method, path, query, form }) => {
     const url = new URL(path, env.NEWSBLUR_HOST);
     if (query) url.search = encodeParams(query).toString();
-    const headers = { Authorization: `Bearer ${accessToken}` };
+    const headers = sessionCookie(sessionId);
     return fetch(
       url,
       form ? { method: "POST", headers, body: encodeParams(form) } : { method, headers },
@@ -206,10 +140,16 @@ const serve = async ({ request, env }: { request: Request; env: Env }): Promise<
   }
 
   const auth = newsblurAuth(env);
-  const token = await auth.getToken();
-  if (!token) {
-    if (match.route.path === "/api/auth/status") return json({ body: { signedIn: false } });
-    return json({ body: { error: "sign_in_required" }, status: 401 });
+  let session = await auth.getSession();
+  let loggedInNow = false;
+  if (!session) {
+    session = await logIn(env);
+    if (!session) {
+      if (match.route.path === "/api/auth/status") return json({ body: { signedIn: false } });
+      return json({ body: { error: "sign_in_required" }, status: 401 });
+    }
+    await auth.setSession(session);
+    loggedInNow = true;
   }
 
   const cache: FeedsCache = {
@@ -217,26 +157,36 @@ const serve = async ({ request, env }: { request: Request; env: Env }): Promise<
     set: async (input) => auth.setFeedsCache(input),
     clear: async () => auth.clearFeedsCache(),
   };
-  const result = await handle({
-    route: match.route,
-    params: match.params,
-    query: url.searchParams,
-    body,
-    upstream: bearerUpstream({ env, accessToken: token.accessToken }),
-    config: { newsletterAddress: env.NEWSBLUR_NEWSLETTER_ADDRESS, userId: token.userId },
-    cache,
-  });
-  // NewsBlur rejected the token, or answered as another user, so the owner signs in again.
-  if (result.status === 401) await auth.clearToken();
+  const run = async (current: StoredSession) =>
+    handle({
+      route: match.route,
+      params: match.params,
+      query: url.searchParams,
+      body,
+      upstream: cookieUpstream({ env, sessionId: current.sessionId }),
+      config: { newsletterAddress: env.NEWSBLUR_NEWSLETTER_ADDRESS, userId: current.userId },
+      cache,
+    });
+  let result = await run(session);
+  // NewsBlur rejected the session, or answered as another user: log in once more, then give up.
+  // Only a GET retries, because a write may have partly landed before the rejection.
+  let used = session;
+  if (result.status === 401 && !loggedInNow && request.method === "GET") {
+    const fresh = await logIn(env);
+    if (fresh) {
+      await auth.setSession(fresh);
+      used = fresh;
+      result = await run(fresh);
+    }
+  }
+  if (result.status === 401) await auth.clearSession({ onlySessionId: used.sessionId });
   if (result.body === null) return new Response(null, { status: result.status });
   return json({ body: result.body, status: result.status });
 };
 
 const route = async ({ request, env }: { request: Request; env: Env }): Promise<Response> => {
   const { pathname } = new URL(request.url);
-  if (pathname === LOGIN_PATH && request.method === "GET") return handleLogin({ request, env });
-  if (pathname === CALLBACK_PATH && request.method === "GET")
-    return handleCallback({ request, env });
+  if (pathname === LOGIN_PATH && request.method === "GET") return handleLogin({ env });
   return serve({ request, env });
 };
 

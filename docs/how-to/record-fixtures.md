@@ -18,8 +18,8 @@ Replace the synthetic seed with your own NewsBlur data. Background on the two se
    yarn fixtures:record
    ```
 
-The script logs in with `POST /api/login` and keeps the session cookie, so it works before the
-OAuth app exists. It calls the same upstream endpoints as the fake NewsBlur, reads at most three
+The script logs in with `POST /api/login` and keeps the session cookie, with the same username and
+password the Worker uses. It calls the same upstream endpoints as the fake NewsBlur, reads at most three
 pages of stories per feed, and writes `fixtures/real/`, which is gitignored. A wrong password
 answers `200` with `code: -1`, and the script stops on it. Never run it in CI.
 

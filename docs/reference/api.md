@@ -9,8 +9,7 @@ in [routes.ts](../../src/shared/feedsApi/routes.ts), translated to NewsBlur by t
 
 | Method | Path | Behavior |
 | --- | --- | --- |
-| GET | `/api/auth/login` | Sets the `lire_oauth_state` cookie and redirects to NewsBlur's `/oauth/authorize` |
-| GET | `/api/auth/callback` | Checks `state`, exchanges the code, stores the token, redirects to `/`. A failure answers 400 with a page that links back to the login |
+| GET | `/api/auth/login` | Logs in to NewsBlur with the Worker's credentials, stores the session and redirects to `/`. A failure answers 400 with a page that links back to the login |
 
 ## Contract routes
 
@@ -20,7 +19,7 @@ folder title, an entry id is the story hash. A stream key is `all`, `read`, `fol
 
 | Method | Path | Behavior |
 | --- | --- | --- |
-| GET | `/api/auth/status` | `{ signedIn }`, true when a token is stored |
+| GET | `/api/auth/status` | `{ signedIn }`, true when a session is stored or a login succeeds |
 | GET | `/api/profile` | `{ username, email? }` |
 | GET | `/api/categories` | `[{ id, label, feedIds }]`, ordered by the `lire.categoryOrder` preference |
 | POST | `/api/categories` | Create a category, body `{ label }`. 409 when a category already has the label |
@@ -44,7 +43,7 @@ folder title, an entry id is the story hash. A stream key is `all`, `read`, `fol
 Preference keys are `lire.categoryOrder` and `lire.directOpen.<feedId>`
 ([preferences.ts](../../src/shared/feedsApi/preferences.ts)). The Worker rejects other keys with 400.
 
-The Worker sends `Authorization: Bearer <token>` upstream. Non-GET requests need a same-origin
+The Worker sends `Cookie: newsblur_sessionid=<id>` upstream. Non-GET requests need a same-origin
 caller, and POST and PATCH need a JSON content type. Creates answer 201 with the resource, PATCH
 answers 200, and deletes, marks and preference writes answer 204. Errors are JSON: `forbidden`,
 `not_found`, `bad_request`, `conflict` (409), `sign_in_required` (401), `upstream_error` (502). The response and
@@ -62,13 +61,12 @@ Names and roles only.
 | `VITE_DEMO` | build | `true` makes the demo build |
 | `NEWSBLUR_USERNAME`, `NEWSBLUR_PASSWORD` | local | Recorder login, listed in [.env.sample](../../.env.sample) |
 | `NEWSBLUR_HOST` | Worker var | Base URL of NewsBlur |
-| `NEWSBLUR_CLIENT_ID` | Worker secret | OAuth client id sent on authorize and on the code exchange, set by CI from a GitHub secret |
-| `NEWSBLUR_CLIENT_SECRET` | Worker secret | OAuth client secret, set by CI from a GitHub secret |
+| `NEWSBLUR_USERNAME`, `NEWSBLUR_PASSWORD` | Worker secret | The login the Worker posts to NewsBlur, set by CI from GitHub secrets |
 | `NEWSBLUR_NEWSLETTER_ADDRESS` | Worker secret | The newsletter address the app shows, set by CI from a GitHub secret |
 | `ACCESS_TEAM_DOMAIN` | Worker var | Access team domain that issues the JWT |
 | `ACCESS_AUD` | Worker var | Expected JWT audience |
 | `ACCESS_ALLOWED_EMAIL` | Worker secret | Owner email pin, set by CI from a GitHub secret |
-| `NEWSBLUR_AUTH` | Worker binding | Durable Object namespace holding the token and the feed-list cache |
+| `NEWSBLUR_AUTH` | Worker binding | Durable Object namespace holding the session cookie, the user id and the feed-list cache |
 | `E2E_COVERAGE` | test | `1` turns on Playwright coverage |
 | `COVERAGE_DIR` | test | Output directory of the Vitest coverage scripts |
 

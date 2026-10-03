@@ -43,8 +43,8 @@ const TWA_BROWSERS: Browser[] = [
   { id: "brave", label: "Brave", open: twaIntent("com.brave.browser") },
 ];
 
-// The Access login must come back to the app. The upstream OAuth needs no entry: it starts
-// same-origin at /api/auth/login and redirects server side, and its name must stay out of the
+// The Access login must come back to the app. The upstream login needs no entry: it starts
+// same-origin at /api/auth/login and runs server side, and its name must stay out of the
 // bundle for the demo brand gate.
 const IN_APP_HOSTS = ["cloudflareaccess.com"];
 

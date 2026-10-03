@@ -6,7 +6,7 @@ const DIST = "dist";
 // Named-secret patterns, not a bare /secret/ match — react-dom's own bundle ships strings like
 // "__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED", which a generic word match would flag.
 const FORBIDDEN = [
-  /\bNEWSBLUR_CLIENT_SECRET\b/,
+  /\bNEWSBLUR_PASSWORD\b/,
   // A newsletter address carries NewsBlur's secret token; only the demo address may ship.
   /(?<!\bdemo-0000)@newsletters\.newsblur\.com\b/,
   /sk_test_[A-Za-z0-9]+/,

@@ -6,7 +6,7 @@ Accepted.
 
 ## Context
 
-Feedly blocks Lire's API access. NewsBlur replaces it: an official API, an OAuth flow, MIT-licensed
+Feedly blocks Lire's API access. NewsBlur replaces it: an official API, MIT-licensed
 source and $99 a year for the Premium Archive plan. Its API does not look like Feedly's. Ids differ,
 paging is by page number, and many failed writes answer HTTP 200. Forwarding client paths to it would
 spread those quirks through the client.
@@ -52,5 +52,5 @@ NewsBlur.
 - A new route is a contract entry plus a handler, reviewed like any code change.
 - Mock mode and the Worker run the same core, so a fixture exercises the real translation.
 - The Worker adds one hop and a translation layer to maintain, and tracks NewsBlur behavior changes.
-- Sign-in is covered by [0010](0010-newsblur-oauth.md).
+- Sign-in is covered by [0010](0010-newsblur-session-cookie.md).
 - Detail: [architecture](../explanation/architecture.md).

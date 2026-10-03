@@ -7,7 +7,7 @@ Terms used across the code and the docs.
 | Access | Cloudflare Access, the gate in front of the Worker. `verifyAccess` in [access.ts](../../src/server/access.ts) checks its JWT on every `/api/` request. |
 | AUD | The Access application audience tag, `ACCESS_AUD` in [wrangler.toml](../../wrangler.toml). The JWT audience must equal it. |
 | Owner pin | The `ACCESS_ALLOWED_EMAIL` secret, set by CI from a GitHub secret. Only the JWT of that email passes. |
-| OAuth token | The NewsBlur access token from the code flow, kept with the user id in the `NewsblurAuth` Durable Object ([newsblurAuth.ts](../../src/server/newsblurAuth.ts)). It is valid for ten years. |
+| Session | The `newsblur_sessionid` cookie the Worker gets from `POST /api/login`, kept with the user id in the `NewsblurAuth` Durable Object ([newsblurAuth.ts](../../src/server/newsblurAuth.ts)). NewsBlur documents no lifetime, so the Worker logs in again when it is rejected. |
 | Worker | The Cloudflare Worker in [worker.ts](../../src/server/worker.ts): the sign-in routes, auth status, and the Lire contract over NewsBlur. |
 | NewsBlur | The upstream service. The Worker calls its API through the BFF core. Answer shapes are in [upstream.ts](../../src/shared/bff/upstream.ts). |
 | Contract | The routes the client may call, in [routes.ts](../../src/shared/feedsApi/routes.ts). The Worker answers 404 for any other. Types are in [types.ts](../../src/shared/feedsApi/types.ts). |

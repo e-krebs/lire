@@ -14,11 +14,9 @@ const TEAM_DOMAIN = "access.test";
 const NEWSBLUR_HOST = "https://newsblur.test";
 const AUDIENCE = "lire-e2e";
 export const OWNER = "owner@example.com";
-export const CLIENT_ID = "test-client";
-export const CLIENT_SECRET = "test-secret";
-export const NEWSBLUR_ORIGIN = NEWSBLUR_HOST;
-export const GOOD_CODE = "code-accepted";
-export const ACCESS_TOKEN = "access-e2e";
+export const USERNAME = "owner";
+export const PASSWORD = "e2e-password";
+export const SESSION_ID = "session-e2e";
 const USER_ID = 42;
 const KID = "e2e-key";
 
@@ -42,17 +40,21 @@ export const signAccessToken = async ({
     .sign(key);
 
 // Bodies are read eagerly, before the worker's request is gone.
-type OutboundCall = { url: string; body: string; authorization: string | null };
+type OutboundCall = { url: string; body: string; cookie: string | null };
 
-const tokenEndpoint = (call: OutboundCall): Response => {
-  if (new URLSearchParams(call.body).get("code") !== GOOD_CODE) {
-    return Response.json({ error: "invalid_grant" }, { status: 400 });
+const loginEndpoint = (call: OutboundCall): Response => {
+  const form = new URLSearchParams(call.body);
+  if (form.get("username") !== USERNAME || form.get("password") !== PASSWORD) {
+    return Response.json({ authenticated: false, code: -1, errors: { __all__: ["Wrong"] } });
   }
-  return Response.json({ access_token: ACCESS_TOKEN, token_type: "Bearer" });
+  return Response.json(
+    { authenticated: true, code: 1, errors: {} },
+    { headers: { "Set-Cookie": `newsblur_sessionid=${SESSION_ID}; Path=/; HttpOnly` } },
+  );
 };
 
 const profileEndpoint = (call: OutboundCall): Response => {
-  if (call.authorization !== `Bearer ${ACCESS_TOKEN}`) return Response.json({}, { status: 403 });
+  if (call.cookie !== `newsblur_sessionid=${SESSION_ID}`) return Response.json({}, { status: 403 });
   return Response.json({ code: 1, user_profile: { user_id: USER_ID } });
 };
 
@@ -63,7 +65,12 @@ type WorkerServer = {
   outbound: OutboundCall[];
 };
 
-export const test = base.extend<{ worker: WorkerServer }, { bundle: string; keys: Keys }>({
+export const test = base.extend<
+  { worker: WorkerServer; workerPassword: string },
+  { bundle: string; keys: Keys }
+>({
+  // The password the Worker holds, so a test can make it differ from the NewsBlur account's.
+  workerPassword: [PASSWORD, { option: true }],
   // Wrangler's own bundler, as the deploy uses; --dry-run stops before any upload.
   bundle: [
     // oxlint-disable-next-line no-empty-pattern -- Playwright reads fixture deps from the pattern
@@ -86,7 +93,7 @@ export const test = base.extend<{ worker: WorkerServer }, { bundle: string; keys
     { scope: "worker" },
   ],
   // One Miniflare per test, so each starts signed out with in-memory storage.
-  worker: async ({ bundle, keys }, use) => {
+  worker: async ({ bundle, keys, workerPassword }, use) => {
     const outbound: OutboundCall[] = [];
     const unexpected: string[] = [];
     const mf = new Miniflare({
@@ -101,8 +108,8 @@ export const test = base.extend<{ worker: WorkerServer }, { bundle: string; keys
       durableObjects: { NEWSBLUR_AUTH: { className: "NewsblurAuth", useSQLite: true } },
       bindings: {
         NEWSBLUR_HOST,
-        NEWSBLUR_CLIENT_ID: CLIENT_ID,
-        NEWSBLUR_CLIENT_SECRET: CLIENT_SECRET,
+        NEWSBLUR_USERNAME: USERNAME,
+        NEWSBLUR_PASSWORD: workerPassword,
         NEWSBLUR_NEWSLETTER_ADDRESS: "newsletters@newsblur.test",
         ACCESS_TEAM_DOMAIN: TEAM_DOMAIN,
         ACCESS_AUD: AUDIENCE,
@@ -117,11 +124,11 @@ export const test = base.extend<{ worker: WorkerServer }, { bundle: string; keys
           const call: OutboundCall = {
             url: request.url,
             body: await request.clone().text(),
-            authorization: request.headers.get("Authorization"),
+            cookie: request.headers.get("Cookie"),
           };
-          if (endpoint.pathname === "/oauth/token" && request.method === "POST") {
+          if (endpoint.pathname === "/api/login" && request.method === "POST") {
             outbound.push(call);
-            return tokenEndpoint(call);
+            return loginEndpoint(call);
           }
           if (endpoint.pathname === "/social/load_user_profile" && request.method === "GET") {
             outbound.push(call);
