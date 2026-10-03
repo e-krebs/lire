@@ -1,4 +1,4 @@
-# 0009. Render newsletters in a sandboxed iframe
+# 0007. Render newsletters in a sandboxed iframe
 
 ## Status
 

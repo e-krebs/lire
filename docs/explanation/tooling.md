@@ -137,7 +137,7 @@ which restores the Yarn cache. The `e2e` and `storybook` jobs also cache the Pla
 keyed on the Playwright version. Every job sets `timeout-minutes`, about three times its normal duration, so a hung step fails in
 minutes. The Playwright install steps have their own 5-minute limit, because a slow download once
 held the `e2e` job for 14 minutes. Playwright's `globalTimeout` ends a stuck run before the job
-limit, so the report still uploads. Every Cloudflare job is skipped when the gate finds no secrets. [ADR 0008](../adr/0008-ci-owns-cloudflare-setup.md)
+limit, so the report still uploads. Every Cloudflare job is skipped when the gate finds no secrets. [ADR 0006](../adr/0006-ci-owns-cloudflare-setup.md)
 records why CI owns this setup.
 
 ## Dependency updates

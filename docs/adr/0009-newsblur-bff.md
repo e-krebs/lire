@@ -1,15 +1,18 @@
-# 0011. Serve a Lire-owned contract from the Worker over NewsBlur
+# 0009. Serve a Lire-owned contract from the Worker over NewsBlur
 
 ## Status
 
-Accepted. Supersedes [0002](0002-worker-proxy-allowlist.md).
+Accepted.
 
 ## Context
 
 Feedly blocks Lire's API access. NewsBlur replaces it: an official API, an OAuth flow, MIT-licensed
 source and $99 a year for the Premium Archive plan. Its API does not look like Feedly's. Ids differ,
-paging is by page number, and many failed writes answer HTTP 200. Forwarding client paths to it, as
-0002 did, would spread those quirks through the client.
+paging is by page number, and many failed writes answer HTTP 200. Forwarding client paths to it would
+spread those quirks through the client.
+
+The NewsBlur token must never reach the client bundle. An open proxy would let a stolen session
+call any endpoint on the account.
 
 ## Decision
 
@@ -43,8 +46,11 @@ NewsBlur.
 ## Consequences
 
 - The client never sees provider ids or NewsBlur response shapes.
-- A new route is a contract entry plus a handler. This replaces the allowlist line of 0002.
+- The Worker answers only the routes of the contract and refuses any other path.
+- The client and the Worker share the contract module in `src/shared/feedsApi/`, so the two
+  cannot drift.
+- A new route is a contract entry plus a handler, reviewed like any code change.
 - Mock mode and the Worker run the same core, so a fixture exercises the real translation.
 - The Worker adds one hop and a translation layer to maintain, and tracks NewsBlur behavior changes.
-- Sign-in is covered by [0012](0012-newsblur-oauth.md).
+- Sign-in is covered by [0010](0010-newsblur-oauth.md).
 - Detail: [architecture](../explanation/architecture.md).

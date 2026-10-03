@@ -1,4 +1,4 @@
-# 0007. Real and demo builds pass secret and brand gates before deploy
+# 0005. Real and demo builds pass secret and brand gates before deploy
 
 ## Status
 

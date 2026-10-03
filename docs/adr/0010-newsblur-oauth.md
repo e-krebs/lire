@@ -1,8 +1,8 @@
-# 0012. Sign in with the NewsBlur OAuth code flow
+# 0010. Sign in with the NewsBlur OAuth code flow
 
 ## Status
 
-Accepted. Supersedes [0004](0004-pasted-refresh-token.md).
+Accepted.
 
 ## Context
 

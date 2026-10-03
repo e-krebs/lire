@@ -1,4 +1,4 @@
-# 0010. Translate the UI with an in-house typed catalog
+# 0008. Translate the UI with an in-house typed catalog
 
 ## Status
 

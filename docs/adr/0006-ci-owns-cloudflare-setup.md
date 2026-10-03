@@ -1,4 +1,4 @@
-# 0008. CI deploys the Worker and owns the Cloudflare setup
+# 0006. CI deploys the Worker and owns the Cloudflare setup
 
 ## Status
 
@@ -28,6 +28,6 @@ Access application stays dashboard-managed; CI only checks it.
   the only gate.
 - Provisioning only creates. A conflicting DNS record fails the run and waits for the owner.
 - A Worker change that breaks the e2e tests does not ship.
-- Supersedes the manual Worker deploy described in [ADR 0003](0003-access-owner-pin.md)'s pin
+- Supersedes the manual Worker deploy described in [ADR 0002](0002-access-owner-pin.md)'s pin
   setup; its decision to pin the owner email stands.
 - Detail: [tooling](../explanation/tooling.md).
