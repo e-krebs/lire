@@ -12,7 +12,7 @@ English and French, following the browser unless the account menu picks one. The
 Cloudflare Access with an owner email pin guards it, the NewsBlur OAuth code flow signs the owner in,
 and the token, kept in a Durable Object, authenticates the upstream calls.
 
-Setting up a deployment needs a NewsBlur OAuth client and three values in the repo; see
+Setting up a deployment needs a NewsBlur OAuth client and three GitHub secrets; see
 [docs/how-to/deploy.md](docs/how-to/deploy.md#newsblur-oauth-app). Recording your own fixtures needs
 `NEWSBLUR_USERNAME` and `NEWSBLUR_PASSWORD` in `.env.local`.
 
