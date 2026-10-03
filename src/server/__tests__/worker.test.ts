@@ -207,6 +207,21 @@ describe("worker", () => {
       expect(await status()).toEqual({ signedIn: true });
     });
 
+    it("finds the session cookie among other Set-Cookie lines", async () => {
+      await setup();
+      upstream = async (request) => {
+        if (pathOf(request) !== "/api/login") return signInUpstream()(request);
+        const headers = new Headers();
+        headers.append("Set-Cookie", "csrftoken=abc; Path=/");
+        headers.append("Set-Cookie", `newsblur_sessionid=${SESSION_ID}; Path=/; HttpOnly`);
+        return new Response(JSON.stringify({ authenticated: true }), { headers });
+      };
+
+      const response = await authed("/api/auth/login");
+      expect(response.status).toBe(302);
+      expect((await auth().getSession())?.sessionId).toBe(SESSION_ID);
+    });
+
     it("logs in on its own when a request finds no session", async () => {
       await setup();
       upstream = signInUpstream();
@@ -525,6 +540,15 @@ describe("worker", () => {
       const after = await auth().getFeedsCache();
       expect(after.value).toBeUndefined();
       expect(after.generation).toBe(generation + 1);
+    });
+
+    it("clears a session only when it is still the one that failed", async () => {
+      await setup();
+      await auth().setSession({ sessionId: "session-2", userId: USER_ID });
+      await auth().clearSession({ onlySessionId: "session-1" });
+      expect(await auth().hasSession()).toBe(true);
+      await auth().clearSession({ onlySessionId: "session-2" });
+      expect(await auth().hasSession()).toBe(false);
     });
 
     it("drops an entry older than five minutes", async () => {
