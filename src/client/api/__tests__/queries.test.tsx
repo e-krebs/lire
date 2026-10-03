@@ -90,6 +90,21 @@ describe("queries", () => {
     expect(new Set(entries.map((item) => item.feedId))).toEqual(new Set(["101", "102", "103"]));
   });
 
+  it("drops a story repeated across pages", async () => {
+    const { wrapper } = setup();
+    const { result } = renderHook(() => useStream({ streamKey: techKey }), { wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+    const { data } = result.current;
+    const repeated = data && {
+      pages: [...data.pages, ...data.pages],
+      pageParams: [...data.pageParams, ...data.pageParams],
+    };
+    expect(flattenStream(repeated)).toEqual(flattenStream(data));
+  });
+
   it("searches inside the stream it is handed", async () => {
     const { wrapper } = setup();
     const { result } = renderHook(

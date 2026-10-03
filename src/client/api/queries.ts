@@ -198,8 +198,15 @@ export const useReorderCategories = () => {
   };
 };
 
-export const flattenStream = (data: InfiniteData<EntryPage> | undefined): Entry[] =>
-  data ? data.pages.flatMap((page) => page.items) : [];
+// NewsBlur pages by number, so a story that arrives between two fetches shifts the next page and
+// repeats the last story of the previous one. The grid keys its layout by id: a repeat would
+// reserve a slot and leave it empty.
+export const flattenStream = (data: InfiniteData<EntryPage> | undefined): Entry[] => {
+  const seen = new Set<string>();
+  return (data?.pages ?? [])
+    .flatMap((page) => page.items)
+    .filter((entry) => !seen.has(entry.id) && seen.add(entry.id));
+};
 
 export const useStream = ({
   streamKey,
