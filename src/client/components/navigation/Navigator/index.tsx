@@ -50,6 +50,7 @@ export const Navigator = ({
       <NavigatorPanel
         ref={panelHandleRef}
         query={query}
+        onQueryChange={onQueryChange}
         onClose={
           phone
             ? onClose

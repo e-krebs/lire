@@ -180,16 +180,16 @@ test.describe("the app", () => {
       // match first, the tree row under the divider.
       await pageUi.categoryButton("Tech").first().click();
 
-      // Picking the category keeps the typed text as that stream's article search — and the
-      // category rides in the URL as one segment, its id's last, not the full stream id.
-      await expect(page).toHaveURL(new RegExp(`/stream/${TECH_NEWS_KEY}\\?`));
+      // Picking the category drops the typed text — and the category rides in the URL as one
+      // segment, its id's last, not the full stream id.
+      await expect(page).toHaveURL(new RegExp(`/stream/${TECH_NEWS_KEY}$`));
       await expect(pageUi.locationBar).toContainText("Tech");
-      await expect(pageUi.searchField).toHaveValue("tech");
+      await expect(pageUi.searchField).toHaveValue("");
 
       await expect(pageUi.firstEntryLink).toBeVisible();
 
-      // Clearing the text drops `q` and reopens the tree, with the current group expanded.
-      await pageUi.clearSearchButton.click();
+      // Reopening the tree shows the current group expanded.
+      await pageUi.searchField.click();
       await pageUi.categoryButton("Example Tech Daily").click();
 
       await expect(pageUi.searchField).toHaveValue("");
@@ -208,15 +208,14 @@ test.describe("the app", () => {
     await pageUi.navigatorCategoryButton("Tech").first().click();
 
     await expect(pageUi.navigatorDialog).toBeHidden();
-    await expect(page).toHaveURL(new RegExp(`/stream/${TECH_NEWS_KEY}\\?`));
+    await expect(page).toHaveURL(new RegExp(`/stream/${TECH_NEWS_KEY}$`));
     await expect(pageUi.locationBar).toContainText("Tech");
-    await expect(pageUi.locationBar).toContainText("tech");
+    await expect(pageUi.locationBar).not.toContainText("tech");
 
     await expect(pageUi.firstEntryLink).toBeVisible();
 
     await pageUi.openNavigatorButton.click();
     await expect(pageUi.navigatorDialog).toBeVisible();
-    await pageUi.navigatorClearSearchButton.click();
     await pageUi.navigatorCategoryButton("Example Tech Daily").click();
 
     await expect(pageUi.navigatorDialog).toBeHidden();

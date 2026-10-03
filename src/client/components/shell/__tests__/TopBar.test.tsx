@@ -29,6 +29,9 @@ const ui = {
   get accountButton() {
     return screen.findByRole("button", { name: "Account and app info" });
   },
+  get allArticlesButton() {
+    return screen.findByRole("button", { name: /^All articles/ });
+  },
   get backButton() {
     return screen.findByRole("button", { name: "Go back" });
   },
@@ -261,6 +264,23 @@ describe("TopBar", () => {
       expect(inert(await ui.homeLink)).toBe(true);
       // The Navigator's rows carry edit links too, so look inside the pill.
       expect(inert(await ui.locationEditLink("Tech"))).toBe(true);
+    });
+  });
+
+  describe("when a stream is picked in the Navigator", () => {
+    it("opens it with no article search and an empty field", async () => {
+      const view = setup({ path: `${TECH_PATH}?q=rust` });
+      const user = userEvent.setup();
+      const field = await ui.searchField;
+      expect(field).toHaveValue("rust");
+
+      await user.click(field);
+      await user.click(await ui.allArticlesButton);
+
+      await waitFor(() => {
+        expect(view.router.state.location.search).not.toHaveProperty("q");
+      });
+      expect(field).toHaveValue("");
     });
   });
 
