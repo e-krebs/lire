@@ -221,7 +221,7 @@ When the Worker cannot log in to NewsBlur, the SPA shows the sign-in screen and
 `NEWSBLUR_PASSWORD` secret and redeploy the Worker (see [NewsBlur account](#newsblur-account)).
 
 1. Open `https://lire.krebs.tech/api/auth/login` and pass Access.
-2. The Worker logs in and redirects to `/`. A `400` page means NewsBlur refused the credentials.
+2. The Worker logs in and redirects to `/`. A `400` page means the login failed. Run `yarn wrangler tail` and open the login again: the Worker logs the failed step as `NewsBlur login failed: <reason>`, never the credentials.
 3. Confirm `https://lire.krebs.tech/api/auth/status` returns `{"signedIn":true}`.
 
 ## Local Worker limits
