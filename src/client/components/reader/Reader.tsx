@@ -8,22 +8,53 @@ import { ReaderHeader } from "client/components/reader/ReaderHeader";
 import { readingTime } from "client/utils/readingTime";
 import { useT } from "client/i18n/useT";
 import { replaceBrokenImage } from "client/utils/brokenImage";
+import { EMBED_SANDBOX, embedTweets, youtubeEmbedUrl } from "client/utils/embeds";
 import { useImageFallback } from "client/hooks/useImageFallback";
 import { useResizablePanel } from "client/hooks/useResizablePanel";
 import { noViewTransitionRunning } from "client/utils/viewTransition";
 
 // External links inside sanitized article HTML shouldn't inherit the app's own tab/opener.
-DOMPurify.addHook("afterSanitizeAttributes", (node) => {
+const openLinksAway = (node: Element): void => {
   if (node.tagName === "A") {
     node.setAttribute("target", "_blank");
     node.setAttribute("rel", "noopener");
   }
-});
+};
+DOMPurify.addHook("afterSanitizeAttributes", openLinksAway);
 
-const sanitize = (html: string): string =>
+const sanitizeNewsletter = (html: string): string =>
   DOMPurify.sanitize(html, {
     USE_PROFILES: { html: true },
     FORBID_TAGS: ["script", "style", "iframe"],
+  });
+
+// Hooks are per instance, so the iframe ones live on their own and never touch the newsletter
+// pass. `iframe` has to leave FORBID_TAGS, because that list wins over any hook.
+const postPurify = DOMPurify(window);
+postPurify.addHook("afterSanitizeAttributes", openLinksAway);
+postPurify.addHook("uponSanitizeElement", (node, data) => {
+  if (data.tagName !== "iframe" || !(node instanceof Element)) return;
+  const src = youtubeEmbedUrl({ src: node.getAttribute("src") ?? "" });
+  if (src === null) node.remove();
+  else node.setAttribute("src", src);
+});
+// Set after the attribute pass, which would drop them: DOMPurify's default list has none of these.
+postPurify.addHook("afterSanitizeAttributes", (node) => {
+  if (node.tagName !== "IFRAME") return;
+  node.setAttribute("allow", "encrypted-media; picture-in-picture; fullscreen");
+  node.setAttribute("allowfullscreen", "");
+  node.setAttribute("loading", "lazy");
+  node.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+  node.setAttribute("sandbox", EMBED_SANDBOX);
+});
+
+const sanitizePost = (html: string): string =>
+  embedTweets({
+    html: postPurify.sanitize(html, {
+      USE_PROFILES: { html: true },
+      FORBID_TAGS: ["script", "style"],
+      ADD_TAGS: ["iframe"],
+    }),
   });
 
 // The reading estimate counts the words the reader actually sees, so it reads them off the
@@ -112,10 +143,16 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
 
   const { data } = entry;
   const bodyHtml = data?.content ?? data?.summary ?? "";
-  const html = useMemo(() => (bodyHtml === "" ? "" : sanitize(bodyHtml)), [bodyHtml]);
+  // Decided before sanitizing: the newsletter pass must never let an embed frame into its srcdoc.
+  // Until the feeds load, a newsletter shows inline, so embeds wait for them too.
+  const feed = feeds.data?.find(({ id }) => id === data?.feedId);
+  const newsletter = bodyHtml !== "" && feed?.isNewsletter === true;
+  const embeds = feeds.data !== undefined && !newsletter;
+  const html = useMemo(() => {
+    if (bodyHtml === "") return "";
+    return embeds ? sanitizePost(bodyHtml) : sanitizeNewsletter(bodyHtml);
+  }, [bodyHtml, embeds]);
   const minutes = useMemo(() => (html === "" ? 0 : readingTime(bodyText(html))), [html]);
-  const newsletter =
-    html !== "" && feeds.data?.find((feed) => feed.id === data?.feedId)?.isNewsletter === true;
   const heroUrl = data?.imageUrl;
   const heroInBody = useMemo(
     () => heroUrl !== undefined && html !== "" && bodyHasImage({ html, url: heroUrl }),

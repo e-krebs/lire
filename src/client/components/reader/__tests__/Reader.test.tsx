@@ -75,7 +75,10 @@ const setup = ({ entryId, seedEntry }: { entryId: string; seedEntry?: Entry }) =
   vi.stubEnv("VITE_API_MODE", "mock");
   resetFixtureState();
 
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  // A seeded entry must not be refetched over by the fixture's own copy.
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, staleTime: seedEntry ? Infinity : 0 } },
+  });
   if (seedEntry) client.setQueryData(keys.entry(seedEntry.id), seedEntry);
   const rootRoute = createRootRoute();
   const streamRoute = createRoute({
@@ -207,6 +210,105 @@ describe("Reader", () => {
 
     expect(ui.frame(view)).toBeNull();
     expect(view.container.querySelector("article.prose-reader")).not.toBeNull();
+  });
+
+  describe("when the body carries an embed", () => {
+    const withContent = async ({ entryId, content }: { entryId: string; content: string }) => {
+      const entry = await getEntry(entryId);
+      return setup({ entryId, seedEntry: { ...entry, content } });
+    };
+    const postFrames = async (content: string) => {
+      const { view } = await withContent({ entryId: UNREAD_ID, content: `<p>Body</p>${content}` });
+      const frames = () => [...view.container.querySelectorAll("article.prose-reader iframe")];
+      // Embeds wait for the feed list, which says the post is no newsletter.
+      await waitFor(() => {
+        expect(frames().length).toBeGreaterThan(0);
+      });
+      return frames();
+    };
+
+    it("keeps a YouTube frame, rewritten to youtube.com and sandboxed", async () => {
+      const frames = await postFrames(
+        '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1" srcdoc="<b>x</b>" onload="alert(1)"></iframe>',
+      );
+
+      expect(frames).toHaveLength(1);
+      const [frame] = frames;
+      expect(frame).toHaveAttribute("src", "https://www.youtube.com/embed/dQw4w9WgXcQ");
+      expect(frame).toHaveAttribute(
+        "sandbox",
+        "allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox",
+      );
+      expect(frame).toHaveAttribute("allow", "encrypted-media; picture-in-picture; fullscreen");
+      expect(frame).toHaveAttribute("allowfullscreen");
+      expect(frame).toHaveAttribute("loading", "lazy");
+      expect(frame).toHaveAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+      expect(frame).not.toHaveAttribute("srcdoc");
+      expect(frame).not.toHaveAttribute("onload");
+    });
+
+    it("accepts the youtube-nocookie and protocol-relative forms", async () => {
+      const frames = await postFrames(
+        '<iframe src="https://www.youtube-nocookie.com/embed/aaaaaaaaaaa"></iframe>' +
+          '<iframe src="//www.youtube.com/embed/bbbbbbbbbbb"></iframe>',
+      );
+
+      expect(frames.map((frame) => frame.getAttribute("src"))).toEqual([
+        "https://www.youtube.com/embed/aaaaaaaaaaa",
+        "https://www.youtube.com/embed/bbbbbbbbbbb",
+      ]);
+    });
+
+    it("drops frames from other hosts and unsafe schemes", async () => {
+      const frames = await postFrames(
+        '<iframe src="https://player.vimeo.com/video/1"></iframe>' +
+          '<iframe src="https://platform.twitter.com/embed/Tweet.html?id=1"></iframe>' +
+          '<iframe src="javascript:alert(1)"></iframe>' +
+          '<iframe src="data:text/html,<script>alert(1)</script>"></iframe>' +
+          '<iframe srcdoc="<script>alert(1)</script>"></iframe>' +
+          '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>',
+      );
+
+      expect(frames.map((frame) => frame.getAttribute("src"))).toEqual([
+        "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      ]);
+    });
+
+    it("turns an X blockquote into an X frame", async () => {
+      const frames = await postFrames(
+        '<blockquote class="twitter-tweet"><p>Hello from X</p>&mdash; Jack ' +
+          '<a href="https://twitter.com/jack/status/1234567890">May 1</a></blockquote>' +
+          '<script async src="https://platform.twitter.com/widgets.js"></script>',
+      );
+
+      expect(frames).toHaveLength(1);
+      const [frame] = frames;
+      expect(frame).toHaveAttribute(
+        "src",
+        "https://platform.twitter.com/embed/Tweet.html?id=1234567890&dnt=true",
+      );
+      expect(frame).toHaveAttribute("data-embed", "x");
+      expect(frame).toHaveAttribute(
+        "sandbox",
+        "allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox",
+      );
+      expect(frame.getAttribute("title")).toContain("Hello from X");
+    });
+
+    it("renders only the newsletter frame for a newsletter that carries a YouTube frame", async () => {
+      const { view } = await withContent({
+        entryId: NEWSLETTER_ID,
+        content: '<p>Letter</p><iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>',
+      });
+      await waitFor(() => {
+        expect(ui.frameDocument(view).body.textContent).toContain("Letter");
+      });
+
+      expect(view.container.querySelectorAll("iframe")).toHaveLength(1);
+      expect(view.container.querySelector(".prose-reader")).toBeNull();
+      const doc = ui.frameDocument(view);
+      expect(doc.querySelector("iframe")).toBeNull();
+    });
   });
 
   it("leaves the entry alone when Keep closes the panel", async () => {
