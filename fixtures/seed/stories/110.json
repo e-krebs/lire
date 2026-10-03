@@ -1,0 +1,35 @@
+[
+  {
+    "story_hash": "110:0ee3cb",
+    "story_feed_id": 110,
+    "story_title": "Synthetic story 1 from feed 110",
+    "story_authors": "Ada Writer",
+    "story_content": "<p>Short synthetic body for story 1 of feed 110.</p>",
+    "story_permalink": "https://example.test/110/1",
+    "story_timestamp": "1759805600",
+    "image_urls": [],
+    "read_status": 0
+  },
+  {
+    "story_hash": "110:107ce4",
+    "story_feed_id": 110,
+    "story_title": "Synthetic story 2 from feed 110",
+    "story_authors": "Ada Writer",
+    "story_content": "<p>Short synthetic body for story 2 of feed 110.</p>",
+    "story_permalink": "https://example.test/110/2",
+    "story_timestamp": "1759800200",
+    "image_urls": ["https://images.example.test/110-2.png"],
+    "read_status": 0
+  },
+  {
+    "story_hash": "110:1215fd",
+    "story_feed_id": 110,
+    "story_title": "Synthetic story 3 from feed 110",
+    "story_authors": "Ada Writer",
+    "story_content": "<p>Short synthetic body for story 3 of feed 110.</p>",
+    "story_permalink": "https://example.test/110/3",
+    "story_timestamp": "1759794800",
+    "image_urls": [],
+    "read_status": 1
+  }
+]

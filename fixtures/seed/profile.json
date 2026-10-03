@@ -1,6 +1,6 @@
 {
-  "id": "5f3d4b2a-1234-4c56-8def-9876543210ab",
-  "email": "reader@example-mail.test",
-  "fullName": "Ada Reader",
-  "picture": "https://example-cdn.test/avatars/ada.png"
+  "user_profile": {
+    "username": "ada-reader",
+    "user_id": 1001
+  }
 }

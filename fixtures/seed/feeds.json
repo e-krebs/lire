@@ -1,0 +1,108 @@
+{
+  "feeds": {
+    "101": {
+      "id": 101,
+      "feed_title": "Example Tech Daily",
+      "feed_address": "https://tech.example.test/feed.xml",
+      "feed_link": "https://tech.example.test",
+      "favicon_url": "/rss_feeds/icon/101"
+    },
+    "102": {
+      "id": 102,
+      "feed_title": "Example Frameworks Weekly",
+      "feed_address": "https://frameworks.example.test/rss",
+      "feed_link": "https://frameworks.example.test",
+      "favicon_url": null
+    },
+    "103": {
+      "id": 103,
+      "feed_title": "Example Dev Notes",
+      "feed_address": "https://devnotes.example.test/atom.xml",
+      "feed_link": "https://devnotes.example.test",
+      "favicon_url": "/rss_feeds/icon/103"
+    },
+    "104": {
+      "id": 104,
+      "feed_title": "Example Design Journal",
+      "feed_address": "https://design.example.test/feed",
+      "feed_link": "https://design.example.test",
+      "favicon_url": "/rss_feeds/icon/104"
+    },
+    "105": {
+      "id": 105,
+      "feed_title": "Example Type Foundry",
+      "feed_address": "https://type.example.test/feed",
+      "feed_link": "https://type.example.test",
+      "favicon_url": null
+    },
+    "106": {
+      "id": 106,
+      "feed_title": "Example Daily News",
+      "feed_address": "https://news.example.test/rss",
+      "feed_link": "https://news.example.test",
+      "favicon_url": "/rss_feeds/icon/106"
+    },
+    "107": {
+      "id": 107,
+      "feed_title": "Example World Desk",
+      "feed_address": "https://world.example.test/rss",
+      "feed_link": "https://world.example.test",
+      "favicon_url": "/rss_feeds/icon/107"
+    },
+    "108": {
+      "id": 108,
+      "feed_title": "Example Science Wire",
+      "feed_address": "https://science.example.test/feed",
+      "feed_link": "https://science.example.test",
+      "favicon_url": null
+    },
+    "109": {
+      "id": 109,
+      "feed_title": "Example Longform",
+      "feed_address": "https://longform.example.test/feed",
+      "feed_link": "https://longform.example.test",
+      "favicon_url": "/rss_feeds/icon/109"
+    },
+    "110": {
+      "id": 110,
+      "feed_title": "Example Pocket Essays",
+      "feed_address": "https://essays.example.test/feed",
+      "feed_link": "https://essays.example.test",
+      "favicon_url": "/rss_feeds/icon/110"
+    },
+    "111": {
+      "id": 111,
+      "feed_title": "Example Weekly",
+      "feed_address": "newsletter:example-weekly",
+      "feed_link": null,
+      "favicon_url": null
+    },
+    "112": {
+      "id": 112,
+      "feed_title": "Example Digest",
+      "feed_address": "newsletter:example-digest",
+      "feed_link": null,
+      "favicon_url": "/rss_feeds/icon/112"
+    }
+  },
+  "folders": [
+    {
+      "Tech": [
+        101,
+        {
+          "Frameworks": [102]
+        },
+        103
+      ]
+    },
+    {
+      "Design": [104, 105, 103, 109]
+    },
+    {
+      "News": [106, 107, 108, 110]
+    },
+    {
+      "Newsletters": [111, 112]
+    }
+  ]
+}
