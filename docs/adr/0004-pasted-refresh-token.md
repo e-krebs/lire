@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by [0012](0012-newsblur-oauth.md)
 
 ## Context
 
@@ -13,7 +13,7 @@ registered client and a callback for an app with one user.
 
 The owner pastes a refresh token once. The Worker validates it by exchanging it for an access
 token, and only then stores it in the `FeedlyAuth` Durable Object, addressed by the name
-`singleton` ([feedlyAuth.ts](../../src/server/feedlyAuth.ts), [worker.ts](../../src/server/worker.ts)).
+`singleton` (`src/server/feedlyAuth.ts`, [worker.ts](../../src/server/worker.ts)).
 The object serializes refreshes into a single flight and serves cached access tokens until shortly
 before expiry. A rejected paste leaves the working sign-in untouched.
 

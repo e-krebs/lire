@@ -30,8 +30,8 @@ these docs live in the `diataxis-docs` skill (`.claude/skills/diataxis-docs/SKIL
 ## Explanation: understanding
 
 - [explanation/architecture.md](explanation/architecture.md) - the SPA, the Worker and how they fit.
-- [explanation/auth.md](explanation/auth.md) - Cloudflare Access, the owner pin and the pasted refresh
-  token.
+- [explanation/auth.md](explanation/auth.md) - Cloudflare Access, the owner pin and the NewsBlur OAuth
+  code flow.
 - [explanation/tooling.md](explanation/tooling.md) - why the toolchain and the gates are set up as
   they are.
 
@@ -42,11 +42,11 @@ Architecture decision records sit outside the four quadrants as their own genre 
 
 - [adr/0001-adopt-diataxis.md](adr/0001-adopt-diataxis.md) - Adopt Diátaxis for documentation structure
 - [adr/0002-worker-proxy-allowlist.md](adr/0002-worker-proxy-allowlist.md) - Keep the feeds API behind
-  a Worker with a path allowlist
+  a Worker with a path allowlist (superseded by [0011](adr/0011-newsblur-bff.md))
 - [adr/0003-access-owner-pin.md](adr/0003-access-owner-pin.md) - Cloudflare Access plus an owner email
   pin as the outer layer
 - [adr/0004-pasted-refresh-token.md](adr/0004-pasted-refresh-token.md) - A pasted refresh token in a
-  singleton Durable Object, no OAuth redirect
+  singleton Durable Object, no OAuth redirect (superseded by [0012](adr/0012-newsblur-oauth.md))
 - [adr/0005-fixture-mock-mode.md](adr/0005-fixture-mock-mode.md) - Fixture-backed mock mode by default
 - [adr/0006-no-module-mocks.md](adr/0006-no-module-mocks.md) - No module mocks or spies, MSW and
   `page.route` only
@@ -58,3 +58,6 @@ Architecture decision records sit outside the four quadrants as their own genre 
   sandboxed iframe, posts stay inline
 - [adr/0010-in-house-i18n.md](adr/0010-in-house-i18n.md) - Translate the UI with an in-house typed
   catalog and `Intl`, no library
+- [adr/0011-newsblur-bff.md](adr/0011-newsblur-bff.md) - Serve a Lire-owned contract from the Worker
+  over NewsBlur
+- [adr/0012-newsblur-oauth.md](adr/0012-newsblur-oauth.md) - Sign in with the NewsBlur OAuth code flow

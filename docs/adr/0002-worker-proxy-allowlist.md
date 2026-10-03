@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded by [0011](0011-newsblur-bff.md)
 
 ## Context
 
@@ -13,7 +13,7 @@ and an open proxy would let a stolen session call any endpoint on the account.
 
 Every feeds API call goes through the Cloudflare Worker ([worker.ts](../../src/server/worker.ts)).
 The Worker forwards a request only if its method and path match an entry of `ALLOWED_PATHS` in
-[paths.ts](../../src/shared/feedsApi/paths.ts), the list of endpoints the app uses. Anything else
+`src/shared/feedsApi/paths.ts`, the list of endpoints the app uses. Anything else
 is refused. The client and the Worker share that module, so the two cannot drift.
 
 ## Consequences
