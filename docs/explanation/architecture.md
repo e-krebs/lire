@@ -48,9 +48,11 @@ apply and the app's article styles cannot break it. The parent sizes the frame t
 presses out of it. The reasons and limits are in
 [ADR 0007](../adr/0007-newsletter-iframe.md).
 
-A blog post keeps frames for YouTube and Vimeo, plus X, Bluesky, Instagram, Threads and TikTok frames that Lire builds
-from the provider's blockquote (`twitter-tweet`, `bluesky-embed`, `instagram-media`,
-`text-post-media`, `tiktok-embed`) and a checked permalink. Every frame loads when the post renders. The helpers are in
+A blog post keeps frames for YouTube and Vimeo, plus X, Bluesky, Instagram, Threads, TikTok and
+Facebook frames that Lire builds from the provider's blockquote (`twitter-tweet`, `bluesky-embed`,
+`instagram-media`, `text-post-media`, `tiktok-embed`, `fb-post`, `fb-video`) and a checked
+permalink. Facebook covers posts and videos; `fb.watch` short links stay plain links, because a
+short link cannot resolve client side. Every frame loads when the post renders. The helpers are in
 [embeds.ts](../../src/client/utils/embeds.ts). Every other frame is dropped, no third-party script
 runs in the app's origin, and a newsletter never gets frames. The allowlist and the privacy cost
 are in [ADR 0011](../adr/0011-reader-embeds.md).

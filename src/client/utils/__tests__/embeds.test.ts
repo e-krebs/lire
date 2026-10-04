@@ -9,6 +9,10 @@ const IG_POST = "https://www.instagram.com/p/C0b8bKxLw5Q/?utm_source=ig_embed&ut
 const IG_FRAME = "https://www.instagram.com/p/C0b8bKxLw5Q/embed/";
 const THREADS_POST = "https://www.threads.com/@zuck/post/C8xv0k3PzZ2";
 const TIKTOK_POST = "https://www.tiktok.com/@scout2015/video/6718335390845095173";
+const FB_POST = "https://www.facebook.com/zuck/posts/10112345678901234";
+const FB_VIDEO = "https://www.facebook.com/zuck/videos/1234567890";
+const fbFrame = ({ kind, href }: { kind: "post" | "video"; href: string }) =>
+  `https://www.facebook.com/plugins/${kind}.php?href=${encodeURIComponent(href)}`;
 const TWEET = "https://platform.twitter.com/embed/Tweet.html?id=1234567890&dnt=true";
 
 describe("embeds", () => {
@@ -228,6 +232,89 @@ describe("embeds", () => {
     ]) {
       const html = `<blockquote class="tiktok-embed" cite="${cite}"><a href="${cite}">x</a></blockquote>`;
       expect(embedQuotes({ html })).toBe(html);
+    }
+  });
+
+  it("embedQuotes swaps div.fb-post and div.fb-video for Facebook frames on data-href", () => {
+    const html = embedQuotes({
+      html: `<div class="fb-post" data-href="${FB_POST}?ref=x"></div><div class="fb-video" data-href="https://m.facebook.com/watch/?v=42&amp;t=3"></div>`,
+    });
+    const frames = [
+      ...new DOMParser().parseFromString(html, "text/html").querySelectorAll("iframe"),
+    ];
+
+    expect(frames.map((frame) => frame.getAttribute("data-embed"))).toEqual([
+      "facebook",
+      "facebook-video",
+    ]);
+    expect(frames[0]?.getAttribute("src")).toBe(fbFrame({ kind: "post", href: FB_POST }));
+    expect(frames[1]?.getAttribute("src")).toBe(
+      fbFrame({ kind: "video", href: "https://www.facebook.com/watch/?v=42" }),
+    );
+  });
+
+  it("embedQuotes accepts the permalink.php, videos and reel forms", () => {
+    const cases = [
+      {
+        cls: "fb-post",
+        href: "https://www.facebook.com/permalink.php?story_fbid=12&id=34&x=1",
+        want: fbFrame({
+          kind: "post",
+          href: "https://www.facebook.com/permalink.php?story_fbid=12&id=34",
+        }),
+      },
+      {
+        cls: "fb-video",
+        href: "https://facebook.com/reel/987654/",
+        want: fbFrame({ kind: "video", href: "https://www.facebook.com/reel/987654/" }),
+      },
+      { cls: "fb-video", href: FB_VIDEO, want: fbFrame({ kind: "video", href: FB_VIDEO }) },
+    ];
+    for (const { cls, href, want } of cases) {
+      const html = embedQuotes({
+        html: `<div class="${cls}" data-href="${href.replace("&", "&amp;")}"></div>`,
+      });
+      expect(
+        new DOMParser()
+          .parseFromString(html, "text/html")
+          .querySelector("iframe")
+          ?.getAttribute("src"),
+      ).toBe(want);
+    }
+  });
+
+  it("embedQuotes keeps a Facebook div whose data-href is not a post or video of the right kind", () => {
+    for (const { cls, href } of [
+      { cls: "fb-post", href: "https://www.facebook.com/zuck" },
+      { cls: "fb-post", href: "https://fb.watch/abc/" },
+      { cls: "fb-post", href: "https://facebook.com.evil.test/zuck/posts/1" },
+      { cls: "fb-post", href: "https://www.facebook.com/permalink.php?story_fbid=a&id=1" },
+      { cls: "fb-post", href: FB_VIDEO },
+      { cls: "fb-video", href: FB_POST },
+      { cls: "fb-video", href: "https://www.facebook.com/watch/?v=abc" },
+      { cls: "fb-video", href: "javascript:alert(1)" },
+    ]) {
+      const html = `<div class="${cls}" data-href="${href}"></div>`;
+      expect(embedQuotes({ html })).toBe(html);
+    }
+  });
+
+  it("iframeEmbed re-validates a Facebook plugin frame by its inner href", () => {
+    expect(iframeEmbed({ src: `${fbFrame({ kind: "post", href: FB_POST })}&width=500` })).toEqual({
+      name: "facebook",
+      src: fbFrame({ kind: "post", href: FB_POST }),
+    });
+    expect(iframeEmbed({ src: fbFrame({ kind: "video", href: FB_VIDEO }) })?.name).toBe(
+      "facebook-video",
+    );
+    for (const src of [
+      fbFrame({ kind: "post", href: "https://evil.test/zuck/posts/1" }),
+      fbFrame({ kind: "post", href: FB_VIDEO }),
+      "https://www.facebook.com/plugins/page.php?href=https%3A%2F%2Fwww.facebook.com%2Fzuck",
+      "https://www.facebook.com/plugins/post.php",
+      "https://evil.test/plugins/post.php?href=" + encodeURIComponent(FB_POST),
+    ]) {
+      expect(iframeEmbed({ src })).toBeNull();
     }
   });
 });
