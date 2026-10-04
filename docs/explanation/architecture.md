@@ -271,6 +271,24 @@ When a component needs a different wrapper per tier, the wrapper changes and the
 reparented into it; [../reference/conventions.md](../reference/conventions.md#tier-variants)
 holds that rule.
 
+### A shell that owns the viewport
+
+The body is `100dvh` tall and never scrolls: each pane scrolls on its own. The viewport runs with
+`interactive-widget=resizes-content`, so on Android the keyboard shrinks the layout and a
+bottom-anchored sheet stays above the keys. With that key set, Chrome on Android can open a tab, or
+show one again, with a viewport that runs under the gesture nav bar but reports no bottom
+safe-area inset. The bottom app bar then sits half behind the nav bar. No measurement shows the
+fault: `innerHeight`, `visualViewport` and `100dvh` all carry the stale height, and a document
+that scrolls with a sticky bar is cut the same way.
+
+Any change to the viewport meta makes Chrome measure again, and on a viewport that is already right
+the change fires no resize. [viewportNudge.ts](../../src/client/utils/viewportNudge.ts) builds on
+that. At load, after each burst of resizes and each time the tab shows, it waits 100 ms and flips
+the mode to `resizes-visual` and back. A flip that fixes the viewport fires one more resize, and
+the flip after it fires none, so the flips stop by themselves. The cut can still show for that
+moment before the flip, and the bar then moves up. The flip skips while a field has focus, because
+the keyboard would cover the field for the two frames of the flip.
+
 ### One sign-in switch
 
 Sign-in state has no route of its own. The shell shows `SignIn` when `/api/auth/status` says
