@@ -132,6 +132,15 @@ const cookieUpstream =
     );
   };
 
+const geoOf = (request: Request): { lat: number; lon: number; timezone: string } | undefined => {
+  if (!request.cf) return undefined;
+  const { latitude, longitude, timezone } = request.cf;
+  if (!latitude || !longitude || typeof timezone !== "string" || !timezone) return undefined;
+  const lat = Number(latitude);
+  const lon = Number(longitude);
+  return Number.isFinite(lat) && Number.isFinite(lon) ? { lat, lon, timezone } : undefined;
+};
+
 const serve = async ({ request, env }: { request: Request; env: Env }): Promise<Response> => {
   const url = new URL(request.url);
   const match = matchRoute({ method: request.method, pathname: url.pathname });
@@ -179,7 +188,11 @@ const serve = async ({ request, env }: { request: Request; env: Env }): Promise<
       query: url.searchParams,
       body,
       upstream: cookieUpstream({ env, sessionId: current.sessionId }),
-      config: { newsletterAddress: env.NEWSBLUR_NEWSLETTER_ADDRESS, userId: current.userId },
+      config: {
+        newsletterAddress: env.NEWSBLUR_NEWSLETTER_ADDRESS,
+        userId: current.userId,
+        geo: geoOf(request),
+      },
       cache,
     });
   let result = await run(session);

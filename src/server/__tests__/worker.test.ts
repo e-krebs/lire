@@ -462,6 +462,33 @@ describe("worker", () => {
       expect(upstreamCalls).toHaveLength(0);
     });
 
+    describe("when /api/sun reads the Cloudflare position", () => {
+      // UTC has no table entry, so only a usable cf position can answer it.
+      const sunWith = async (cf: Record<string, string>) => {
+        await setup();
+        await signIn();
+        const response = await authed("/api/sun?tz=UTC", { cf });
+        await response.text();
+        return response.status;
+      };
+      const position = { latitude: "48.85", longitude: "2.35", timezone: "UTC" };
+
+      it("uses it when latitude, longitude and time zone are present", async () => {
+        expect(await sunWith(position)).toBe(200);
+      });
+
+      it.for(["latitude", "longitude", "timezone"])(
+        "ignores it when %s is missing",
+        async (key) => {
+          expect(await sunWith({ ...position, [key]: "" })).toBe(404);
+        },
+      );
+
+      it.for(["latitude", "longitude"])("ignores it when %s is not a number", async (key) => {
+        expect(await sunWith({ ...position, [key]: "north" })).toBe(404);
+      });
+    });
+
     it("returns 404 for a known path with the wrong method", async () => {
       await setup();
       const response = await authed("/api/auth/login", { method: "POST", headers: sameOrigin });

@@ -11,6 +11,8 @@ import {
   SearchEntriesQuerySchema,
   SearchFeedsQuerySchema,
   StreamEntriesQuerySchema,
+  SunPhaseSchema,
+  SunQuerySchema,
   UpdateFeedBodySchema,
   type Category,
   type Counts,
@@ -20,6 +22,8 @@ import {
   type FeedSearchResult,
   type Preferences,
 } from "shared/feedsApi/types";
+import { sunPhase } from "shared/sun/sun";
+import { TIMEZONE_COORDINATES } from "shared/sun/timezones.gen";
 import { decodeCursor, encodeCursor } from "./cursor";
 import {
   categoryIdsOf,
@@ -51,6 +55,7 @@ interface BffConfig {
   newsletterAddress: string;
   // The NewsBlur user id stored at sign-in.
   userId: number;
+  geo?: { lat: number; lon: number; timezone: string };
 }
 
 // The `/reader/feeds` answer, kept by the caller (the Durable Object, or memory in mock mode).
@@ -742,6 +747,25 @@ const HANDLERS: Record<RouteKey, Handler> = {
   "GET /api/newsletter-address": ({ ctx }) => {
     if (!ctx.config.newsletterAddress) throw notFound();
     return ok({ emailAddress: ctx.config.newsletterAddress });
+  },
+
+  "GET /api/sun": ({ ctx, query }) => {
+    const { tz } = parseInput({ schema: SunQuerySchema, value: query });
+    const { geo } = ctx.config;
+    // hasOwn keeps a name like "constructor" from reaching the prototype.
+    const position =
+      geo?.timezone === tz
+        ? geo
+        : Object.hasOwn(TIMEZONE_COORDINATES, tz)
+          ? TIMEZONE_COORDINATES[tz]
+          : undefined;
+    if (!position) throw notFound();
+    const { phase, nextChangeAt } = sunPhase({
+      at: new Date(),
+      lat: position.lat,
+      lon: position.lon,
+    });
+    return ok(SunPhaseSchema.parse({ phase, nextChangeAt: nextChangeAt.toISOString() }));
   },
 };
 

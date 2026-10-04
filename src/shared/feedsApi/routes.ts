@@ -25,6 +25,7 @@ export const ROUTES = [
   { method: "GET", path: "/api/preferences" },
   { method: "POST", path: "/api/preferences" },
   { method: "GET", path: "/api/newsletter-address" },
+  { method: "GET", path: "/api/sun" },
 ] as const satisfies readonly { method: HttpMethod; path: string }[];
 
 export type Route = (typeof ROUTES)[number];

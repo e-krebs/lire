@@ -89,6 +89,10 @@ export const FeedSearchResultsSchema = z.array(FeedSearchResultSchema);
 export const NewsletterAddressSchema = z.object({ emailAddress: z.string() }).loose();
 export type NewsletterAddress = z.infer<typeof NewsletterAddressSchema>;
 
+export const SunPhaseSchema = z
+  .object({ phase: z.enum(["day", "dusk"]), nextChangeAt: z.iso.datetime() })
+  .loose();
+
 export const PreferencesSchema = z.record(z.string(), z.string());
 export type Preferences = z.infer<typeof PreferencesSchema>;
 
@@ -120,6 +124,15 @@ export const SearchEntriesQuerySchema = z
   .loose();
 
 export const SearchFeedsQuerySchema = z.object({ q: z.string().min(1) }).loose();
+
+export const SunQuerySchema = z
+  .object({
+    tz: z
+      .string()
+      .max(64)
+      .regex(/^[A-Za-z0-9_+\-/]+$/),
+  })
+  .loose();
 
 export const DeleteCategoryQuerySchema = z.object({ moveTo: z.string().optional() }).loose();
 
