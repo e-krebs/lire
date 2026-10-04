@@ -4,6 +4,7 @@ const VIMEO_HOST = "player.vimeo.com";
 const INSTAGRAM_HOSTS = new Set(["instagram.com", "www.instagram.com"]);
 const THREADS_HOSTS = new Set(["threads.com", "www.threads.com", "threads.net", "www.threads.net"]);
 const TIKTOK_HOSTS = new Set(["tiktok.com", "www.tiktok.com"]);
+const FACEBOOK_HOSTS = new Set(["facebook.com", "www.facebook.com", "m.facebook.com"]);
 const YOUTUBE_PATH = /^\/embed\/([\w-]+)\/?$/;
 const TWEET_PATH = /^\/\w+\/status\/(\d+)\/?$/;
 const VIMEO_PATH = /^\/video\/(\d+)\/?$/;
@@ -11,6 +12,10 @@ const VIMEO_HASH = /^[0-9a-f]+$/;
 const INSTAGRAM_PATH = /^\/(?:[\w.]+\/)?(p|reel)\/([\w-]+)\/?$/;
 const THREADS_PATH = /^\/(@[\w.]+)\/post\/([\w-]+)\/?$/;
 const TIKTOK_PATH = /^\/@[\w.-]+\/video\/(\d+)\/?$/;
+const FACEBOOK_POST_PATH = /^\/[\w.-]+\/posts\/[\w-]+\/?$/;
+const FACEBOOK_VIDEO_PATH = /^\/(?:[\w.-]+\/videos\/|reel\/)\d+\/?$/;
+const FACEBOOK_PLUGIN_PATH = /^\/plugins\/(post|video)\.php$/;
+const DIGITS = /^\d+$/;
 const BLUESKY_URI =
   /^at:\/\/(did:[a-z]+:[A-Za-z0-9._:%-]+)\/app\.bsky\.feed\.post\/([A-Za-z0-9]+)$/;
 
@@ -86,6 +91,59 @@ const tiktokEmbedUrl = ({ href }: { href: string }): string | null => {
   return id === undefined ? null : `https://www.tiktok.com/embed/v2/${id}`;
 };
 
+// Rebuilds a public Facebook URL from its checked parts, so the plugin `href` carries no tracking.
+const facebookPermalink = ({
+  href,
+  kind,
+}: {
+  href: string;
+  kind: "post" | "video";
+}): string | null => {
+  const url = parse(href);
+  if (url === null || !FACEBOOK_HOSTS.has(url.hostname)) return null;
+  const { pathname, searchParams } = url;
+  if (kind === "post") {
+    if (FACEBOOK_POST_PATH.test(pathname)) return `https://www.facebook.com${pathname}`;
+    const story = searchParams.get("story_fbid");
+    const id = searchParams.get("id");
+    if (pathname !== "/permalink.php" || story === null || id === null) return null;
+    if (!DIGITS.test(story) || !DIGITS.test(id)) return null;
+    return `https://www.facebook.com/permalink.php?story_fbid=${story}&id=${id}`;
+  }
+  if (FACEBOOK_VIDEO_PATH.test(pathname)) return `https://www.facebook.com${pathname}`;
+  const v = searchParams.get("v");
+  if (!/^\/watch\/?$/.test(pathname) || v === null || !DIGITS.test(v)) return null;
+  return `https://www.facebook.com/watch/?v=${v}`;
+};
+
+const facebookFrameUrl = ({
+  href,
+  kind,
+}: {
+  href: string;
+  kind: "post" | "video";
+}): string | null => {
+  const permalink = facebookPermalink({ href, kind });
+  return permalink === null
+    ? null
+    : `https://www.facebook.com/plugins/${kind}.php?href=${encodeURIComponent(permalink)}`;
+};
+
+const facebookPluginUrl =
+  ({ kind }: { kind: "post" | "video" }) =>
+  ({ src }: { src: string }): string | null => {
+    const url = parse(src);
+    if (url === null || !FACEBOOK_HOSTS.has(url.hostname)) return null;
+    if (FACEBOOK_PLUGIN_PATH.exec(url.pathname)?.[1] !== kind) return null;
+    const href = url.searchParams.get("href");
+    return href === null ? null : facebookFrameUrl({ href, kind });
+  };
+
+const facebookPostEmbedUrl = ({ href }: { href: string }) =>
+  facebookFrameUrl({ href, kind: "post" });
+const facebookVideoEmbedUrl = ({ href }: { href: string }) =>
+  facebookFrameUrl({ href, kind: "video" });
+
 const lastLink = ({
   quote,
   frameUrl,
@@ -101,6 +159,8 @@ const lastLink = ({
 const FRAME_EMBEDS: { name: string; frameUrl: (args: { src: string }) => string | null }[] = [
   { name: "youtube", frameUrl: youtubeEmbedUrl },
   { name: "vimeo", frameUrl: vimeoEmbedUrl },
+  { name: "facebook", frameUrl: facebookPluginUrl({ kind: "post" }) },
+  { name: "facebook-video", frameUrl: facebookPluginUrl({ kind: "video" }) },
 ];
 
 const QUOTE_EMBEDS: {
@@ -160,6 +220,20 @@ const QUOTE_EMBEDS: {
         : lastLink({ quote, frameUrl: tiktokEmbedUrl });
     },
     frameUrl: tiktokEmbedUrl,
+  },
+  {
+    name: "facebook",
+    brand: "Facebook",
+    selector: "div.fb-post",
+    href: ({ quote }) => quote.getAttribute("data-href"),
+    frameUrl: facebookPostEmbedUrl,
+  },
+  {
+    name: "facebook-video",
+    brand: "Facebook",
+    selector: "div.fb-video",
+    href: ({ quote }) => quote.getAttribute("data-href"),
+    frameUrl: facebookVideoEmbedUrl,
   },
 ];
 

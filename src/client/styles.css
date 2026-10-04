@@ -200,6 +200,18 @@ body {
   max-width: min(325px, calc(60vh * 9 / 16));
   aspect-ratio: 9 / 16;
 }
+/* Facebook's post card is tall with a picture, so it lifts the 60vh cap; the video keeps it. */
+.prose-reader iframe[data-embed="facebook"] {
+  width: 100%;
+  max-width: 500px;
+  height: 40rem;
+  max-height: none;
+}
+.prose-reader iframe[data-embed="facebook-video"] {
+  width: 100%;
+  max-width: 560px;
+  aspect-ratio: 16 / 9;
+}
 .prose-reader pre {
   font-size: 0.875em;
   overflow-x: auto;

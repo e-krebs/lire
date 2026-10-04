@@ -374,6 +374,26 @@ describe("Reader", () => {
         bad: '<blockquote class="tiktok-embed" cite="https://evil.test/@a/video/12"><a href="https://evil.test/@a/video/12">Bad TikTok</a></blockquote>',
         badText: "Bad TikTok",
       },
+      {
+        brand: "Facebook",
+        name: "facebook",
+        src: "https://www.facebook.com/plugins/post.php?href=https%3A%2F%2Fwww.facebook.com%2Fzuck%2Fposts%2F10112345678901234",
+        quote:
+          '<div class="fb-post" data-href="https://www.facebook.com/zuck/posts/10112345678901234"><a href="https://www.facebook.com/zuck/posts/10112345678901234">View post</a></div>' +
+          '<script async src="https://connect.facebook.net/en_US/sdk.js"></script>',
+        bad: '<div class="fb-post" data-href="https://evil.test/zuck/posts/1"><a href="https://evil.test/zuck/posts/1">Bad Facebook</a></div>',
+        badText: "Bad Facebook",
+      },
+      {
+        brand: "Facebook video",
+        name: "facebook-video",
+        src: "https://www.facebook.com/plugins/video.php?href=https%3A%2F%2Fwww.facebook.com%2Fzuck%2Fvideos%2F1234567890",
+        quote:
+          '<div class="fb-video" data-href="https://www.facebook.com/zuck/videos/1234567890"><a href="https://www.facebook.com/zuck/videos/1234567890">View video</a></div>' +
+          '<script async src="https://connect.facebook.net/en_US/sdk.js"></script>',
+        bad: '<div class="fb-video" data-href="https://evil.test/zuck/videos/1"><a href="https://evil.test/zuck/videos/1">Bad Facebook video</a></div>',
+        badText: "Bad Facebook video",
+      },
     ])("when the post comes from $brand", ({ name, src, quote, bad, badText }) => {
       it("renders one sandboxed frame on load, with no provider script", async () => {
         const frames = await postFrames(quote);

@@ -14,7 +14,7 @@ tweet.
 
 ## Decision
 
-Blog posts keep seven kinds of frame, and every other frame is removed. `Reader` decides whether a
+Blog posts keep eight kinds of frame, and every other frame is removed. `Reader` decides whether a
 body is a newsletter before it sanitizes, so the embed rules never reach the newsletter pass.
 
 - **YouTube.** A frame survives when its host is `youtube.com`, `www.youtube.com` or
@@ -44,6 +44,14 @@ body is a newsletter before it sanitizes, so the embed rules never reach the new
 - **TikTok.** A `blockquote.tiktok-embed` whose `cite`, or else its last link, is a `tiktok.com` or
   `www.tiktok.com` URL with the path `/@<user>/video/<digits>` is replaced by a frame on
   `https://www.tiktok.com/embed/v2/<id>`.
+- **Facebook.** A `div.fb-post` or `div.fb-video` whose `data-href` is a `facebook.com`,
+  `www.facebook.com` or `m.facebook.com` URL is replaced by a frame on
+  `https://www.facebook.com/plugins/post.php?href=<url>` or `.../plugins/video.php?href=<url>`. A
+  post path is `/<page>/posts/<id>` or `/permalink.php?story_fbid=<digits>&id=<digits>`. A video
+  path is `/<page>/videos/<digits>`, `/reel/<digits>` or `/watch/?v=<digits>`. A feed's own
+  `plugins/post.php` or `plugins/video.php` frame survives when its inner `href` passes the same
+  check, and the sanitizer rebuilds the source from it. `fb.watch` short links stay plain links,
+  because a short link cannot resolve client side.
 
 Lire builds the Instagram, Threads and TikTok frames from the checked permalink and a fixed host,
 so their `embed.js` never loads either. A quote whose permalink fails its check stays a quote.
@@ -54,9 +62,9 @@ Lire's. The helpers are in `src/client/utils/embeds.ts`.
 
 ## Consequences
 
-- Google, X, Vimeo, Bluesky, Instagram, Threads and TikTok see the reading: the frame loads when
+- Google, X, Vimeo, Bluesky, Instagram, Threads, TikTok and Facebook see the reading: the frame loads when
   the post renders, and `dnt=true` or `dnt=1` only asks X and Vimeo to limit tracking.
-- Instagram, Threads and TikTok frames are the heaviest: they run the provider's own scripts and
+- Instagram, Threads, TikTok and Facebook frames are the heaviest: they run the provider's own scripts and
   set cookies as soon as they load. The provider sees the reader's IP for every such post shown,
   whether or not the reader wanted the embed. No click gate holds them back, and no choice is
   remembered.
@@ -69,7 +77,10 @@ Lire's. The helpers are in `src/client/utils/embeds.ts`.
 - The Bluesky frame is 32rem tall and at most 600px wide, and the Vimeo frame is 16 by 9 like YouTube.
 - The Instagram frame is 44rem tall and at most 540px wide, the Threads frame 36rem and 540px, and
   the TikTok frame is 9 by 16 and at most 325px wide, all under the same 60vh cap as the others.
+- The Facebook post frame is 40rem tall and at most 500px wide, and it lifts the 60vh cap because
+  a post card cut short loses its picture. The Facebook video frame is 16 by 9 and at most 560px
+  wide, under the cap.
 - A future CSP must allow `youtube.com`, `platform.twitter.com`, `player.vimeo.com`,
-  `embed.bsky.app`, `www.instagram.com`, `www.threads.com` and `www.tiktok.com` frames.
+  `embed.bsky.app`, `www.instagram.com`, `www.threads.com`, `www.tiktok.com` and `www.facebook.com` frames.
 - Newsletters are unchanged: they keep the sandbox without `allow-scripts` and drop every frame.
 - Detail: [architecture](../explanation/architecture.md).
