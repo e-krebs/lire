@@ -212,6 +212,15 @@ body {
   max-width: 560px;
   aspect-ratio: 16 / 9;
 }
+/* Feeds justify text inline; narrow columns turn that into rivers of white space. */
+.prose-reader
+  :is([style*="text-align: justify" i], [style*="text-align:justify" i], [align="justify" i]) {
+  text-align: start !important;
+}
+.prose-reader img[data-lone] {
+  display: block;
+  margin-inline: auto;
+}
 .prose-reader pre {
   font-size: 0.875em;
   overflow-x: auto;
