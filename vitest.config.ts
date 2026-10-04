@@ -1,8 +1,8 @@
 // Set before any worker starts, so every date the tests format reads the same on every host.
 process.env.TZ = "UTC";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
-import { cloudflareTest } from "@cloudflare/vitest-pool-workers";
 import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { playwright } from "@vitest/browser-playwright";
@@ -56,21 +56,17 @@ export default defineConfig({
         },
       },
       {
-        plugins: [
-          cloudflareTest({
-            wrangler: { configPath: "./wrangler.toml" },
-            // Secrets are absent from wrangler.toml; the tests need them set to cover the checks.
-            miniflare: {
-              bindings: {
-                ACCESS_ALLOWED_EMAIL: "owner@example.com",
-                NEWSBLUR_USERNAME: "owner",
-                NEWSBLUR_PASSWORD: "test-password",
-                NEWSBLUR_NEWSLETTER_ADDRESS: "demo-0000@newsletters.newsblur.com",
-              },
-            },
-          }),
-        ],
-        resolve: { tsconfigPaths: true },
+        resolve: {
+          tsconfigPaths: true,
+          alias: {
+            "cloudflare:workers": fileURLToPath(
+              new URL("./src/server/__tests__/cloudflare/durableObject.ts", import.meta.url),
+            ),
+            "cloudflare:test": fileURLToPath(
+              new URL("./src/server/__tests__/cloudflare/test.ts", import.meta.url),
+            ),
+          },
+        },
         test: {
           name: "server",
           include: ["src/server/**/__tests__/**/*.test.ts"],
