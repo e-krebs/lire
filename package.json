@@ -111,6 +111,7 @@
     "wrangler": "^4.143.0"
   },
   "resolutions": {
+    "sharp@npm:0.35.2": "npm:0.35.5",
     "undici@npm:7.28.0": "npm:7.30.0",
     "undici@npm:7.29.0": "npm:7.30.0"
   },
