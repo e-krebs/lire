@@ -241,4 +241,5 @@ at sunrise and sunset. While that loads, fails offline or answers 404 (a zone wi
 the phase follows `prefers-color-scheme` through `useColorScheme`, so nothing flashes. The image is
 a labelled button: a tap cross-fades to the other phase until the sun phase next changes. The image
 itself is decorative (`alt=""`), because the text below it already says the list is empty. The service worker precaches the WebP files with the other built
-assets, so the art also shows offline.
+assets, so the art also shows offline. To add a scene, follow
+[add-an-empty-state-scene.md](../how-to/add-an-empty-state-scene.md).
