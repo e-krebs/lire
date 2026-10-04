@@ -101,6 +101,15 @@ describe("time", () => {
         "il y a 3 heures",
       );
     });
+
+    it('clamps a future timestamp to "just now"', () => {
+      for (const offset of [2 * MINUTE, 3 * HOUR]) {
+        expect(relativeTime({ timestamp: NOW + offset, locale: "en", now: NOW })).toBe("just now");
+        expect(relativeTime({ timestamp: NOW + offset, locale: "fr", now: NOW })).toBe(
+          "à l'instant",
+        );
+      }
+    });
   });
 
   describe("when formatting an absolute time", () => {
