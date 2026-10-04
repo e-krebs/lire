@@ -60,3 +60,7 @@ yarn check:demo # fail on any upstream brand trace in the demo bundle
 
 CI deploys the demo on every push to `main`, creating the `lire-demo` Cloudflare Pages project
 when it is missing.
+
+## License
+
+[MIT](LICENSE)
