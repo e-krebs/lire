@@ -14,7 +14,7 @@ tweet.
 
 ## Decision
 
-Blog posts keep four kinds of frame, and every other frame is removed. `Reader` decides whether a
+Blog posts keep seven kinds of frame, and every other frame is removed. `Reader` decides whether a
 body is a newsletter before it sanitizes, so the embed rules never reach the newsletter pass.
 
 - **YouTube.** A frame survives when its host is `youtube.com`, `www.youtube.com` or
@@ -34,6 +34,19 @@ body is a newsletter before it sanitizes, so the embed rules never reach the new
   `at://<did>/app.bsky.feed.post/<rkey>` is replaced, after sanitizing, by a frame on
   `https://embed.bsky.app/embed/<did>/app.bsky.feed.post/<rkey>`. Lire builds the frame from the
   checked uri, so `embed.js` never loads. A quote with no valid uri stays a quote.
+- **Instagram.** A `blockquote.instagram-media` whose `data-instgrm-permalink`, or else its last
+  link, is an `instagram.com` or `www.instagram.com` URL with the path `/(<user>/)?(p|reel)/<code>/`
+  is replaced, after sanitizing, by a frame on `https://www.instagram.com/<p or reel>/<code>/embed/`.
+- **Threads.** A `blockquote.text-post-media` whose `data-text-post-permalink`, or else its last
+  link, is a `threads.com` or `threads.net` URL (with or without `www.`) with the path
+  `/@<user>/post/<code>` is replaced by a frame on
+  `https://www.threads.com/@<user>/post/<code>/embed`.
+- **TikTok.** A `blockquote.tiktok-embed` whose `cite`, or else its last link, is a `tiktok.com` or
+  `www.tiktok.com` URL with the path `/@<user>/video/<digits>` is replaced by a frame on
+  `https://www.tiktok.com/embed/v2/<id>`.
+
+Lire builds the Instagram, Threads and TikTok frames from the checked permalink and a fixed host,
+so their `embed.js` never loads either. A quote whose permalink fails its check stays a quote.
 
 All frames carry a sandbox with `allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox`.
 The frames are cross-origin, so `allow-same-origin` gives them their own origin and no access to
@@ -41,16 +54,22 @@ Lire's. The helpers are in `src/client/utils/embeds.ts`.
 
 ## Consequences
 
-- Google, X, Vimeo and Bluesky see the reading: the frame loads when the post renders, and
-  `dnt=true` or `dnt=1` only asks X and Vimeo to limit tracking.
-- The YouTube hooks run on their own DOMPurify instance, so the newsletter pass never applies them.
+- Google, X, Vimeo, Bluesky, Instagram, Threads and TikTok see the reading: the frame loads when
+  the post renders, and `dnt=true` or `dnt=1` only asks X and Vimeo to limit tracking.
+- Instagram, Threads and TikTok frames are the heaviest: they run the provider's own scripts and
+  set cookies as soon as they load. The provider sees the reader's IP for every such post shown,
+  whether or not the reader wanted the embed. No click gate holds them back, and no choice is
+  remembered.
+- The frame hooks run on their own DOMPurify instance, so the newsletter pass never applies them.
   The link target and `rel` hook is on both.
 - A feed's own X frame is dropped, and only the quote form embeds.
 - Embeds stay off until the feed list loads.
 - The X frame title is the tweet text, cut at 140 characters, or "X" when empty.
 - The X frame is 32rem tall and at most 550px wide, under the same 60vh cap as the YouTube frame.
 - The Bluesky frame is 32rem tall and at most 600px wide, and the Vimeo frame is 16 by 9 like YouTube.
-- A future CSP must allow `youtube.com`, `platform.twitter.com`, `player.vimeo.com` and
-  `embed.bsky.app` frames.
+- The Instagram frame is 44rem tall and at most 540px wide, the Threads frame 36rem and 540px, and
+  the TikTok frame is 9 by 16 and at most 325px wide, all under the same 60vh cap as the others.
+- A future CSP must allow `youtube.com`, `platform.twitter.com`, `player.vimeo.com`,
+  `embed.bsky.app`, `www.instagram.com`, `www.threads.com` and `www.tiktok.com` frames.
 - Newsletters are unchanged: they keep the sandbox without `allow-scripts` and drop every frame.
 - Detail: [architecture](../explanation/architecture.md).

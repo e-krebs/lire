@@ -42,6 +42,6 @@ second layer. An email wider than the panel scrolls sideways inside the frame in
 - A future CSP must allow `srcdoc` frames.
 - Blog posts keep `.prose-reader`.
 - Inline overrides were tried first and lost the senders' brand colors.
-- Blog posts embed YouTube, X, Vimeo and Bluesky as frames, and newsletters do not: see
+- Blog posts embed videos and posts (YouTube, Vimeo, X, Bluesky, Instagram, Threads, TikTok) as frames, and newsletters do not: see
   [ADR 0011](0011-reader-embeds.md).
 - Detail: [architecture](../explanation/architecture.md).

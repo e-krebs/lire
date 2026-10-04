@@ -270,6 +270,7 @@ describe("Reader", () => {
     it("drops frames from other hosts and unsafe schemes", async () => {
       const frames = await postFrames(
         '<iframe src="https://evil.test/video/1"></iframe>' +
+          '<iframe src="https://www.instagram.com/p/C0b8bKxLw5Q/embed/"></iframe>' +
           '<iframe src="https://vimeo.com/22439234"></iframe>' +
           '<iframe src="https://platform.twitter.com/embed/Tweet.html?id=1"></iframe>' +
           '<iframe src="javascript:alert(1)"></iframe>' +
@@ -337,6 +338,72 @@ describe("Reader", () => {
         "allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox",
       );
       expect(frame.getAttribute("title")).toContain("Hello from X");
+    });
+
+    describe.each([
+      {
+        brand: "Instagram",
+        name: "instagram",
+        src: "https://www.instagram.com/p/C0b8bKxLw5Q/embed/",
+        quote:
+          '<blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/p/C0b8bKxLw5Q/">' +
+          '<a href="https://www.instagram.com/p/C0b8bKxLw5Q/">A post shared by Ada</a><script>alert(1)</script></blockquote>' +
+          '<script async src="//www.instagram.com/embed.js"></script>',
+        bad: '<blockquote class="instagram-media" data-instgrm-permalink="https://evil.test/p/C0b8bKxLw5Q/"><a href="https://evil.test/p/C0b8bKxLw5Q/">Bad Instagram</a></blockquote>',
+        badText: "Bad Instagram",
+      },
+      {
+        brand: "Threads",
+        name: "threads",
+        src: "https://www.threads.com/@zuck/post/C8xv0k3PzZ2/embed",
+        quote:
+          '<blockquote class="text-post-media" data-text-post-permalink="https://www.threads.com/@zuck/post/C8xv0k3PzZ2">' +
+          '<a href="https://www.threads.com/@zuck/post/C8xv0k3PzZ2">View on Threads</a><script>alert(1)</script></blockquote>' +
+          '<script async src="https://www.threads.com/embed.js"></script>',
+        bad: '<blockquote class="text-post-media" data-text-post-permalink="https://evil.test/@zuck/post/C8x/"><a href="https://evil.test/@zuck/post/C8x/">Bad Threads</a></blockquote>',
+        badText: "Bad Threads",
+      },
+      {
+        brand: "TikTok",
+        name: "tiktok",
+        src: "https://www.tiktok.com/embed/v2/6718335390845095173",
+        quote:
+          '<blockquote class="tiktok-embed" cite="https://www.tiktok.com/@scout2015/video/6718335390845095173" data-video-id="6718335390845095173">' +
+          '<section><a href="https://www.tiktok.com/@scout2015?refer=embed">@scout2015</a></section><script>alert(1)</script></blockquote>' +
+          '<script async src="https://www.tiktok.com/embed.js"></script>',
+        bad: '<blockquote class="tiktok-embed" cite="https://evil.test/@a/video/12"><a href="https://evil.test/@a/video/12">Bad TikTok</a></blockquote>',
+        badText: "Bad TikTok",
+      },
+    ])("when the post comes from $brand", ({ name, src, quote, bad, badText }) => {
+      it("renders one sandboxed frame on load, with no provider script", async () => {
+        const frames = await postFrames(quote);
+
+        expect(frames).toHaveLength(1);
+        const [frame] = frames;
+        expect(frame).toHaveAttribute("src", src);
+        expect(frame).toHaveAttribute("data-embed", name);
+        expect(frame).toHaveAttribute(
+          "sandbox",
+          "allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox",
+        );
+        expect(document.querySelector("article script")).toBeNull();
+      });
+
+      it("keeps a post with an unchecked permalink as a link", async () => {
+        const { view } = await withContent({
+          entryId: UNREAD_ID,
+          content:
+            `<p>Body</p>${bad}` +
+            '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>',
+        });
+        // The YouTube frame says the embed pass ran.
+        await waitFor(() => {
+          expect(view.container.querySelectorAll("article.prose-reader iframe")).toHaveLength(1);
+        });
+
+        expect(await ui.link(view, badText)).toBeInTheDocument();
+        expect(view.container.querySelector('iframe[data-embed="' + name + '"]')).toBeNull();
+      });
     });
 
     it("renders only the newsletter frame for a newsletter that carries a YouTube frame", async () => {

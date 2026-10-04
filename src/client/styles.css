@@ -182,6 +182,24 @@ body {
   max-width: 600px;
   height: 32rem;
 }
+/* Instagram's card runs its caption and comments under the picture, so it is tall; the 60vh cap wins on short screens. */
+.prose-reader iframe[data-embed="instagram"] {
+  width: 100%;
+  max-width: 540px;
+  height: 44rem;
+}
+/* Threads' card is a short post with an optional picture. */
+.prose-reader iframe[data-embed="threads"] {
+  width: 100%;
+  max-width: 540px;
+  height: 36rem;
+}
+/* TikTok's player is portrait, so the ratio sets the height under the 60vh cap. */
+.prose-reader iframe[data-embed="tiktok"] {
+  width: 100%;
+  max-width: min(325px, calc(60vh * 9 / 16));
+  aspect-ratio: 9 / 16;
+}
 .prose-reader pre {
   font-size: 0.875em;
   overflow-x: auto;

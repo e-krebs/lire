@@ -89,7 +89,7 @@ describe("queries", () => {
     }
 
     const entries = flattenStream(result.current.data);
-    expect(entries).toHaveLength(19);
+    expect(entries).toHaveLength(22);
     expect(new Set(entries.map((item) => item.feedId))).toEqual(new Set(["101", "102", "103"]));
   });
 

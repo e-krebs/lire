@@ -5,6 +5,10 @@ const YOUTUBE = "https://www.youtube.com/embed/dQw4w9WgXcQ";
 const BSKY_URI = "at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.post/3l6oveex3ii2l";
 const BSKY_FRAME =
   "https://embed.bsky.app/embed/did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.post/3l6oveex3ii2l";
+const IG_POST = "https://www.instagram.com/p/C0b8bKxLw5Q/?utm_source=ig_embed&utm_campaign=loading";
+const IG_FRAME = "https://www.instagram.com/p/C0b8bKxLw5Q/embed/";
+const THREADS_POST = "https://www.threads.com/@zuck/post/C8xv0k3PzZ2";
+const TIKTOK_POST = "https://www.tiktok.com/@scout2015/video/6718335390845095173";
 const TWEET = "https://platform.twitter.com/embed/Tweet.html?id=1234567890&dnt=true";
 
 describe("embeds", () => {
@@ -129,6 +133,100 @@ describe("embeds", () => {
     ]) {
       const attr = uri === null ? "" : ` data-bluesky-uri="${uri}"`;
       const html = `<blockquote class="bluesky-embed"${attr}><p>Hi</p></blockquote>`;
+      expect(embedQuotes({ html })).toBe(html);
+    }
+  });
+
+  it("embedQuotes swaps an Instagram blockquote for a sandboxed frame", () => {
+    const html = embedQuotes({
+      html:
+        `<blockquote class="instagram-media" data-instgrm-permalink="${IG_POST.replace("&", "&amp;")}">` +
+        '<p><a href="https://www.instagram.com/p/other/">A post shared by Ada</a></p></blockquote>',
+    });
+    const doc = new DOMParser().parseFromString(html, "text/html");
+
+    expect(doc.querySelector("blockquote")).toBeNull();
+    const frame = doc.querySelector("iframe");
+    expect(frame?.getAttribute("src")).toBe(IG_FRAME);
+    expect(frame?.getAttribute("data-embed")).toBe("instagram");
+    expect(frame?.getAttribute("sandbox")).toBe(
+      "allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox",
+    );
+  });
+
+  it("embedQuotes falls back to the last Instagram link when the permalink attribute is unusable", () => {
+    const html = embedQuotes({
+      html:
+        '<blockquote class="instagram-media" data-instgrm-permalink="https://evil.test/p/x/">' +
+        '<a href="https://www.instagram.com/ada/reel/Abc_1-2/">Reel</a><a href="https://example.test/">x</a></blockquote>',
+    });
+    const doc = new DOMParser().parseFromString(html, "text/html");
+
+    expect(doc.querySelector("iframe")?.getAttribute("src")).toBe(
+      "https://www.instagram.com/reel/Abc_1-2/embed/",
+    );
+  });
+
+  it("embedQuotes keeps an Instagram blockquote with no post link", () => {
+    for (const href of [
+      "https://www.instagram.com/ada/",
+      "https://www.instagram.com/p/a/b/",
+      "https://instagram.com.evil.test/p/C0b8bKxLw5Q/",
+      "javascript:alert(1)",
+    ]) {
+      const html = `<blockquote class="instagram-media" data-instgrm-permalink="${href}"><a href="${href}">x</a></blockquote>`;
+      expect(embedQuotes({ html })).toBe(html);
+    }
+  });
+
+  it("embedQuotes swaps a Threads blockquote for a frame on its permalink attribute", () => {
+    const html = embedQuotes({
+      html: `<blockquote class="text-post-media" data-text-post-permalink="${THREADS_POST}"><a href="https://www.threads.com/@other/post/x">Other</a></blockquote>`,
+    });
+    const frame = new DOMParser().parseFromString(html, "text/html").querySelector("iframe");
+
+    expect(frame?.getAttribute("data-embed")).toBe("threads");
+    expect(frame?.getAttribute("src")).toBe(`${THREADS_POST}/embed`);
+  });
+
+  it("embedQuotes falls back to the last Threads link, and keeps a blockquote with none", () => {
+    const html = embedQuotes({
+      html: `<blockquote class="text-post-media"><a href="https://www.threads.net/@zuck/post/C8x_1/">x</a></blockquote>`,
+    });
+    expect(
+      new DOMParser()
+        .parseFromString(html, "text/html")
+        .querySelector("iframe")
+        ?.getAttribute("src"),
+    ).toBe("https://www.threads.com/@zuck/post/C8x_1/embed");
+
+    for (const href of [
+      "https://www.threads.com/@zuck",
+      "https://threads.com.evil.test/@zuck/post/C8x/",
+      "javascript:alert(1)",
+    ]) {
+      const kept = `<blockquote class="text-post-media" data-text-post-permalink="${href}"><a href="${href}">x</a></blockquote>`;
+      expect(embedQuotes({ html: kept })).toBe(kept);
+    }
+  });
+
+  it("embedQuotes swaps a TikTok blockquote for a frame on its cite URL", () => {
+    const html = embedQuotes({
+      html: `<blockquote class="tiktok-embed" cite="${TIKTOK_POST}" data-video-id="6718335390845095173"><section><a href="https://www.tiktok.com/@scout2015?refer=embed">@scout2015</a></section></blockquote>`,
+    });
+    const frame = new DOMParser().parseFromString(html, "text/html").querySelector("iframe");
+
+    expect(frame?.getAttribute("data-embed")).toBe("tiktok");
+    expect(frame?.getAttribute("src")).toBe("https://www.tiktok.com/embed/v2/6718335390845095173");
+  });
+
+  it("embedQuotes keeps a TikTok blockquote whose cite is not a video URL", () => {
+    for (const cite of [
+      "https://www.tiktok.com/@scout2015",
+      "https://www.tiktok.com.evil.test/@a/video/1",
+      "javascript:alert(1)",
+    ]) {
+      const html = `<blockquote class="tiktok-embed" cite="${cite}"><a href="${cite}">x</a></blockquote>`;
       expect(embedQuotes({ html })).toBe(html);
     }
   });
