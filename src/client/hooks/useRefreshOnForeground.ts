@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-export const HIDDEN_REFRESH_MS = 60_000;
+const HIDDEN_REFRESH_MS = 60_000;
 
 export const useRefreshOnForeground = ({
   onForeground,
