@@ -69,7 +69,8 @@ export const relativeTime = ({
   locale,
   now = Date.now(),
 }: TimeArgs & { now?: number }): string => {
-  const diff = timestamp - now;
+  // A throttled `now` tick can trail a fresher timestamp; never read "in 2 minutes".
+  const diff = Math.min(timestamp - now, 0);
   for (const { unit, ms } of UNITS) {
     if (Math.abs(diff) >= ms) return relativeFormatter(locale).format(Math.round(diff / ms), unit);
   }
