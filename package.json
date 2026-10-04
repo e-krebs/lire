@@ -29,6 +29,7 @@
     "check:live": "node scripts/check-live.ts",
     "provision:pages": "node scripts/provision-pages.ts",
     "icons": "node scripts/render-icons.ts",
+    "build:timezones": "node scripts/build-timezones.ts",
     "fixtures:record": "node scripts/record-fixtures.ts",
     "test": "vitest run --project client",
     "test:worker": "vitest run --project server",

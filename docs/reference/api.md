@@ -39,6 +39,9 @@ folder title, an entry id is the story hash. A stream key is `all`, `read`, `fol
 | GET | `/api/preferences` | The `lire.*` preferences, as a record of strings |
 | POST | `/api/preferences` | A partial record. `null` deletes a key |
 | GET | `/api/newsletter-address` | `{ emailAddress }`, 404 when `NEWSBLUR_NEWSLETTER_ADDRESS` is empty |
+| GET | `/api/sun` | `?tz=<IANA zone>`, answers `{ phase: day\|dusk, nextChangeAt }` from the Cloudflare position when its zone matches `tz`, else the zone's city |
+
+`/api/sun` makes no NewsBlur call. A zone with no city (`UTC`, `Etc/*`, an unknown name) answers 404, and a malformed `tz` answers 400.
 
 Preference keys are `lire.categoryOrder` and `lire.directOpen.<feedId>`
 ([preferences.ts](../../src/shared/feedsApi/preferences.ts)). The Worker rejects other keys with 400.
