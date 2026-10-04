@@ -10,6 +10,7 @@ import {
   NewsletterAddressSchema,
   PreferencesSchema,
   ProfileSchema,
+  SunPhaseSchema,
 } from "shared/feedsApi/types";
 import type {
   AuthStatus,
@@ -23,6 +24,7 @@ import type {
   Preferences,
   PreferencesUpdate,
   Profile,
+  SunPhase,
 } from "shared/feedsApi/types";
 import { httpTransport } from "client/api/adapters/http";
 import type { Transport, TransportRequest, TransportResponse } from "client/api/transport";
@@ -245,6 +247,16 @@ export const updatePreferences = async (patch: PreferencesUpdate): Promise<void>
 
 export const getNewsletterAddress = async (): Promise<NewsletterAddress> =>
   NewsletterAddressSchema.parse(await request({ method: "GET", path: "/api/newsletter-address" }));
+
+// Unknown zones answer 404 (null, as a query cannot resolve undefined): no phase, so the caller falls back to the colour scheme.
+export const getSunPhase = async ({ tz }: { tz: string }): Promise<SunPhase | null> => {
+  try {
+    return SunPhaseSchema.parse(await request({ method: "GET", path: "/api/sun", query: { tz } }));
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
+};
 
 export const getAuthStatus = async (): Promise<AuthStatus> => {
   if (isMockMode()) return { signedIn: true };

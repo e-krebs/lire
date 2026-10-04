@@ -1,4 +1,5 @@
 import {
+  queryOptions,
   useInfiniteQuery,
   useIsMutating,
   useMutation,
@@ -21,6 +22,7 @@ import {
   getPreferences,
   getProfile,
   getStreamEntries,
+  getSunPhase,
   markUnread,
   renameCategory,
   searchEntries,
@@ -54,6 +56,7 @@ export const keys = {
   counts: ["counts"] as const,
   preferences: ["preferences"] as const,
   newsletterAddress: ["newsletterAddress"] as const,
+  sun: (tz: string) => ["sun", tz] as const,
   stream: ({
     streamKey,
     unreadOnly,
@@ -114,6 +117,29 @@ export const useFeeds = () => useQuery({ queryKey: keys.feeds, queryFn: getFeeds
 
 export const useCounts = () =>
   useQuery({ queryKey: keys.counts, queryFn: getCounts, refetchInterval: FIVE_MINUTES_MS });
+
+const SUN_MARGIN_MS = 30 * 1000;
+
+const msUntilChange = (nextChangeAt: string | undefined): number =>
+  nextChangeAt === undefined
+    ? FIVE_MINUTES_MS
+    : Math.max(Date.parse(nextChangeAt) - Date.now() + SUN_MARGIN_MS, SUN_MARGIN_MS);
+
+export const sunQueryOptions = ({ tz }: { tz: string }) =>
+  queryOptions({
+    queryKey: keys.sun(tz),
+    queryFn: async () => getSunPhase({ tz }),
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchIntervalInBackground: true,
+    staleTime: (query) => {
+      const next = query.state.data?.nextChangeAt;
+      return next === undefined
+        ? FIVE_MINUTES_MS
+        : Math.max(Date.parse(next) - query.state.dataUpdatedAt + SUN_MARGIN_MS, SUN_MARGIN_MS);
+    },
+    refetchInterval: (query) => msUntilChange(query.state.data?.nextChangeAt),
+  });
 
 export const DIRECT_OPEN_STORAGE_KEY = "lire.directOpen";
 
