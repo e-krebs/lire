@@ -80,6 +80,14 @@
   }
 }
 
+/* `main` takes focus as the skip-link target, and so on any click in its empty space. A key press
+   then makes it :focus-visible, which rang the whole content area. */
+@layer base {
+  #main:focus-visible {
+    outline: none;
+  }
+}
+
 html {
   /* Native scrollbars, form controls and the canvas behind overscroll follow the OS scheme. */
   color-scheme: light dark;
