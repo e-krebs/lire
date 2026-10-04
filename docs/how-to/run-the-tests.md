@@ -75,7 +75,7 @@ Run these after the matching build.
 | --- | --- |
 | No secrets or real fixtures in `dist/` | `yarn build` then `yarn check:secrets` |
 | Real-mode build is clean | `VITE_API_MODE=real yarn build` then `VITE_API_MODE=real yarn check:secrets` |
-| Demo carries no real brand | `yarn build:demo` then `yarn check:demo` |
+| Demo carries no recorded profile value | `yarn build:demo` then `yarn check:demo` |
 
 `yarn check:links` needs no build. It scans every markdown file in the repo, tracked or not, but
 skips gitignored files.

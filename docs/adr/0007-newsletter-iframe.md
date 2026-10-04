@@ -9,13 +9,13 @@ Accepted
 Two newsletters broke the reader when it styled their bodies inline with `.prose-reader`. "Bytes"
 overflowed a 390px phone, because the reader's `table-layout: fixed` rule could not shrink a
 `width: 600px` cell. "Serious gaming" had its 19px icons stretched to 60px by the `table img`
-override, and its inline `color: #000` text was unreadable on the dark theme. Feedly removes an
+override, and its inline `color: #000` text was unreadable on the dark theme. The previous upstream removes an
 email's `<style>` blocks, so the emails bring no phone rules of their own.
 
 ## Decision
 
 A body is a newsletter when its sanitized HTML holds an element with class `webfeeds--newsletter`,
-which Feedly adds to every email feed body. The reader renders it in a `srcdoc` iframe with the
+which the previous upstream adds to every email feed body. The reader renders it in a `srcdoc` iframe with the
 browser's default styles, on a full-width white band with `color-scheme: light` in both themes. Blog
 posts stay inline with `.prose-reader`, and the table overrides are gone.
 

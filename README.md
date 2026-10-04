@@ -50,12 +50,12 @@ The docs follow [Diátaxis](https://diataxis.fr). [docs/README.md](docs/README.m
 
 ## Demo
 
-A public demo, on the committed seed fixtures with no trace of the upstream service, is served at
+A public demo, on the committed seed fixtures with no recorded data, is served at
 https://demo.lire.krebs.tech.
 
 ```sh
 yarn build:demo # build the demo bundle (mock mode, seed fixtures)
-yarn check:demo # fail on any upstream brand trace in the demo bundle
+yarn check:demo # fail on any recorded profile value in the demo bundle
 ```
 
 CI deploys the demo on every push to `main`, creating the `lire-demo` Cloudflare Pages project
