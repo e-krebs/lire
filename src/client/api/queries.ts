@@ -328,16 +328,20 @@ const refreshCountsThenLists = async ({
 const refreshEntries = async ({
   client,
   queryKey,
+  trim,
 }: {
   client: QueryClient;
   queryKey: readonly unknown[];
+  trim: boolean;
 }): Promise<void> => {
-  // Keeps the old timestamp: only the refetch landing may advance it.
-  client.setQueryData<InfiniteData<EntryPage>>(
-    queryKey,
-    (data) => data && { pages: data.pages.slice(0, 1), pageParams: data.pageParams.slice(0, 1) },
-    { updatedAt: client.getQueryState(queryKey)?.dataUpdatedAt },
-  );
+  if (trim) {
+    // Keeps the old timestamp: only the refetch landing may advance it.
+    client.setQueryData<InfiniteData<EntryPage>>(
+      queryKey,
+      (data) => data && { pages: data.pages.slice(0, 1), pageParams: data.pageParams.slice(0, 1) },
+      { updatedAt: client.getQueryState(queryKey)?.dataUpdatedAt },
+    );
+  }
   // A mark still waiting in the queue would come back unread from the refetch.
   await markReadQueue.flush();
   await refreshCountsThenLists({
@@ -348,7 +352,8 @@ const refreshEntries = async ({
 
 export const useRefreshEntries = () => {
   const client = useQueryClient();
-  return async (queryKey: readonly unknown[]) => refreshEntries({ client, queryKey });
+  return async ({ queryKey, trim = true }: { queryKey: readonly unknown[]; trim?: boolean }) =>
+    refreshEntries({ client, queryKey, trim });
 };
 
 // No page trim here, unlike a refresh: the reader keeps the pages and the scroll position.

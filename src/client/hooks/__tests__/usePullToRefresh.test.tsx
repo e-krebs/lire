@@ -8,7 +8,7 @@ const MIN_REFRESH_MS = 400;
 const RETRACT_MS = 200;
 
 interface HarnessProps {
-  onRefresh: () => Promise<unknown>;
+  onRefresh: (args: { edge: "top" | "bottom" }) => Promise<unknown>;
   pullUp?: boolean;
 }
 
@@ -316,6 +316,35 @@ describe("usePullToRefresh", () => {
 
     fire({ target: probe, type: "touchend", ys: [156] });
     expect(onRefresh).toHaveBeenCalledTimes(1);
+    expect(onRefresh).toHaveBeenCalledWith({ edge: "bottom" });
+  });
+
+  it("passes the top edge to onRefresh for a pull down", () => {
+    const onRefresh = vi.fn<() => Promise<void>>(async () => {
+      await Promise.resolve();
+    });
+    const { probe } = setup({ onRefresh });
+
+    fire({ target: probe, type: "touchstart", ys: [0] });
+    fire({ target: probe, type: "touchmove", ys: [200] });
+    fire({ target: probe, type: "touchend", ys: [200] });
+    expect(onRefresh).toHaveBeenCalledWith({ edge: "top" });
+  });
+
+  it("leaves a bottom touch alone until it passes the slop", () => {
+    const onRefresh = vi.fn<() => Promise<void>>(async () => {
+      await Promise.resolve();
+    });
+    const { probe } = setup({ onRefresh, pullUp: true, scrollTop: 500 });
+
+    fire({ target: probe, type: "touchstart", ys: [300] });
+    const small = fire({ target: probe, type: "touchmove", ys: [296] });
+    expect(small.defaultPrevented).toBe(false);
+    expect(pull).toBeNull();
+
+    const past = fire({ target: probe, type: "touchmove", ys: [250] });
+    expect(past.defaultPrevented).toBe(true);
+    expect(pull?.edge).toBe("bottom");
   });
 
   it("ignores a pull up when pullUp is off", () => {

@@ -18,6 +18,10 @@ const MIN_REFRESH_MS = 400;
 // How long the slide back takes; matches the `translate` transition in styles.css.
 const RETRACT_MS = 200;
 
+// A bottom touch stays a plain scroll until it travels this far, so one that would still reach the
+// pagination sentinel is not eaten.
+const BOTTOM_SLOP = 8;
+
 const MAX_DISTANCE = PULL_THRESHOLD * 1.5;
 // Where the disc parks while the request is in flight.
 const SNAP_DISTANCE = PULL_THRESHOLD * 0.75;
@@ -40,7 +44,7 @@ interface PullToRefresh {
 }
 
 interface PullToRefreshOptions {
-  onRefresh: () => Promise<unknown>;
+  onRefresh: (args: { edge: PullEdge }) => Promise<unknown>;
   pullUp: boolean;
 }
 
@@ -123,6 +127,7 @@ export const usePullToRefresh = ({ onRefresh, pullUp }: PullToRefreshOptions): P
       } else if (dy > 0 && current.atTop) {
         edge = "top";
       } else if (dy < 0 && current.atBottom) {
+        if (-dy < BOTTOM_SLOP) return;
         edge = "bottom";
       } else {
         // Away from the eligible edge: a scroll, so it is left alone. A dead-still finger stays
@@ -172,7 +177,7 @@ export const usePullToRefresh = ({ onRefresh, pullUp }: PullToRefreshOptions): P
       const hold = new Promise<void>((resolve) => {
         setTimeout(resolve, MIN_REFRESH_MS);
       });
-      void Promise.allSettled([latest.current.onRefresh(), hold]).then(() => {
+      void Promise.allSettled([latest.current.onRefresh({ edge: current.edge }), hold]).then(() => {
         settle(current.edge);
       });
     };

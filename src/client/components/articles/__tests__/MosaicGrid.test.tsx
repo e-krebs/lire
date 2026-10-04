@@ -47,6 +47,9 @@ const ui = {
   async findLoadingMore(view: RenderResult) {
     return view.findByRole("status", { name: "Loading more articles" });
   },
+  pane(view: RenderResult) {
+    return view.getByTestId("pane");
+  },
   queryEmptyState(view: RenderResult) {
     return view.queryByText("Nothing to read here.");
   },
@@ -64,10 +67,12 @@ const setup = ({
   client,
   observer = NoIntersectionObserver,
   query,
+  pane = false,
 }: {
   client: QueryClient;
   observer?: unknown;
   query?: string;
+  pane?: boolean;
 }) => {
   vi.stubGlobal("IntersectionObserver", observer);
   const rootRoute = createRootRoute();
@@ -85,12 +90,52 @@ const setup = ({
   });
   const view = render(
     <QueryClientProvider client={client}>
-      <RouterProvider router={router} />
+      {pane ? (
+        <div className="scroll-pane" data-testid="pane">
+          <RouterProvider router={router} />
+        </div>
+      ) : (
+        <RouterProvider router={router} />
+      )}
     </QueryClientProvider>,
   );
   const card = (entryId: string) =>
     view.container.querySelector(`[data-entry-id="${CSS.escape(entryId)}"]`);
   return { view, card, router };
+};
+
+// jsdom reports every layout box as 0, so the bottom edge needs the numbers planted.
+const atBottom = (view: RenderResult) => {
+  const pane = ui.pane(view);
+  const scrollTo = vi.fn<() => void>();
+  for (const [key, value] of Object.entries({
+    scrollTop: 500,
+    clientHeight: 500,
+    scrollHeight: 1000,
+    scrollTo,
+  })) {
+    Object.defineProperty(pane, key, { value, writable: true, configurable: true });
+  }
+  return { pane, scrollTo };
+};
+
+const touch = ({ type, y }: { type: string; y: number }): Event => {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  const list = type === "touchend" ? [] : [{ clientX: 0, clientY: y }];
+  Object.defineProperty(event, "touches", { value: list });
+  return event;
+};
+
+// A last page and a first page before it, in a cache that never goes stale on its own.
+const seedTwoPages = async (client: QueryClient) => {
+  const params = { streamKey: "all", unreadOnly: true, order: "newest", count: 24 } as const;
+  const first = await getStreamEntries(params);
+  const second = await getStreamEntries({ ...params, cursor: first.cursor });
+  client.setQueryData<InfiniteData<EntryPage, string | undefined>>(keys.stream(params), {
+    pages: [first, { ...second, cursor: undefined }],
+    pageParams: [undefined, first.cursor],
+  });
+  return { total: first.items.length + second.items.length };
 };
 
 const firstUnreadCard = async (view: RenderResult) => {
@@ -352,6 +397,61 @@ describe("MosaicGrid", () => {
     fireEvent.click(ui.refreshButton(view));
     await waitFor(() => {
       expect(cards()).toBe(items.length);
+    });
+  });
+
+  describe("when the list is pulled up at its end", () => {
+    let hold = false;
+    const setupAtEnd = async () => {
+      vi.stubEnv("VITE_API_MODE", "real");
+      server.use(
+        fixtureBackend,
+        http.get("/api/streams/:streamKey/entries", async () => {
+          if (!hold) return;
+          await new Promise(() => {});
+        }),
+      );
+      resetFixtureState();
+      hold = false;
+      const client = new QueryClient({
+        defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
+      });
+      const { total } = await seedTwoPages(client);
+      const { view } = setup({ client, pane: true });
+      const { pane, scrollTo } = atBottom(view);
+      const cards = () => view.container.querySelectorAll("[data-entry-id]").length;
+      await waitFor(() => {
+        expect(cards()).toBe(total);
+      });
+      return { view, pane, scrollTo, cards, total };
+    };
+
+    it("refreshes without trimming the pages or scrolling to the top", async () => {
+      const { pane, scrollTo, cards, total } = await setupAtEnd();
+
+      fireEvent(pane, touch({ type: "touchstart", y: 300 }));
+      const move = touch({ type: "touchmove", y: 100 });
+      fireEvent(pane, move);
+      expect(move.defaultPrevented).toBe(true);
+      fireEvent(pane, touch({ type: "touchend", y: 100 }));
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      expect(cards()).toBe(total);
+      expect(scrollTo).not.toHaveBeenCalled();
+    });
+
+    it("does not arm the pull while a refresh is fetching", async () => {
+      const { view, pane } = await setupAtEnd();
+      hold = true;
+      fireEvent.click(ui.refreshButton(view));
+      await waitFor(() => {
+        expect(ui.refreshButton(view)).toHaveAttribute("aria-busy", "true");
+      });
+
+      fireEvent(pane, touch({ type: "touchstart", y: 300 }));
+      const move = touch({ type: "touchmove", y: 100 });
+      fireEvent(pane, move);
+      expect(move.defaultPrevented).toBe(false);
     });
   });
 
