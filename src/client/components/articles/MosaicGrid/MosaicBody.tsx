@@ -240,7 +240,7 @@ export const MosaicBody = ({
             count={placed.length}
           />
           <div className="flex flex-col items-center gap-4 px-4 pt-12 pb-8 text-center text-sm text-faint">
-            <MosaicEmptyArt />
+            <MosaicEmptyArt refreshedAt={result.dataUpdatedAt} />
             <p>
               {searchQuery === undefined
                 ? t.articles.nothingToRead
