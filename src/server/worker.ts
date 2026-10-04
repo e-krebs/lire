@@ -14,7 +14,7 @@ const SESSION_COOKIE = "newsblur_sessionid";
 const json = ({ body, status = 200 }: { body: unknown; status?: number }): Response =>
   new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
   });
 
 const newsblurAuth = (env: Env) => env.NEWSBLUR_AUTH.get(env.NEWSBLUR_AUTH.idFromName("singleton"));
@@ -208,7 +208,8 @@ const serve = async ({ request, env }: { request: Request; env: Env }): Promise<
     }
   }
   if (result.status === 401) await auth.clearSession({ onlySessionId: used.sessionId });
-  if (result.body === null) return new Response(null, { status: result.status });
+  if (result.body === null)
+    return new Response(null, { status: result.status, headers: { "Cache-Control": "no-store" } });
   return json({ body: result.body, status: result.status });
 };
 

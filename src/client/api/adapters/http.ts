@@ -37,6 +37,7 @@ export const httpTransport: Transport = async ({ method, path, query, body, keep
     method,
     credentials: "same-origin",
     redirect: "manual",
+    cache: "no-store",
     ...(keepalive ? { keepalive } : {}),
     ...(body !== undefined
       ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }

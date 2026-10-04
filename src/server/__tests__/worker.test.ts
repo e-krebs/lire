@@ -309,6 +309,7 @@ describe("worker", () => {
       expect(response.status).toBe(200);
       expect(await response.json()).toEqual({ username: "owner" });
       expect(response.headers.get("Set-Cookie")).toBeNull();
+      expect(response.headers.get("Cache-Control")).toBe("no-store");
 
       const [call] = upstreamCalls;
       expect(call.url).toBe(`${env.NEWSBLUR_HOST}/social/load_user_profile`);
@@ -358,6 +359,7 @@ describe("worker", () => {
 
       const response = await authed("/api/feeds/1", { method: "DELETE", headers: sameOrigin });
       expect(response.status).toBe(204);
+      expect(response.headers.get("Cache-Control")).toBe("no-store");
       expect(await response.text()).toBe("");
       expect(upstreamCalls.map((call) => pathOf(new Request(call.url)))).toEqual([
         "/reader/feeds",
