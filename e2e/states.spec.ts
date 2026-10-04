@@ -47,6 +47,7 @@ const mockSignedIn = async ({ page, limited }: { page: Page; limited: () => bool
     "/api/counts": { all: 0, feeds: {}, categories: {} },
     "/api/streams/all/entries": { items: [] },
     "/api/preferences": {},
+    "/api/sun": { phase: "day", nextChangeAt: new Date(Date.now() + 3_600_000).toISOString() },
   };
   await page.route(isApi, async (route) => {
     const { pathname } = new URL(route.request().url());

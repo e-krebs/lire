@@ -92,6 +92,7 @@ export type NewsletterAddress = z.infer<typeof NewsletterAddressSchema>;
 export const SunPhaseSchema = z
   .object({ phase: z.enum(["day", "dusk"]), nextChangeAt: z.iso.datetime() })
   .loose();
+export type SunPhase = z.infer<typeof SunPhaseSchema>;
 
 export const PreferencesSchema = z.record(z.string(), z.string());
 export type Preferences = z.infer<typeof PreferencesSchema>;

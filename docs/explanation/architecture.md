@@ -234,8 +234,11 @@ noticed first. Queries never retry a `401` or a `429`
 
 An empty article list shows one of the "doing nothing" scenes above its text, picked at random when
 the empty state mounts ([MosaicEmptyArt.tsx](../../src/client/components/articles/MosaicGrid/MosaicEmptyArt.tsx)).
-Each scene has a light and a dark WebP in [src/client/assets/empty](../../src/client/assets/empty).
-A `<picture>` element chooses between them with `prefers-color-scheme`, the same signal the theme
-uses, so the switch needs no script. The image is decorative (`alt=""`), because the text below it
-already says the list is empty. The service worker precaches the WebP files with the other built
+Each scene has a day and a dusk WebP (`-light` and `-dark`) in [src/client/assets/empty](../../src/client/assets/empty).
+The phase comes from the sun: the client asks `GET /api/sun` for its time zone
+([api.md](../reference/api.md)) and refetches when `nextChangeAt` passes, so the image swaps live
+at sunrise and sunset. While that loads, fails offline or answers 404 (a zone with no coordinates),
+the phase follows `prefers-color-scheme` through `useColorScheme`, so nothing flashes. The image is
+a labelled button: a tap cross-fades to the other phase until the sun phase next changes. The image
+itself is decorative (`alt=""`), because the text below it already says the list is empty. The service worker precaches the WebP files with the other built
 assets, so the art also shows offline.
