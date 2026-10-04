@@ -212,6 +212,41 @@ describe("Reader", () => {
     expect(view.container.querySelector("article.prose-reader")).not.toBeNull();
   });
 
+  it("marks an image alone in its paragraph, not one in a line of text or an emoji", async () => {
+    const entry = await getEntry(UNREAD_ID);
+    const content =
+      '<p><img src="https://example.test/lone.png"></p>' +
+      '<p>Text <img src="https://example.test/inline.png"> more</p>' +
+      '<p><img class="emoji" src="https://example.test/emoji.png"></p>';
+    const { view } = setup({ entryId: UNREAD_ID, seedEntry: { ...entry, content } });
+
+    // The post pass waits for the feed list, which says the post is no newsletter.
+    await waitFor(() => {
+      expect(view.container.querySelector("article.prose-reader img[data-lone]")).not.toBeNull();
+    });
+    expect(view.container.querySelectorAll("article.prose-reader img")).toHaveLength(3);
+    const marked = [...view.container.querySelectorAll("article.prose-reader img[data-lone]")];
+    expect(marked.map((img) => img.getAttribute("src"))).toEqual(["https://example.test/lone.png"]);
+  });
+
+  it("marks a linked image alone in its paragraph, not one in running text or beside another", async () => {
+    const entry = await getEntry(UNREAD_ID);
+    const content =
+      '<p><a href="https://example.test/a"><img src="https://example.test/linked-lone.png"></a></p>' +
+      '<p>Before <a href="https://example.test/b"><img src="https://example.test/linked-inline.png"></a> after</p>' +
+      '<p><img src="https://example.test/pair-1.png"><img src="https://example.test/pair-2.png"></p>';
+    const { view } = setup({ entryId: UNREAD_ID, seedEntry: { ...entry, content } });
+
+    await waitFor(() => {
+      expect(view.container.querySelector("article.prose-reader img[data-lone]")).not.toBeNull();
+    });
+    expect(view.container.querySelectorAll("article.prose-reader img")).toHaveLength(4);
+    const marked = [...view.container.querySelectorAll("article.prose-reader img[data-lone]")];
+    expect(marked.map((img) => img.getAttribute("src"))).toEqual([
+      "https://example.test/linked-lone.png",
+    ]);
+  });
+
   describe("when the body carries an embed", () => {
     const withContent = async ({ entryId, content }: { entryId: string; content: string }) => {
       const entry = await getEntry(entryId);

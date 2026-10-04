@@ -50,6 +50,18 @@ postPurify.addHook("afterSanitizeAttributes", (node) => {
   node.setAttribute("sandbox", EMBED_SANDBOX);
 });
 
+// CSS `:only-child` and `:has()` ignore text nodes, so only the text tells a lone image from one in a line.
+const INLINE_WRAPPERS = new Set(["A", "SPAN", "EM", "STRONG", "B", "I", "U", "SMALL", "MARK"]);
+postPurify.addHook("afterSanitizeAttributes", (node) => {
+  if (node.tagName !== "IMG" || node.classList.contains("emoji")) return;
+  let container = node.parentElement;
+  while (container && INLINE_WRAPPERS.has(container.tagName)) container = container.parentElement;
+  if (container === null) return;
+  if (container.textContent.trim() === "" && container.querySelectorAll("img").length === 1) {
+    node.setAttribute("data-lone", "");
+  }
+});
+
 const sanitizePost = (html: string): string =>
   embedQuotes({
     html: postPurify.sanitize(html, {
