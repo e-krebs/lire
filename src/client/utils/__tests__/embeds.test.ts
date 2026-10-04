@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { embedTweets, youtubeEmbedUrl } from "../embeds";
+import { embedQuotes, iframeEmbed } from "../embeds";
 
 const YOUTUBE = "https://www.youtube.com/embed/dQw4w9WgXcQ";
 const TWEET = "https://platform.twitter.com/embed/Tweet.html?id=1234567890&dnt=true";
@@ -13,7 +13,7 @@ describe("embeds", () => {
       "//www.youtube.com/embed/dQw4w9WgXcQ",
       "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?rel=0",
     ]) {
-      expect(youtubeEmbedUrl({ src })).toBe(YOUTUBE);
+      expect(iframeEmbed({ src })?.src).toBe(YOUTUBE);
     }
   });
 
@@ -27,18 +27,18 @@ describe("embeds", () => {
       "data:text/html,<p>hi</p>",
       "",
     ]) {
-      expect(youtubeEmbedUrl({ src })).toBeNull();
+      expect(iframeEmbed({ src })?.name).not.toBe("youtube");
     }
   });
 
-  it("embedTweets builds the X frame from a twitter.com or x.com status link", () => {
+  it("embedQuotes builds the X frame from a twitter.com or x.com status link", () => {
     for (const host of ["twitter.com", "x.com"]) {
       const html = `<blockquote class="twitter-tweet"><a href="https://${host}/jack/status/1234567890?ref_src=x">May 1</a></blockquote>`;
-      expect(embedTweets({ html })).toContain(`src="${TWEET.replace("&", "&amp;")}"`);
+      expect(embedQuotes({ html })).toContain(`src="${TWEET.replace("&", "&amp;")}"`);
     }
   });
 
-  it("embedTweets keeps links that are not a status", () => {
+  it("embedQuotes keeps links that are not a status", () => {
     for (const href of [
       "https://twitter.com/jack",
       "https://twitter.com/hashtag/lire",
@@ -47,12 +47,12 @@ describe("embeds", () => {
       "javascript:alert(1)",
     ]) {
       const html = `<blockquote class="twitter-tweet"><a href="${href}">Jack</a></blockquote>`;
-      expect(embedTweets({ html })).not.toContain("<iframe");
+      expect(embedQuotes({ html })).not.toContain("<iframe");
     }
   });
 
-  it("embedTweets replaces a tweet blockquote with a sandboxed X frame", () => {
-    const html = embedTweets({
+  it("embedQuotes replaces a tweet blockquote with a sandboxed X frame", () => {
+    const html = embedQuotes({
       html:
         '<p>Before</p><blockquote class="twitter-tweet"><p>Hello <a href="https://twitter.com/other/status/1">quoted</a></p>' +
         '&mdash; Jack <a href="https://twitter.com/jack/status/1234567890">May 1</a></blockquote>',
@@ -71,10 +71,10 @@ describe("embeds", () => {
     expect(doc.body.textContent).toContain("Before");
   });
 
-  it("embedTweets keeps a tweet blockquote with no usable link, and any other blockquote", () => {
+  it("embedQuotes keeps a tweet blockquote with no usable link, and any other blockquote", () => {
     const html =
       '<blockquote class="twitter-tweet"><a href="https://twitter.com/jack">Jack</a></blockquote>' +
       '<blockquote><a href="https://twitter.com/jack/status/1">a quote</a></blockquote>';
-    expect(embedTweets({ html })).toBe(html);
+    expect(embedQuotes({ html })).toBe(html);
   });
 });

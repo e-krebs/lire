@@ -247,6 +247,14 @@ describe("Reader", () => {
       expect(frame).not.toHaveAttribute("onload");
     });
 
+    it("marks a YouTube frame with data-embed", async () => {
+      const [frame] = await postFrames(
+        '<iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"></iframe>',
+      );
+
+      expect(frame).toHaveAttribute("data-embed", "youtube");
+    });
+
     it("accepts the youtube-nocookie and protocol-relative forms", async () => {
       const frames = await postFrames(
         '<iframe src="https://www.youtube-nocookie.com/embed/aaaaaaaaaaa"></iframe>' +
