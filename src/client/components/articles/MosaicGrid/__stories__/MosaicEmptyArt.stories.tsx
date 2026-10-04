@@ -7,7 +7,14 @@ const meta: Meta<typeof MosaicEmptyArt> = {
   title: "Components/MosaicEmptyArt",
   component: MosaicEmptyArt,
   parameters: { layout: "padded" },
-  decorators: [withQueryClient],
+  decorators: [
+    withQueryClient,
+    (Story) => (
+      <div className="max-h-dvh overflow-y-auto">
+        <Story />
+      </div>
+    ),
+  ],
   argTypes: {
     scene: { control: "select", options: EMPTY_SCENES },
     phase: { control: "radio", options: ["day", "dusk"] },
