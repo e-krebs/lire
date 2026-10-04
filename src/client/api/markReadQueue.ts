@@ -190,7 +190,7 @@ export const markReadQueue = createMarkReadQueue({ send: markRead });
 
 const REPLAY_WAIT_MS = 3000;
 
-export const settleWithin = async ({
+const settleWithin = async ({
   promise,
   ms,
 }: {

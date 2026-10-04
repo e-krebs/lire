@@ -7,7 +7,6 @@ import {
   MARK_READ_BATCH_SIZE,
   MARK_READ_DELAY_MS,
   markReadQueue,
-  settleWithin,
   whenReplayed,
 } from "../markReadQueue";
 import { markReadStore } from "../markReadStore";
@@ -146,11 +145,19 @@ describe("markReadQueue", () => {
   });
 
   it("stops waiting for a hung replay after the cap", async () => {
+    vi.stubEnv("VITE_API_MODE", "real");
+    server.use(http.post("/api/entries/read", async () => new Promise<never>(() => {})));
+    // The fresh module must not leave its page listeners behind for the other tests.
+    vi.spyOn(window, "addEventListener").mockImplementation(() => {});
+    vi.spyOn(document, "addEventListener").mockImplementation(() => {});
+    vi.resetModules();
+    const fresh = await import("../markReadStore");
+    await fresh.markReadStore.add(["101:hung"]);
     vi.useFakeTimers();
     try {
+      const { whenReplayed: hungReplay } = await import("../markReadQueue");
       let settled = false;
-      const hung = new Promise<void>(() => {});
-      void settleWithin({ promise: hung, ms: 3000 }).then(() => {
+      void hungReplay.then(() => {
         settled = true;
       });
       await vi.advanceTimersByTimeAsync(2999);
@@ -159,6 +166,8 @@ describe("markReadQueue", () => {
       expect(settled).toBe(true);
     } finally {
       vi.useRealTimers();
+      vi.restoreAllMocks();
+      vi.resetModules();
     }
   });
 
