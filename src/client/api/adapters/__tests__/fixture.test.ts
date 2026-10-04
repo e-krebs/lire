@@ -54,7 +54,7 @@ describe("fixtureTransport", () => {
   it("scopes a folder stream to its feeds, nested folders included", async () => {
     const tech = await entries("folder:Tech");
 
-    expect(tech.items).toHaveLength(19);
+    expect(tech.items).toHaveLength(22);
     expect(new Set(tech.items.map((item) => item.feedId))).toEqual(new Set(["101", "102", "103"]));
   });
 
@@ -64,10 +64,13 @@ describe("fixtureTransport", () => {
     expect(first.cursor).toBeDefined();
 
     const second = await entries("folder:Tech", { count: 10, cursor: first.cursor });
-    expect(second.items).toHaveLength(9);
+    expect(second.items).toHaveLength(10);
 
     const third = await entries("folder:Tech", { count: 10, cursor: second.cursor });
-    expect(third).toEqual({ items: [] });
+    expect(third.items).toHaveLength(2);
+
+    const fourth = await entries("folder:Tech", { count: 10, cursor: third.cursor });
+    expect(fourth).toEqual({ items: [] });
   });
 
   it("drops a read entry from its feed, folder and global counts", async () => {

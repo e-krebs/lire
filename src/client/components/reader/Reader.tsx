@@ -8,7 +8,7 @@ import { ReaderHeader } from "client/components/reader/ReaderHeader";
 import { readingTime } from "client/utils/readingTime";
 import { useT } from "client/i18n/useT";
 import { replaceBrokenImage } from "client/utils/brokenImage";
-import { EMBED_SANDBOX, embedQuotes, iframeEmbed } from "client/utils/embeds";
+import { EMBED_ALLOW, EMBED_SANDBOX, embedQuotes, iframeEmbed } from "client/utils/embeds";
 import { useImageFallback } from "client/hooks/useImageFallback";
 import { useResizablePanel } from "client/hooks/useResizablePanel";
 import { noViewTransitionRunning } from "client/utils/viewTransition";
@@ -36,15 +36,14 @@ postPurify.addHook("uponSanitizeElement", (node, data) => {
   if (data.tagName !== "iframe" || !(node instanceof Element)) return;
   const embed = iframeEmbed({ src: node.getAttribute("src") ?? "" });
   if (embed === null) node.remove();
-  else {
-    node.setAttribute("src", embed.src);
-    node.setAttribute("data-embed", embed.name);
-  }
+  else node.setAttribute("src", embed.src);
 });
 // Set after the attribute pass, which would drop them: DOMPurify's default list has none of these.
 postPurify.addHook("afterSanitizeAttributes", (node) => {
   if (node.tagName !== "IFRAME") return;
-  node.setAttribute("allow", "encrypted-media; picture-in-picture; fullscreen");
+  const embed = iframeEmbed({ src: node.getAttribute("src") ?? "" });
+  if (embed !== null) node.setAttribute("data-embed", embed.name);
+  node.setAttribute("allow", EMBED_ALLOW);
   node.setAttribute("allowfullscreen", "");
   node.setAttribute("loading", "lazy");
   node.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");

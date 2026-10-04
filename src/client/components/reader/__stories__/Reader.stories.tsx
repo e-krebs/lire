@@ -195,6 +195,52 @@ export const BlueskyEmbed: Story = {
   },
 };
 
+export const Instagram: Story = {
+  args: { entryId: "102:1e6f70" },
+  parameters: { url: "/stream/all/entry/102:1e6f70" },
+  play: async ({ canvasElement }) => {
+    const frame = await waitFor(() => {
+      const found = canvasElement.querySelector('iframe[data-embed="instagram"]');
+      if (!(found instanceof HTMLIFrameElement)) throw new Error("no Instagram frame yet");
+      return found;
+    }, LOADED);
+    await expect(canvasElement.querySelector("script")).toBeNull();
+    await expect(frame.getAttribute("src")).toBe("https://www.instagram.com/p/C0b8bKxLw5Q/embed/");
+  },
+};
+
+export const Threads: Story = {
+  args: { entryId: "102:7c2d91" },
+  parameters: { url: "/stream/all/entry/102:7c2d91" },
+  play: async ({ canvasElement }) => {
+    const frame = await waitFor(() => {
+      const found = canvasElement.querySelector('iframe[data-embed="threads"]');
+      if (!(found instanceof HTMLIFrameElement)) throw new Error("no Threads frame yet");
+      return found;
+    }, LOADED);
+    await expect(canvasElement.querySelector("script")).toBeNull();
+    await expect(frame.getAttribute("src")).toBe(
+      "https://www.threads.com/@ada.writer/post/C8xv0k3PzZ2/embed",
+    );
+  },
+};
+
+export const TikTok: Story = {
+  args: { entryId: "102:5ab3e8" },
+  parameters: { url: "/stream/all/entry/102:5ab3e8" },
+  play: async ({ canvasElement }) => {
+    const frame = await waitFor(() => {
+      const found = canvasElement.querySelector('iframe[data-embed="tiktok"]');
+      if (!(found instanceof HTMLIFrameElement)) throw new Error("no TikTok frame yet");
+      return found;
+    }, LOADED);
+    await expect(canvasElement.querySelector("script")).toBeNull();
+    await expect(frame.getAttribute("src")).toBe(
+      "https://www.tiktok.com/embed/v2/6718335390845095173",
+    );
+  },
+};
+
 export const NotFound: Story = {
   args: { entryId: "missing-entry" },
   play: async ({ canvasElement }) => {

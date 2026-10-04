@@ -1,15 +1,23 @@
 const YOUTUBE_HOSTS = new Set(["youtube.com", "www.youtube.com", "www.youtube-nocookie.com"]);
 const X_HOSTS = new Set(["twitter.com", "www.twitter.com", "x.com", "www.x.com"]);
 const VIMEO_HOST = "player.vimeo.com";
+const INSTAGRAM_HOSTS = new Set(["instagram.com", "www.instagram.com"]);
+const THREADS_HOSTS = new Set(["threads.com", "www.threads.com", "threads.net", "www.threads.net"]);
+const TIKTOK_HOSTS = new Set(["tiktok.com", "www.tiktok.com"]);
 const YOUTUBE_PATH = /^\/embed\/([\w-]+)\/?$/;
 const TWEET_PATH = /^\/\w+\/status\/(\d+)\/?$/;
 const VIMEO_PATH = /^\/video\/(\d+)\/?$/;
 const VIMEO_HASH = /^[0-9a-f]+$/;
+const INSTAGRAM_PATH = /^\/(?:[\w.]+\/)?(p|reel)\/([\w-]+)\/?$/;
+const THREADS_PATH = /^\/(@[\w.]+)\/post\/([\w-]+)\/?$/;
+const TIKTOK_PATH = /^\/@[\w.-]+\/video\/(\d+)\/?$/;
 const BLUESKY_URI =
   /^at:\/\/(did:[a-z]+:[A-Za-z0-9._:%-]+)\/app\.bsky\.feed\.post\/([A-Za-z0-9]+)$/;
 
 export const EMBED_SANDBOX =
   "allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox";
+
+export const EMBED_ALLOW = "encrypted-media; picture-in-picture; fullscreen";
 
 // The base resolves protocol-relative `//www.youtube.com/...` sources to https.
 const parse = (url: string): URL | null => {
@@ -57,6 +65,39 @@ const tweetEmbedUrl = ({ href }: { href: string }): string | null => {
     : `https://platform.twitter.com/embed/Tweet.html?id=${id}&dnt=true`;
 };
 
+const instagramEmbedUrl = ({ href }: { href: string }): string | null => {
+  const url = parse(href);
+  if (url === null || !INSTAGRAM_HOSTS.has(url.hostname)) return null;
+  const match = INSTAGRAM_PATH.exec(url.pathname);
+  return match === null ? null : `https://www.instagram.com/${match[1]}/${match[2]}/embed/`;
+};
+
+const threadsEmbedUrl = ({ href }: { href: string }): string | null => {
+  const url = parse(href);
+  if (url === null || !THREADS_HOSTS.has(url.hostname)) return null;
+  const match = THREADS_PATH.exec(url.pathname);
+  return match === null ? null : `https://www.threads.com/${match[1]}/post/${match[2]}/embed`;
+};
+
+const tiktokEmbedUrl = ({ href }: { href: string }): string | null => {
+  const url = parse(href);
+  if (url === null || !TIKTOK_HOSTS.has(url.hostname)) return null;
+  const id = TIKTOK_PATH.exec(url.pathname)?.[1];
+  return id === undefined ? null : `https://www.tiktok.com/embed/v2/${id}`;
+};
+
+const lastLink = ({
+  quote,
+  frameUrl,
+}: {
+  quote: Element;
+  frameUrl: (args: { href: string }) => string | null;
+}): string | null =>
+  [...quote.querySelectorAll("a[href]")]
+    .reverse()
+    .map((link) => link.getAttribute("href") ?? "")
+    .find((href) => frameUrl({ href }) !== null) ?? null;
+
 const FRAME_EMBEDS: { name: string; frameUrl: (args: { src: string }) => string | null }[] = [
   { name: "youtube", frameUrl: youtubeEmbedUrl },
   { name: "vimeo", frameUrl: vimeoEmbedUrl },
@@ -64,26 +105,61 @@ const FRAME_EMBEDS: { name: string; frameUrl: (args: { src: string }) => string 
 
 const QUOTE_EMBEDS: {
   name: string;
+  brand: string;
   selector: string;
   href: (args: { quote: Element }) => string | null;
   frameUrl: (args: { href: string }) => string | null;
 }[] = [
   {
     name: "x",
+    brand: "X",
     selector: "blockquote.twitter-tweet",
     // X's own markup ends on the date link to the post; earlier links can point at other posts.
-    href: ({ quote }) =>
-      [...quote.querySelectorAll("a[href]")]
-        .reverse()
-        .map((link) => link.getAttribute("href") ?? "")
-        .find((href) => tweetEmbedUrl({ href }) !== null) ?? null,
+    href: ({ quote }) => lastLink({ quote, frameUrl: tweetEmbedUrl }),
     frameUrl: tweetEmbedUrl,
   },
   {
     name: "bluesky",
+    brand: "Bluesky",
     selector: "blockquote.bluesky-embed",
     href: ({ quote }) => quote.getAttribute("data-bluesky-uri"),
     frameUrl: blueskyEmbedUrl,
+  },
+  {
+    name: "instagram",
+    brand: "Instagram",
+    selector: "blockquote.instagram-media",
+    href: ({ quote }) => {
+      const permalink = quote.getAttribute("data-instgrm-permalink");
+      return permalink !== null && instagramEmbedUrl({ href: permalink }) !== null
+        ? permalink
+        : lastLink({ quote, frameUrl: instagramEmbedUrl });
+    },
+    frameUrl: instagramEmbedUrl,
+  },
+  {
+    name: "threads",
+    brand: "Threads",
+    selector: "blockquote.text-post-media",
+    href: ({ quote }) => {
+      const permalink = quote.getAttribute("data-text-post-permalink");
+      return permalink !== null && threadsEmbedUrl({ href: permalink }) !== null
+        ? permalink
+        : lastLink({ quote, frameUrl: threadsEmbedUrl });
+    },
+    frameUrl: threadsEmbedUrl,
+  },
+  {
+    name: "tiktok",
+    brand: "TikTok",
+    selector: "blockquote.tiktok-embed",
+    href: ({ quote }) => {
+      const cite = quote.getAttribute("cite");
+      return cite !== null && tiktokEmbedUrl({ href: cite }) !== null
+        ? cite
+        : lastLink({ quote, frameUrl: tiktokEmbedUrl });
+    },
+    frameUrl: tiktokEmbedUrl,
   },
 ];
 
@@ -111,6 +187,8 @@ const buildFrame = ({
   frame.setAttribute("data-embed", name);
   frame.setAttribute("title", title);
   frame.setAttribute("sandbox", EMBED_SANDBOX);
+  frame.setAttribute("allow", EMBED_ALLOW);
+  frame.setAttribute("allowfullscreen", "");
   frame.setAttribute("loading", "lazy");
   frame.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
   return frame;
@@ -121,12 +199,12 @@ const buildFrame = ({
 export const embedQuotes = ({ html }: { html: string }): string => {
   const doc = new DOMParser().parseFromString(html, "text/html");
   let changed = false;
-  for (const { name, selector, href, frameUrl } of QUOTE_EMBEDS) {
+  for (const { name, brand, selector, href, frameUrl } of QUOTE_EMBEDS) {
     for (const quote of doc.querySelectorAll(selector)) {
       const permalink = href({ quote });
       const src = permalink === null ? null : frameUrl({ href: permalink });
-      if (src === null) continue;
-      const title = quote.textContent.trim().slice(0, 140) || name.toUpperCase();
+      if (permalink === null || src === null) continue;
+      const title = quote.textContent.trim().slice(0, 140) || brand;
       quote.replaceWith(buildFrame({ doc, name, src, title }));
       changed = true;
     }

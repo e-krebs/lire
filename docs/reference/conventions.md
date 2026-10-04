@@ -66,8 +66,9 @@ the common content goes through `useReparentedContent` and each wrapper renders 
 
 `src/client/hooks` holds hooks only, each file named `useXxx`. A helper a hook needs goes in
 `hooks/utils`. Pure functions go in `src/client/utils`, such as `embeds.ts`, which checks and builds
-the YouTube, Vimeo, X and Bluesky frame sources. A lint rule checks the hook file names. An external store and the
-hook that reads it live together in `utils`, as in `viewPrefs.ts` and `pwaUpdate.ts`
+the YouTube, Vimeo, X, Bluesky, Instagram, Threads and TikTok frame sources.
+A lint rule checks the hook
+file names. An external store and the hook that reads it live together in `utils`, as in `viewPrefs.ts` and `pwaUpdate.ts`
 (`usePwaUpdate`, which drives `UpdateToast`).
 
 ## Stories
