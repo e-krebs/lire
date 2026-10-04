@@ -53,5 +53,27 @@
     "story_timestamp": "1759090000",
     "image_urls": [],
     "read_status": 0
+  },
+  {
+    "story_hash": "102:1c4d5e",
+    "story_feed_id": 102,
+    "story_title": "A Vimeo embed in feed 102",
+    "story_authors": "Ada Writer",
+    "story_content": "<p>A Vimeo video inside a blog post.</p><iframe title=\"Synthetic Vimeo video\" src=\"https://player.vimeo.com/video/22439234\" width=\"640\" height=\"360\" allowfullscreen></iframe>",
+    "story_permalink": "https://example.test/102/6",
+    "story_timestamp": "1759080000",
+    "image_urls": [],
+    "read_status": 0
+  },
+  {
+    "story_hash": "102:1d5e6f",
+    "story_feed_id": 102,
+    "story_title": "A Bluesky embed in feed 102",
+    "story_authors": "Ada Writer",
+    "story_content": "<p>A Bluesky post inside a blog post.</p><blockquote class=\"bluesky-embed\" data-bluesky-uri=\"at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.post/3l6oveex3ii2l\" data-bluesky-cid=\"bafyreicnt42y6vo6pfpvyro234ac4o6ijug6adwwrh7awflgrqlt4zibxq\"><p lang=\"en\">Synthetic post text for the embed.</p>&mdash; Bluesky (@bsky.app) <a href=\"https://bsky.app/profile/did:plc:z72i7hdynmk6r22z27h6tvur/post/3l6oveex3ii2l?ref_src=embed\">2024-10-17T07:06:51.491Z</a></blockquote><script async src=\"https://embed.bsky.app/static/embed.js\" charset=\"utf-8\"></script>",
+    "story_permalink": "https://example.test/102/7",
+    "story_timestamp": "1759070000",
+    "image_urls": [],
+    "read_status": 0
   }
 ]

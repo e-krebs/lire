@@ -48,8 +48,8 @@ apply and the app's article styles cannot break it. The parent sizes the frame t
 presses out of it. The reasons and limits are in
 [ADR 0007](../adr/0007-newsletter-iframe.md).
 
-A blog post keeps two kinds of frame: a YouTube `/embed/` frame, and an X frame that Lire builds
-from a `twitter-tweet` blockquote. The helpers are in
+A blog post keeps four kinds of frame: a YouTube `/embed/` frame, a Vimeo player frame, and an X or
+Bluesky frame that Lire builds from a `twitter-tweet` or `bluesky-embed` blockquote. The helpers are in
 [embeds.ts](../../src/client/utils/embeds.ts). Every other frame is dropped, no third-party script
 runs in the app's origin, and a newsletter never gets frames. The allowlist and the privacy cost
 are in [ADR 0011](../adr/0011-reader-embeds.md).

@@ -1,7 +1,12 @@
 const YOUTUBE_HOSTS = new Set(["youtube.com", "www.youtube.com", "www.youtube-nocookie.com"]);
 const X_HOSTS = new Set(["twitter.com", "www.twitter.com", "x.com", "www.x.com"]);
+const VIMEO_HOST = "player.vimeo.com";
 const YOUTUBE_PATH = /^\/embed\/([\w-]+)\/?$/;
 const TWEET_PATH = /^\/\w+\/status\/(\d+)\/?$/;
+const VIMEO_PATH = /^\/video\/(\d+)\/?$/;
+const VIMEO_HASH = /^[0-9a-f]+$/;
+const BLUESKY_URI =
+  /^at:\/\/(did:[a-z]+:[A-Za-z0-9._:%-]+)\/app\.bsky\.feed\.post\/([A-Za-z0-9]+)$/;
 
 export const EMBED_SANDBOX =
   "allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox";
@@ -23,6 +28,26 @@ const youtubeEmbedUrl = ({ src }: { src: string }): string | null => {
   return id === undefined ? null : `https://www.youtube.com/embed/${id}`;
 };
 
+const vimeoEmbedUrl = ({ src }: { src: string }): string | null => {
+  const url = parse(src);
+  if (url === null || url.hostname !== VIMEO_HOST) return null;
+  const id = VIMEO_PATH.exec(url.pathname)?.[1];
+  if (id === undefined) return null;
+  const params = new URLSearchParams();
+  const hash = url.searchParams.get("h");
+  // An unlisted video only plays with its `h` token.
+  if (hash !== null && VIMEO_HASH.test(hash)) params.set("h", hash);
+  params.set("dnt", "1");
+  return `https://${VIMEO_HOST}/video/${id}?${params}`;
+};
+
+const blueskyEmbedUrl = ({ href }: { href: string }): string | null => {
+  const match = BLUESKY_URI.exec(href);
+  return match === null
+    ? null
+    : `https://embed.bsky.app/embed/${match[1]}/app.bsky.feed.post/${match[2]}`;
+};
+
 const tweetEmbedUrl = ({ href }: { href: string }): string | null => {
   const url = parse(href);
   if (url === null || !X_HOSTS.has(url.hostname)) return null;
@@ -34,6 +59,7 @@ const tweetEmbedUrl = ({ href }: { href: string }): string | null => {
 
 const FRAME_EMBEDS: { name: string; frameUrl: (args: { src: string }) => string | null }[] = [
   { name: "youtube", frameUrl: youtubeEmbedUrl },
+  { name: "vimeo", frameUrl: vimeoEmbedUrl },
 ];
 
 const QUOTE_EMBEDS: {
@@ -52,6 +78,12 @@ const QUOTE_EMBEDS: {
         .map((link) => link.getAttribute("href") ?? "")
         .find((href) => tweetEmbedUrl({ href }) !== null) ?? null,
     frameUrl: tweetEmbedUrl,
+  },
+  {
+    name: "bluesky",
+    selector: "blockquote.bluesky-embed",
+    href: ({ quote }) => quote.getAttribute("data-bluesky-uri"),
+    frameUrl: blueskyEmbedUrl,
   },
 ];
 
