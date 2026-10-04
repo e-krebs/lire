@@ -2,7 +2,7 @@
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["typescript", "unicorn", "oxc"],
   "jsPlugins": ["./scripts/oxlint/test-conventions.js", "./scripts/oxlint/code-conventions.js"],
-  "ignorePatterns": ["src/client/routeTree.gen.ts"],
+  "ignorePatterns": ["src/client/routeTree.gen.ts", "src/client/sw.ts"],
   "options": { "typeAware": true },
   "categories": { "correctness": "error" },
   "overrides": [

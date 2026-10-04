@@ -1,0 +1,13 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "WebWorker"],
+    "types": ["vite/client"]
+  },
+  "include": [
+    "../sw.ts",
+    "../api/markReadSync.ts",
+    "../api/markReadStore.ts",
+    "../api/backgroundSync.d.ts"
+  ]
+}

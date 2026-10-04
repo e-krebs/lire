@@ -53,6 +53,7 @@ To read the UI in French in Storybook, pick French in the toolbar's Locale menu.
 | Task | Command |
 | --- | --- |
 | SPA | `yarn typecheck` |
+| Service worker | `yarn typecheck:sw` |
 | Worker | `yarn typecheck:worker` |
 | Scripts | `yarn typecheck:node` |
 | End-to-end tests | `yarn typecheck:e2e` |

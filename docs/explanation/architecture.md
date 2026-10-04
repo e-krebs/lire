@@ -197,10 +197,22 @@ fixtures, which the gate checks rather than assumes.
 
 ## PWA
 
-[vite.config.ts](../../vite.config.ts) registers a service worker through `vite-plugin-pwa` with
-`autoUpdate`, precaches the built assets, and falls back to `index.html` for navigation. The
-fallback denylists `/api/`, because the Worker serves `/api/auth/login` as an HTML page: if the
-service worker answered that navigation with the SPA shell, the login would never run.
+[vite.config.ts](../../vite.config.ts) builds the service worker through `vite-plugin-pwa` in
+`injectManifest` mode from [sw.ts](../../src/client/sw.ts). The worker precaches the built assets
+and falls back to `index.html` for navigation. The fallback denylists `/api/`, because the Worker
+serves `/api/auth/login` as an HTML page: if the service worker answered that navigation with the
+SPA shell, the login would never run. In dev the manifest is nearly empty, so the fallback route is
+skipped there.
+
+The worker also holds a `sync` handler. Read marks wait in an IndexedDB store
+([markReadStore.ts](../../src/client/api/markReadStore.ts)) that the page and the worker share. The
+page queue registers the `mark-read` sync tag when it may not deliver: on hide, in parallel with the
+keepalive flush, and after a retryable failure while the page is hidden. A visible page retries
+through the `online` replay and at start. The worker then sends the stored ids
+([markReadSync.ts](../../src/client/api/markReadSync.ts)). Background Sync exists only in Chromium
+and the Android app. Elsewhere the page flushes on hide and replays stored ids at the next start
+and when the browser goes online. The real build runs all of this; the mock build keeps the ids in
+memory and registers no sync. [0012](../adr/0012-persisted-mark-read-queue.md) records why.
 
 The build bakes the short git commit into `VITE_APP_VERSION`
 ([vite.config.ts](../../vite.config.ts)), and the account menu shows it as Version. After a deploy, it
