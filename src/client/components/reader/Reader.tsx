@@ -8,7 +8,7 @@ import { ReaderHeader } from "client/components/reader/ReaderHeader";
 import { readingTime } from "client/utils/readingTime";
 import { useT } from "client/i18n/useT";
 import { replaceBrokenImage } from "client/utils/brokenImage";
-import { EMBED_SANDBOX, embedTweets, youtubeEmbedUrl } from "client/utils/embeds";
+import { EMBED_SANDBOX, embedQuotes, iframeEmbed } from "client/utils/embeds";
 import { useImageFallback } from "client/hooks/useImageFallback";
 import { useResizablePanel } from "client/hooks/useResizablePanel";
 import { noViewTransitionRunning } from "client/utils/viewTransition";
@@ -34,9 +34,12 @@ const postPurify = DOMPurify(window);
 postPurify.addHook("afterSanitizeAttributes", openLinksAway);
 postPurify.addHook("uponSanitizeElement", (node, data) => {
   if (data.tagName !== "iframe" || !(node instanceof Element)) return;
-  const src = youtubeEmbedUrl({ src: node.getAttribute("src") ?? "" });
-  if (src === null) node.remove();
-  else node.setAttribute("src", src);
+  const embed = iframeEmbed({ src: node.getAttribute("src") ?? "" });
+  if (embed === null) node.remove();
+  else {
+    node.setAttribute("src", embed.src);
+    node.setAttribute("data-embed", embed.name);
+  }
 });
 // Set after the attribute pass, which would drop them: DOMPurify's default list has none of these.
 postPurify.addHook("afterSanitizeAttributes", (node) => {
@@ -49,7 +52,7 @@ postPurify.addHook("afterSanitizeAttributes", (node) => {
 });
 
 const sanitizePost = (html: string): string =>
-  embedTweets({
+  embedQuotes({
     html: postPurify.sanitize(html, {
       USE_PROFILES: { html: true },
       FORBID_TAGS: ["script", "style"],
