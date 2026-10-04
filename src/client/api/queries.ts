@@ -391,6 +391,35 @@ type CachedPages = readonly [readonly unknown[], InfiniteData<EntryPage> | undef
 // The infinite caches holding entries: plain streams and in-stream article searches.
 const ENTRY_CACHE_PREFIXES = [["stream"], ["search"]] as const;
 
+const isUnreadOnlyListKey = (queryKey: readonly unknown[]): boolean => {
+  const params = queryKey.at(-1);
+  return (
+    ENTRY_CACHE_PREFIXES.some(([prefix]) => prefix === queryKey[0]) &&
+    typeof params === "object" &&
+    params !== null &&
+    "unreadOnly" in params &&
+    params.unreadOnly === true
+  );
+};
+
+// `setQueryData` clears `isInvalidated`; re-mark the unread-only lists that were stale so an optimistic write does not hide the entries they are missing.
+const keepUnreadListsStale = (client: QueryClient, write: () => void): void => {
+  const stale = new Set(
+    client
+      .getQueryCache()
+      .findAll({
+        predicate: ({ queryKey, state }) => state.isInvalidated && isUnreadOnlyListKey(queryKey),
+      })
+      .map(({ queryHash }) => queryHash),
+  );
+  write();
+  if (stale.size === 0) return;
+  void client.invalidateQueries({
+    predicate: ({ queryHash }) => stale.has(queryHash),
+    refetchType: "none",
+  });
+};
+
 const shiftUnreadCounts = ({
   client,
   entries,
@@ -473,18 +502,20 @@ export const useMarkRead = () => {
         }
       }
 
-      for (const [queryKey, data] of previousStreams) {
-        if (!data) continue;
-        client.setQueryData<InfiniteData<EntryPage>>(queryKey, {
-          ...data,
-          pages: data.pages.map((page) => ({
-            ...page,
-            items: page.items.map((item) =>
-              entryIds.includes(item.id) ? { ...item, unread: !read } : item,
-            ),
-          })),
-        });
-      }
+      keepUnreadListsStale(client, () => {
+        for (const [queryKey, data] of previousStreams) {
+          if (!data) continue;
+          client.setQueryData<InfiniteData<EntryPage>>(queryKey, {
+            ...data,
+            pages: data.pages.map((page) => ({
+              ...page,
+              items: page.items.map((item) =>
+                entryIds.includes(item.id) ? { ...item, unread: !read } : item,
+              ),
+            })),
+          });
+        }
+      });
 
       for (const entryId of entryIds) {
         client.setQueryData<Entry>(keys.entry(entryId), (prev) =>
@@ -501,25 +532,27 @@ export const useMarkRead = () => {
     onError: (_error, { entryIds, read }, context) => {
       if (!context) return;
       const failed = new Set(entryIds);
-      for (const [queryKey, previous] of context.previousStreams) {
-        const previousUnread = new Map<string, boolean>(
-          previous?.pages.flatMap((page) => page.items.map((item) => [item.id, item.unread])),
-        );
-        client.setQueryData<InfiniteData<EntryPage>>(
-          queryKey,
-          (data) =>
-            data && {
-              ...data,
-              pages: data.pages.map((page) => ({
-                ...page,
-                items: page.items.map((item) => {
-                  const unread = failed.has(item.id) ? previousUnread.get(item.id) : undefined;
-                  return unread === undefined ? item : { ...item, unread };
-                }),
-              })),
-            },
-        );
-      }
+      keepUnreadListsStale(client, () => {
+        for (const [queryKey, previous] of context.previousStreams) {
+          const previousUnread = new Map<string, boolean>(
+            previous?.pages.flatMap((page) => page.items.map((item) => [item.id, item.unread])),
+          );
+          client.setQueryData<InfiniteData<EntryPage>>(
+            queryKey,
+            (data) =>
+              data && {
+                ...data,
+                pages: data.pages.map((page) => ({
+                  ...page,
+                  items: page.items.map((item) => {
+                    const unread = failed.has(item.id) ? previousUnread.get(item.id) : undefined;
+                    return unread === undefined ? item : { ...item, unread };
+                  }),
+                })),
+              },
+          );
+        }
+      });
       for (const [entryId, previous] of context.previousEntries) {
         client.setQueryData<Entry>(keys.entry(entryId), (entry) =>
           entry && previous ? { ...entry, unread: previous.unread } : entry,
@@ -527,8 +560,15 @@ export const useMarkRead = () => {
       }
       shiftUnreadCounts({ client, entries: context.changedEntries, delta: read ? 1 : -1 });
     },
-    onSettled: () => {
+    onSettled: (_data, _error, { read }) => {
       void client.invalidateQueries({ queryKey: keys.counts });
+      // An entry marked unread was absent from unread-only lists; stale only, so the open view does not jump.
+      if (!read) {
+        void client.invalidateQueries({
+          predicate: ({ queryKey }) => isUnreadOnlyListKey(queryKey),
+          refetchType: "none",
+        });
+      }
     },
   });
 };
