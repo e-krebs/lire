@@ -50,6 +50,14 @@ read marks posts to `/api/entries/read` behind Access with the same cookie as th
 not follow redirects: an expired Access session answers a cross-origin redirect, which counts as a
 retryable failure, and the ids stay stored for the page to send after a new sign-in.
 
+The page fetches the same way. An expired Access session answers a page fetch with a redirect to
+the Access host, which sends no CORS header. `httpTransport` fetches with `redirect: "manual"` and
+navigates to `/api/auth/login` on `opaqueredirect`, so Access runs its login. It does not reload,
+because the service worker serves the cached shell for page loads and a reload never reaches
+Access; `/api/` paths bypass the worker. A `sessionStorage` guard allows one navigation per minute.
+Unsent read marks survive in IndexedDB. When the guard blocks, the reader sees the `SignIn` screen,
+and its link runs Access again.
+
 ### Session storage
 
 The session lives in one Durable Object, [NewsblurAuth](../../src/server/newsblurAuth.ts), addressed
