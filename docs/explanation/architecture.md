@@ -228,14 +228,19 @@ time is ten minutes. [useRefreshOnForeground](../../src/client/hooks/useRefreshO
 fires when the page returns after more than 60 seconds hidden, and skips a refresh while another
 is still running. `useRefreshAllLists` in
 [queries.ts](../../src/client/api/queries.ts) then flushes the queue and invalidates every stream,
-search and entry cache plus the counts. It keeps loaded pages, unlike pull-to-refresh, which trims
-to page 1. A global `refetchOnWindowFocus` would refetch every list at once.
+search and entry cache plus the counts. It keeps loaded pages, unlike a top pull-to-refresh, which
+trims to page 1. A global `refetchOnWindowFocus` would refetch every list at once.
 
 Every refresh refetches the counts before the lists, so the unread count never moves without the
 list it describes. A failed counts fetch does not stop the lists. The counts do not poll and a
 mount does not refetch them: they refresh with a list refresh or after a read mark. Marking an
 entry unread marks the unread-only stream and search lists stale without refetching them, so the
 open view does not jump and the unread view refetches when it mounts.
+
+A top pull trims the list to page 1 and scrolls to the top. A bottom pull keeps every loaded page
+and the scroll position. It arms only at the true end of the list: no next page, no fetch in
+flight, no next-page error and at least one entry. It also calls `preventDefault` only after the
+touch travels a few pixels, so a scroll that reaches the pagination sentinel is not swallowed.
 
 Updates are prompt-style. A new worker installs and waits. The page learns of it through
 [pwaUpdate.ts](../../src/client/utils/pwaUpdate.ts) and shows `UpdateToast`

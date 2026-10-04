@@ -68,10 +68,15 @@ export const MosaicBody = ({
   const { hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage } = result;
   const refreshEntries = useRefreshEntries();
   // A refresh shows the newest, so the pane goes back to the top first: the cache is about to
-  // shrink to one page anyway, which would otherwise drop the reader somewhere in the middle.
-  const refreshAsync = async () => {
+  // shrink to one page anyway, which would otherwise drop the reader somewhere in the middle. A
+  // bottom pull keeps both the pages and the position.
+  const refreshAsync = async ({ edge }: { edge?: "top" | "bottom" } = {}) => {
+    if (edge === "bottom") {
+      await refreshEntries({ queryKey, trim: false });
+      return;
+    }
     frame?.closest(".scroll-pane")?.scrollTo({ top: 0 });
-    await refreshEntries(queryKey);
+    await refreshEntries({ queryKey });
   };
   const refresh = (): void => {
     void refreshAsync();
@@ -81,10 +86,11 @@ export const MosaicBody = ({
   useRefreshShortcut({ enabled: !readerOpen, onRefresh: refresh });
   const refreshAllLists = useRefreshAllLists();
   useRefreshOnForeground({ onForeground: refreshAllLists });
-  // Pulling up past the end refreshes only once every page is in, or it would race the sentinel.
+  // Pulling up past the end refreshes only once every page is in and settled, or it would race
+  // the sentinel.
   const { attach: attachPull, pull } = usePullToRefresh({
     onRefresh: refreshAsync,
-    pullUp: !hasNextPage,
+    pullUp: !hasNextPage && !result.isFetching && !isFetchNextPageError && entries.length > 0,
   });
   // State, not a ref: the sentinel moves between the empty state and the grid, and the observer
   // has to follow it.

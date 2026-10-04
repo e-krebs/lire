@@ -185,7 +185,7 @@ describe("queries", () => {
     const countsBefore = client.getQueryState(keys.counts)?.dataUpdatedAt ?? 0;
     await new Promise((resolve) => setTimeout(resolve, 5));
 
-    const pending = result.current.refresh(queryKey);
+    const pending = result.current.refresh({ queryKey });
     expect(
       client.getQueryData<InfiniteData<EntryPage>>(queryKey)?.pages[0]?.items.length,
     ).toBeGreaterThan(0);
@@ -196,6 +196,30 @@ describe("queries", () => {
     expect(refreshed?.pageParams).toHaveLength(1);
     expect(client.getQueryState(keys.counts)?.dataUpdatedAt).toBeGreaterThan(countsBefore);
     expect(client.getQueryData<Counts>(keys.counts)).toEqual(counts);
+  });
+
+  it("keeps every loaded page when it refreshes without trimming", async () => {
+    const { client, wrapper } = setup();
+    const queryKey = keys.stream({ streamKey: techKey });
+    const { result } = renderHook(
+      () => ({ stream: useStream({ streamKey: techKey }), refresh: useRefreshEntries() }),
+      { wrapper },
+    );
+    await waitFor(() => {
+      expect(result.current.stream.isSuccess).toBe(true);
+    });
+    await act(async () => {
+      await result.current.stream.fetchNextPage();
+    });
+    const before = client.getQueryState(queryKey)?.dataUpdatedAt ?? 0;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    const pending = result.current.refresh({ queryKey, trim: false });
+    expect(client.getQueryData<InfiniteData<EntryPage>>(queryKey)?.pages).toHaveLength(2);
+    await act(async () => pending);
+
+    expect(client.getQueryData<InfiniteData<EntryPage>>(queryKey)?.pages).toHaveLength(2);
+    expect(client.getQueryState(queryKey)?.dataUpdatedAt).toBeGreaterThan(before);
   });
 
   it("keeps the data timestamp while it trims, so only the refetch advances it", async () => {
@@ -211,7 +235,7 @@ describe("queries", () => {
     const before = client.getQueryState(queryKey)?.dataUpdatedAt;
     await new Promise((resolve) => setTimeout(resolve, 5));
 
-    const pending = result.current.refresh(queryKey);
+    const pending = result.current.refresh({ queryKey });
     expect(client.getQueryState(queryKey)?.dataUpdatedAt).toBe(before);
     await act(async () => pending);
     expect(client.getQueryState(queryKey)?.dataUpdatedAt).toBeGreaterThan(before ?? 0);
@@ -234,7 +258,7 @@ describe("queries", () => {
       });
     });
 
-    const pending = result.current.refresh(queryKey);
+    const pending = result.current.refresh({ queryKey });
     await Promise.resolve();
 
     expect(flush).toHaveBeenCalledOnce();
@@ -310,7 +334,7 @@ describe("queries", () => {
       const storiesBefore = client.getQueryState(queryKey)?.dataUpdatedAt ?? 0;
       await new Promise((resolve) => setTimeout(resolve, 5));
 
-      const pending = which === "one" ? result.current.one(queryKey) : result.current.all();
+      const pending = which === "one" ? result.current.one({ queryKey }) : result.current.all();
       await waitFor(() => {
         expect(client.getQueryState(keys.counts)?.fetchStatus).toBe("fetching");
       });
