@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <!-- resizes-content: the keyboard shrinks the layout viewport on Android, so a bottom-anchored
-      sheet and its field stay above the keys; iOS ignores the key and Navigator.tsx fits by hand. -->
+      sheet and its field stay above the keys; iOS ignores the key and Navigator.tsx fits by hand.
+      viewportNudge.ts flips this key to work around a Chrome bug, so keep its spelling. -->
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
