@@ -4,6 +4,7 @@
   "project": [
     "src/**/*.{ts,tsx,css}!",
     "!src/test/**!",
+    "!src/server/__tests__/cloudflare/**!",
     "!src/**/__stories__/**!",
     "scripts/**/*.ts",
     "e2e/**/*.ts"

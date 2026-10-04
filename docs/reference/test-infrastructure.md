@@ -9,7 +9,7 @@ The machinery behind the tests. Test style is in [testing.md](testing.md).
 | Project | Script | Environment | Includes |
 | --- | --- | --- | --- |
 | `client` | `yarn test` | jsdom | `src/{client,shared}/**/__tests__/**/*.test.{ts,tsx}` |
-| `server` | `yarn test:worker` | Workers pool | `src/server/**/__tests__/**/*.test.ts` |
+| `server` | `yarn test:worker` | Node, with the Cloudflare shim | `src/server/**/__tests__/**/*.test.ts` |
 | `storybook` | `yarn test:storybook` | Chromium via Playwright | the stories |
 
 The `client` project runs in worker threads without isolation, so its test files share one jsdom
@@ -32,10 +32,14 @@ worker starts, so the time tests do not depend on the host timezone. The locale 
 
 ### Worker pool
 
-The `server` project runs through `cloudflareTest` with [wrangler.toml](../../wrangler.toml) and
-binds `ACCESS_ALLOWED_EMAIL`, `NEWSBLUR_USERNAME`, `NEWSBLUR_PASSWORD` and `NEWSBLUR_NEWSLETTER_ADDRESS` for the tests. The
-Worker tests stub `fetch` for the NewsBlur calls. Tests are in
-[src/server/__tests__](../../src/server/__tests__).
+The `server` project runs in Node. It aliases two Cloudflare modules to a local shim in
+[src/server/__tests__/cloudflare](../../src/server/__tests__/cloudflare). `cloudflare:workers` gives the `NewsblurAuth` Durable Object an
+in-memory key-value store. `cloudflare:test` exports `env`, `SELF` and `runInDurableObject`, the same surface the tests
+used from the Workers pool. `env` holds fixed test values, including `ACCESS_ALLOWED_EMAIL`, `NEWSBLUR_USERNAME`,
+`NEWSBLUR_PASSWORD` and `NEWSBLUR_NEWSLETTER_ADDRESS`, and a `NEWSBLUR_AUTH` namespace whose stubs clone arguments and
+results as an RPC call does. `SELF.fetch` calls the Worker's `fetch` and keeps `cf` on the request. The tests do not run
+in workerd, so [the end-to-end suite](../../e2e) is the only check of the real runtime. The Worker tests stub `fetch`
+for the NewsBlur calls. Tests are in [src/server/__tests__](../../src/server/__tests__).
 
 ### Storybook
 

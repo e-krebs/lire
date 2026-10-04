@@ -1,5 +1,3 @@
-// oxlint-disable typescript/no-deprecated -- SELF is the vitest-pool-workers integration Fetcher;
-// the suggested exports.default.fetch() has a different signature/dispatch, not a drop-in.
 import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { exportJWK, generateKeyPair, SignJWT, type CryptoKey, type JWK } from "jose";
 import { afterEach, describe, expect, it, vi } from "vitest";
