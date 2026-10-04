@@ -110,6 +110,10 @@
     "workbox-routing": "^7.4.1",
     "wrangler": "^4.143.0"
   },
+  "resolutions": {
+    "undici@npm:7.28.0": "npm:7.30.0",
+    "undici@npm:7.29.0": "npm:7.30.0"
+  },
   "packageManager": "yarn@4.17.1",
   "engines": {
     "node": ">=24"
