@@ -7,6 +7,8 @@ import {
   MARK_READ_BATCH_SIZE,
   MARK_READ_DELAY_MS,
   markReadQueue,
+  settleWithin,
+  whenReplayed,
 } from "../markReadQueue";
 import { markReadStore } from "../markReadStore";
 
@@ -112,6 +114,52 @@ describe("markReadQueue", () => {
     await queue.flush();
 
     expect(sent).toEqual([{ entryIds: ["101:a"], keepalive: true }]);
+  });
+
+  it("waits for a send already in flight when the batch to flush is empty", async () => {
+    let release = () => {};
+    let done = false;
+    const queue = createMarkReadQueue({
+      send: async () => {
+        await new Promise<void>((resolve) => {
+          release = resolve;
+        });
+      },
+    });
+
+    const settled = queue.add(ids(MARK_READ_BATCH_SIZE));
+    await settle();
+    const flushed = queue.flush().then(() => {
+      done = true;
+    });
+    await settle();
+    expect(done).toBe(false);
+    release();
+    await flushed;
+    await settled;
+
+    expect(done).toBe(true);
+  });
+
+  it("exposes the startup replay as a settled promise", async () => {
+    await expect(whenReplayed).resolves.toBeUndefined();
+  });
+
+  it("stops waiting for a hung replay after the cap", async () => {
+    vi.useFakeTimers();
+    try {
+      let settled = false;
+      const hung = new Promise<void>(() => {});
+      void settleWithin({ promise: hung, ms: 3000 }).then(() => {
+        settled = true;
+      });
+      await vi.advanceTimersByTimeAsync(2999);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(settled).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("drops a cancelled id from the waiting batch", async () => {

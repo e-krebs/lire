@@ -3,7 +3,12 @@ import type { CSSProperties, KeyboardEvent } from "react";
 import { Link } from "@tanstack/react-router";
 import type { StreamKey } from "shared/feedsApi/streamKey";
 import type { Entry } from "shared/feedsApi/types";
-import { flattenStream, useMarkRead, useRefreshEntries } from "client/api/queries";
+import {
+  flattenStream,
+  useMarkRead,
+  useRefreshAllLists,
+  useRefreshEntries,
+} from "client/api/queries";
 import type { useStream } from "client/api/queries";
 import { MosaicTile } from "client/components/articles/MosaicTile";
 import type { TileSlot } from "client/components/articles/MosaicTile";
@@ -14,6 +19,7 @@ import { layoutMasonry, neighbourOf, tileAspect } from "client/utils/masonry";
 import type { Direction, MasonryLayout } from "client/utils/masonry";
 import { useElementWidth } from "client/hooks/useElementWidth";
 import { usePullToRefresh } from "client/hooks/usePullToRefresh";
+import { useRefreshOnForeground } from "client/hooks/useRefreshOnForeground";
 import { useRefreshShortcut } from "client/hooks/useRefreshShortcut";
 import { useTier } from "client/hooks/useTier";
 import { MosaicEmptyArt } from "./MosaicEmptyArt";
@@ -73,6 +79,8 @@ export const MosaicBody = ({
   // The next page loading is not a refresh; only the first page fetching again is.
   const refreshing = result.isFetching && !isFetchingNextPage;
   useRefreshShortcut({ enabled: !readerOpen, onRefresh: refresh });
+  const refreshAllLists = useRefreshAllLists();
+  useRefreshOnForeground({ onForeground: refreshAllLists });
   // Pulling up past the end refreshes only once every page is in, or it would race the sentinel.
   const { attach: attachPull, pull } = usePullToRefresh({
     onRefresh: refreshAsync,

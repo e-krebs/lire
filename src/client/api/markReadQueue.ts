@@ -54,6 +54,7 @@ export function createMarkReadQueue({
   let writing: { entryIds: string[]; waiter: Waiter }[] = [];
   const writes = new Set<Promise<void>>();
   const inFlight = new Set<string>();
+  const sends = new Set<Promise<void>>();
   let replaying = 0;
   const cancelledWhileReplaying = new Set<string>();
   const cancelling = new Set<string>();
@@ -77,6 +78,21 @@ export function createMarkReadQueue({
       for (const waiter of settled) waiter.resolve();
       return;
     }
+    const sending = sendBatch({ entryIds, settled, keepalive });
+    sends.add(sending);
+    void sending.finally(() => sends.delete(sending));
+    await sending;
+  };
+
+  const sendBatch = async ({
+    entryIds,
+    settled,
+    keepalive,
+  }: {
+    entryIds: string[];
+    settled: Waiter[];
+    keepalive: boolean;
+  }): Promise<void> => {
     for (const id of entryIds) inFlight.add(id);
     try {
       await send({ entryIds, keepalive });
@@ -98,6 +114,8 @@ export function createMarkReadQueue({
   const flush = async ({ keepalive = false }: { keepalive?: boolean } = {}): Promise<void> => {
     await storeWritten();
     await dispatch({ keepalive });
+    // A batch dispatched earlier may still be on the wire: wait for it too.
+    await Promise.allSettled(sends);
   };
 
   // Resolves once the batch holding these ids went upstream, rejects when that call failed. The
@@ -170,6 +188,26 @@ export function createMarkReadQueue({
 
 export const markReadQueue = createMarkReadQueue({ send: markRead });
 
+export const REPLAY_WAIT_MS = 3000;
+
+export const settleWithin = async ({
+  promise,
+  ms,
+}: {
+  promise: Promise<void>;
+  ms: number;
+}): Promise<void> =>
+  new Promise<void>((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    void promise.finally(() => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
+
+/** Resolves once the startup replay has sent what an earlier session left stored, or after 3 s if it hangs. */
+export let whenReplayed: Promise<void> = Promise.resolve();
+
 if (typeof window !== "undefined") {
   const flushOnLeave = () => {
     registerSync();
@@ -187,5 +225,8 @@ if (typeof window !== "undefined") {
     if (document.visibilityState === "hidden") flushOnLeave();
   });
   window.addEventListener("online", () => void markReadQueue.replay());
-  void markReadQueue.replay();
+  whenReplayed = settleWithin({
+    promise: markReadQueue.replay().catch(() => {}),
+    ms: REPLAY_WAIT_MS,
+  });
 }
