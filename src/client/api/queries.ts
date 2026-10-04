@@ -2,6 +2,7 @@ import {
   queryOptions,
   useInfiniteQuery,
   useIsMutating,
+  onlineManager,
   useMutation,
   useQuery,
   useQueryClient,
@@ -402,9 +403,22 @@ const shiftUnreadCounts = ({
 
 // Reads go through the batching queue, so the mutation settles when its batch went upstream.
 // Unreads go at once, and pull the same ids out of a batch still waiting.
+const whenOnline = async (): Promise<void> => {
+  if (onlineManager.isOnline()) return;
+  await new Promise<void>((resolve) => {
+    const unsubscribe = onlineManager.subscribe((online) => {
+      if (!online) return;
+      unsubscribe();
+      resolve();
+    });
+  });
+};
+
 const sendMark = async ({ entryIds, read }: { entryIds: string[]; read: boolean }) => {
   if (read) return markReadQueue.add(entryIds);
-  markReadQueue.cancel(entryIds);
+  // Before the cancel, so a queued read stays stored until the unread can go out.
+  await whenOnline();
+  await markReadQueue.cancel(entryIds);
   return markUnread({ entryIds });
 };
 
@@ -412,6 +426,8 @@ export const useMarkRead = () => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: sendMark,
+    // Offline, a paused mutation would never reach the queue, so the read would not be stored.
+    networkMode: "always",
     onMutate: async ({ entryIds, read }: { entryIds: string[]; read: boolean }) => {
       // Search results are the same entries under a different key prefix, so they take the same
       // optimistic flip (and the same rollback) as the plain stream caches.

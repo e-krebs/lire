@@ -23,7 +23,7 @@ worker starts, so the time tests do not depend on the host timezone. The locale 
 
 | File | Role |
 | --- | --- |
-| [setup.ts](../../src/test/setup.ts) | Starts MSW, runs cleanup, restores timers, `localStorage`, the locale preference and the `HTMLElement` and `Element` prototypes after each test |
+| [setup.ts](../../src/test/setup.ts) | Loads `fake-indexeddb` before any other import, because the read-mark queue replays stored ids when it loads. Starts MSW, runs cleanup, restores timers, `localStorage`, the locale preference and the `HTMLElement` and `Element` prototypes, and resets the read-mark store and deletes every IndexedDB database after each test |
 | [msw.ts](../../src/test/msw.ts) | MSW server with baseline `GET /api/{profile,categories,feeds,counts,search/feeds}` handlers, answered by the shared core over the fake NewsBlur on the seed |
 | [fixtureBackend.ts](../../src/test/fixtureBackend.ts) | Serves `fixtureTransport` over MSW for every `/api/*` path |
 | [renderApp.tsx](../../src/test/renderApp.tsx) | Renders the app with a memory router and a query client |

@@ -262,8 +262,14 @@ const setup = () => {
 ```
 
 A read mark is batched client side ([markReadQueue.ts](../../src/client/api/markReadQueue.ts)): the
-request leaves at 5 ids or after 10 s, and on `pagehide`. A test that asserts the request calls
-`markReadQueue.flush()` first.
+request leaves at 5 ids or after 10 s, and on `pagehide` or when the page is hidden. A test that
+asserts the request calls `markReadQueue.flush()` first.
+
+Pending ids persist in IndexedDB ([markReadStore.ts](../../src/client/api/markReadStore.ts)), which
+the real build uses and the mock build replaces with a memory set. [setup.ts](../../src/test/setup.ts)
+loads `fake-indexeddb`, so a test of the store stubs `VITE_API_MODE` to `real` as above. The setup
+resets the store and deletes every database after each test, so stored ids never reach the next
+test.
 
 ## Enforcement
 

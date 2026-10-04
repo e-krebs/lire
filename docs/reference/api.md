@@ -32,7 +32,7 @@ folder title, an entry id is the story hash. A stream key is `all`, `read`, `fol
 | GET | `/api/counts` | `{ all, feeds: { [feedId]: n }, categories: { [id]: n } }` |
 | GET | `/api/streams/:streamKey/entries` | `?count&unreadOnly&order=newest\|oldest&cursor`, answers `{ items, cursor? }`. Rivers pass `count` to NewsBlur as `limit`. A single feed has no `limit`, so the Worker chains `ceil(count / 6)` upstream pages of 6 per page. `count` is capped at 50: a larger value answers 400. The client sends `count` on desktop only: 24 for rivers (all, category, read), 12 for a single feed. Phone and tablet send none |
 | GET | `/api/entries/:entryId` | One entry |
-| POST | `/api/entries/read` | Mark read, body `{ entryIds }` |
+| POST | `/api/entries/read` | Mark read, body `{ entryIds }`. The client batches ids (5 ids or 10 s) and stores them until the call succeeds. A retryable status (401, 403, 408, 429, 5xx) keeps the ids stored; any other 4xx drops them |
 | POST | `/api/entries/unread` | Mark unread, body `{ entryIds }` |
 | GET | `/api/search/entries` | `?streamKey&q&count&unreadOnly&cursor`, answers `{ items, cursor? }`. The client sends the same desktop `count` as for a stream |
 | GET | `/api/search/feeds` | `?q`, answers `[{ feedUrl, title, subscribers? }]` |

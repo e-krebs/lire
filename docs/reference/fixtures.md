@@ -6,7 +6,8 @@ The loader ([fixture.ts](../../src/client/api/adapters/fixture.ts)) hands them t
 in-memory stand-in for NewsBlur that answers every upstream call the shared core
 ([src/shared/bff/](../../src/shared/bff/)) makes. The core turns those answers into the Lire
 contract, as it does in the Worker. The fake keeps read state and folder changes in memory and pages
-stories by `page`.
+stories by `page`. Mock mode also keeps the pending read marks in a memory set and registers no
+background sync, because the fixture state resets on reload and there is no `/api` to retry.
 
 ## Layout
 
