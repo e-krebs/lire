@@ -184,6 +184,7 @@ jobs:
       - run: yarn knip:production
       - run: yarn format:check
       - run: yarn typecheck
+      - run: yarn typecheck:sw
       - run: yarn typecheck:worker
       - run: yarn typecheck:e2e
       - run: yarn typecheck:node

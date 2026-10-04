@@ -7716,6 +7716,9 @@ __metadata:
     vite: "npm:^8.3.1"
     vite-plugin-pwa: "npm:^1.3.0"
     vitest: "npm:4.1.11"
+    workbox-core: "npm:^7.4.1"
+    workbox-precaching: "npm:^7.4.1"
+    workbox-routing: "npm:^7.4.1"
     wrangler: "npm:^4.143.0"
     zod: "npm:^4.5.4"
   languageName: unknown
@@ -10842,7 +10845,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"workbox-core@npm:7.4.1":
+"workbox-core@npm:7.4.1, workbox-core@npm:^7.4.1":
   version: 7.4.1
   resolution: "workbox-core@npm:7.4.1"
   checksum: 10c0/953c3bcec2c04cef44ac779ac6b525f639fade17c594cfa601d7892090da6e18abd3eda22d2d592d8b4df6aa6856c947770f8b960f70c1ac1c989f722d0e7f67
@@ -10880,7 +10883,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"workbox-precaching@npm:7.4.1":
+"workbox-precaching@npm:7.4.1, workbox-precaching@npm:^7.4.1":
   version: 7.4.1
   resolution: "workbox-precaching@npm:7.4.1"
   dependencies:
@@ -10914,7 +10917,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"workbox-routing@npm:7.4.1":
+"workbox-routing@npm:7.4.1, workbox-routing@npm:^7.4.1":
   version: 7.4.1
   resolution: "workbox-routing@npm:7.4.1"
   dependencies:

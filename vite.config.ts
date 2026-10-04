@@ -36,8 +36,11 @@ export default defineConfig({
     viteReact(),
     tailwindcss(),
     VitePWA({
+      strategies: "injectManifest",
+      srcDir: "src/client",
+      filename: "sw.ts",
       registerType: "autoUpdate",
-      devOptions: { enabled: true },
+      devOptions: { enabled: true, type: "module" },
       manifest: {
         name: "Lire",
         short_name: "Lire",
@@ -57,12 +60,7 @@ export default defineConfig({
           },
         ],
       },
-      workbox: {
-        globPatterns: ["**/*.{js,css,html,svg,png,webp,ico,woff2}"],
-        navigateFallback: "/index.html",
-        // The Worker serves /api/auth/login as HTML; the SPA shell must not shadow it.
-        navigateFallbackDenylist: [/^\/api\//],
-      },
+      injectManifest: { globPatterns: ["**/*.{js,css,html,svg,png,webp,ico,woff2}"] },
     }),
   ],
 });

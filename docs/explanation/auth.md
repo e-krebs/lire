@@ -45,7 +45,10 @@ sign-in step while the credentials hold. `GET /api/auth/login`
 ([worker.ts](../../src/server/worker.ts)) runs the same login by hand and redirects to `/`. The
 SPA's `SignIn` screen links to it and appears only when the login fails. A failure answers `400`
 with a short page that links back to `/api/auth/login`. The PWA service worker is told not to
-answer that route (see [architecture.md](architecture.md#pwa)).
+answer that route (see [architecture.md](architecture.md#pwa)). The worker's background sync of
+read marks posts to `/api/entries/read` behind Access with the same cookie as the page. It does
+not follow redirects: an expired Access session answers a cross-origin redirect, which counts as a
+retryable failure, and the ids stay stored for the page to send after a new sign-in.
 
 ### Session storage
 
