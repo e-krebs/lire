@@ -240,8 +240,9 @@ open view does not jump and the unread view refetches when it mounts.
 Updates are prompt-style. A new worker installs and waits. The page learns of it through
 [pwaUpdate.ts](../../src/client/utils/pwaUpdate.ts) and shows `UpdateToast`
 ([UpdateToast.tsx](../../src/client/components/shell/UpdateToast.tsx)) with Reload and Later.
-Reload flushes the read-mark queue, then tells the worker to skip waiting, and the page reloads once
-the new worker controls it. The same toast announces once that the app opens offline. The page asks
+Reload flushes the read-mark queue for at most 2 seconds, then tells the worker to skip waiting, and
+the page reloads once the new worker controls it. The page reloads at once when no worker waits or
+the page has no controller, and 3 seconds after the request when the worker never takes control. The same toast announces once that the app opens offline. The page asks
 for a new worker every hour and whenever the tab becomes visible, because an installed app rarely
 reloads on its own.
 

@@ -68,8 +68,10 @@ precache and the `index.html` navigation fallback with its `/api/` denylist.
 ### Update
 
 The registration moves from `autoUpdate` to `prompt`. A toast says a new version is ready, with
-Reload and Later. Reload flushes the queue first, then applies the update, so no read mark is lost
-to the reload. The worker calls `skipWaiting` only on a `SKIP_WAITING` message and keeps
+Reload and Later. Reload flushes the queue first, waiting at most 2 seconds, then applies the update, so a
+read mark is lost only if the flush stalls past the cap. When no worker waits or the page has no
+controller, `location.reload()` runs at once; otherwise it runs 3 seconds after the request as a
+fallback. The worker calls `skipWaiting` only on a `SKIP_WAITING` message and keeps
 `clientsClaim`, which the plugin needs to reload the page when the worker takes control.
 
 - **Checks.** The page asks for a new worker every hour and when the tab becomes visible, because

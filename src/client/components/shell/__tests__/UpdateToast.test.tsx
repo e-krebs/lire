@@ -49,6 +49,7 @@ describe("UpdateToast", () => {
     });
     vi.useRealTimers();
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   it("stays hidden by default and registers immediately", () => {
@@ -71,6 +72,16 @@ describe("UpdateToast", () => {
     vi.spyOn(markReadQueue, "flush").mockImplementation(async () => {
       await Promise.resolve();
       order.push("flush");
+    });
+    vi.stubGlobal("navigator", {
+      languages: ["en"],
+      serviceWorker: {
+        controller: {},
+        getRegistration: async () => {
+          await Promise.resolve();
+          return { waiting: {} };
+        },
+      },
     });
     const { updateSW, fire } = setup();
     updateSW.mockImplementation(async () => {

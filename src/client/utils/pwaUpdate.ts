@@ -47,10 +47,34 @@ export const dismiss = ({ kind }: { kind: "update" | "offline" }): void => {
   set(kind === "update" ? { updateReady: false } : { offlineReady: false });
 };
 
-export const applyUpdate = async (): Promise<void> => {
+const FLUSH_TIMEOUT_MS = 2000;
+const RELOAD_FALLBACK_MS = 3000;
+
+const flushWithin = async ({ ms }: { ms: number }): Promise<void> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, ms);
+  });
   // Reloading would drop marks still waiting in the batch.
-  await markReadQueue.flush();
-  await updateSW?.(true);
+  await Promise.race([markReadQueue.flush().catch(() => {}), timeout]);
+  clearTimeout(timer);
+};
+
+export const applyUpdate = async (): Promise<void> => {
+  await flushWithin({ ms: FLUSH_TIMEOUT_MS });
+  const registration =
+    "serviceWorker" in navigator
+      ? await navigator.serviceWorker.getRegistration().catch(() => undefined)
+      : undefined;
+  // Without a waiting worker or a controller, vite-plugin-pwa never reloads.
+  if (!updateSW || !registration?.waiting || !navigator.serviceWorker.controller) {
+    window.location.reload();
+    return;
+  }
+  setTimeout(() => {
+    window.location.reload();
+  }, RELOAD_FALLBACK_MS);
+  await updateSW(true);
 };
 
 export const registerPwa = ({ register }: { register: Register }): void => {
