@@ -20,6 +20,7 @@ import {
   keys,
   pageCountFor,
   unreadCountFor,
+  useCounts,
   useDeleteCategoryAndMove,
   useMarkRead,
   useNewsletterAddress,
@@ -57,6 +58,11 @@ const page = (items: Entry[]): InfiniteData<EntryPage> => ({
   pages: [{ items }],
   pageParams: [undefined],
 });
+
+const resolved = async <T,>(value: T): Promise<T> => {
+  await Promise.resolve();
+  return value;
+};
 
 const categoryIdsOf = async (feedId: string): Promise<string[] | undefined> =>
   (await getFeeds()).find((feed) => feed.id === feedId)?.categoryIds;
@@ -160,7 +166,7 @@ describe("queries", () => {
     expect(result.current.data).toBeUndefined();
   });
 
-  it("trims the cache to the first page and invalidates the counts on refresh", async () => {
+  it("trims the cache to the first page and refetches the counts on refresh", async () => {
     const { client, wrapper } = setup();
     const queryKey = keys.stream({ streamKey: techKey });
     const { result } = renderHook(
@@ -174,7 +180,10 @@ describe("queries", () => {
       await result.current.stream.fetchNextPage();
     });
     expect(client.getQueryData<InfiniteData<EntryPage>>(queryKey)?.pages).toHaveLength(2);
+    client.setQueryDefaults(keys.counts, { queryFn: async () => resolved(counts) });
     client.setQueryData<Counts>(keys.counts, { all: 0, feeds: {}, categories: {} });
+    const countsBefore = client.getQueryState(keys.counts)?.dataUpdatedAt ?? 0;
+    await new Promise((resolve) => setTimeout(resolve, 5));
 
     const pending = result.current.refresh(queryKey);
     expect(
@@ -185,7 +194,8 @@ describe("queries", () => {
     const refreshed = client.getQueryData<InfiniteData<EntryPage>>(queryKey);
     expect(refreshed?.pages).toHaveLength(1);
     expect(refreshed?.pageParams).toHaveLength(1);
-    expect(client.getQueryState(keys.counts)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(keys.counts)?.dataUpdatedAt).toBeGreaterThan(countsBefore);
+    expect(client.getQueryData<Counts>(keys.counts)).toEqual(counts);
   });
 
   it("keeps the data timestamp while it trims, so only the refetch advances it", async () => {
@@ -245,7 +255,10 @@ describe("queries", () => {
     client.setQueryData(streamKey, twoPages);
     client.setQueryData(searchKey, page([entry({ id: "s" })]));
     client.setQueryData(keys.entry("a"), entry({ id: "a" }));
-    client.setQueryData(keys.counts, counts);
+    client.setQueryDefaults(keys.counts, { queryFn: async () => resolved(counts) });
+    client.setQueryData(keys.counts, { all: 0, feeds: {}, categories: {} });
+    const countsBefore = client.getQueryState(keys.counts)?.dataUpdatedAt ?? 0;
+    await new Promise((resolve) => setTimeout(resolve, 5));
     let release = () => {};
     const flush = vi.spyOn(markReadQueue, "flush").mockImplementation(async () => {
       await new Promise<void>((resolve) => {
@@ -263,9 +276,83 @@ describe("queries", () => {
     expect(client.getQueryState(streamKey)?.isInvalidated).toBe(true);
     expect(client.getQueryState(searchKey)?.isInvalidated).toBe(true);
     expect(client.getQueryState(keys.entry("a"))?.isInvalidated).toBe(true);
-    expect(client.getQueryState(keys.counts)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(keys.counts)?.dataUpdatedAt).toBeGreaterThan(countsBefore);
     expect(client.getQueryData<InfiniteData<EntryPage>>(streamKey)?.pages).toHaveLength(2);
     flush.mockRestore();
+  });
+
+  describe("when counts and stories refresh together", () => {
+    it.each<["one" | "all", string]>([
+      ["one", "a single list"],
+      ["all", "every list"],
+    ])("holds %s until the counts fetch settles, even when it fails", async (which) => {
+      const { client, wrapper } = setup();
+      const queryKey = keys.stream({ streamKey: techKey });
+      let fail = () => {};
+      client.setQueryDefaults(keys.counts, {
+        queryFn: async () =>
+          new Promise<Counts>((_resolve, reject) => {
+            fail = () => {
+              reject(new Error("counts down"));
+            };
+          }),
+      });
+      const stories = vi.fn<() => Promise<InfiniteData<EntryPage>>>(async () =>
+        Promise.resolve(page([entry({ id: "b" })])),
+      );
+      client.setQueryDefaults(queryKey, { queryFn: stories });
+      client.setQueryData(queryKey, page([entry({ id: "a" })]));
+      client.setQueryData(keys.counts, counts);
+      const { result } = renderHook(
+        () => ({ one: useRefreshEntries(), all: useRefreshAllLists() }),
+        { wrapper },
+      );
+      const storiesBefore = client.getQueryState(queryKey)?.dataUpdatedAt ?? 0;
+      await new Promise((resolve) => setTimeout(resolve, 5));
+
+      const pending = which === "one" ? result.current.one(queryKey) : result.current.all();
+      await waitFor(() => {
+        expect(client.getQueryState(keys.counts)?.fetchStatus).toBe("fetching");
+      });
+      expect(client.getQueryState(queryKey)?.fetchStatus).toBe("idle");
+      expect(client.getQueryState(queryKey)?.isInvalidated).toBe(false);
+      expect(stories).not.toHaveBeenCalled();
+
+      fail();
+      await act(async () => pending);
+      expect(client.getQueryState(keys.counts)?.status).toBe("error");
+      const state = client.getQueryState(queryKey);
+      expect(state?.isInvalidated || (state?.dataUpdatedAt ?? 0) > storiesBefore).toBe(true);
+    });
+
+    it("does not poll the counts or refetch them on a later mount", async () => {
+      vi.useFakeTimers();
+      try {
+        const { client, wrapper } = setup();
+        client.setDefaultOptions({ queries: { retry: false, gcTime: Infinity } });
+        let fetches = 0;
+        client.getQueryCache().subscribe((event) => {
+          if (
+            event.type === "updated" &&
+            event.action.type === "fetch" &&
+            event.query.queryHash === JSON.stringify(keys.counts)
+          )
+            fetches += 1;
+        });
+        client.setQueryData(keys.counts, counts);
+        const first = renderHook(() => useCounts(), { wrapper });
+        await vi.advanceTimersByTimeAsync(5 * 60 * 1000 + 1000);
+        expect(fetches).toBe(0);
+        first.unmount();
+
+        await vi.advanceTimersByTimeAsync(6 * 60 * 1000);
+        renderHook(() => useCounts(), { wrapper });
+        await vi.advanceTimersByTimeAsync(1000);
+        expect(fetches).toBe(0);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 
   it("invalidates the preferences when a category is renamed", async () => {

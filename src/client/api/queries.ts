@@ -117,7 +117,7 @@ export const useCategories = () => useQuery({ queryKey: keys.categories, queryFn
 export const useFeeds = () => useQuery({ queryKey: keys.feeds, queryFn: getFeeds });
 
 export const useCounts = () =>
-  useQuery({ queryKey: keys.counts, queryFn: getCounts, refetchInterval: FIVE_MINUTES_MS });
+  useQuery({ queryKey: keys.counts, queryFn: getCounts, refetchOnMount: false });
 
 const SUN_MARGIN_MS = 30 * 1000;
 
@@ -310,6 +310,19 @@ export const useSearchContents = ({
     enabled: enabled && query.trim().length >= MIN_SEARCH_LENGTH,
   });
 
+// Counts first and awaited: the counts query is often inactive, and parallel NewsBlur calls
+// would let the count move without the list.
+const refreshCountsThenLists = async ({
+  client,
+  refreshLists,
+}: {
+  client: QueryClient;
+  refreshLists: () => Promise<unknown>;
+}): Promise<void> => {
+  await client.refetchQueries({ queryKey: keys.counts, type: "all" });
+  await refreshLists();
+};
+
 // Refresh = the first page again, not every page: the trimmed cache keeps showing the old rows
 // until the new first page lands, then the sentinel reloads the rest on scroll.
 const refreshEntries = async ({
@@ -327,10 +340,10 @@ const refreshEntries = async ({
   );
   // A mark still waiting in the queue would come back unread from the refetch.
   await markReadQueue.flush();
-  await Promise.all([
-    client.refetchQueries({ queryKey, exact: true }),
-    client.invalidateQueries({ queryKey: keys.counts }),
-  ]);
+  await refreshCountsThenLists({
+    client,
+    refreshLists: async () => client.refetchQueries({ queryKey, exact: true }),
+  });
 };
 
 export const useRefreshEntries = () => {
@@ -343,11 +356,15 @@ export const useRefreshAllLists = () => {
   const client = useQueryClient();
   return async (): Promise<void> => {
     await markReadQueue.flush();
-    await Promise.all(
-      [["stream"], ["search"], ["entry"], keys.counts].map(async (queryKey) =>
-        client.invalidateQueries({ queryKey }),
-      ),
-    );
+    await refreshCountsThenLists({
+      client,
+      refreshLists: async () =>
+        Promise.all(
+          [["stream"], ["search"], ["entry"]].map(async (queryKey) =>
+            client.invalidateQueries({ queryKey }),
+          ),
+        ),
+    });
   };
 };
 
