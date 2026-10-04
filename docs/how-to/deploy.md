@@ -62,7 +62,7 @@ env vars set. `yarn deploy:spa` builds with `VITE_API_MODE=real` and runs `yarn 
 uploads.
 
 After a deploy, an open app shows a toast that a new version is ready. Reload applies it, after
-the app sends any read marks still waiting; Later keeps the current version until the next visit or
+the app sends any read marks still waiting (for up to 2 seconds); Later keeps the current version until the next visit or
 until every tab closes. An installed app checks for the new version every hour and when it comes to
 the front. The account menu's Version tells which build runs.
 
