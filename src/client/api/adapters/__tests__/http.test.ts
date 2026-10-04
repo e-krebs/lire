@@ -59,7 +59,7 @@ describe("httpTransport", () => {
     const response = await httpTransport(get);
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ a: 1 });
-    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ redirect: "manual" });
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ redirect: "manual", cache: "no-store" });
     expect(replace).not.toHaveBeenCalled();
   });
 

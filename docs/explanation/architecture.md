@@ -214,6 +214,20 @@ and the Android app. Elsewhere the page flushes on hide and replays stored ids a
 and when the browser goes online. The real build runs all of this; the mock build keeps the ids in
 memory and registers no sync. [0012](../adr/0012-persisted-mark-read-queue.md) records why.
 
+The first list fetch of a session waits for the start replay (`whenReplayed` in
+[markReadQueue.ts](../../src/client/api/markReadQueue.ts)), so marks an earlier session left stored
+reach NewsBlur before the page reads. The wait is capped at 3 seconds, so a slow or stuck replay
+delays the first read but never blocks it. `flush()` also waits for batches already on the wire, so
+a refetch never overtakes a mark.
+
+A device that sat in the background holds stale lists, and nothing refetches on focus: the stale
+time is ten minutes. [useRefreshOnForeground](../../src/client/hooks/useRefreshOnForeground.ts)
+fires when the page returns after more than 60 seconds hidden, and skips a refresh while another
+is still running. `useRefreshAllLists` in
+[queries.ts](../../src/client/api/queries.ts) then flushes the queue and invalidates every stream,
+search and entry cache plus the counts. It keeps loaded pages, unlike pull-to-refresh, which trims
+to page 1. A global `refetchOnWindowFocus` would refetch every list at once.
+
 Updates are prompt-style. A new worker installs and waits. The page learns of it through
 [pwaUpdate.ts](../../src/client/utils/pwaUpdate.ts) and shows `UpdateToast`
 ([UpdateToast.tsx](../../src/client/components/shell/UpdateToast.tsx)) with Reload and Later.

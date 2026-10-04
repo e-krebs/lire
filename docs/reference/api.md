@@ -7,6 +7,9 @@ serves the cached shell for page loads. The routes are the Lire contract in
 [routes.ts](../../src/shared/feedsApi/routes.ts), translated to NewsBlur by the core in
 [src/shared/bff/](../../src/shared/bff/) ([ADR 0009](../adr/0009-newsblur-bff.md)).
 
+Every `/api/` response carries `Cache-Control: no-store`, and the client adapter reads with
+`cache: "no-store"`, so no HTTP cache serves a stale list.
+
 ## Sign-in routes
 
 | Method | Path | Behavior |

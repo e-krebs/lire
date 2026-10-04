@@ -33,7 +33,7 @@ import {
   type EntryOrder,
 } from "client/api/client";
 import { useTier } from "client/hooks/useTier";
-import { markReadQueue } from "client/api/markReadQueue";
+import { markReadQueue, whenReplayed } from "client/api/markReadQueue";
 import { orderCategories, orphansOf } from "client/api/selectors";
 import { CATEGORY_ORDER_KEY } from "shared/feedsApi/preferences";
 import { parseStreamKey, type StreamKey } from "shared/feedsApi/streamKey";
@@ -274,8 +274,10 @@ export const useStream = ({
 }) =>
   useInfiniteQuery({
     queryKey: keys.stream({ streamKey, unreadOnly, order, count }),
-    queryFn: async ({ pageParam }) =>
-      getStreamEntries({ streamKey, unreadOnly, order, count, cursor: pageParam }),
+    queryFn: async ({ pageParam }) => {
+      await whenReplayed;
+      return getStreamEntries({ streamKey, unreadOnly, order, count, cursor: pageParam });
+    },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.cursor,
     enabled,
@@ -299,8 +301,10 @@ export const useSearchContents = ({
 }) =>
   useInfiniteQuery({
     queryKey: keys.search({ streamKey, query, unreadOnly, count }),
-    queryFn: async ({ pageParam }) =>
-      searchEntries({ streamKey, query, unreadOnly, count, cursor: pageParam }),
+    queryFn: async ({ pageParam }) => {
+      await whenReplayed;
+      return searchEntries({ streamKey, query, unreadOnly, count, cursor: pageParam });
+    },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.cursor,
     enabled: enabled && query.trim().length >= MIN_SEARCH_LENGTH,
@@ -330,6 +334,19 @@ const refreshEntries = async ({
 export const useRefreshEntries = () => {
   const client = useQueryClient();
   return async (queryKey: readonly unknown[]) => refreshEntries({ client, queryKey });
+};
+
+// No page trim here, unlike a refresh: the reader keeps the pages and the scroll position.
+export const useRefreshAllLists = () => {
+  const client = useQueryClient();
+  return async (): Promise<void> => {
+    await markReadQueue.flush();
+    await Promise.all(
+      [["stream"], ["search"], ["entry"], keys.counts].map(async (queryKey) =>
+        client.invalidateQueries({ queryKey }),
+      ),
+    );
+  };
 };
 
 const findCachedEntry = ({

@@ -24,6 +24,7 @@ import {
   useMarkRead,
   useNewsletterAddress,
   usePreferences,
+  useRefreshAllLists,
   useRefreshEntries,
   useRenameCategory,
   useReorderCategories,
@@ -211,6 +212,40 @@ describe("queries", () => {
     expect(client.getQueryState(queryKey)?.fetchStatus).toBe("idle");
     release();
     await act(async () => pending);
+    flush.mockRestore();
+  });
+
+  it("flushes, then invalidates every list cache and the counts, keeping every page", async () => {
+    const { client, wrapper } = setup();
+    const streamKey = keys.stream({ streamKey: techKey });
+    const searchKey = keys.search({ streamKey: techKey, query: "ab" });
+    const twoPages = {
+      pages: [{ items: [entry({ id: "a" })] }, { items: [entry({ id: "b" })] }],
+      pageParams: [undefined, "2"],
+    };
+    client.setQueryData(streamKey, twoPages);
+    client.setQueryData(searchKey, page([entry({ id: "s" })]));
+    client.setQueryData(keys.entry("a"), entry({ id: "a" }));
+    client.setQueryData(keys.counts, counts);
+    let release = () => {};
+    const flush = vi.spyOn(markReadQueue, "flush").mockImplementation(async () => {
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    });
+    const { result } = renderHook(() => useRefreshAllLists(), { wrapper });
+
+    const pending = result.current();
+    await Promise.resolve();
+
+    expect(client.getQueryState(streamKey)?.isInvalidated).toBe(false);
+    release();
+    await act(async () => pending);
+    expect(client.getQueryState(streamKey)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(searchKey)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(keys.entry("a"))?.isInvalidated).toBe(true);
+    expect(client.getQueryState(keys.counts)?.isInvalidated).toBe(true);
+    expect(client.getQueryData<InfiniteData<EntryPage>>(streamKey)?.pages).toHaveLength(2);
     flush.mockRestore();
   });
 
