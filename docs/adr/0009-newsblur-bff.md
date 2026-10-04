@@ -6,8 +6,8 @@ Accepted.
 
 ## Context
 
-Feedly blocks Lire's API access. NewsBlur replaces it: an official API, MIT-licensed
-source and $99 a year for the Premium Archive plan. Its API does not look like Feedly's. Ids differ,
+The previous upstream blocks Lire's API access. NewsBlur replaces it: an official API, MIT-licensed
+source and $99 a year for the Premium Archive plan. Its API does not look like the previous upstream's. Ids differ,
 paging is by page number, and many failed writes answer HTTP 200. Forwarding client paths to it would
 spread those quirks through the client.
 

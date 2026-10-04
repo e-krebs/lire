@@ -88,9 +88,8 @@ build, and the SPA and demo deploy scripts run it before they upload (`deploy:st
 ### check-demo-brand
 
 [check-demo-brand.ts](../../scripts/check-demo-brand.ts) runs on the demo build. The demo is
-public, so it fails on any occurrence of the upstream brand name in `dist/`, and, on a machine
-that holds a recording, on the recorded profile id or email. The recording is gitignored, so the
-profile half only applies locally; CI checks the brand half.
+public, so on a machine that holds a recording it fails on the recorded profile id or email in
+`dist/`. The recording is gitignored, so the check only applies locally and checks nothing in CI.
 
 The script takes an optional directory argument and defaults to `dist`. `yarn check:demo
 storybook-static` scans the Storybook build, which is public too: the `storybook` CI job runs it
@@ -128,8 +127,8 @@ reports it reads.
 The `docs-links` job runs the link gate on every run. The `verify` job runs `yarn dedupe --check`, lint, both knip passes, the format
 check, the four typecheck projects, both coverage runs and the export coverage gate. Then it
 builds three times, default, real and demo, and runs the secret gate after each and the demo
-brand gate after the demo build. The `e2e` and `storybook` jobs run the browser tests, and the
-`storybook` job also runs the brand gate on `storybook-static`. The
+gate after the demo build. The `e2e` and `storybook` jobs run the browser tests, and the
+`storybook` job also runs the gate on `storybook-static`. The
 `cloudflare-gate` job runs only on `main` and checks that the Cloudflare secrets exist. The
 `preflight` job then runs `check-access` and `provision-pages`. The deploy jobs for the SPA, demo,
 Storybook and Worker follow once their dependencies pass, and `check-live` runs after all four.

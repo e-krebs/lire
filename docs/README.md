@@ -48,7 +48,7 @@ Architecture decision records sit outside the four quadrants as their own genre 
 - [adr/0003-fixture-mock-mode.md](adr/0003-fixture-mock-mode.md) - Fixture-backed mock mode by default
 - [adr/0004-no-module-mocks.md](adr/0004-no-module-mocks.md) - No module mocks or spies, MSW and
   `page.route` only
-- [adr/0005-gated-builds.md](adr/0005-gated-builds.md) - Real and demo builds pass secret and brand
+- [adr/0005-gated-builds.md](adr/0005-gated-builds.md) - Real and demo builds pass secret and recorded-profile
   gates before deploy
 - [adr/0006-ci-owns-cloudflare-setup.md](adr/0006-ci-owns-cloudflare-setup.md) - CI deploys the Worker
   and owns the Cloudflare setup

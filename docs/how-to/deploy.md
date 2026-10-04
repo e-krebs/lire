@@ -183,7 +183,7 @@ The Worker's fail-closed `403` is covered by the Worker tests.
 
 ## Demo
 
-The demo is the SPA in mock mode on the seed fixtures, with the real brand removed.
+The demo is the SPA in mock mode on the seed fixtures, with no recorded data.
 
 ```sh
 yarn build:demo
@@ -206,9 +206,9 @@ Run it locally on port 6006:
 yarn storybook
 ```
 
-`yarn deploy:storybook` runs `yarn build:storybook`, then the brand gate on the output
+`yarn deploy:storybook` runs `yarn build:storybook`, then the demo gate on the output
 (`yarn check:demo storybook-static`), then uploads `storybook-static`. The gate keeps the public
-Storybook free of recorded data and the upstream brand; the CI `storybook` job runs it too. Check
+Storybook free of recorded data; the CI `storybook` job runs it too. Check
 the result:
 
 ```sh

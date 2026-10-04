@@ -158,8 +158,8 @@ recorded, is in [../reference/fixtures.md](../reference/fixtures.md).
 `yarn build:demo` is a mock build over the seed fixtures with `VITE_DEMO=true`. The root route
 then renders `DemoBanner` and never shows the sign-in screen
 ([\_\_root.tsx](../../src/client/routes/__root.tsx#L32-L34)). The result is a public showcase on
-`demo.lire.krebs.tech`, outside Access. Since it is public, it carries no upstream brand name and
-no recorded profile value; the demo brand gate enforces both.
+`demo.lire.krebs.tech`, outside Access. Since it is public, it carries no recorded profile value;
+the demo gate enforces it on a machine that holds the recording.
 
 The showcase is not read-only. The fixture transport applies writes (mark as read, subscription
 and category edits, preferences) to in-memory state, and nothing in the demo build blocks them.
@@ -175,7 +175,7 @@ Nothing a visitor does reaches an account.
 | Auth | None ([\_\_root.tsx](../../src/client/routes/__root.tsx#L34)) | Cloudflare Access with the owner pin ([auth.md](auth.md)) |
 | Host and visibility | `demo.lire.krebs.tech`, public | `lire.krebs.tech`, private |
 | Pages project | `lire-demo` | `lire` |
-| Build gates | Brand and secrets ([check-demo-brand.ts](../../scripts/check-demo-brand.ts)) | Secrets |
+| Build gates | Recorded profile and secrets ([check-demo-brand.ts](../../scripts/check-demo-brand.ts)) | Secrets |
 
 The host, visibility and Pages project rows are in [deploy.md](../how-to/deploy.md#pages-projects-and-domains).
 
@@ -189,9 +189,9 @@ double as tests: the `storybook` Vitest project runs them in a browser with the 
 `locale` toolbar global switches every story between English and French.
 
 The built Storybook is deployed public at `storybook.lire.krebs.tech`, outside Access. What keeps it
-safe is the brand gate, `yarn check:demo storybook-static`
-([check-demo-brand.ts](../../scripts/check-demo-brand.ts)). It fails on the upstream brand name and,
-on a machine that holds a recording, on the recorded profile id or email. It runs in the `storybook`
+safe is the demo gate, `yarn check:demo storybook-static`
+([check-demo-brand.ts](../../scripts/check-demo-brand.ts)). On a machine that holds a recording, it fails on the
+recorded profile id or email. It runs in the `storybook`
 CI job and in `deploy:storybook` before the upload. The story data comes from the committed seed
 fixtures, which the gate checks rather than assumes.
 

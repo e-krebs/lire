@@ -12,7 +12,7 @@ class_name = "NewsblurAuth"
 tag = "v1"
 new_sqlite_classes = ["FeedlyAuth"]
 
-# The Feedly refresh token FeedlyAuth stored has no use on NewsBlur.
+# The refresh token the previous upstream's auth object stored has no use on NewsBlur.
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["NewsblurAuth"]
