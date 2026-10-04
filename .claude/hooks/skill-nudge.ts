@@ -20,6 +20,7 @@ process.stdin.on("end", () => {
 
   const skills = [];
   if (/\/docs\//.test(path)) skills.push("diataxis-docs");
+  if (/\/art\/empty-state\/|\/assets\/empty\//.test(path)) skills.push("empty-state-art");
 
   if (skills.length === 0) return done();
 

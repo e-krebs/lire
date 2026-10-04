@@ -82,3 +82,6 @@ storybook-static
 
 # Personal work list, kept local
 /BACKLOG.md
+
+# Chrome Headless Shell for art/empty-state/capture.py
+art/empty-state/chrome-headless-shell-mac-arm64/
