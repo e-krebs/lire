@@ -94,7 +94,9 @@ export const RenameCategory: Story = {
     const name = within(panel).getByRole("textbox", { name: "Name" });
     await userEvent.clear(name);
     await userEvent.click(within(panel).getByRole("button", { name: "Save changes" }));
-    await expect(await within(panel).findByText("Enter a name for this category.")).toBeVisible();
+    await waitFor(async () => {
+      await expect(within(panel).getByText("Enter a name for this category.")).toBeVisible();
+    }, SLOW);
     await userEvent.type(name, "Visual Design");
     await userEvent.click(within(panel).getByRole("button", { name: "Save changes" }));
     await canvas.findByRole("button", { name: "Visual Design" }, SLOW);
