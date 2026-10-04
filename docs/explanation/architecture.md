@@ -229,3 +229,13 @@ signed out, or when any query fails with `sign_in_required`. The cache-wide chec
 the upstream revokes mid-session still lands the reader on the sign-in screen, whichever query
 noticed first. Queries never retry a `401` or a `429`
 ([queryClient.ts](../../src/client/api/queryClient.ts#L8-L11)).
+
+### Empty-state art
+
+An empty article list shows one of the "doing nothing" scenes above its text, picked at random when
+the empty state mounts ([MosaicEmptyArt.tsx](../../src/client/components/articles/MosaicGrid/MosaicEmptyArt.tsx)).
+Each scene has a light and a dark WebP in [src/client/assets/empty](../../src/client/assets/empty).
+A `<picture>` element chooses between them with `prefers-color-scheme`, the same signal the theme
+uses, so the switch needs no script. The image is decorative (`alt=""`), because the text below it
+already says the list is empty. The service worker precaches the WebP files with the other built
+assets, so the art also shows offline.

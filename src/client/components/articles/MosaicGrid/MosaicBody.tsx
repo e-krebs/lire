@@ -16,6 +16,7 @@ import { useElementWidth } from "client/hooks/useElementWidth";
 import { usePullToRefresh } from "client/hooks/usePullToRefresh";
 import { useRefreshShortcut } from "client/hooks/useRefreshShortcut";
 import { useTier } from "client/hooks/useTier";
+import { MosaicEmptyArt } from "./MosaicEmptyArt";
 import { MosaicFreshness } from "./MosaicFreshness";
 import { MosaicSentinel } from "./MosaicSentinel";
 import { MosaicSkeleton } from "./MosaicSkeleton";
@@ -231,6 +232,7 @@ export const MosaicBody = ({
             count={placed.length}
           />
           <div className="flex flex-col items-center gap-4 px-4 pt-12 pb-8 text-center text-sm text-faint">
+            <MosaicEmptyArt />
             <p>
               {searchQuery === undefined
                 ? t.articles.nothingToRead

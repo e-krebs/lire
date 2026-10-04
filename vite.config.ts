@@ -58,7 +58,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ["**/*.{js,css,html,svg,png,ico,woff2}"],
+        globPatterns: ["**/*.{js,css,html,svg,png,webp,ico,woff2}"],
         navigateFallback: "/index.html",
         // The Worker serves /api/auth/login as HTML; the SPA shell must not shadow it.
         navigateFallbackDenylist: [/^\/api\//],
