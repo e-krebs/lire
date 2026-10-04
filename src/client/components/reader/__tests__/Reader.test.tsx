@@ -269,7 +269,8 @@ describe("Reader", () => {
 
     it("drops frames from other hosts and unsafe schemes", async () => {
       const frames = await postFrames(
-        '<iframe src="https://player.vimeo.com/video/1"></iframe>' +
+        '<iframe src="https://evil.test/video/1"></iframe>' +
+          '<iframe src="https://vimeo.com/22439234"></iframe>' +
           '<iframe src="https://platform.twitter.com/embed/Tweet.html?id=1"></iframe>' +
           '<iframe src="javascript:alert(1)"></iframe>' +
           '<iframe src="data:text/html,<script>alert(1)</script>"></iframe>' +
@@ -280,6 +281,41 @@ describe("Reader", () => {
       expect(frames.map((frame) => frame.getAttribute("src"))).toEqual([
         "https://www.youtube.com/embed/dQw4w9WgXcQ",
       ]);
+    });
+
+    it("keeps a Vimeo frame, rebuilt with dnt and sandboxed", async () => {
+      const frames = await postFrames(
+        '<iframe src="https://player.vimeo.com/video/22439234?autoplay=1" srcdoc="<b>x</b>"></iframe>',
+      );
+
+      expect(frames).toHaveLength(1);
+      const [frame] = frames;
+      expect(frame).toHaveAttribute("src", "https://player.vimeo.com/video/22439234?dnt=1");
+      expect(frame).toHaveAttribute("data-embed", "vimeo");
+      expect(frame).toHaveAttribute(
+        "sandbox",
+        "allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox",
+      );
+      expect(frame).not.toHaveAttribute("srcdoc");
+    });
+
+    it("turns a Bluesky blockquote into a Bluesky frame", async () => {
+      const frames = await postFrames(
+        '<blockquote class="bluesky-embed" data-bluesky-uri="at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.post/3l6oveex3ii2l"><p>Hello Bluesky</p></blockquote>' +
+          '<script async src="https://embed.bsky.app/static/embed.js"></script>',
+      );
+
+      expect(frames).toHaveLength(1);
+      const [frame] = frames;
+      expect(frame).toHaveAttribute(
+        "src",
+        "https://embed.bsky.app/embed/did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.post/3l6oveex3ii2l",
+      );
+      expect(frame).toHaveAttribute("data-embed", "bluesky");
+      expect(frame).toHaveAttribute(
+        "sandbox",
+        "allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox",
+      );
     });
 
     it("turns an X blockquote into an X frame", async () => {

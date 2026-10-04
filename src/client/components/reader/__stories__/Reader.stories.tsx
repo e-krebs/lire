@@ -167,6 +167,34 @@ export const TweetEmbed: Story = {
   },
 };
 
+export const VimeoEmbed: Story = {
+  args: { entryId: "102:1c4d5e" },
+  parameters: { url: "/stream/all/entry/102:1c4d5e" },
+  play: async ({ canvasElement }) => {
+    const frame = await waitFor(() => {
+      const found = canvasElement.querySelector('iframe[data-embed="vimeo"]');
+      if (!(found instanceof HTMLIFrameElement)) throw new Error("no Vimeo frame yet");
+      return found;
+    }, LOADED);
+    await expect(frame.getAttribute("src")).toContain("player.vimeo.com/video/22439234");
+    await expect(frame.getBoundingClientRect().height).toBeGreaterThan(150);
+  },
+};
+
+export const BlueskyEmbed: Story = {
+  args: { entryId: "102:1d5e6f" },
+  parameters: { url: "/stream/all/entry/102:1d5e6f" },
+  play: async ({ canvasElement }) => {
+    const frame = await waitFor(() => {
+      const found = canvasElement.querySelector('iframe[data-embed="bluesky"]');
+      if (!(found instanceof HTMLIFrameElement)) throw new Error("no Bluesky frame yet");
+      return found;
+    }, LOADED);
+    await expect(frame.getAttribute("src")).toContain("embed.bsky.app/embed/did:plc:");
+    await expect(canvasElement.querySelector("script")).toBeNull();
+  },
+};
+
 export const NotFound: Story = {
   args: { entryId: "missing-entry" },
   play: async ({ canvasElement }) => {

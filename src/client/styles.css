@@ -167,7 +167,7 @@ body {
   outline-offset: -1px;
 }
 /* A frame has no intrinsic ratio, so `height: auto` would leave it at 300 by 150. */
-.prose-reader iframe[data-embed="youtube"] {
+.prose-reader :is(iframe[data-embed="youtube"], iframe[data-embed="vimeo"]) {
   width: 100%;
   aspect-ratio: 16 / 9;
 }
@@ -175,6 +175,11 @@ body {
 .prose-reader iframe[data-embed="x"] {
   width: 100%;
   max-width: 550px;
+  height: 32rem;
+}
+.prose-reader iframe[data-embed="bluesky"] {
+  width: 100%;
+  max-width: 600px;
   height: 32rem;
 }
 .prose-reader pre {

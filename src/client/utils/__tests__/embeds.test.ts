@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import { embedQuotes, iframeEmbed } from "../embeds";
 
 const YOUTUBE = "https://www.youtube.com/embed/dQw4w9WgXcQ";
+const BSKY_URI = "at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.post/3l6oveex3ii2l";
+const BSKY_FRAME =
+  "https://embed.bsky.app/embed/did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.post/3l6oveex3ii2l";
 const TWEET = "https://platform.twitter.com/embed/Tweet.html?id=1234567890&dnt=true";
 
 describe("embeds", () => {
@@ -76,5 +79,57 @@ describe("embeds", () => {
       '<blockquote class="twitter-tweet"><a href="https://twitter.com/jack">Jack</a></blockquote>' +
       '<blockquote><a href="https://twitter.com/jack/status/1">a quote</a></blockquote>';
     expect(embedQuotes({ html })).toBe(html);
+  });
+
+  it("vimeoEmbedUrl rebuilds the player source with dnt and a hex h only", () => {
+    expect(iframeEmbed({ src: "https://player.vimeo.com/video/22439234?autoplay=1" })?.src).toBe(
+      "https://player.vimeo.com/video/22439234?dnt=1",
+    );
+    expect(iframeEmbed({ src: "//player.vimeo.com/video/22439234/?h=0a1b2c&title=0" })?.src).toBe(
+      "https://player.vimeo.com/video/22439234?h=0a1b2c&dnt=1",
+    );
+    expect(iframeEmbed({ src: "https://player.vimeo.com/video/1?h=zz%22%3E" })?.src).toBe(
+      "https://player.vimeo.com/video/1?dnt=1",
+    );
+  });
+
+  it("vimeoEmbedUrl rejects page links, other hosts and non-digit ids", () => {
+    for (const src of [
+      "https://vimeo.com/22439234",
+      "https://player.vimeo.com/video/abc",
+      "https://player.vimeo.com/video/1/2",
+      "https://player.vimeo.com.evil.test/video/1",
+      "https://evil.test/video/1",
+      "javascript:alert(1)",
+    ]) {
+      expect(iframeEmbed({ src })).toBeNull();
+    }
+  });
+
+  it("embedQuotes builds the Bluesky frame from data-bluesky-uri", () => {
+    const html = embedQuotes({
+      html: `<blockquote class="bluesky-embed" data-bluesky-uri="${BSKY_URI}"><p>Hello Bluesky</p></blockquote>`,
+    });
+    const doc = new DOMParser().parseFromString(html, "text/html");
+
+    expect(doc.querySelector("blockquote")).toBeNull();
+    const frame = doc.querySelector("iframe");
+    expect(frame?.getAttribute("src")).toBe(BSKY_FRAME);
+    expect(frame?.getAttribute("data-embed")).toBe("bluesky");
+    expect(frame?.getAttribute("title")).toContain("Hello Bluesky");
+  });
+
+  it("embedQuotes keeps a Bluesky blockquote whose uri is missing or malformed", () => {
+    for (const uri of [
+      null,
+      "at://did:plc:abc/app.bsky.graph.list/3l6oveex3ii2l",
+      "at://did:plc:a/b/app.bsky.feed.post/3l6oveex3ii2l",
+      "at://did:plc:abc/app.bsky.feed.post/3l6/x",
+      "https://bsky.app/profile/bsky.app/post/3l6oveex3ii2l",
+    ]) {
+      const attr = uri === null ? "" : ` data-bluesky-uri="${uri}"`;
+      const html = `<blockquote class="bluesky-embed"${attr}><p>Hi</p></blockquote>`;
+      expect(embedQuotes({ html })).toBe(html);
+    }
   });
 });
