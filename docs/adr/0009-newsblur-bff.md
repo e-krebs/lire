@@ -40,8 +40,10 @@ NewsBlur.
 - **Feed cache.** The Durable Object caches `/reader/feeds` for 5 minutes and drops it on every
   subscription or folder write. A generation counter makes a read that started before a write
   skip its cache set.
-- **Mark read.** The client batches: it flushes at 5 hashes or 10 seconds, and on `pagehide` with
-  `keepalive`. The optimistic cache update stays instant.
+- **Mark read.** The client batches: it flushes at 5 hashes or 10 seconds, and on `pagehide` or
+  when the page is hidden, with `keepalive`. Pending ids are stored and sent again after a failed
+  send or at the next start, see [0012](0012-persisted-mark-read-queue.md). The optimistic cache
+  update stays instant.
 
 ## Consequences
 

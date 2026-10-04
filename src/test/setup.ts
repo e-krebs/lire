@@ -1,7 +1,9 @@
+import "fake-indexeddb/auto";
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, vi } from "vitest";
 import { markReadQueue } from "client/api/markReadQueue";
+import { markReadStore } from "client/api/markReadStore";
 import { setLocalePreference } from "client/i18n/locale";
 import { setViewPrefs } from "client/utils/viewPrefs";
 import { server } from "./msw";
@@ -31,14 +33,18 @@ beforeAll(() => {
   server.listen({ onUnhandledRequest: "error" });
 });
 
-afterEach(() => {
+afterEach(async () => {
   // Files share one module graph, so a read mark still batched must not flush into a later test.
   markReadQueue.reset();
+  await markReadStore.reset();
   server.resetHandlers();
   server.events.removeAllListeners();
   cleanup();
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  for (const { name } of await indexedDB.databases()) {
+    if (name) indexedDB.deleteDatabase(name);
+  }
   vi.unstubAllEnvs();
   restorePrototypes();
   if (localStorageDescriptor) Object.defineProperty(window, "localStorage", localStorageDescriptor);

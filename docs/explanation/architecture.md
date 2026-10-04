@@ -163,7 +163,7 @@ the demo gate enforces it on a machine that holds the recording.
 
 The showcase is not read-only. The fixture transport applies writes (mark as read, subscription
 and category edits, preferences) to in-memory state, and nothing in the demo build blocks them.
-A reload restores the seed, except the preferences bucket, which persists in `localStorage`; the
+A reload restores the seed, including pending read marks, which a mock build keeps in memory only. The preferences bucket persists in `localStorage`; the
 banner's Reset button clears both ([DemoBanner.tsx](../../src/client/components/shell/DemoBanner.tsx)).
 Nothing a visitor does reaches an account.
 

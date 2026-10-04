@@ -179,7 +179,7 @@ describe("MosaicGrid", () => {
     server.use(
       http.post("/api/entries/read", async () => {
         await held;
-        return HttpResponse.json({ error: "boom" }, { status: 500 });
+        return HttpResponse.json({ error: "boom" }, { status: 400 });
       }),
     );
     resetFixtureState();

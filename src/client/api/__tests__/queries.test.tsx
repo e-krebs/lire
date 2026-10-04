@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, onlineManager } from "@tanstack/react-query";
 import type { InfiniteData } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { http, HttpResponse } from "msw";
@@ -13,6 +13,7 @@ import { seedCategories, seedCategoryId, seedCategoryKey } from "test/seedCatego
 import { DEMO_NEWSLETTER_ADDRESS, resetFixtureState } from "../adapters/fixture";
 import { getFeeds } from "../client";
 import { markReadQueue } from "../markReadQueue";
+import { markReadStore } from "../markReadStore";
 import {
   DeleteAndMoveError,
   flattenStream,
@@ -297,7 +298,7 @@ describe("queries", () => {
       http.post("/api/entries/read", async () => {
         if (posts++ === 0) {
           await held;
-          return HttpResponse.json({ error: "boom" }, { status: 500 });
+          return HttpResponse.json({ error: "boom" }, { status: 400 });
         }
         return new HttpResponse(null, { status: 204 });
       }),
@@ -341,12 +342,144 @@ describe("queries", () => {
     act(() => {
       result.current.mutate({ entryIds: ["101:a"], read: true });
     });
+    await vi.waitFor(async () => {
+      expect(await markReadStore.all()).toContain("101:a");
+    });
     await act(async () => {
       await result.current.mutateAsync({ entryIds: ["101:a"], read: false });
       await markReadQueue.flush();
     });
 
     expect(reads).toEqual([]);
+  });
+
+  it("removes the stored id before it calls markUnread", async () => {
+    const { client, wrapper } = setup();
+    vi.stubEnv("VITE_API_MODE", "real");
+    client.setQueryData(keys.stream({ streamKey: techKey }), page([entry({ id: "101:a" })]));
+    await markReadStore.add(["101:a"]);
+    let storedAtUnread: string[] | undefined;
+    server.use(
+      http.post("/api/entries/unread", async () => {
+        storedAtUnread = await markReadStore.all();
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const { result } = renderHook(() => useMarkRead(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ entryIds: ["101:a"], read: false });
+    });
+
+    expect(storedAtUnread).toEqual([]);
+  });
+
+  it("stores a read marked while the network is offline", async () => {
+    const { client, wrapper } = setup();
+    vi.stubEnv("VITE_API_MODE", "real");
+    const streamKey = keys.stream({ streamKey: techKey });
+    client.setQueryData(streamKey, page([entry({ id: "101:a" })]));
+    onlineManager.setOnline(false);
+    const { result } = renderHook(() => useMarkRead(), { wrapper });
+
+    try {
+      act(() => {
+        result.current.mutate({ entryIds: ["101:a"], read: true });
+      });
+      await vi.waitFor(async () => {
+        expect(await markReadStore.all()).toContain("101:a");
+      });
+      expect(flattenStream(client.getQueryData(streamKey))[0]?.unread).toBe(false);
+    } finally {
+      onlineManager.setOnline(true);
+    }
+  });
+
+  it("sends an unread marked offline once the network is back, without a rollback", async () => {
+    const { client, wrapper } = setup();
+    vi.stubEnv("VITE_API_MODE", "real");
+    const streamKey = keys.stream({ streamKey: techKey });
+    client.setQueryData(streamKey, page([{ ...entry({ id: "101:a" }), unread: false }]));
+    const unreads: unknown[] = [];
+    server.use(
+      http.post("/api/entries/unread", async ({ request }) => {
+        unreads.push(await request.json());
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    onlineManager.setOnline(false);
+    const { result } = renderHook(() => useMarkRead(), { wrapper });
+
+    try {
+      act(() => {
+        result.current.mutate({ entryIds: ["101:a"], read: false });
+      });
+      await vi.waitFor(() => {
+        expect(flattenStream(client.getQueryData(streamKey))[0]?.unread).toBe(true);
+      });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(unreads).toEqual([]);
+
+      await act(async () => {
+        onlineManager.setOnline(true);
+        await vi.waitFor(() => {
+          expect(unreads).toHaveLength(1);
+        });
+      });
+      await vi.waitFor(() => {
+        expect(result.current.isSuccess).toBe(true);
+      });
+      expect(flattenStream(client.getQueryData(streamKey))[0]?.unread).toBe(true);
+    } finally {
+      onlineManager.setOnline(true);
+    }
+  });
+
+  it("keeps an optimistic read when the send fails with a retryable status", async () => {
+    const { client, wrapper } = setup();
+    vi.stubEnv("VITE_API_MODE", "real");
+    const streamKey = keys.stream({ streamKey: techKey });
+    client.setQueryData(streamKey, page([entry({ id: "101:a" })]));
+    server.use(
+      http.post("/api/entries/read", () => HttpResponse.json({ error: "down" }, { status: 503 })),
+    );
+    const { result } = renderHook(() => useMarkRead(), { wrapper });
+
+    await act(async () => {
+      const settled = result.current.mutateAsync({ entryIds: ["101:a"], read: true });
+      await vi.waitFor(async () => {
+        expect(await markReadStore.all()).toContain("101:a");
+      });
+      await markReadQueue.flush();
+      await settled;
+    });
+
+    expect(flattenStream(client.getQueryData(streamKey))[0]?.unread).toBe(false);
+    expect(await markReadStore.all()).toEqual(["101:a"]);
+  });
+
+  it("rolls the entry back to unread when the read is dropped", async () => {
+    const { client, wrapper } = setup();
+    vi.stubEnv("VITE_API_MODE", "real");
+    const streamKey = keys.stream({ streamKey: techKey });
+    client.setQueryData(streamKey, page([entry({ id: "101:a" })]));
+    server.use(
+      http.post("/api/entries/read", () => HttpResponse.json({ error: "bad" }, { status: 400 })),
+    );
+    const { result } = renderHook(() => useMarkRead(), { wrapper });
+
+    await act(async () => {
+      const settled = result.current.mutateAsync({ entryIds: ["101:a"], read: true });
+      const outcome = settled.catch(() => {});
+      await vi.waitFor(async () => {
+        expect(await markReadStore.all()).toContain("101:a");
+      });
+      await markReadQueue.flush();
+      await outcome;
+    });
+
+    expect(flattenStream(client.getQueryData(streamKey))[0]?.unread).toBe(true);
+    expect(await markReadStore.all()).toEqual([]);
   });
 
   it("saves a feed's title and categories in one PATCH", async () => {
@@ -522,7 +655,7 @@ describe("queries", () => {
           const index = posts.push(patch) - 1;
           if (index === 0) await held;
           if (outcomes[index] === "fail")
-            return HttpResponse.json({ error: "boom" }, { status: 500 });
+            return HttpResponse.json({ error: "boom" }, { status: 400 });
           for (const [key, value] of Object.entries(patch))
             if (value !== null) store = { ...store, [key]: value };
           return new HttpResponse(null, { status: 204 });
