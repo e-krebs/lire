@@ -12,7 +12,9 @@ declare const self: ServiceWorkerGlobalScope;
 
 precacheAndRoute(self.__WB_MANIFEST);
 cleanupOutdatedCaches();
-self.skipWaiting();
+self.addEventListener("message", (event) => {
+  if ((event.data as { type?: string } | null)?.type === "SKIP_WAITING") void self.skipWaiting();
+});
 // Load-bearing: without it the first install leaves open tabs uncontrolled until reload.
 clientsClaim();
 

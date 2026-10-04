@@ -214,6 +214,14 @@ and the Android app. Elsewhere the page flushes on hide and replays stored ids a
 and when the browser goes online. The real build runs all of this; the mock build keeps the ids in
 memory and registers no sync. [0012](../adr/0012-persisted-mark-read-queue.md) records why.
 
+Updates are prompt-style. A new worker installs and waits. The page learns of it through
+[pwaUpdate.ts](../../src/client/utils/pwaUpdate.ts) and shows `UpdateToast`
+([UpdateToast.tsx](../../src/client/components/shell/UpdateToast.tsx)) with Reload and Later.
+Reload flushes the read-mark queue, then tells the worker to skip waiting, and the page reloads once
+the new worker controls it. The same toast announces once that the app opens offline. The page asks
+for a new worker every hour and whenever the tab becomes visible, because an installed app rarely
+reloads on its own.
+
 The build bakes the short git commit into `VITE_APP_VERSION`
 ([vite.config.ts](../../vite.config.ts)), and the account menu shows it as Version. After a deploy, it
 tells the reader whether the installed app runs the new service worker.

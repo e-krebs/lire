@@ -39,7 +39,7 @@ export default defineConfig({
       strategies: "injectManifest",
       srcDir: "src/client",
       filename: "sw.ts",
-      registerType: "autoUpdate",
+      registerType: "prompt",
       devOptions: { enabled: true, type: "module" },
       manifest: {
         name: "Lire",

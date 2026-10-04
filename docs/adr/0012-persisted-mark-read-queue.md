@@ -1,4 +1,4 @@
-# 0012. Persist read marks and send them from the service worker
+# 0012. Persist read marks, send them from the service worker, and prompt for updates
 
 ## Status
 
@@ -8,13 +8,14 @@ Accepted.
 
 NewsBlur asks clients to batch read marks, so Lire holds them for up to 10 seconds or 5 ids. A tab
 closed in that window, or a send that fails, lost the marks, and the next sync showed the entries
-as unread.
+as unread. The PWA also updated itself silently: a new version took over on the next load without
+telling the reader, and a reload could drop marks still waiting in the batch.
 
 No earlier ADR names the service worker generator, so this decision reverses none of them.
 
 ## Decision
 
-The decision has two parts: the queue and the worker.
+The decision has three parts: the queue, the worker and the update flow.
 
 ### Queue
 
@@ -64,6 +65,19 @@ precache and the `index.html` navigation fallback with its `/api/` denylist.
   `e2e/pwa.spec.ts` runs a mock build, and a real-mode worker project is heavy. The sync path is
   checked by hand.
 
+### Update
+
+The registration moves from `autoUpdate` to `prompt`. A toast says a new version is ready, with
+Reload and Later. Reload flushes the queue first, then applies the update, so no read mark is lost
+to the reload. The worker calls `skipWaiting` only on a `SKIP_WAITING` message and keeps
+`clientsClaim`, which the plugin needs to reload the page when the worker takes control.
+
+- **Checks.** The page asks for a new worker every hour and when the tab becomes visible, because
+  installed PWAs and the Android app rarely reload on their own.
+- **Offline-ready.** A dismissible notice shows once when the precache is complete.
+- **Transition.** A page that still runs the earlier auto-update code never prompts, and the new
+  worker waits until every tab closes.
+
 ## Consequences
 
 - A read mark survives a closed tab, a failed send and a crash, for up to 24 hours.
@@ -73,4 +87,5 @@ precache and the `index.html` navigation fallback with its `/api/` denylist.
   it until delivery.
 - Firefox and Safari lose marks only when the page cannot flush, and recover them at the next start.
 - The service worker is code to maintain and typecheck (`yarn typecheck:sw`), not generated.
+- A reader on an old tab sees the update only on Reload or when every tab closes.
 - Detail: [architecture](../explanation/architecture.md#pwa).

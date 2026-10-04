@@ -13,6 +13,9 @@ push to `main` that touches what each one ships or depends on. A manual run depl
 | Worker | `yarn worker:deploy` | CI, push to `main` with `worker` changes, or a manual run | `lire-api` |
 | Android app | `./gradlew assembleRelease` in `android/` | CI, push to `main` that touches `android/`, or a manual run | A GitHub Release |
 
+The first upgrade from the old auto-updating service worker waits until every tab or the Android
+app closes. From then on, the update prompt flow works.
+
 ## Change-based deploys
 
 The `changes` job in [ci.yml](../../.github/workflows/ci.yml) lists the files a push touched and
@@ -57,6 +60,11 @@ files changed. `e2e` also skips then, and runs on `app`, `worker` and `tooling` 
 `yarn check:access`, `yarn provision:pages` and `yarn check:live` also run locally with the same
 env vars set. `yarn deploy:spa` builds with `VITE_API_MODE=real` and runs `yarn check:secrets` before it
 uploads.
+
+After a deploy, an open app shows a toast that a new version is ready. Reload applies it, after
+the app sends any read marks still waiting; Later keeps the current version until the next visit or
+until every tab closes. An installed app checks for the new version every hour and when it comes to
+the front. The account menu's Version tells which build runs.
 
 ## Secrets and variables
 

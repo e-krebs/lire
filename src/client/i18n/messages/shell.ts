@@ -28,6 +28,11 @@ export const en = {
   skipToContent: "Skip to content",
   resizeArticlePanel: "Resize the article panel",
   uncategorized: "Uncategorized",
+  updateReady: "A new version is ready.",
+  reload: "Reload",
+  later: "Later",
+  offlineReady: "Lire now opens offline.",
+  dismiss: "Dismiss",
 } as const;
 
 export const fr = {
@@ -58,4 +63,9 @@ export const fr = {
   skipToContent: "Aller au contenu",
   resizeArticlePanel: "Redimensionner le panneau de l'article",
   uncategorized: "Sans catégorie",
+  updateReady: "Une nouvelle version est prête.",
+  reload: "Recharger",
+  later: "Plus tard",
+  offlineReady: "Lire s'ouvre maintenant hors ligne.",
+  dismiss: "Fermer",
 } satisfies Messages<typeof en>;
