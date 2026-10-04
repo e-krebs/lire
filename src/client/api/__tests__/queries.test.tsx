@@ -407,6 +407,68 @@ describe("queries", () => {
     expect(reads).toEqual([]);
   });
 
+  it("marks unread-only lists stale on mark-unread, refetching them on the next mount", async () => {
+    const { client, wrapper } = setup();
+    client.setDefaultOptions({ queries: { retry: false, staleTime: Infinity } });
+    const key = keys.stream({ streamKey: "all", unreadOnly: true });
+    let fetches = 0;
+    client.getQueryCache().subscribe((event) => {
+      if (event.type === "updated" && event.action.type === "fetch") fetches += 1;
+    });
+    const list = renderHook(() => useStream({ streamKey: "all", unreadOnly: true }), { wrapper });
+    await waitFor(() => {
+      expect(list.result.current.isSuccess).toBe(true);
+    });
+    const { result } = renderHook(() => useMarkRead(), { wrapper });
+    const fetchesBefore = fetches;
+    const entryId = flattenStream(list.result.current.data)[0]?.id ?? "";
+
+    await act(async () => {
+      await result.current.mutateAsync({ entryIds: [entryId], read: false });
+    });
+
+    expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+    expect(fetches).toBe(fetchesBefore);
+
+    list.unmount();
+    renderHook(() => useStream({ streamKey: "all", unreadOnly: true }), { wrapper });
+    await waitFor(() => {
+      expect(client.getQueryState(key)?.isInvalidated).toBe(false);
+    });
+    expect(fetches).toBe(fetchesBefore + 1);
+  });
+
+  it("keeps an unread-only list stale across a later optimistic mark", async () => {
+    const { client, wrapper } = setup();
+    client.setDefaultOptions({ queries: { retry: false, staleTime: Infinity } });
+    const key = keys.stream({ streamKey: "all", unreadOnly: true });
+    const list = renderHook(() => useStream({ streamKey: "all", unreadOnly: true }), { wrapper });
+    await waitFor(() => {
+      expect(list.result.current.isSuccess).toBe(true);
+    });
+    const [first, second] = flattenStream(list.result.current.data);
+    const { result } = renderHook(() => useMarkRead(), { wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync({ entryIds: [first.id], read: false });
+    });
+    act(() => {
+      result.current.mutate({ entryIds: [second.id], read: true });
+    });
+    await waitFor(() => {
+      expect(flattenStream(client.getQueryData(key)).find((e) => e.id === second.id)?.unread).toBe(
+        false,
+      );
+    });
+    expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+
+    list.unmount();
+    renderHook(() => useStream({ streamKey: "all", unreadOnly: true }), { wrapper });
+    await waitFor(() => {
+      expect(client.getQueryState(key)?.isInvalidated).toBe(false);
+    });
+  });
+
   it("removes the stored id before it calls markUnread", async () => {
     const { client, wrapper } = setup();
     vi.stubEnv("VITE_API_MODE", "real");

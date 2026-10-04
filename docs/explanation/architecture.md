@@ -231,6 +231,9 @@ is still running. `useRefreshAllLists` in
 search and entry cache plus the counts. It keeps loaded pages, unlike pull-to-refresh, which trims
 to page 1. A global `refetchOnWindowFocus` would refetch every list at once.
 
+Marking an entry unread marks the unread-only stream and search lists stale without refetching
+them, so the open view does not jump and the unread view refetches when it mounts.
+
 Updates are prompt-style. A new worker installs and waits. The page learns of it through
 [pwaUpdate.ts](../../src/client/utils/pwaUpdate.ts) and shows `UpdateToast`
 ([UpdateToast.tsx](../../src/client/components/shell/UpdateToast.tsx)) with Reload and Later.
