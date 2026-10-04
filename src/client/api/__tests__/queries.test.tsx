@@ -188,6 +188,25 @@ describe("queries", () => {
     expect(client.getQueryState(keys.counts)?.isInvalidated).toBe(true);
   });
 
+  it("keeps the data timestamp while it trims, so only the refetch advances it", async () => {
+    const { client, wrapper } = setup();
+    const queryKey = keys.stream({ streamKey: techKey });
+    const { result } = renderHook(
+      () => ({ stream: useStream({ streamKey: techKey }), refresh: useRefreshEntries() }),
+      { wrapper },
+    );
+    await waitFor(() => {
+      expect(result.current.stream.isSuccess).toBe(true);
+    });
+    const before = client.getQueryState(queryKey)?.dataUpdatedAt;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    const pending = result.current.refresh(queryKey);
+    expect(client.getQueryState(queryKey)?.dataUpdatedAt).toBe(before);
+    await act(async () => pending);
+    expect(client.getQueryState(queryKey)?.dataUpdatedAt).toBeGreaterThan(before ?? 0);
+  });
+
   it("flushes the queued read marks before it refetches", async () => {
     const { client, wrapper } = setup();
     const queryKey = keys.stream({ streamKey: techKey });

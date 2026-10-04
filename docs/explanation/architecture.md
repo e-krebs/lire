@@ -267,7 +267,7 @@ noticed first. Queries never retry a `401` or a `429`
 ### Empty-state art
 
 An empty article list shows one of the "doing nothing" scenes above its text, picked at random when
-the empty state mounts ([MosaicEmptyArt.tsx](../../src/client/components/articles/MosaicGrid/MosaicEmptyArt.tsx)).
+the empty state mounts and again each time a refresh lands, never the same scene twice in a row ([MosaicEmptyArt.tsx](../../src/client/components/articles/MosaicGrid/MosaicEmptyArt.tsx)).
 Each scene has a day and a dusk WebP (`-light` and `-dark`) in [src/client/assets/empty](../../src/client/assets/empty).
 The phase comes from the sun: the client asks `GET /api/sun` for its time zone
 ([api.md](../reference/api.md)) and refetches when `nextChangeAt` passes, so the image swaps live

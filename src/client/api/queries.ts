@@ -319,9 +319,11 @@ const refreshEntries = async ({
   client: QueryClient;
   queryKey: readonly unknown[];
 }): Promise<void> => {
+  // Keeps the old timestamp: only the refetch landing may advance it.
   client.setQueryData<InfiniteData<EntryPage>>(
     queryKey,
     (data) => data && { pages: data.pages.slice(0, 1), pageParams: data.pageParams.slice(0, 1) },
+    { updatedAt: client.getQueryState(queryKey)?.dataUpdatedAt },
   );
   // A mark still waiting in the queue would come back unread from the refetch.
   await markReadQueue.flush();

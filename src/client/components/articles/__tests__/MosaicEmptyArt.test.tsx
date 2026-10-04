@@ -23,6 +23,15 @@ const element = (phase: "day" | "dusk") => (
   </QueryClientProvider>
 );
 
+const picking = ({ refreshedAt }: { refreshedAt: number }) => (
+  <QueryClientProvider client={new QueryClient()}>
+    <MosaicEmptyArt phase="day" refreshedAt={refreshedAt} />
+  </QueryClientProvider>
+);
+
+const sceneOf = (view: RenderResult) =>
+  view.container.querySelector("img")?.getAttribute("src")?.split("/").pop()?.split("-light")[0];
+
 describe("MosaicEmptyArt", () => {
   it("labels the button with the scene it would show", () => {
     const view = render(element("day"));
@@ -58,5 +67,14 @@ describe("MosaicEmptyArt", () => {
     view.rerender(element("day"));
     expect(ui.labelled(view, "Show the dusk scene")).toBeInTheDocument();
     expect(ui.hiddenSrc(view)).toContain("cat-dark");
+  });
+
+  it("picks another scene when a refresh lands, and keeps it on an unrelated re-render", () => {
+    const view = render(picking({ refreshedAt: 1 }));
+    const first = sceneOf(view);
+    view.rerender(picking({ refreshedAt: 1 }));
+    expect(sceneOf(view)).toBe(first);
+    view.rerender(picking({ refreshedAt: 2 }));
+    expect(sceneOf(view)).not.toBe(first);
   });
 });

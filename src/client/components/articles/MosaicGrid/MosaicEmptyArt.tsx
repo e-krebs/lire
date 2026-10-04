@@ -17,15 +17,31 @@ const src = ({ scene, phase }: { scene: EmptyScene; phase: Phase }): string =>
 const imageClassName =
   "col-start-1 row-start-1 h-auto w-80 max-w-full motion-safe:transition-opacity motion-safe:duration-300";
 
+const pickScene = ({ not }: { not?: EmptyScene }): EmptyScene => {
+  const pool = EMPTY_SCENES.filter((scene) => scene !== not);
+  return pool[Math.floor(Math.random() * pool.length)] ?? EMPTY_SCENES[0];
+};
+
 interface MosaicEmptyArtProps {
   scene?: EmptyScene;
   phase?: Phase;
+  // A new value means a refresh landed, so the scene changes.
+  refreshedAt?: number;
 }
 
-export function MosaicEmptyArt({ scene: sceneProp, phase: phaseProp }: MosaicEmptyArtProps) {
+export function MosaicEmptyArt({
+  scene: sceneProp,
+  phase: phaseProp,
+  refreshedAt,
+}: MosaicEmptyArtProps) {
   const t = useT().articles;
-  // Picked once per mount, so a re-render does not swap the scene.
-  const [picked] = useState(() => EMPTY_SCENES[Math.floor(Math.random() * EMPTY_SCENES.length)]);
+  // Picked on mount and on each refresh, so an unrelated re-render does not swap the scene.
+  const [picked, setPicked] = useState(() => pickScene({}));
+  const [seenRefresh, setSeenRefresh] = useState(refreshedAt);
+  if (seenRefresh !== refreshedAt) {
+    setSeenRefresh(refreshedAt);
+    setPicked(pickScene({ not: picked }));
+  }
   const scene = sceneProp ?? picked;
   const sunPhase = useSunPhase();
   const scheme = useColorScheme();
