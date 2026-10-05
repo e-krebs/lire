@@ -58,7 +58,7 @@ describe("fixtureTransport", () => {
     expect(new Set(tech.items.map((item) => item.feedId))).toEqual(new Set(["101", "102", "103"]));
   });
 
-  it("pages a stream through the cursor until an empty page", async () => {
+  it("pages a stream through the cursor until a short page", async () => {
     const first = await entries("folder:Tech", { count: 10 });
     expect(first.items).toHaveLength(10);
     expect(first.cursor).toBeDefined();
@@ -68,9 +68,7 @@ describe("fixtureTransport", () => {
 
     const third = await entries("folder:Tech", { count: 10, cursor: second.cursor });
     expect(third.items).toHaveLength(2);
-
-    const fourth = await entries("folder:Tech", { count: 10, cursor: third.cursor });
-    expect(fourth).toEqual({ items: [] });
+    expect(third.cursor).toBeUndefined();
   });
 
   it("drops a read entry from its feed, folder and global counts", async () => {

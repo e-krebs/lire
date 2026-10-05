@@ -5,6 +5,7 @@ import { FeedsAnswerSchema } from "../upstream";
 import { FEEDS_ANSWER, fakeUpstream, memoryCache, send, story } from "test/bffHarness";
 
 const feedsReply = { "GET /reader/feeds": FEEDS_ANSWER };
+const fullPage = (size: number) => Array.from({ length: size }, () => story());
 
 describe("handle reads", () => {
   it("answers the auth status as signed in", async () => {
@@ -144,7 +145,6 @@ describe("handle reads", () => {
               unread: true,
             },
           ],
-          cursor: encodeCursor({ page: 2 }),
         },
       });
       expect(upstream.calls[0].query).toEqual({
@@ -156,7 +156,7 @@ describe("handle reads", () => {
     });
 
     it("chains upstream pages of 6 for a feed when count is larger", async () => {
-      const upstream = fakeUpstream({ "GET /reader/feed/1": stories });
+      const upstream = fakeUpstream({ "GET /reader/feed/1": { stories: fullPage(6) } });
       const first = await send({ url: "/api/streams/feed%3A1/entries?count=12", upstream });
       expect(upstream.calls.map((call) => call.query?.page)).toEqual(["1", "2"]);
       expect(first.body).toMatchObject({ cursor: encodeCursor({ page: 2 }) });
@@ -167,6 +167,23 @@ describe("handle reads", () => {
       expect(upstream.calls.map((call) => call.query?.page)).toEqual(["1", "2", "3", "4"]);
       expect(second.body).toMatchObject({ cursor: encodeCursor({ page: 3 }) });
     });
+
+    it.each([
+      { label: "a feed", url: "feed%3A1", path: "GET /reader/feed/1", size: 6 },
+      { label: "a river", url: "all", path: "POST /reader/river_stories", size: 12 },
+    ])(
+      "ends $label on a page shorter than its size, with no count",
+      async ({ url, path, size }) => {
+        const full = fakeUpstream({ ...feedsReply, [path]: { stories: fullPage(size) } });
+        expect(
+          (await send({ url: `/api/streams/${url}/entries`, upstream: full })).body,
+        ).toHaveProperty("cursor");
+        const short = fakeUpstream({ ...feedsReply, [path]: { stories: fullPage(size - 1) } });
+        expect(
+          (await send({ url: `/api/streams/${url}/entries`, upstream: short })).body,
+        ).not.toHaveProperty("cursor");
+      },
+    );
 
     it("issues one upstream request for a feed without count", async () => {
       const upstream = fakeUpstream({ "GET /reader/feed/1": stories });
