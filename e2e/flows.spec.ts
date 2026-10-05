@@ -30,6 +30,9 @@ const ui = (page: Page) => ({
   get accountMenu() {
     return page.getByRole("group", { name: "Account and app info" });
   },
+  get tooltip() {
+    return page.getByRole("tooltip");
+  },
   get manageSubscriptionsLink() {
     return page.getByRole("link", { name: "Manage subscriptions" });
   },
@@ -246,6 +249,29 @@ test.describe("flows", () => {
     await pageUi.accountMenu.getByRole("link", { name: "Manage subscriptions" }).click();
     await expect(page).toHaveURL(/\/subscriptions/);
     await expect(pageUi.accountMenu).toBeHidden();
+  });
+
+  test.describe("when the account menu opens while its tooltip shows", () => {
+    test.describe.configure({ retries: 0 });
+
+    test("hangs off the cog, not the top-left", async ({ page }) => {
+      const pageUi = ui(page);
+      await page.goto("/");
+      await pageUi.accountMenuTrigger.hover();
+      await expect(pageUi.tooltip).toBeVisible();
+      await pageUi.accountMenuTrigger.click();
+      // Read at once: the misplaced box holds only while the tooltip's anchor-name overrides the
+      // cog's, then the menu moves.
+      const [menu, trigger] = await Promise.all([
+        pageUi.accountMenu.boundingBox(),
+        pageUi.accountMenuTrigger.boundingBox(),
+      ]);
+      if (!menu || !trigger) throw new Error("Menu or trigger has no box");
+      expect(menu.y).toBeGreaterThanOrEqual(trigger.y + trigger.height);
+      expect(Math.round(menu.x + menu.width)).toBeLessThanOrEqual(
+        Math.round(trigger.x + trigger.width),
+      );
+    });
   });
 
   test("Escape closes the account menu once focus is inside it", async ({ page }) => {

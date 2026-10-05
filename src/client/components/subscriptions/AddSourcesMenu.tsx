@@ -33,7 +33,6 @@ export const AddSourcesMenu = ({
 }: AddSourcesMenuProps) => {
   const t = useT().subscriptions;
   const id = useId();
-  const anchorName = `--add-sources-${id.replaceAll(":", "")}`;
   const popoverRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
@@ -92,7 +91,6 @@ export const AddSourcesMenu = ({
             event.stopPropagation();
           }
         }}
-        style={{ anchorName }}
         className={className}
       >
         {t.addSources}
@@ -107,7 +105,6 @@ export const AddSourcesMenu = ({
             popover="auto"
             role="group"
             aria-label={t.addSourcesGroup}
-            style={{ positionAnchor: anchorName }}
             onToggle={(event) => {
               const isOpen = event.newState === "open";
               if (isOpen) pickedRef.current = false;

@@ -341,12 +341,14 @@ body {
 }
 
 /* The account menu hangs off the cog: anchor positioning where the browser has it, a fixed
-   right-aligned panel under the bar where it does not. */
+   right-aligned panel under the bar where it does not. `position-anchor: auto` is the popover's
+   invoker, so no trigger holds a named anchor: TooltipLayer sets `anchor-name: --tip` inline on
+   the hovered trigger, which overrode a named one and dropped the menu at the top-left. */
 .account-menu {
   position: fixed;
   inset: auto;
   margin: 0.25rem 0 0;
-  position-anchor: --account;
+  position-anchor: auto;
   top: anchor(bottom);
   right: anchor(right);
 }
@@ -366,13 +368,14 @@ body {
   }
 }
 
-/* The add-sources menu hangs off its trigger: each instance sets its own anchor name inline.
-   Without anchor positioning the browser centres the popover. */
+/* The add-sources menu hangs off its invoker, as the account menu does. Without anchor
+   positioning the browser centres the popover. */
 @supports (anchor-name: --a) {
   .add-sources-menu {
     position: fixed;
     inset: auto;
     margin: 0.25rem 0 0;
+    position-anchor: auto;
     top: anchor(bottom);
     right: anchor(right);
   }

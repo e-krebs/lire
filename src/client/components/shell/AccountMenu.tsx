@@ -22,7 +22,6 @@ import {
 
 const triggerClassName = `
   inline-flex size-10 flex-none items-center justify-center rounded-full text-muted
-  [anchor-name:--account]
   hover:bg-surface-2
   focus-visible:outline-2 focus-visible:outline-accent
   aria-expanded:bg-surface-2 aria-expanded:text-ink
