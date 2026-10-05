@@ -242,6 +242,18 @@ and the scroll position. It arms only at the true end of the list: no next page,
 flight, no next-page error and at least one entry. It also calls `preventDefault` only after the
 touch travels a few pixels, so a scroll that reaches the pagination sentinel is not swallowed.
 
+The reader has a bottom pull of its own: past the article's end, a pull up takes the Mark exit, the
+same as the header's Mark button, Escape or the scrim. Both pulls run on `usePull` in
+[usePullToRefresh.ts](../../src/client/hooks/usePullToRefresh.ts). `usePullToRefresh` is the grid's
+wrapper, and it holds the disc until the refresh settles. The reader passes a commit that returns
+nothing, so its band slides straight back while the panel closes. The reader turns the top edge off,
+so a pull down there stays a plain scroll. A newsletter has no bottom pull, because its frame swallows touch events. Its band (`PullAction` in
+[PullIndicator.tsx](../../src/client/components/articles/PullIndicator.tsx)) is tinted like the card
+swipe's action panel. The tint follows the pull's progress to the same 72px threshold, and the band
+names the exit it will take. The two pulls never compete: each hook listens on its own
+`.scroll-pane`, and the reader is a sibling of the grid's pane, never inside it. Below `lg` the
+grid's pane is hidden while the reader is open, and at `lg`+ it is `inert` behind the scrim.
+
 Updates are prompt-style. A new worker installs and waits. The page learns of it through
 [pwaUpdate.ts](../../src/client/utils/pwaUpdate.ts) and shows `UpdateToast`
 ([UpdateToast.tsx](../../src/client/components/shell/UpdateToast.tsx)) with Reload and Later.

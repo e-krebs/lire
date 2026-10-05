@@ -926,7 +926,8 @@ body {
   }
 }
 /* The rows ride along (MosaicGrid sets `--pull` and the same data attributes on this wrapper), so
-   the disc sits in the gap they leave rather than over the first card. */
+   the disc sits in the gap they leave rather than over the first card. The reader's article does
+   the same over its `.pull-action` band. */
 .pull-content {
   translate: 0 var(--pull, 0px);
 }
@@ -934,7 +935,7 @@ body {
   translate: 0 calc(-1 * var(--pull, 0px));
 }
 /* Only once the finger is gone: the snap to the parked spot and the slide back to 0. Same 200ms
-   as RETRACT_MS in usePullToRefresh. */
+   as RETRACT_MS in usePull. */
 @media (prefers-reduced-motion: no-preference) {
   /* The butter arrives over a few frames, not on the one pixel that crosses the threshold. */
   .pull-indicator {
@@ -953,6 +954,50 @@ body {
   }
   .pull-indicator[data-refreshing] svg {
     animation: pull-spin 1s linear infinite;
+  }
+}
+
+/* The reader's bottom pull (usePull + PullAction): a band that grows from the panel's bottom edge
+   while the article rides up on `.pull-content`. Same tint as `.tile-action`, with `--reveal` set
+   inline from the pull's progress to the threshold, so it tracks the finger with no transition. */
+.pull-action {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  height: var(--pull);
+  overflow: hidden;
+  background: color-mix(
+    in oklab,
+    var(--color-surface-2),
+    var(--color-accent) calc(var(--reveal) * 100%)
+  );
+  color: color-mix(in oklab, var(--color-ink), var(--color-on-accent) calc(var(--reveal) * 100%));
+  pointer-events: none;
+}
+.pull-action-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  opacity: var(--reveal);
+  scale: calc(0.7 + 0.3 * var(--reveal));
+}
+[data-armed] .pull-action-indicator > svg {
+  scale: 1.2;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pull-action-indicator > svg {
+    transition: scale 200ms ease-out;
+  }
+  /* Same 200ms as RETRACT_MS; `--reveal` is registered with the swipe, so the tint eases out too. */
+  .pull-action[data-released] {
+    transition:
+      height 200ms ease,
+      --reveal 200ms ease;
   }
 }
 

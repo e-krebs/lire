@@ -46,6 +46,19 @@ const ui = {
   async button(view: RenderResult, name: string) {
     return view.findByRole("button", { name });
   },
+  queryText(view: RenderResult, content: string) {
+    return view.queryByText(content);
+  },
+  async article(view: RenderResult) {
+    return waitFor(() => {
+      const found = view.container.querySelector("article");
+      if (!found) throw new Error("no article yet");
+      return found;
+    });
+  },
+  get pullBand() {
+    return document.querySelector(".pull-action");
+  },
   bodyImages(view: RenderResult) {
     return [...view.container.querySelectorAll("article img")];
   },
@@ -106,6 +119,21 @@ const setup = ({ entryId, seedEntry }: { entryId: string; seedEntry?: Entry }) =
   );
 
   return { router, view };
+};
+
+// jsdom has no TouchEvent constructor that takes touches, so the list is planted. jsdom also
+// reports every box as 0, which puts the pane at its end from the start.
+const swipe = ({ target, from, to }: { target: Element; from: number; to: number }): void => {
+  const send = (type: string, ys: number[]): void => {
+    const event = new Event(type, { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "touches", {
+      value: ys.map((clientY) => ({ clientX: 0, clientY })),
+    });
+    fireEvent(target, event);
+  };
+  send("touchstart", [from]);
+  for (let step = 1; step <= 10; step += 1) send("touchmove", [from + ((to - from) * step) / 10]);
+  send("touchend", []);
 };
 
 // A hero image outside the article, not counting one the sanitized body already repeats.
@@ -498,5 +526,59 @@ describe("Reader", () => {
     await waitFor(async () => {
       expect(await fixtureUnread(UNREAD_ID)).toBe(false);
     });
+  });
+
+  it("marks the entry read, then closes the panel, on a pull up past the end", async () => {
+    const { view } = setup({ entryId: UNREAD_ID });
+    const article = await ui.article(view);
+
+    swipe({ target: article, from: 400, to: 200 });
+
+    expect(await ui.text(view, "stream page")).toBeInTheDocument();
+    await markReadQueue.flush();
+    await waitFor(async () => {
+      expect(await fixtureUnread(UNREAD_ID)).toBe(false);
+    });
+  });
+
+  it("leaves the panel open on a pull up past the end of a newsletter", async () => {
+    const { view } = setup({ entryId: NEWSLETTER_ID });
+    const article = await ui.article(view);
+    await waitFor(() => {
+      expect(view.container.querySelectorAll("iframe")).toHaveLength(1);
+    });
+
+    swipe({ target: article, from: 400, to: 200 });
+
+    expect(ui.pullBand).toBeNull();
+    expect(ui.queryText(view, "stream page")).toBeNull();
+  });
+
+  it("names the exit on the band while the pull is held", async () => {
+    const { view } = setup({ entryId: READ_ID });
+    const article = await ui.article(view);
+
+    const send = (type: string, clientY: number): void => {
+      const event = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(event, "touches", { value: [{ clientX: 0, clientY }] });
+      fireEvent(article, event);
+    };
+    send("touchstart", 400);
+    send("touchmove", 200);
+
+    const band = ui.pullBand;
+    expect(band).toHaveAttribute("data-armed", "true");
+    expect(band).toHaveTextContent("Mark as unread and close");
+  });
+
+  it("leaves the panel open on a pull down at the top", async () => {
+    const { view } = setup({ entryId: UNREAD_ID });
+    const article = await ui.article(view);
+
+    swipe({ target: article, from: 200, to: 400 });
+
+    expect(ui.pullBand).toBeNull();
+    expect(ui.queryText(view, "stream page")).toBeNull();
+    expect(await fixtureUnread(UNREAD_ID)).toBe(true);
   });
 });

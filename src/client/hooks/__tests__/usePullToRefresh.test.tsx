@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { PULL_THRESHOLD, usePullToRefresh } from "../usePullToRefresh";
+import { PULL_THRESHOLD, usePull, usePullToRefresh } from "../usePullToRefresh";
 import type { PullState } from "../usePullToRefresh";
 
 const MIN_REFRESH_MS = 400;
@@ -115,6 +115,34 @@ const deferred = () => {
     };
   });
   return { promise, resolve, reject };
+};
+
+interface PullHarnessProps {
+  onCommit: (args: { edge: "top" | "bottom" }) => Promise<unknown> | undefined;
+}
+
+// The reader's shape: bottom edge only, and a commit that acts at once.
+const PullHarness = ({ onCommit }: PullHarnessProps) => {
+  const { attach, pull: state } = usePull({ onCommit, pullDown: false, pullUp: true });
+  useEffect(() => {
+    report(state);
+  }, [state]);
+  return (
+    <div data-testid="scroller" className="scroll-pane" style={{ overflow: "auto" }}>
+      <div ref={attach} data-testid="probe" />
+    </div>
+  );
+};
+
+const setupPull = ({ onCommit, ...geometry }: PullHarnessProps & Geometry) => {
+  pull = null;
+  render(<PullHarness onCommit={onCommit} />);
+  const scroller = ui.scroller;
+  const values = { scrollTop: 0, clientHeight: 500, scrollHeight: 1000, ...geometry };
+  for (const [key, value] of Object.entries(values)) {
+    Object.defineProperty(scroller, key, { value, writable: true, configurable: true });
+  }
+  return { probe: ui.probe };
 };
 
 describe("usePullToRefresh", () => {
@@ -419,5 +447,52 @@ describe("usePullToRefresh", () => {
     expect(pull).toBeNull();
     fire({ target: probe, type: "touchmove", ys: [50] });
     expect(pull?.released).toBe(false);
+  });
+
+  describe("when used as the generic usePull, bottom edge only", () => {
+    it("leaves a pull down alone when pullDown is off", () => {
+      const onCommit = vi.fn<() => undefined>();
+      const { probe } = setupPull({ onCommit });
+
+      fire({ target: probe, type: "touchstart", ys: [0] });
+      const move = fire({ target: probe, type: "touchmove", ys: [200] });
+      fire({ target: probe, type: "touchend", ys: [200] });
+      expect(pull).toBeNull();
+      expect(move.defaultPrevented).toBe(false);
+      expect(onCommit).not.toHaveBeenCalled();
+    });
+
+    it("commits once and slides straight back when the commit returns nothing", async () => {
+      const onCommit = vi.fn<() => undefined>();
+      const { probe } = setupPull({ onCommit, scrollTop: 500 });
+
+      fire({ target: probe, type: "touchstart", ys: [300] });
+      fire({ target: probe, type: "touchmove", ys: [100] });
+      expect(pull?.armed).toBe(true);
+
+      fire({ target: probe, type: "touchend", ys: [100] });
+      expect(onCommit).toHaveBeenCalledTimes(1);
+      expect(onCommit).toHaveBeenCalledWith({ edge: "bottom" });
+      expect(pull).toEqual({
+        edge: "bottom",
+        distance: 0,
+        armed: true,
+        refreshing: false,
+        released: true,
+      });
+      await flush(RETRACT_MS);
+      expect(pull).toBeNull();
+    });
+
+    it("does not commit a pull released short of the threshold", () => {
+      const onCommit = vi.fn<() => undefined>();
+      const { probe } = setupPull({ onCommit, scrollTop: 500 });
+
+      fire({ target: probe, type: "touchstart", ys: [300] });
+      fire({ target: probe, type: "touchmove", ys: [250] });
+      fire({ target: probe, type: "touchend", ys: [250] });
+      expect(pull?.armed).toBe(false);
+      expect(onCommit).not.toHaveBeenCalled();
+    });
   });
 });
