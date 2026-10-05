@@ -336,9 +336,21 @@ const pageOf = ({ token, q }: { token: string | undefined; q?: string }): number
   return cursor.page;
 };
 
-const toPage = ({ stories, page, q }: { stories: Story[]; page: number; q?: string }): EntryPage =>
-  stories.length === 0
-    ? { items: [] }
+// NewsBlur sends no "more pages" flag, so a page shorter than the one asked for is the end.
+// `undefined` means the size is unknown, and only an empty page ends the list.
+const toPage = ({
+  stories,
+  page,
+  q,
+  pageSize,
+}: {
+  stories: Story[];
+  page: number;
+  q?: string;
+  pageSize?: number;
+}): EntryPage =>
+  stories.length === 0 || (pageSize !== undefined && stories.length < pageSize)
+    ? { items: stories.map(toEntry) }
     : { items: stories.map(toEntry), cursor: encodeCursor({ page: page + 1, q }) };
 
 interface StoriesQuery {
@@ -354,6 +366,18 @@ interface StoriesQuery {
 // `count` maps to `limit` where the view reads it; a single feed has no `limit`, so the Worker
 // chains upstream pages of 6 for a larger count.
 const FEED_PAGE_SIZE = 6;
+const RIVER_PAGE_SIZE = 12;
+
+// The stories a full page holds. A read page and a search page come back uneven, so neither has one.
+const pageSizeOf = ({ stream, count }: { stream: Stream; count: number | undefined }) => {
+  if (stream.kind === "read") return undefined;
+  if (stream.kind === "feed") {
+    return count === undefined
+      ? FEED_PAGE_SIZE
+      : Math.ceil(count / FEED_PAGE_SIZE) * FEED_PAGE_SIZE;
+  }
+  return count ?? RIVER_PAGE_SIZE;
+};
 
 const fetchStories = async ({
   ctx,
@@ -657,7 +681,7 @@ const HANDLERS: Record<RouteKey, Handler> = {
       unreadOnly: input.unreadOnly ?? false,
       order: input.order ?? "newest",
     });
-    return ok(toPage({ stories, page }));
+    return ok(toPage({ stories, page, pageSize: pageSizeOf({ stream, count: input.count }) }));
   },
 
   "GET /api/entries/:entryId": async ({ ctx, params }) => {
