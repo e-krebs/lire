@@ -64,6 +64,14 @@ const resolved = async <T,>(value: T): Promise<T> => {
   return value;
 };
 
+const held = (): { wait: Promise<void>; release: () => void } => {
+  let release = (): void => {};
+  const wait = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { wait, release };
+};
+
 const categoryIdsOf = async (feedId: string): Promise<string[] | undefined> =>
   (await getFeeds()).find((feed) => feed.id === feedId)?.categoryIds;
 
@@ -269,7 +277,7 @@ describe("queries", () => {
       expect(result.current.stream.isSuccess).toBe(true);
     });
     let release = () => {};
-    const flush = vi.spyOn(markReadQueue, "flush").mockImplementation(async () => {
+    const flush = vi.spyOn(markReadQueue, "flush").mockImplementationOnce(async () => {
       await new Promise<void>((resolve) => {
         release = resolve;
       });
@@ -301,7 +309,7 @@ describe("queries", () => {
     const countsBefore = client.getQueryState(keys.counts)?.dataUpdatedAt ?? 0;
     await new Promise((resolve) => setTimeout(resolve, 5));
     let release = () => {};
-    const flush = vi.spyOn(markReadQueue, "flush").mockImplementation(async () => {
+    const flush = vi.spyOn(markReadQueue, "flush").mockImplementationOnce(async () => {
       await new Promise<void>((resolve) => {
         release = resolve;
       });
@@ -595,6 +603,99 @@ describe("queries", () => {
     await waitFor(() => {
       expect(client.getQueryState(key)?.isInvalidated).toBe(false);
     });
+  });
+
+  it("sends a queued read before a list or the counts refetch, so neither shows it unread", async () => {
+    const { client, wrapper } = setup();
+    const allUnread = keys.stream({ streamKey: "all", unreadOnly: true });
+    const { result } = renderHook(
+      () => ({
+        all: useStream({ streamKey: "all", unreadOnly: true }),
+        counts: useCounts(),
+        markRead: useMarkRead(),
+      }),
+      { wrapper },
+    );
+    await waitFor(() => {
+      expect(result.current.all.isSuccess && result.current.counts.isSuccess).toBe(true);
+    });
+    const target = flattenStream(result.current.all.data)[0];
+    const before = result.current.counts.data;
+    const feed = renderHook(() => useStream({ streamKey: `feed:${target.feedId}` }), { wrapper });
+    await waitFor(() => {
+      expect(feed.result.current.isSuccess).toBe(true);
+    });
+
+    act(() => {
+      result.current.markRead.mutate({ entryIds: [target.id], read: true });
+    });
+    await vi.waitFor(async () => {
+      expect(await markReadStore.all()).toContain(target.id);
+    });
+    await act(async () => {
+      await Promise.all(
+        [allUnread, keys.counts].map(async (queryKey) =>
+          client.refetchQueries({ queryKey, exact: true }),
+        ),
+      );
+    });
+
+    const refetched = flattenStream(client.getQueryData(allUnread));
+    expect(refetched.some((item) => item.id === target.id && item.unread)).toBe(false);
+    expect(client.getQueryData<Counts>(keys.counts)?.all).toBe((before?.all ?? 0) - 1);
+    expect(client.getQueryData<Counts>(keys.counts)?.feeds[target.feedId]).toBe(
+      (before?.feeds[target.feedId] ?? 0) - 1,
+    );
+  });
+
+  it("lets a list fetch through after 3 s when a queued read never answers", async () => {
+    vi.useFakeTimers();
+    const flush = vi
+      .spyOn(markReadQueue, "flush")
+      .mockImplementation(async () => new Promise<void>(() => {}));
+    try {
+      const { wrapper } = setup();
+      const { result } = renderHook(() => useStream({ streamKey: techKey }), { wrapper });
+
+      await vi.advanceTimersByTimeAsync(2900);
+      expect(result.current.fetchStatus).toBe("fetching");
+      expect(result.current.isSuccess).toBe(false);
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(result.current.isSuccess).toBe(true);
+    } finally {
+      flush.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps the decrement when a counts fetch was already in flight", async () => {
+    const { client, wrapper } = setup();
+    const stale = held();
+    client.setQueryDefaults(keys.counts, {
+      queryFn: async () => {
+        await stale.wait;
+        return counts;
+      },
+    });
+    client.setQueryData(keys.stream({ streamKey: techKey }), page([entry({ id: "101:a" })]));
+    client.setQueryData(keys.categories, seedCategories);
+    client.setQueryData<Counts>(keys.counts, counts);
+    const { result } = renderHook(() => useMarkRead(), { wrapper });
+    void client.refetchQueries({ queryKey: keys.counts });
+    await waitFor(() => {
+      expect(client.getQueryState(keys.counts)?.fetchStatus).toBe("fetching");
+    });
+
+    act(() => {
+      result.current.mutate({ entryIds: ["101:a"], read: true });
+    });
+    await waitFor(() => {
+      expect(client.getQueryData<Counts>(keys.counts)?.all).toBe(counts.all - 1);
+    });
+    stale.release();
+    await act(async () => resolved(undefined));
+
+    expect(client.getQueryData<Counts>(keys.counts)?.all).toBe(counts.all - 1);
   });
 
   it("removes the stored id before it calls markUnread", async () => {
