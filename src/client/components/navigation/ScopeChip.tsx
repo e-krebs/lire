@@ -1,10 +1,13 @@
+import type { MatchCount } from "client/api/queries";
 import { Icon } from "client/components/ui/icons";
 import { useT } from "client/i18n/useT";
 
 interface ScopeChipProps {
   /** Name of the scope, e.g. a category or feed title. */
   label: string;
-  /** Omitted for the default scope and on the phone bar, where the pill is one button: no ×. */
+  /** Shown as "12", or "50+" when capped; undefined renders no badge. */
+  count?: MatchCount | undefined;
+  /** Set when the scope is narrower than All; the phone may pass it too. */
   onClear?: () => void;
 }
 
@@ -16,13 +19,28 @@ const chipClassName = `
 
 // The stream the location bar points at, shown inside the search field. Clearing it widens both
 // the view and the next search to every article.
-export const ScopeChip = ({ label, onClear }: ScopeChipProps) => {
+export const ScopeChip = ({ label, count, onClear }: ScopeChipProps) => {
   const t = useT().navigation;
   return (
     <span data-clearable={onClear ? "" : undefined} className={chipClassName}>
       <span data-tip={label} data-tip-overflow="" className="truncate">
         {label}
       </span>
+      {count === undefined ? null : (
+        <span
+          className={`
+            flex h-4 min-w-4 flex-none items-center justify-center rounded-full bg-accent px-1
+            text-[0.6875rem] leading-none text-on-accent tabular-nums
+          `}
+        >
+          <span aria-hidden="true">{count.capped ? `${count.count}+` : count.count}</span>
+          <span className="sr-only">
+            {count.capped
+              ? t.matchCountOrMore({ count: count.count })
+              : t.matchCount({ count: count.count })}
+          </span>
+        </span>
+      )}
       {onClear ? (
         <button
           type="button"
@@ -31,7 +49,7 @@ export const ScopeChip = ({ label, onClear }: ScopeChipProps) => {
           onClick={onClear}
           className={`
             -my-1.5 flex size-10 flex-none items-center justify-center rounded-full
-            hover:text-ink
+            text-accent-text hover:text-ink
             focus-visible:outline-2 focus-visible:outline-accent
           `}
         >

@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import type { MatchCount } from "client/api/queries";
 import {
   Outlet,
   RouterProvider,
@@ -100,7 +101,12 @@ const ui = {
     return screen.findByRole("button", { name: /^Tech\b/ });
   },
   async clearScope(label: string) {
-    return screen.findByRole("button", { name: `Search everywhere instead of ${label}` });
+    return within(await screen.findByRole("dialog", { name: "Navigator" })).findByRole("button", {
+      name: `Search everywhere instead of ${label}`,
+    });
+  },
+  async pill() {
+    return within(await screen.findByRole("group", { name: "Location" }));
   },
   async text(text: string) {
     return screen.findByText(text);
@@ -134,7 +140,9 @@ const setup = ({
   streamKey = "all",
   barPosition = "top",
   handlers = [],
+  count,
 }: {
+  count?: MatchCount;
   tier?: "phone" | "desktop";
   streamKey?: string;
   barPosition?: Parameters<typeof setBarPosition>[0];
@@ -171,7 +179,7 @@ const setup = ({
   const rootRoute = createRootRoute({
     component: () => (
       <>
-        <Harness />
+        <Harness count={count} />
         <Outlet />
       </>
     ),
@@ -254,7 +262,7 @@ const ReceivedStreamKey = () => {
 // A stand-in for TopBar: the route is the only source of truth (the stream is the chip, `q` is
 // the text), and the bar owns nothing but whether the panel is open and the draft being typed.
 // Mounted above the route tree, like the real one, so a test can drive either surface.
-const Harness = () => {
+const Harness = ({ count }: { count: MatchCount | undefined }) => {
   const params = useParams({ strict: false });
   const search = useSearch({ strict: false });
   const navigate = useNavigate();
@@ -321,6 +329,7 @@ const Harness = () => {
         inputRef={inputRef}
         clearable={scopeKey !== "all"}
         scopeLabel={scopeLabel}
+        count={count}
         onClearScope={clearScope}
         onClearText={clearText}
       />
@@ -588,6 +597,68 @@ describe("Navigator", () => {
       await user.keyboard("{ArrowDown}{Enter}");
 
       expect(await ui.text("received:feed:109")).toBeInTheDocument();
+    });
+  });
+
+  describe("when the location bar shows its chip", () => {
+    it("names All on the default scope, with no ×", async () => {
+      setup({ tier: "desktop" });
+
+      expect(await (await ui.pill()).findByText("All")).toBeInTheDocument();
+      expect(
+        (await ui.pill()).queryByRole("button", { name: /^Search everywhere instead of/ }),
+      ).toBeNull();
+    });
+
+    it("leaves the scope alone on Backspace over All", async () => {
+      const { user, router } = setup({ tier: "desktop" });
+
+      await user.click(await ui.search);
+      await user.keyboard("{Backspace}");
+
+      expect(router.state.location.pathname).toBe("/stream/all");
+    });
+
+    it.each([
+      { count: { count: 12, capped: false }, shown: "12", spoken: "12 articles" },
+      { count: { count: 50, capped: true }, shown: "50+", spoken: "50 or more articles" },
+    ])("shows the $shown badge with a spoken label", async ({ count, shown, spoken }) => {
+      setup({ tier: "desktop", streamKey: TECH_KEY, count });
+
+      expect(await (await ui.pill()).findByText(shown)).toBeInTheDocument();
+      expect((await ui.pill()).getByText(spoken)).toBeInTheDocument();
+    });
+
+    it("shows no badge without a count", async () => {
+      setup({ tier: "desktop", streamKey: TECH_KEY });
+
+      await (await ui.pill()).findByText("Tech");
+      expect((await ui.pill()).queryByText(/articles$/)).toBeNull();
+    });
+  });
+
+  describe("when the phone pill has a narrowed scope", () => {
+    it("clears the scope from its ×, without opening the sheet", async () => {
+      const { user } = setup({ streamKey: TECH_KEY });
+      await user.click(await ui.search);
+      await user.keyboard("{Escape}");
+      await waitFor(() => expect(ui.dialog).not.toBeInTheDocument());
+
+      await user.click(
+        await (await ui.pill()).findByRole("button", { name: "Search everywhere instead of Tech" }),
+      );
+
+      expect(await ui.text("received:all")).toBeInTheDocument();
+      expect(ui.dialog).not.toBeInTheDocument();
+    });
+
+    it("shows no × on All", async () => {
+      setup();
+
+      await (await ui.pill()).findByText("All");
+      expect(
+        (await ui.pill()).queryByRole("button", { name: /^Search everywhere instead of/ }),
+      ).toBeNull();
     });
   });
 

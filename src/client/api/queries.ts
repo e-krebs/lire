@@ -116,7 +116,7 @@ export const useCategories = () => useQuery({ queryKey: keys.categories, queryFn
 
 export const useFeeds = () => useQuery({ queryKey: keys.feeds, queryFn: getFeeds });
 
-export const useCounts = () =>
+export const useCounts = ({ enabled = true }: { enabled?: boolean } = {}) =>
   useQuery({
     queryKey: keys.counts,
     queryFn: async () => {
@@ -124,6 +124,7 @@ export const useCounts = () =>
       return getCounts();
     },
     refetchOnMount: false,
+    enabled,
   });
 
 const SUN_MARGIN_MS = 30 * 1000;
@@ -316,6 +317,72 @@ export const useSearchContents = ({
     getNextPageParam: (lastPage) => lastPage.cursor,
     enabled: enabled && query.trim().length >= MIN_SEARCH_LENGTH,
   });
+
+const MATCH_COUNT_CAP = 50;
+// A feed page has no `limit`: the Worker chains upstream pages of 6, so 12 costs two calls.
+const FEED_MATCH_COUNT_CAP = 12;
+
+// `capped`: the view holds `count` or more.
+export interface MatchCount {
+  count: number;
+  capped: boolean;
+}
+
+const matchCountOf = ({ count, cap }: { count: number; cap: number }): MatchCount | undefined =>
+  count <= 0 ? undefined : { count: Math.min(count, cap), capped: count >= cap };
+
+export const useMatchCount = ({
+  streamKey,
+  unreadOnly,
+  query,
+}: {
+  streamKey: StreamKey | undefined;
+  unreadOnly: boolean;
+  query: string;
+}): MatchCount | undefined => {
+  const kind = streamKey === undefined ? undefined : parseStreamKey(streamKey)?.kind;
+  const active = streamKey !== undefined && kind !== undefined && kind !== "read";
+  const cap = kind === "feed" ? FEED_MATCH_COUNT_CAP : MATCH_COUNT_CAP;
+  const trimmed = query.trim();
+  const searching = trimmed !== "";
+  const searchable = trimmed.length >= MIN_SEARCH_LENGTH;
+  const fromCounts = active && unreadOnly && !searching;
+  // Never read while disabled, so the placeholder key is only there to satisfy the types.
+  const key = streamKey ?? "all";
+
+  const counts = useCounts({ enabled: fromCounts });
+  const stream = useStream({
+    streamKey: key,
+    unreadOnly,
+    order: "newest",
+    count: cap,
+    enabled: active && !unreadOnly && !searching,
+  });
+  const search = useSearchContents({
+    streamKey: key,
+    query,
+    unreadOnly,
+    count: cap,
+    enabled: active && searchable,
+  });
+
+  if (!active || (searching && !searchable)) return undefined;
+  if (fromCounts) {
+    if (!counts.data) return undefined;
+    // The counts are exact and cost nothing, so they keep the wide cap even on a feed.
+    return matchCountOf({
+      count: unreadCountFor({ counts: counts.data, streamKey }),
+      cap: MATCH_COUNT_CAP,
+    });
+  }
+  const items = (searching ? search : stream).data?.pages[0]?.items;
+  if (!items) return undefined;
+  // A full page means more lie past it, however many of these were read since.
+  if (items.length >= cap) return matchCountOf({ count: cap, cap });
+  // A read flips the row in the cache without removing it.
+  const count = unreadOnly ? items.filter((item) => item.unread).length : items.length;
+  return matchCountOf({ count, cap });
+};
 
 // Counts and the library first and awaited: the counts query is often inactive, and parallel
 // NewsBlur calls would let the count move without the list.

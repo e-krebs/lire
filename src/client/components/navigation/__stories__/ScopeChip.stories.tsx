@@ -22,3 +22,22 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const All: Story = { args: { label: "All", clearable: false } };
+
+export const WithCount: Story = { args: { count: { count: 12, capped: false } } };
+
+export const AllWithCount: Story = {
+  args: { label: "All", clearable: false, count: { count: 50, capped: true } },
+};
+
+export const CountCapped: Story = { args: { count: { count: 50, capped: true } } };
+
+export const NoMatches: Story = { args: { count: undefined } };
+
+export const LongLabel: Story = {
+  args: {
+    label: "A feed with a title far too long for the room it gets",
+    count: { count: 12, capped: false },
+  },
+};

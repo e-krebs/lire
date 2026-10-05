@@ -9,8 +9,8 @@ import {
   useRouter,
   useSearch,
 } from "@tanstack/react-router";
-import { parseStreamKey } from "shared/feedsApi/streamKey";
-import { useCategories, useFeeds } from "client/api/queries";
+import { parseStreamKey, toStreamKey } from "shared/feedsApi/streamKey";
+import { useCategories, useFeeds, useMatchCount } from "client/api/queries";
 import { AccountMenu } from "client/components/shell/AccountMenu";
 import { Icon } from "client/components/ui/icons";
 import { LocationBar } from "client/components/navigation/LocationBar";
@@ -23,6 +23,7 @@ import { useActiveOverlay } from "client/hooks/useOverlay";
 import { streamLabel } from "client/utils/streamLabel";
 import type { StreamLabel } from "client/utils/streamLabel";
 import { panelSearch } from "client/utils/subscriptionsSearch";
+import { useViewPrefs } from "client/utils/viewPrefs";
 
 // "Category › Feed" for a feed, the plain name otherwise.
 const scopeLabelOf = (named: StreamLabel): string =>
@@ -50,6 +51,7 @@ export const TopBar = () => {
   const navigate = useNavigate();
   const categories = useCategories();
   const feeds = useFeeds();
+  const prefs = useViewPrefs();
   // Behind an open panel only that panel's own items stay live (LocationBar handles its pill).
   const activeOverlay = useActiveOverlay();
   const anyOverlay = activeOverlay !== null || undefined;
@@ -100,6 +102,11 @@ export const TopBar = () => {
             }
           : undefined;
   const clearable = scopeKey !== "all";
+  const count = useMatchCount({
+    streamKey: onSubscriptions || scopeStream === null ? undefined : toStreamKey(scopeStream),
+    unreadOnly: prefs.unread,
+    query: articleQuery ?? "",
+  });
 
   const openPanel = (): void => {
     setPanelOpen(true);
@@ -185,11 +192,15 @@ export const TopBar = () => {
         </>
       ) : (
         <>
+          {/* On phone the logo leaves when the pill needs its width: always with a scope (its ×
+              and edit link), on All below 384px. `hidden` also takes it out of the tab order. */}
           <Link
             to="/"
             inert={anyOverlay}
             {...tip({ label: shell.lireHome })}
-            className={`${iconButtonClassName} -ml-1 text-ink`}
+            className={`${iconButtonClassName} -ml-1 text-ink ${
+              clearable ? "max-sm:hidden" : "max-[24rem]:hidden"
+            }`}
           >
             <Icon name="lire" className="size-6.5" />
           </Link>
@@ -202,6 +213,7 @@ export const TopBar = () => {
             inputRef={inputRef}
             clearable={clearable}
             scopeLabel={scopeLabel}
+            count={count}
             onClearScope={clearScope}
             onClearText={clearText}
             edit={edit}

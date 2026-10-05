@@ -142,7 +142,7 @@ const setup = ({
       <RouterProvider router={router} />
     </QueryClientProvider>,
   );
-  return Object.assign(view, { router });
+  return Object.assign(view, { router, client });
 };
 
 const inert = (element: Element): boolean => element.closest("[inert]") !== null;
@@ -326,6 +326,67 @@ describe("TopBar", () => {
       expect(searchParamsOf(link).get("feed")).toBe(JSON.stringify(FEED_ID));
       expect(link.closest("button")).toBeNull();
       expect(ui.navigatorButton).toBeDefined();
+    });
+  });
+
+  describe("when counting matches", () => {
+    const badgeText = async (): Promise<string | null | undefined> =>
+      (await ui.locationGroup).querySelector(".tabular-nums")?.firstElementChild?.textContent;
+
+    it("shows the unread count of the scope when the unread filter is on", async () => {
+      setup({ path: TECH_PATH });
+
+      await waitFor(async () => {
+        expect(await badgeText()).toMatch(/^\d+\+?$/);
+      });
+    });
+
+    it("counts a search from a page of entries", async () => {
+      setup({ path: `${TECH_PATH}?q=story` });
+
+      await waitFor(async () => {
+        expect(await badgeText()).toMatch(/^\d+\+?$/);
+      });
+    });
+
+    it("shows no badge for a one-character search", async () => {
+      setup({ path: `${TECH_PATH}?q=s` });
+
+      await ui.searchField;
+      expect(await badgeText()).toBeUndefined();
+    });
+
+    it("counts the entries of the scope when the unread filter is off", async () => {
+      const user = userEvent.setup();
+      setup({ path: TECH_PATH });
+
+      await user.click(await ui.unreadButton);
+
+      await waitFor(async () => {
+        expect(await badgeText()).toMatch(/^\d+\+?$/);
+      });
+    });
+
+    it("shows no badge on the recently-read stream", async () => {
+      setup({ path: "/stream/read" });
+
+      await ui.homeLink;
+      expect(await badgeText()).toBeUndefined();
+    });
+
+    it("sends no page request on Subscriptions", async () => {
+      const { client } = setup({ path: "/subscriptions" });
+
+      await ui.backButton;
+      // The disabled observers leave idle entries behind; none has fetched.
+      const pages = ["stream", "search"].flatMap((key) =>
+        client.getQueryCache().findAll({ queryKey: [key] }),
+      );
+      expect(
+        pages.filter(
+          (query) => query.state.fetchStatus !== "idle" || query.state.dataUpdateCount > 0,
+        ),
+      ).toEqual([]);
     });
   });
 

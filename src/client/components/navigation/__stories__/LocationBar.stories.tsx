@@ -104,3 +104,20 @@ export const Phone: Story = {
 };
 
 export const PhoneEmpty: Story = { args: { tier: "phone" } };
+
+export const AllWithBadge: Story = { args: { count: { count: 50, capped: true } } };
+
+export const NarrowedWithBadge: Story = {
+  args: { clearable: true, scopeLabel: "Tech", count: { count: 12, capped: false } },
+};
+
+export const PhoneNarrowedWithBadge: Story = {
+  args: { tier: "phone", clearable: true, scopeLabel: "Tech", count: { count: 12, capped: false } },
+  play: async ({ canvasElement, args }) => {
+    await userEvent.click(
+      within(canvasElement).getByRole("button", { name: "Search everywhere instead of Tech" }),
+    );
+    await expect(args.onClearScope).toHaveBeenCalled();
+    await expect(args.onOpen).not.toHaveBeenCalled();
+  },
+};

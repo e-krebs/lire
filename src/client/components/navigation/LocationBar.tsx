@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useId } from "react";
 import type { KeyboardEvent, ReactNode, RefObject } from "react";
 import { Link } from "@tanstack/react-router";
+import type { MatchCount } from "client/api/queries";
 import { Icon } from "client/components/ui/icons";
 import { useT } from "client/i18n/useT";
 import { ScopeChip } from "client/components/navigation/ScopeChip";
@@ -15,9 +16,12 @@ interface LocationBarProps {
   onDraftChange: (value: string) => void;
   onSearchKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
   inputRef: RefObject<HTMLInputElement | null>;
-  // Whether the scope is narrower than every article — the chip shows, and Backspace eats it.
+  // Whether the scope is narrower than every article — the chip names it and gets a ×, and
+  // Backspace eats it. On All the chip still shows, as "All".
   clearable: boolean;
   scopeLabel: string;
+  // The match count; undefined shows no badge.
+  count?: MatchCount | undefined;
   onClearScope: () => void;
   onClearText: () => void;
   // The current feed or category's Subscriptions panel; absent for streams without one.
@@ -38,11 +42,13 @@ const pillClassName = `
   has-[input:focus-visible]:outline-2 has-[input:focus-visible]:outline-accent
 `;
 
-const clearButtonClassName = `
-  flex size-10 flex-none items-center justify-center rounded-full text-faint
+const iconButtonClassName = `
+  flex size-10 flex-none items-center justify-center rounded-full
   hover:text-ink
   focus-visible:outline-2 focus-visible:outline-accent
 `;
+
+const clearButtonClassName = `${iconButtonClassName} text-faint`;
 
 interface PillEditLinkProps {
   edit: LocationBarProps["edit"];
@@ -93,6 +99,7 @@ export const LocationBar = forwardRef<HTMLDivElement, LocationBarProps>(
       inputRef,
       clearable,
       scopeLabel,
+      count,
       onClearScope,
       onClearText,
       edit,
@@ -132,8 +139,8 @@ export const LocationBar = forwardRef<HTMLDivElement, LocationBarProps>(
     }, [onOpen, inputRef, fieldInert]);
 
     const text = draft;
-    // The chip names a narrower stream; on All articles there is no chip, the placeholder says so.
     const placeholder = clearable ? t.searchScoped : t.searchAll;
+    const chipLabel = clearable ? scopeLabel : t.all;
 
     const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
       // Backspace at the very start eats the chip first, like a mail composer's recipient token.
@@ -158,30 +165,50 @@ export const LocationBar = forwardRef<HTMLDivElement, LocationBarProps>(
         <div className="flex min-w-0 flex-1 justify-center">
           <div ref={ref} role="group" aria-label={t.location} className={pillClassName}>
             {/* The button is the pill's left part, padding included, so its ring lines up with
-                the pill's own left edge. */}
+                the pill's own left edge. The chip drops its 40% cap here and takes the room
+                before the placeholder, never narrower than its badge (min-w-14 fits "50+"), and
+                under 384px the search icon gives way too. */}
             <button
               type="button"
               onClick={onOpen}
               inert={fieldInert}
               {...tip({ label: t.openNavigator })}
               aria-describedby={locationId}
+              data-count={count === undefined ? undefined : ""}
               className={`
                 flex h-10 min-w-0 flex-1 items-center gap-2.5 rounded-full pr-1.5 pl-3.5 text-left
                 focus-visible:outline-2 focus-visible:outline-accent
+                max-[24rem]:pl-1.5
+                [&>span:first-of-type]:max-w-none [&>span:first-of-type]:min-w-0
+                [&>span:first-of-type]:flex-initial [&>span:first-of-type]:overflow-hidden
+                data-count:[&>span:first-of-type]:min-w-14
               `}
             >
-              <Icon name="search" className="size-4 flex-none text-faint" />
-              {clearable ? <ScopeChip label={scopeLabel} /> : null}
+              <Icon name="search" className="size-4 flex-none text-faint max-[24rem]:hidden" />
+              <ScopeChip label={chipLabel} count={count} />
               <span
                 id={locationId}
                 data-tip={text === "" ? undefined : text}
                 data-tip-overflow=""
                 data-empty={text === "" || undefined}
-                className="min-w-0 flex-1 truncate text-sm font-semibold text-ink data-empty:font-normal data-empty:text-faint"
+                className="min-w-0 flex-1 basis-12 truncate text-sm font-semibold text-ink data-empty:basis-0 data-empty:font-normal data-empty:text-faint"
               >
                 {text === "" ? placeholder : text}
               </span>
             </button>
+            {/* A sibling of the opener, since a button cannot nest in a button. */}
+            {clearable ? (
+              <button
+                type="button"
+                aria-label={t.searchEverywhereInstead({ label: scopeLabel })}
+                data-tip={t.searchEverywhere}
+                inert={pillInert}
+                onClick={onClearScope}
+                className={`${iconButtonClassName} text-accent-text`}
+              >
+                <Icon name="close" className="size-4" />
+              </button>
+            ) : null}
             <PillEditLink edit={edit} inert={pillInert} />
             <PillDivider viewControls={viewControls} inert={pillInert} />
           </div>
@@ -194,12 +221,14 @@ export const LocationBar = forwardRef<HTMLDivElement, LocationBarProps>(
         <div ref={ref} role="group" aria-label={t.location} className={pillClassName}>
           <div className="flex h-10 min-w-0 flex-1 items-center gap-2.5 pl-3.5">
             <Icon name="search" className="size-4 flex-none text-faint" />
-            {clearable ? (
-              // `contents` keeps the chip's 40% cap measured against the pill.
-              <span inert={pillInert} className="contents">
-                <ScopeChip label={scopeLabel} onClear={onClearScope} />
-              </span>
-            ) : null}
+            {/* `contents` keeps the chip's 40% cap measured against the pill. */}
+            <span inert={pillInert} className="contents">
+              <ScopeChip
+                label={chipLabel}
+                count={count}
+                onClear={clearable ? onClearScope : undefined}
+              />
+            </span>
             <input
               ref={inputRef}
               type="search"
