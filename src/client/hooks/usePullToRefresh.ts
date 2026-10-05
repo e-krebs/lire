@@ -37,29 +37,32 @@ type Gesture =
   | { phase: "pending"; startX: number; startY: number; atTop: boolean; atBottom: boolean }
   | { phase: "pulling"; startX: number; startY: number; edge: PullEdge; distance: number };
 
-interface PullToRefresh {
+interface Pull {
   // Callback ref: the grid mounts after a skeleton, so a RefObject would never re-arm.
   attach: (element: HTMLElement | null) => void;
   pull: PullState | null;
 }
 
-interface PullToRefreshOptions {
-  onRefresh: (args: { edge: PullEdge }) => Promise<unknown>;
+interface PullOptions {
+  // A promise holds the disc as a status until it settles; nothing returned slides it straight
+  // back, for a commit that acts at once.
+  onCommit: (args: { edge: PullEdge }) => Promise<unknown> | undefined;
+  pullDown: boolean;
   pullUp: boolean;
 }
 
-/** Touch-only pull to refresh on the `.scroll-pane` around `attach`, and the state to draw it. */
-export const usePullToRefresh = ({ onRefresh, pullUp }: PullToRefreshOptions): PullToRefresh => {
+/** A touch-only pull past either end of the `.scroll-pane` around `attach`, and the state to draw it. */
+export const usePull = ({ onCommit, pullDown, pullUp }: PullOptions): Pull => {
   const [element, setElement] = useState<HTMLElement | null>(null);
   const [pull, setPull] = useState<PullState | null>(null);
   const gesture = useRef<Gesture | null>(null);
   const refreshing = useRef(false);
-  // Read from inside the listeners, so a new callback or a flipped `pullUp` never resubscribes
-  // them mid-gesture.
-  const latest = useRef({ onRefresh, pullUp });
+  // Read from inside the listeners, so a new callback or a flipped edge never resubscribes them
+  // mid-gesture.
+  const latest = useRef({ onCommit, pullDown, pullUp });
 
   useEffect(() => {
-    latest.current = { onRefresh, pullUp };
+    latest.current = { onCommit, pullDown, pullUp };
   });
 
   useEffect(() => {
@@ -91,7 +94,7 @@ export const usePullToRefresh = ({ onRefresh, pullUp }: PullToRefreshOptions): P
         setPull(null);
       }
       if (event.touches.length !== 1) return;
-      const atTop = scroller.scrollTop <= 0;
+      const atTop = latest.current.pullDown && scroller.scrollTop <= 0;
       const atBottom =
         latest.current.pullUp &&
         scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 1;
@@ -166,6 +169,11 @@ export const usePullToRefresh = ({ onRefresh, pullUp }: PullToRefreshOptions): P
         release({ edge: current.edge, armed: false });
         return;
       }
+      const committed = latest.current.onCommit({ edge: current.edge });
+      if (committed === undefined) {
+        release({ edge: current.edge, armed: true });
+        return;
+      }
       refreshing.current = true;
       setPull({
         edge: current.edge,
@@ -177,7 +185,7 @@ export const usePullToRefresh = ({ onRefresh, pullUp }: PullToRefreshOptions): P
       const hold = new Promise<void>((resolve) => {
         setTimeout(resolve, MIN_REFRESH_MS);
       });
-      void Promise.allSettled([latest.current.onRefresh({ edge: current.edge }), hold]).then(() => {
+      void Promise.allSettled([committed, hold]).then(() => {
         settle(current.edge);
       });
     };
@@ -204,3 +212,12 @@ export const usePullToRefresh = ({ onRefresh, pullUp }: PullToRefreshOptions): P
 
   return { attach: setElement, pull };
 };
+
+interface PullToRefreshOptions {
+  onRefresh: (args: { edge: PullEdge }) => Promise<unknown>;
+  pullUp: boolean;
+}
+
+/** Pull to refresh: both ends of the pane, the disc held until the refresh settles. */
+export const usePullToRefresh = ({ onRefresh, pullUp }: PullToRefreshOptions): Pull =>
+  usePull({ onCommit: onRefresh, pullDown: true, pullUp });

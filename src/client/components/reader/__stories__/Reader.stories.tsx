@@ -1,14 +1,22 @@
-import type { Meta, StoryObj } from "@storybook/react-vite";
+import type { Decorator, Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { Reader } from "client/components/reader/Reader";
 import { withQueryClient, withUrl } from "stories/decorators";
 
 const LOADED = { timeout: 10_000 };
 
+// Below `lg` the panel fills its grid cell (`.panes` in the app), so the box is a one-row grid with
+// a fixed height: as a plain block the panel grows to the article and nothing scrolls.
+const withScrollableReader: Decorator = (Story) => (
+  <div style={{ display: "grid", gridTemplateRows: "minmax(0, 1fr)", height: "100dvh" }}>
+    <Story />
+  </div>
+);
+
 const meta = {
   title: "Components/Reader",
   component: Reader,
-  decorators: [withUrl, withQueryClient],
+  decorators: [withUrl, withQueryClient, withScrollableReader],
   parameters: { layout: "fullscreen", url: "/stream/all/entry/101:0dcd64" },
   args: { entryId: "101:0dcd64", streamKey: "all" },
 } satisfies Meta<typeof Reader>;
@@ -70,6 +78,36 @@ export const EscapeAndScrim: Story = {
   },
 };
 
+// For trying the pull by hand: scroll to the end of the article, then pull up.
+export const BottomPull: Story = {};
+
+// Stops before the finger lifts, so the canvas keeps the armed band on show. Plain events with
+// planted touches, like the unit tests: the gesture only reads `touches`.
+export const BottomPullArmed: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByRole("button", { name: /^Mark as/ }, LOADED);
+    const pane = canvasElement.querySelector(".reader-panel .scroll-pane");
+    const article = canvasElement.querySelector("article");
+    if (!(pane instanceof HTMLElement) || !article) throw new Error("reader not rendered");
+    await expect(pane.scrollHeight).toBeGreaterThan(pane.clientHeight);
+    pane.scrollTop = pane.scrollHeight;
+    const send = (type: string, clientY: number): void => {
+      const event = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(event, "touches", { value: [{ clientX: 0, clientY }] });
+      article.dispatchEvent(event);
+    };
+    send("touchstart", 400);
+    for (let step = 1; step <= 10; step += 1) send("touchmove", 400 - step * 20);
+    await waitFor(async () => {
+      await expect(canvasElement.querySelector(".pull-action")).toHaveAttribute(
+        "data-armed",
+        "true",
+      );
+    });
+  },
+};
+
 const frameOf = (iframe: HTMLIFrameElement): { root: HTMLElement; win: Window } => {
   const root = iframe.contentDocument?.documentElement;
   const win = iframe.contentWindow;
@@ -91,7 +129,15 @@ export const Newsletter: Story = {
   // Below 64rem the reader panel fills its parent, so this relies on the 414px default viewport.
   decorators: [
     (Story) => (
-      <div data-testid="newsletter-width" style={{ width: "390px" }}>
+      <div
+        data-testid="newsletter-width"
+        style={{
+          width: "390px",
+          display: "grid",
+          gridTemplateRows: "minmax(0, 1fr)",
+          height: "100%",
+        }}
+      >
         <Story />
       </div>
     ),

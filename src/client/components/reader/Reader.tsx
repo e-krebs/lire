@@ -3,6 +3,7 @@ import type { CSSProperties, ReactNode } from "react";
 import DOMPurify from "dompurify";
 import { useNavigate } from "@tanstack/react-router";
 import { useEntry, useFeeds, useMarkRead } from "client/api/queries";
+import { PullAction } from "client/components/articles/PullIndicator";
 import { NewsletterFrame } from "client/components/reader/NewsletterFrame";
 import { ReaderHeader } from "client/components/reader/ReaderHeader";
 import { readingTime } from "client/utils/readingTime";
@@ -10,6 +11,7 @@ import { useT } from "client/i18n/useT";
 import { replaceBrokenImage } from "client/utils/brokenImage";
 import { EMBED_ALLOW, EMBED_SANDBOX, embedQuotes, iframeEmbed } from "client/utils/embeds";
 import { useImageFallback } from "client/hooks/useImageFallback";
+import { usePull } from "client/hooks/usePullToRefresh";
 import { useResizablePanel } from "client/hooks/useResizablePanel";
 import { noViewTransitionRunning } from "client/utils/viewTransition";
 
@@ -111,7 +113,7 @@ interface ReaderProps {
 
 // At `lg`+ the panel floats over the results grid behind a scrim; below it, it is the only pane.
 // Leaving is the only way to mark the entry: "Keep" navigates, "Mark" mutates then navigates, and
-// the scrim and Escape both take the "Mark" exit.
+// the scrim, Escape and a pull up past the article's end all take the "Mark" exit.
 export const Reader = ({ entryId, streamKey }: ReaderProps) => {
   const t = useT();
   const entry = useEntry(entryId);
@@ -142,6 +144,24 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
     [entryId, mutate, navigate, openedUnread, streamKey],
   );
 
+  const { data } = entry;
+  const bodyHtml = data?.content ?? data?.summary ?? "";
+  // Decided before sanitizing: the newsletter pass must never let an embed frame into its srcdoc.
+  // Until the feeds load, a newsletter shows inline, so embeds wait for them too.
+  const feed = feeds.data?.find(({ id }) => id === data?.feedId);
+  const newsletter = bodyHtml !== "" && feed?.isNewsletter === true;
+
+  // Touch only, and only up: a pull down at the top stays the browser's. It waits for the origin
+  // state, since the band names the exit. A newsletter has no pull: its srcdoc frame keeps touch
+  // events in its own document, so they never reach the pane.
+  const { attach: attachPull, pull } = usePull({
+    onCommit: () => {
+      close(true);
+    },
+    pullDown: false,
+    pullUp: openedUnread !== undefined && !newsletter,
+  });
+
   // The tooltip layer already swallows nothing on Escape, so this listener is its own: bubble
   // phase, and never while text is being typed.
   useEffect(() => {
@@ -155,12 +175,6 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
     };
   }, [close]);
 
-  const { data } = entry;
-  const bodyHtml = data?.content ?? data?.summary ?? "";
-  // Decided before sanitizing: the newsletter pass must never let an embed frame into its srcdoc.
-  // Until the feeds load, a newsletter shows inline, so embeds wait for them too.
-  const feed = feeds.data?.find(({ id }) => id === data?.feedId);
-  const newsletter = bodyHtml !== "" && feed?.isNewsletter === true;
   const embeds = feeds.data !== undefined && !newsletter;
   const html = useMemo(() => {
     if (bodyHtml === "") return "";
@@ -190,6 +204,8 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
     [t],
   );
 
+  const pullStyle: CSSProperties & { "--pull": string } = { "--pull": `${pull?.distance ?? 0}px` };
+
   let body: ReactNode;
   if (data === undefined) {
     body = entry.isError ? (
@@ -214,7 +230,13 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
             close(true);
           }}
         />
-        <div className="px-4 pt-3 pb-16 sm:px-6">
+        <div
+          ref={attachPull}
+          className="pull-content px-4 pt-3 pb-16 sm:px-6"
+          data-edge={pull?.edge}
+          data-released={pull?.released || undefined}
+          style={pullStyle}
+        >
           {data.author ? <p className="text-[13px] text-muted">{data.author}</p> : null}
           {hero.src && !heroInBody ? (
             <img
@@ -269,6 +291,7 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
         <div ref={paneRef} className="min-h-0 flex-1 scroll-pane">
           {body}
         </div>
+        {openedUnread === undefined ? null : <PullAction pull={pull} read={openedUnread} />}
       </section>
     </>
   );

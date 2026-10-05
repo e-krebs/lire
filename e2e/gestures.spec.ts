@@ -26,6 +26,15 @@ const ui = (page: Page) => ({
   get pullRefreshingStatus() {
     return page.getByRole("status").filter({ hasText: /^Refreshing$/ });
   },
+  get pullBand() {
+    return page.locator(".pull-action");
+  },
+  get readerPane() {
+    return page.getByRole("region", { name: "Article" }).locator(".scroll-pane");
+  },
+  entry(id: string | null | undefined) {
+    return this.entriesRegion.locator(`[data-entry-id="${id ?? ""}"]`);
+  },
   get readerHeading() {
     return page.getByRole("heading", { level: 1 });
   },
@@ -36,6 +45,53 @@ const ui = (page: Page) => ({
     return page.locator("section").filter({ has: handle });
   },
 });
+
+// Opens the first card, scrolls the reader to its end and pulls up past it through CDP, holding
+// the finger until the band arms. Returns the opened entry's id and a release for the finger.
+const pullUpTheReader = async (page: Page) => {
+  const pageUi = ui(page);
+  await page.goto("/");
+  const firstTile = pageUi.tiles.first();
+  const openedId = await firstTile.evaluate((element) =>
+    element.closest("[data-entry-id]")?.getAttribute("data-entry-id"),
+  );
+  await firstTile.click();
+  await expect(pageUi.readerHeading).toBeVisible();
+  const box = await pageUi.readerPane.boundingBox();
+  expect(box).not.toBeNull();
+  const x = (box?.x ?? 0) + (box?.width ?? 0) / 2;
+  const startY = (box?.y ?? 0) + (box?.height ?? 0) * 0.8;
+  // The opening view transition hit-tests to the root until it ends, so a touch sent sooner
+  // never reaches the pane.
+  await expect
+    .poll(async () =>
+      page.evaluate(
+        (point) => Boolean(document.elementFromPoint(point.x, point.y)?.closest(".reader-panel")),
+        { x, y: startY },
+      ),
+    )
+    .toBe(true);
+  await pageUi.readerPane.evaluate((element) => {
+    element.scrollTo({ top: element.scrollHeight });
+  });
+  const cdp = await page.context().newCDPSession(page);
+  const touch = (y: number) => [{ x, y, id: 1 }];
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: touch(startY) });
+  for (let step = 1; step <= 12; step += 1) {
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchMove",
+      touchPoints: touch(startY - step * 20),
+    });
+  }
+  await expect(pageUi.pullBand).toHaveAttribute("data-armed", "true");
+  await expect(pageUi.pullBand).toContainText("Mark as read and close");
+  return {
+    openedId,
+    release: async () => {
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    },
+  };
+};
 
 test.describe("gestures", () => {
   test("pulls down at the top of the grid to refresh it", async ({ page }, testInfo) => {
@@ -74,6 +130,46 @@ test.describe("gestures", () => {
     await expect(pageUi.pullIndicator).toHaveCount(0);
     await expect(pageUi.freshnessStatus("Updated just now")).toBeVisible();
     await expect(pageUi.tiles.first()).toBeVisible();
+  });
+
+  test("pulls up past the end of the reader to mark the entry read and close it", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "pixel-9-pro",
+      "touch drag through CDP, Chromium phone only",
+    );
+    const pageUi = ui(page);
+    const { openedId, release } = await pullUpTheReader(page);
+    await release();
+
+    // In the unread-only default view, the marked card is gone from the grid it returns to.
+    await expect(pageUi.readerHeading).toBeHidden();
+    await expect(pageUi.entriesRegion).toBeVisible();
+    await expect(pageUi.entry(openedId)).toHaveCount(0);
+  });
+
+  test.describe("when the user prefers reduced motion", () => {
+    test.use({ reducedMotion: "reduce" });
+
+    test("arms the reader pull with no transition, then marks and closes", async ({
+      page,
+    }, testInfo) => {
+      test.skip(
+        testInfo.project.name !== "pixel-9-pro",
+        "touch drag through CDP, Chromium phone only",
+      );
+      const pageUi = ui(page);
+      const { openedId, release } = await pullUpTheReader(page);
+      const iconTransition = await pageUi.pullBand
+        .locator("svg")
+        .evaluate((element) => getComputedStyle(element).transitionDuration);
+      expect(iconTransition).toBe("0s");
+      await release();
+
+      await expect(pageUi.readerHeading).toBeHidden();
+      await expect(pageUi.entry(openedId)).toHaveCount(0);
+    });
   });
 
   test("loads the next page when the grid is scrolled to its end", async ({ page }, testInfo) => {

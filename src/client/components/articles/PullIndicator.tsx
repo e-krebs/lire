@@ -35,3 +35,36 @@ export const PullIndicator = ({ pull }: PullIndicatorProps) => {
     </div>
   );
 };
+
+interface PullActionProps {
+  pull: PullState | null;
+  /** The read state the pull's commit sets. */
+  read: boolean;
+}
+
+// The reader's bottom pull: a band that rises under the article, tinted to the swipe's butter as
+// it nears the threshold, naming the exit it will take. Gesture-only, so hidden from the tree:
+// the header's Mark button is the same action for everyone else.
+export const PullAction = ({ pull, read }: PullActionProps) => {
+  const t = useT();
+  if (!pull) return null;
+  const pullStyle: CSSProperties & { "--pull": string; "--reveal": string } = {
+    "--pull": `${pull.distance}px`,
+    "--reveal": String(Math.min(pull.distance / PULL_THRESHOLD, 1)),
+  };
+
+  return (
+    <div
+      aria-hidden="true"
+      className="pull-action"
+      data-armed={pull.armed || undefined}
+      data-released={pull.released || undefined}
+      style={pullStyle}
+    >
+      <span className="pull-action-indicator">
+        <Icon name={read ? "check" : "unread-only"} className="size-5" />
+        {read ? t.articles.markReadAndClose : t.articles.markUnreadAndClose}
+      </span>
+    </div>
+  );
+};
