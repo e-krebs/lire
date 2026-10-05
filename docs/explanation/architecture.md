@@ -283,7 +283,7 @@ that scrolls with a sticky bar is cut the same way.
 
 Any change to the viewport meta makes Chrome measure again, and on a viewport that is already right
 the change fires no resize. [viewportNudge.ts](../../src/client/utils/viewportNudge.ts) builds on
-that. At load, after each burst of resizes and each time the tab shows, it waits 100 ms and flips
+that. At load (and twice more, 0.5 s and 1.5 s later, because a reload can reach the fault late), after each burst of resizes and each time the tab shows, it waits 100 ms and flips
 the mode to `resizes-visual` and back. A flip that fixes the viewport fires one more resize, and
 the flip after it fires none, so the flips stop by themselves. The cut can still show for that
 moment before the flip, and the bar then moves up. The flip skips while a field has focus, because
