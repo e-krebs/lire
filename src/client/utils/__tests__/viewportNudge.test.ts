@@ -51,6 +51,20 @@ describe("installViewportNudge", () => {
     expect(meta.content).toBe(CONTENT);
   });
 
+  it("flips again shortly after the load, in case the fault arrives late", () => {
+    uninstall = installViewportNudge();
+    vi.advanceTimersByTime(599);
+    expect(meta.content).toBe(CONTENT);
+
+    vi.advanceTimersByTime(1);
+    expect(meta.content).toBe(FLIPPED);
+    vi.advanceTimersByTime(50);
+    expect(meta.content).toBe(CONTENT);
+
+    vi.advanceTimersByTime(950);
+    expect(meta.content).toBe(FLIPPED);
+  });
+
   it("waits for the end of a burst of resizes", () => {
     install();
     chromeResize();

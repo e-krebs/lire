@@ -8,6 +8,8 @@ import { isTypingTarget } from "client/utils/isTypingTarget";
 
 // Chrome sends its resizes in bursts about 100 ms long: the flip waits for the burst to end.
 const SETTLE_MS = 100;
+// A reload (the update button) can reach the fault later than the first flip: the load flips again.
+const LOAD_RETRY_MS = [500, 1500];
 const WIDGET = "interactive-widget=resizes-content";
 
 const flip = (meta: HTMLMetaElement): void => {
@@ -33,10 +35,12 @@ export const installViewportNudge = (): (() => void) => {
     }, SETTLE_MS);
   };
   schedule();
+  const retries = LOAD_RETRY_MS.map((ms) => setTimeout(schedule, ms));
   document.addEventListener("visibilitychange", schedule);
   window.addEventListener("resize", schedule);
   return () => {
     clearTimeout(timer);
+    retries.forEach(clearTimeout);
     document.removeEventListener("visibilitychange", schedule);
     window.removeEventListener("resize", schedule);
   };
