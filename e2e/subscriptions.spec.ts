@@ -15,8 +15,8 @@ const ui = (page: Page) => ({
   feedRow(label: string): Locator {
     return page.getByRole("tabpanel").getByRole("button", { name: label, exact: true });
   },
-  get addSourcesButton() {
-    return page.getByRole("button", { name: "＋ Add sources" });
+  get addNewsletterButton() {
+    return page.getByRole("button", { name: "Add newsletter" });
   },
   get addNewsletterItem() {
     return page.getByRole("button", { name: "Add newsletter" });
@@ -126,14 +126,13 @@ test.describe("Subscriptions manager", () => {
     await expect(tech).toBeFocused();
   });
 
-  test("shows the newsletter address from the Add sources menu", async ({ page }, testInfo) => {
+  test("shows the newsletter address from the Feeds tab button", async ({ page }, testInfo) => {
     const phone = testInfo.project.name === "pixel-9-pro";
     const pageUi = ui(page);
 
     await page.goto("/subscriptions");
     await pageUi.feedsTab.click();
-    await pageUi.addSourcesButton.click();
-    await pageUi.addNewsletterItem.click();
+    await pageUi.addNewsletterButton.click();
 
     const panel = pageUi.panel({ phone, title: "Add a newsletter" });
     await expect(panel).toBeVisible();

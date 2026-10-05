@@ -980,7 +980,7 @@ describe("SubscriptionsManager", () => {
     it("opens the newsletter panel from the Feeds tab", async () => {
       const page = await setup();
       await ui.openFeedsTab(page);
-      await waitFor(() => expect(ui.queryRow("＋ Add sources")).toBeInTheDocument());
+      await waitFor(() => expect(ui.queryRow("Add newsletter")).toBeInTheDocument());
 
       await page.user.click(ui.menuItem({ scope: document.body, name: "Add newsletter" }));
       await ui.findPanel("Add a newsletter");
@@ -1024,7 +1024,7 @@ describe("SubscriptionsManager", () => {
       const page = await setup();
       const { user } = page;
       await ui.openFeedsTab(page);
-      await waitFor(() => expect(ui.queryRow("＋ Add sources")).toBeInTheDocument());
+      await waitFor(() => expect(ui.queryRow("Add website")).toBeInTheDocument());
       await user.click(ui.menuItem({ scope: document.body, name: "Add website" }));
       await ui.findPanel("Add a feed");
       const panel = ui.panel;

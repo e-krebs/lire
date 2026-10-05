@@ -18,6 +18,9 @@ export const ICON_NAMES = [
   "edit",
   "image-off",
   "grip",
+  "website",
+  "newsletter",
+  "plus",
 ] as const;
 
 type IconName = (typeof ICON_NAMES)[number];

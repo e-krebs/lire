@@ -294,8 +294,7 @@ export const SubscribeByUrl: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await canvas.findByRole("button", { name: "Example Daily News" }, SLOW);
-    await userEvent.click(canvas.getByRole("button", { name: "＋ Add sources" }));
-    await userEvent.click(await screen.findByRole("button", { name: "Add website" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Add website" }));
     const panel = await screen.findByRole("complementary", { name: "Add a feed" }, SLOW);
     const url = within(panel).getByRole("textbox", { name: "Feed or site URL" });
     await userEvent.type(url, "https://gardening.example.test/rss");

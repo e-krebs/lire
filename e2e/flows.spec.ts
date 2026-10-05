@@ -42,10 +42,7 @@ const ui = (page: Page) => ({
   get categoriesTab() {
     return page.getByRole("tab", { name: "Categories ·" });
   },
-  get addSourcesButton() {
-    return page.getByRole("button", { name: "＋ Add sources" });
-  },
-  get addWebsiteItem() {
+  get addWebsiteButton() {
     return page.getByRole("button", { name: "Add website" });
   },
   // Below `sm` the Navigator is a bottom sheet behind a button, from `sm` up a popover under the field.
@@ -154,8 +151,7 @@ test.describe("flows", () => {
     await expect(page).toHaveURL(/\/subscriptions/);
 
     await pageUi.feedsTab.click();
-    await pageUi.addSourcesButton.click();
-    await pageUi.addWebsiteItem.click();
+    await pageUi.addWebsiteButton.click();
     const addPanel = feedPanel("Add a feed");
     await expect(addPanel).toBeVisible();
 
