@@ -221,7 +221,9 @@ The first list fetch of a session waits for the start replay (`whenReplayed` in
 [markReadQueue.ts](../../src/client/api/markReadQueue.ts)), so marks an earlier session left stored
 reach NewsBlur before the page reads. The wait is capped at 3 seconds, so a slow or stuck replay
 delays the first read but never blocks it. `flush()` also waits for batches already on the wire, so
-a refetch never overtakes a mark.
+a refetch never overtakes a mark. Every stream, search and counts fetch sends the waiting reads
+first, so a list or a count never comes back with a mark still held in the 10 s batch. The start
+replay and that send share the 3 second cap, so a read POST that hangs never holds the lists.
 
 A device that sat in the background holds stale lists, and nothing refetches on focus: the stale
 time is ten minutes. [useRefreshOnForeground](../../src/client/hooks/useRefreshOnForeground.ts)

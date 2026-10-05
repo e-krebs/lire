@@ -33,7 +33,7 @@ import {
   type EntryOrder,
 } from "client/api/client";
 import { useTier } from "client/hooks/useTier";
-import { markReadQueue, whenReplayed } from "client/api/markReadQueue";
+import { markReadQueue, sendQueuedReads } from "client/api/markReadQueue";
 import { orderCategories, orphansOf } from "client/api/selectors";
 import { CATEGORY_ORDER_KEY } from "shared/feedsApi/preferences";
 import { parseStreamKey, type StreamKey } from "shared/feedsApi/streamKey";
@@ -117,7 +117,14 @@ export const useCategories = () => useQuery({ queryKey: keys.categories, queryFn
 export const useFeeds = () => useQuery({ queryKey: keys.feeds, queryFn: getFeeds });
 
 export const useCounts = () =>
-  useQuery({ queryKey: keys.counts, queryFn: getCounts, refetchOnMount: false });
+  useQuery({
+    queryKey: keys.counts,
+    queryFn: async () => {
+      await sendQueuedReads();
+      return getCounts();
+    },
+    refetchOnMount: false,
+  });
 
 const SUN_MARGIN_MS = 30 * 1000;
 
@@ -275,7 +282,7 @@ export const useStream = ({
   useInfiniteQuery({
     queryKey: keys.stream({ streamKey, unreadOnly, order, count }),
     queryFn: async ({ pageParam }) => {
-      await whenReplayed;
+      await sendQueuedReads();
       return getStreamEntries({ streamKey, unreadOnly, order, count, cursor: pageParam });
     },
     initialPageParam: undefined as string | undefined,
@@ -302,7 +309,7 @@ export const useSearchContents = ({
   useInfiniteQuery({
     queryKey: keys.search({ streamKey, query, unreadOnly, count }),
     queryFn: async ({ pageParam }) => {
-      await whenReplayed;
+      await sendQueuedReads();
       return searchEntries({ streamKey, query, unreadOnly, count, cursor: pageParam });
     },
     initialPageParam: undefined as string | undefined,
@@ -504,9 +511,12 @@ export const useMarkRead = () => {
     networkMode: "always",
     onMutate: async ({ entryIds, read }: { entryIds: string[]; read: boolean }) => {
       // Search results are the same entries under a different key prefix, so they take the same
-      // optimistic flip (and the same rollback) as the plain stream caches.
+      // optimistic flip (and the same rollback) as the plain stream caches. The counts go too: a
+      // fetch in flight would land over the decrement.
       await Promise.all(
-        ENTRY_CACHE_PREFIXES.map(async (prefix) => client.cancelQueries({ queryKey: prefix })),
+        [...ENTRY_CACHE_PREFIXES, keys.counts].map(async (queryKey) =>
+          client.cancelQueries({ queryKey }),
+        ),
       );
 
       const previousStreams: CachedPages[] = ENTRY_CACHE_PREFIXES.flatMap((prefix) =>

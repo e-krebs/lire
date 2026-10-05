@@ -206,7 +206,7 @@ const settleWithin = async ({
   });
 
 /** Resolves once the startup replay has sent what an earlier session left stored, or after 3 s if it hangs. */
-export let whenReplayed: Promise<void> = Promise.resolve();
+let whenReplayed: Promise<void> = Promise.resolve();
 
 if (typeof window !== "undefined") {
   const flushOnLeave = () => {
@@ -230,3 +230,14 @@ if (typeof window !== "undefined") {
     ms: REPLAY_WAIT_MS,
   });
 }
+
+// A read still waiting in the batch would come back unread from a fetch. Bounded like the replay,
+// so a hanging read POST never holds the lists.
+export const sendQueuedReads = async (): Promise<void> =>
+  settleWithin({
+    promise: (async () => {
+      await whenReplayed;
+      await markReadQueue.flush();
+    })().catch(() => {}),
+    ms: REPLAY_WAIT_MS,
+  });

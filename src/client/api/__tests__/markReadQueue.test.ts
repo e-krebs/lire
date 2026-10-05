@@ -7,7 +7,7 @@ import {
   MARK_READ_BATCH_SIZE,
   MARK_READ_DELAY_MS,
   markReadQueue,
-  whenReplayed,
+  sendQueuedReads,
 } from "../markReadQueue";
 import { markReadStore } from "../markReadStore";
 
@@ -140,8 +140,8 @@ describe("markReadQueue", () => {
     expect(done).toBe(true);
   });
 
-  it("exposes the startup replay as a settled promise", async () => {
-    await expect(whenReplayed).resolves.toBeUndefined();
+  it("settles the queued reads send", async () => {
+    await expect(sendQueuedReads()).resolves.toBeUndefined();
   });
 
   it("stops waiting for a hung replay after the cap", async () => {
@@ -155,9 +155,9 @@ describe("markReadQueue", () => {
     await fresh.markReadStore.add(["101:hung"]);
     vi.useFakeTimers();
     try {
-      const { whenReplayed: hungReplay } = await import("../markReadQueue");
+      const { sendQueuedReads: sendHung } = await import("../markReadQueue");
       let settled = false;
-      void hungReplay.then(() => {
+      void sendHung().then(() => {
         settled = true;
       });
       await vi.advanceTimersByTimeAsync(2999);
