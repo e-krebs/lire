@@ -14,6 +14,7 @@ import { DEMO_NEWSLETTER_ADDRESS, resetFixtureState } from "../adapters/fixture"
 import { getFeeds } from "../client";
 import { markReadQueue } from "../markReadQueue";
 import { markReadStore } from "../markReadStore";
+import type { MatchCount } from "../queries";
 import {
   DeleteAndMoveError,
   flattenStream,
@@ -24,6 +25,7 @@ import {
   useCategories,
   useDeleteCategoryAndMove,
   useMarkRead,
+  useMatchCount,
   useNewsletterAddress,
   usePreferences,
   useRefreshAllLists,
@@ -172,6 +174,180 @@ describe("queries", () => {
     const entries = flattenStream(result.current.data);
     expect(entries.length).toBeGreaterThan(0);
     expect(entries.every((item) => item.feedId === "102")).toBe(true);
+  });
+
+  describe("when counting matches with useMatchCount", () => {
+    const entries = (n: number) => Array.from({ length: n }, (_, i) => entry({ id: `101:${i}` }));
+    const matchKeys = {
+      stream: (unreadOnly: boolean) =>
+        keys.stream({ streamKey: techKey, unreadOnly, order: "newest", count: 50 }),
+      search: (unreadOnly: boolean) =>
+        keys.search({ streamKey: techKey, query: "story", unreadOnly, count: 50 }),
+    };
+    const seedFresh = (client: QueryClient) => {
+      client.setQueryDefaults(["stream"], { staleTime: Infinity });
+      client.setQueryDefaults(["search"], { staleTime: Infinity });
+      client.setQueryDefaults(keys.counts, { staleTime: Infinity });
+    };
+
+    it.each<[number, MatchCount | undefined]>([
+      [0, undefined],
+      [7, { count: 7, capped: false }],
+      [49, { count: 49, capped: false }],
+      [50, { count: 50, capped: true }],
+      [120, { count: 50, capped: true }],
+    ])("reads %i unread from the counts as %o", async (unread, expected) => {
+      const { client, wrapper } = setup();
+      seedFresh(client);
+      client.setQueryData<Counts>(keys.counts, { all: 9, feeds: {}, categories: { Tech: unread } });
+      const { result } = renderHook(
+        () => useMatchCount({ streamKey: techKey, unreadOnly: true, query: "" }),
+        { wrapper },
+      );
+
+      await waitFor(() => {
+        expect(client.getQueryData(keys.counts)).toBeDefined();
+      });
+      expect(result.current).toEqual(expected);
+    });
+
+    it("is undefined while the counts are loading", () => {
+      const { wrapper } = setup();
+      const { result } = renderHook(
+        () => useMatchCount({ streamKey: techKey, unreadOnly: true, query: "" }),
+        { wrapper },
+      );
+
+      expect(result.current).toBeUndefined();
+    });
+
+    it("counts the entries of a page when the unread filter is off", async () => {
+      const { client, wrapper } = setup();
+      seedFresh(client);
+      client.setQueryData(matchKeys.stream(false), page(entries(3)));
+      const { result } = renderHook(
+        () => useMatchCount({ streamKey: techKey, unreadOnly: false, query: "" }),
+        { wrapper },
+      );
+
+      await waitFor(() => {
+        expect(result.current).toEqual({ count: 3, capped: false });
+      });
+    });
+
+    it("asks a feed for one page of 12, two upstream calls, and caps it there", async () => {
+      const { client, wrapper } = setup();
+      seedFresh(client);
+      const feedKey = keys.stream({
+        streamKey: "feed:101",
+        unreadOnly: false,
+        order: "newest",
+        count: 12,
+      });
+      client.setQueryData(feedKey, page(entries(12)));
+      const { result } = renderHook(
+        () => useMatchCount({ streamKey: "feed:101", unreadOnly: false, query: "" }),
+        { wrapper },
+      );
+
+      await waitFor(() => {
+        expect(result.current).toEqual({ count: 12, capped: true });
+      });
+    });
+
+    it("keeps a full page capped after one of its entries is read", async () => {
+      const { client, wrapper } = setup();
+      seedFresh(client);
+      const [first, ...rest] = entries(50);
+      client.setQueryData(matchKeys.search(true), page([{ ...first, unread: false }, ...rest]));
+      const { result } = renderHook(
+        () => useMatchCount({ streamKey: techKey, unreadOnly: true, query: "story" }),
+        { wrapper },
+      );
+
+      await waitFor(() => {
+        expect(result.current).toEqual({ count: 50, capped: true });
+      });
+    });
+
+    it("counts a full page of search results", async () => {
+      const { client, wrapper } = setup();
+      seedFresh(client);
+      client.setQueryData(matchKeys.search(false), page(entries(50)));
+      const { result } = renderHook(
+        () => useMatchCount({ streamKey: techKey, unreadOnly: false, query: "story" }),
+        { wrapper },
+      );
+
+      await waitFor(() => {
+        expect(result.current).toEqual({ count: 50, capped: true });
+      });
+    });
+
+    it("drops by one when a search result is read, and returns on rollback", async () => {
+      const { client, wrapper } = setup();
+      vi.stubEnv("VITE_API_MODE", "real");
+      seedFresh(client);
+      client.setQueryData(matchKeys.search(true), page(entries(3)));
+      server.use(
+        http.post("/api/entries/read", () => HttpResponse.json({ error: "bad" }, { status: 400 })),
+      );
+      const { result } = renderHook(
+        () => ({
+          count: useMatchCount({ streamKey: techKey, unreadOnly: true, query: "story" }),
+          markRead: useMarkRead(),
+        }),
+        { wrapper },
+      );
+      await waitFor(() => {
+        expect(result.current.count?.count).toBe(3);
+      });
+
+      await act(async () => {
+        const settled = result.current.markRead.mutateAsync({ entryIds: ["101:0"], read: true });
+        await vi.waitFor(() => {
+          expect(result.current.count?.count).toBe(2);
+        });
+        await markReadQueue.flush();
+        await settled.catch(() => undefined);
+      });
+
+      await waitFor(() => {
+        expect(result.current.count?.count).toBe(3);
+      });
+    });
+
+    it("shows nothing for a one-character search", () => {
+      const { wrapper } = setup();
+      const { result } = renderHook(
+        () => useMatchCount({ streamKey: techKey, unreadOnly: false, query: "s" }),
+        { wrapper },
+      );
+
+      expect(result.current).toBeUndefined();
+    });
+
+    it("shows nothing in the read stream", () => {
+      const { client, wrapper } = setup();
+      const { result } = renderHook(
+        () => useMatchCount({ streamKey: "read", unreadOnly: true, query: "" }),
+        { wrapper },
+      );
+
+      expect(result.current).toBeUndefined();
+      expect(client.isFetching()).toBe(0);
+    });
+
+    it("sends no request without a stream", () => {
+      const { client, wrapper } = setup();
+      const { result } = renderHook(
+        () => useMatchCount({ streamKey: undefined, unreadOnly: true, query: "story" }),
+        { wrapper },
+      );
+
+      expect(result.current).toBeUndefined();
+      expect(client.isFetching()).toBe(0);
+    });
   });
 
   it("stays idle until the query is long enough", () => {

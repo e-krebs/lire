@@ -1,4 +1,8 @@
+import { pluralFor } from "client/i18n/plural";
 import type { Messages } from "client/i18n/types";
+
+const enPlural = pluralFor("en");
+const frPlural = pluralFor("fr");
 
 export const en = {
   navigator: "Navigator",
@@ -26,6 +30,15 @@ export const en = {
   inScope: ({ label }: { label: string }) => `in ${label}`,
   loadingCategories: "Loading categories",
   allArticles: "All articles",
+  all: "All",
+  matchCount: ({ count }: { count: number }) =>
+    enPlural({ count, one: (n) => `${n} article`, other: (n) => `${n} articles` }),
+  matchCountOrMore: ({ count }: { count: number }) =>
+    enPlural({
+      count,
+      one: (n) => `${n} or more articles`,
+      other: (n) => `${n} or more articles`,
+    }),
   recentlyRead: "Recently read",
   matches: "Matches",
   noMatches: ({ query }: { query: string }) => `No feeds or categories match “${query}”.`,
@@ -57,6 +70,15 @@ export const fr = {
   inScope: ({ label }) => `dans ${label}`,
   loadingCategories: "Chargement des catégories",
   allArticles: "Tous les articles",
+  all: "Tout",
+  matchCount: ({ count }) =>
+    frPlural({ count, one: (n) => `${n} article`, other: (n) => `${n} articles` }),
+  matchCountOrMore: ({ count }) =>
+    frPlural({
+      count,
+      one: (n) => `${n} article ou plus`,
+      other: (n) => `${n} articles ou plus`,
+    }),
   recentlyRead: "Lus récemment",
   matches: "Correspondances",
   noMatches: ({ query }) => `Aucun flux ni catégorie ne correspond à « ${query} ».`,
