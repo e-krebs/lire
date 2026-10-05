@@ -56,6 +56,28 @@ type Story = StoryObj<Args>;
 
 export const Default: Story = {};
 
+export const ListCentred: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const column = (await canvas.findByRole("tab", { name: /Categories/ }, SLOW)).closest(
+      "div.flex-col",
+    )!;
+    await expect(column).not.toHaveAttribute("data-panel-open");
+  },
+};
+
+export const ListBesidePanel: Story = {
+  args: { panel: { kind: "add", categoryId: undefined } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await screen.findByRole("complementary", { name: "Add a feed" }, SLOW);
+    const column = (await canvas.findByRole("tab", { name: /Categories/ }, SLOW)).closest(
+      "div.flex-col",
+    )!;
+    await expect(column).toHaveAttribute("data-panel-open");
+  },
+};
+
 export const FeedsTab: Story = {
   args: { tab: "feeds" },
   play: async ({ canvasElement }) => {

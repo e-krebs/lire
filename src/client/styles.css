@@ -959,18 +959,21 @@ body {
 
 /* From `sm` up the panel floats over the list like the reader does at `lg`, with no scrim so the
    next row stays clickable. Below `sm` SidePanel renders the bottom sheet instead. */
+:root {
+  --side-panel-width: 340px;
+}
+@media (width >= 64rem) {
+  :root {
+    --side-panel-width: 372px;
+  }
+}
 .side-panel {
   position: absolute;
   inset-block: 0;
   right: 0;
   z-index: 10;
-  width: 340px;
+  width: var(--side-panel-width);
   box-shadow: -14px 0 34px light-dark(rgb(0 0 0 / 18%), rgb(0 0 0 / 45%));
-}
-@media (width >= 64rem) {
-  .side-panel {
-    width: 372px;
-  }
 }
 
 /* Each surface grows from its trigger's side (rule #7) and leaves the same way: the panel by the

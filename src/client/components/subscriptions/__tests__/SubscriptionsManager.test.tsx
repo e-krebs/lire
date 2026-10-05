@@ -319,6 +319,47 @@ describe("SubscriptionsManager", () => {
     });
   });
 
+  describe("when laying out the list", () => {
+    const column = async () => (await ui.tab("Categories · 4")).closest("div.flex-col")!;
+
+    it("centres the list while no panel is open", async () => {
+      await setup();
+
+      expect(await column()).not.toHaveAttribute("data-panel-open");
+    });
+
+    it("left-aligns the list clear of the panel while one is open", async () => {
+      const page = await setup();
+      await page.user.click(await ui.tab("Feeds · 12"));
+      await ui.panel.open({ page, label: "Example Daily News" });
+
+      expect(await column()).toHaveAttribute("data-panel-open");
+    });
+
+    it("keeps the list clear of the panel until its exit has played", async () => {
+      const page = await setup();
+      await page.user.click(await ui.tab("Feeds · 12"));
+      await ui.panel.open({ page, label: "Example Daily News" });
+      let finishExit = (): void => {};
+      const exit = new Promise<void>((resolve) => {
+        finishExit = resolve;
+      });
+      // jsdom has no animations: hand the panel one that ends when the test says so.
+      Object.defineProperty(HTMLElement.prototype, "getAnimations", {
+        configurable: true,
+        value: () => [{ finished: exit }],
+      });
+
+      await page.user.keyboard("{Escape}");
+
+      await waitFor(() => expect(ui.panel.panel).toHaveAttribute("data-closing"));
+      expect(await column()).toHaveAttribute("data-panel-open");
+      finishExit();
+      await page.closed();
+      expect(await column()).not.toHaveAttribute("data-panel-open");
+    });
+  });
+
   describe("when reordering the categories", () => {
     const ROW_HEIGHT = 56;
     const order = () => {
