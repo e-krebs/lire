@@ -1,10 +1,10 @@
 import { useId, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { useT } from "client/i18n/useT";
+import { tip } from "client/utils/tooltip";
 import { feedHue } from "client/utils/feedHue";
 import { Icon } from "client/components/ui/icons";
 import type { Category, Feed } from "shared/feedsApi/types";
-import { AddSourcesMenu } from "./AddSourcesMenu";
 import { ChipSet } from "./ChipSet";
 import { markPanelOrigin } from "./SidePanel";
 
@@ -45,6 +45,14 @@ export const FilterRow = ({ label, placeholder, value, onChange }: FilterRowProp
 export const addButtonClassName = `
   inline-flex min-h-11 flex-none items-center rounded-full bg-accent-soft px-4 text-sm
   font-semibold whitespace-nowrap text-accent-text
+  hover:bg-accent-soft/70
+  focus-visible:outline-2 focus-visible:outline-accent
+  motion-safe:transition-colors
+`;
+
+const iconButtonClassName = `
+  inline-flex size-11 flex-none items-center justify-center gap-px rounded-full bg-accent-soft
+  text-accent-text
   hover:bg-accent-soft/70
   focus-visible:outline-2 focus-visible:outline-accent
   motion-safe:transition-colors
@@ -97,9 +105,9 @@ interface FeedsTabProps {
   openFeedId: string | undefined;
   /** Feed row clicked. */
   onOpenFeed: (feedId: string) => void;
-  /** "Add website" menu item picked. */
+  /** "Add website" button clicked. */
   onAddWebsite: () => void;
-  /** "Add newsletter" menu item picked. */
+  /** "Add newsletter" button clicked. */
   onAddNewsletter: () => void;
 }
 
@@ -129,11 +137,24 @@ export const FeedsTab = ({
           value={filter}
           onChange={setFilter}
         />
-        <AddSourcesMenu
-          onAddWebsite={onAddWebsite}
-          onAddNewsletter={onAddNewsletter}
-          className={addButtonClassName}
-        />
+        <button
+          type="button"
+          {...tip({ label: t.addWebsite })}
+          onClick={onAddWebsite}
+          className={iconButtonClassName}
+        >
+          <Icon name="website" className="size-5" />
+          <Icon name="plus" className="size-3.5" />
+        </button>
+        <button
+          type="button"
+          {...tip({ label: t.addNewsletter })}
+          onClick={onAddNewsletter}
+          className={iconButtonClassName}
+        >
+          <Icon name="newsletter" className="size-5" />
+          <Icon name="plus" className="size-3.5" />
+        </button>
       </div>
       {/* Per-category counts never add up to the total, since a feed can sit in several. */}
       <p className="px-3 text-xs text-faint tabular-nums">
