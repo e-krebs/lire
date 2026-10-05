@@ -310,8 +310,8 @@ export const useSearchContents = ({
     enabled: enabled && query.trim().length >= MIN_SEARCH_LENGTH,
   });
 
-// Counts first and awaited: the counts query is often inactive, and parallel NewsBlur calls
-// would let the count move without the list.
+// Counts and the library first and awaited: the counts query is often inactive, and parallel
+// NewsBlur calls would let the count move without the list.
 const refreshCountsThenLists = async ({
   client,
   refreshLists,
@@ -319,7 +319,11 @@ const refreshCountsThenLists = async ({
   client: QueryClient;
   refreshLists: () => Promise<unknown>;
 }): Promise<void> => {
-  await client.refetchQueries({ queryKey: keys.counts, type: "all" });
+  await Promise.all(
+    [keys.counts, keys.categories, keys.feeds].map(async (queryKey) =>
+      client.refetchQueries({ queryKey, type: "all" }),
+    ),
+  );
   await refreshLists();
 };
 

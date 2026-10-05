@@ -231,8 +231,8 @@ is still running. `useRefreshAllLists` in
 search and entry cache plus the counts. It keeps loaded pages, unlike a top pull-to-refresh, which
 trims to page 1. A global `refetchOnWindowFocus` would refetch every list at once.
 
-Every refresh refetches the counts before the lists, so the unread count never moves without the
-list it describes. A failed counts fetch does not stop the lists. The counts do not poll and a
+Every refresh refetches the counts, the categories and the feeds before the lists, so a new
+subscription shows up and the unread count never moves without the list it describes. A failed counts fetch does not stop the lists. The counts do not poll and a
 mount does not refetch them: they refresh with a list refresh or after a read mark. Marking an
 entry unread marks the unread-only stream and search lists stale without refetching them, so the
 open view does not jump and the unread view refetches when it mounts.

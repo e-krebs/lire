@@ -198,6 +198,23 @@ describe("queries", () => {
     expect(client.getQueryData<Counts>(keys.counts)).toEqual(counts);
   });
 
+  it("refetches the subscription library on refresh", async () => {
+    const { client, wrapper } = setup();
+    const queryKey = keys.stream({ streamKey: techKey });
+    const { result } = renderHook(() => useRefreshEntries(), { wrapper });
+    client.setQueryDefaults(keys.counts, { queryFn: async () => resolved(counts) });
+    client.setQueryData(keys.counts, counts);
+    client.setQueryDefaults(keys.categories, { queryFn: async () => resolved([]) });
+    client.setQueryData(keys.categories, [{ id: "stale" }]);
+    client.setQueryDefaults(keys.feeds, { queryFn: async () => resolved([]) });
+    client.setQueryData(keys.feeds, [{ id: "stale" }]);
+
+    await act(async () => result.current({ queryKey }));
+
+    expect(client.getQueryData(keys.categories)).toEqual([]);
+    expect(client.getQueryData(keys.feeds)).toEqual([]);
+  });
+
   it("keeps every loaded page when it refreshes without trimming", async () => {
     const { client, wrapper } = setup();
     const queryKey = keys.stream({ streamKey: techKey });
