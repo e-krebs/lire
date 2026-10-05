@@ -255,6 +255,10 @@ export const EditFeed: Story = {
     await expect(direct).toBeChecked();
     await userEvent.click(within(panel).getByRole("button", { name: "Save changes" }));
     await canvas.findByRole("button", { name: "Design Journal Renamed" }, SLOW);
+    // The new name shows before the PATCH lands; ending here would let it land in the next story.
+    await waitFor(async () => {
+      await expect(screen.queryByRole("complementary")).toBeNull();
+    }, SLOW);
   },
 };
 

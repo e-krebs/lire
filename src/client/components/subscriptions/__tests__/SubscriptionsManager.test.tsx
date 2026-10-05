@@ -262,6 +262,14 @@ const intercept = ({
   return release;
 };
 
+const held = (): { wait: Promise<void>; release: () => void } => {
+  let release = (): void => {};
+  const wait = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  return { wait, release };
+};
+
 const feedCategoryIds = async (feedId: string): Promise<string[] | undefined> =>
   (await getFeeds()).find((feed) => feed.id === feedId)?.categoryIds;
 
@@ -578,6 +586,22 @@ describe("SubscriptionsManager", () => {
       }, SETTLED);
     });
 
+    it("shows the new title in the list as it closes, while the refetch is still held", async () => {
+      const page = await setup();
+      const panel = await ui.panel.openFeed({ page, title: "Example Daily News" });
+      const title = panel.textbox("Title");
+      await page.user.clear(title);
+      await page.user.type(title, "Example Daily");
+      const release = intercept({ method: "get", path: "/feeds" });
+
+      await page.user.click(panel.queryRow("Save changes")!);
+
+      await page.closed();
+      expect(ui.queryRow("Example Daily")).toBeInTheDocument();
+      expect(ui.queryRow("Example Daily News")).not.toBeInTheDocument();
+      release();
+    });
+
     it("keeps the panel open and shows the error when a save fails", async () => {
       const page = await setup();
       const panel = await ui.panel.openFeed({ page, title: "Example Daily News" });
@@ -736,6 +760,36 @@ describe("SubscriptionsManager", () => {
       expect(await feedCategoryIds(DEV_NOTES)).toEqual([TECH]);
     });
 
+    it("keeps the panel and its error when removing the last feed fails", async () => {
+      let podcastsId = "";
+      const page = await setup({
+        seed: async () => {
+          podcastsId = (await createCategory("Podcasts")).id;
+          await updateFeed({ feedId: DAILY_NEWS, categoryIds: [NEWS, podcastsId] });
+        },
+      });
+      await ui.panel.open({ page, label: "Podcasts" });
+      const fail = held();
+      server.use(
+        http.patch("/api/feeds/*", async () => {
+          await fail.wait;
+          return HttpResponse.json({}, { status: 500 });
+        }),
+      );
+
+      await page.user.click(ui.panel.queryRow("Remove Example Daily News from Podcasts")!);
+      await waitFor(() => {
+        expect(ui.panel.queryRow("Example Daily News")).not.toBeInTheDocument();
+      });
+      fail.release();
+
+      expect(
+        await waitFor(() => ui.panel.text("Could not remove that feed. API error (500)")),
+      ).toBeInTheDocument();
+      expect(ui.panel.queryRow("Example Daily News")).toBeInTheDocument();
+      expect(await feedCategoryIds(DAILY_NEWS)).toEqual([NEWS, podcastsId]);
+    });
+
     it("asks before the ✕ on a feed's last category unsubscribes it", async () => {
       const { user } = await setup({ url: designUrl });
       await ui.findPanel("Design");
@@ -767,6 +821,21 @@ describe("SubscriptionsManager", () => {
         expect(ui.queryRow("Design & UX")).toBeInTheDocument();
         expect(ui.queryRow("Design")).not.toBeInTheDocument();
       }, SETTLED);
+    });
+
+    it("shows the new name in the list as it closes, while the refetch is still held", async () => {
+      const page = await setup();
+      const panel = await ui.panel.open({ page, label: "Design" });
+      const name = panel.textbox("Name");
+      await page.user.clear(name);
+      const release = intercept({ method: "get", path: "/categories" });
+
+      await page.user.type(name, "Design & UX{Enter}");
+
+      await page.closed();
+      expect(ui.queryRow("Design & UX")).toBeInTheDocument();
+      expect(ui.queryRow("Design")).not.toBeInTheDocument();
+      release();
     });
 
     it("refuses to rename a category to a label already taken", async () => {

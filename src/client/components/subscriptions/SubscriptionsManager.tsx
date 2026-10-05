@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useCategories, useFeeds, useOrderedCategories } from "client/api/queries";
+import { useCategories, useFeeds, useOrderedCategories, useSavingFeed } from "client/api/queries";
 import { feedsInCategory } from "client/api/selectors";
 import { CategoriesTab } from "client/components/subscriptions/CategoriesTab";
 import { CategoryPanel } from "client/components/subscriptions/CategoryPanel";
@@ -69,6 +69,7 @@ export const SubscriptionsManager = ({
   const feedsQuery = useFeeds();
   const { categories: categoryList, ready: categoriesReady } = useOrderedCategories();
   const feedList = feedsQuery.data ?? [];
+  const savingFeed = useSavingFeed();
   const loadError = categoriesQuery.error ?? feedsQuery.error;
 
   // A panel that just closed stays up while it plays its exit (SidePanel), then unmounts. Opening
@@ -189,8 +190,10 @@ export const SubscriptionsManager = ({
           <FeedPanel feed={openFeed} categories={categoryList} onClose={closePanel} />
         )}
         {/* Waits for the feeds, so a loading list never reads as an empty category. Swaps to the
-          empty panel once the last feed leaves. */}
-        {openCategory === undefined || feedsQuery.data === undefined ? null : feedsInCategory({
+          empty panel once the last feed leaves, but not while its removal saves: the swap would
+          unmount the save, and a failure would come back with no message. */}
+        {openCategory === undefined || feedsQuery.data === undefined ? null : !savingFeed &&
+          feedsInCategory({
             feeds: feedList,
             categoryId: openCategory.id,
           }).length === 0 ? (
