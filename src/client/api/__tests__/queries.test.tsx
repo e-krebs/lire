@@ -6,7 +6,7 @@ import { http, HttpResponse } from "msw";
 import { describe, expect, it, vi } from "vitest";
 import { CATEGORY_ORDER_KEY } from "shared/feedsApi/preferences";
 import type { StreamKey } from "shared/feedsApi/streamKey";
-import type { Counts, Entry, EntryPage, Feed, Preferences } from "shared/feedsApi/types";
+import type { Category, Counts, Entry, EntryPage, Feed, Preferences } from "shared/feedsApi/types";
 import { PreferencesUpdateSchema } from "shared/feedsApi/types";
 import { server } from "test/msw";
 import { seedCategories, seedCategoryId, seedCategoryKey } from "test/seedCategories";
@@ -21,6 +21,7 @@ import {
   pageCountFor,
   unreadCountFor,
   useCounts,
+  useCategories,
   useDeleteCategoryAndMove,
   useMarkRead,
   useNewsletterAddress,
@@ -70,6 +71,15 @@ const held = (): { wait: Promise<void>; release: () => void } => {
     release = resolve;
   });
   return { wait, release };
+};
+
+const seedLibrary = (client: QueryClient) => {
+  const design: Category = { id: "Design", label: "Design", feedIds: ["104"] };
+  const news: Category = { id: "News", label: "News", feedIds: [] };
+  const feed: Feed = { id: "104", title: "Longform", categoryIds: ["Design"], isNewsletter: false };
+  client.setQueryData<Category[]>(keys.categories, [design, news]);
+  client.setQueryData<Feed[]>(keys.feeds, [feed]);
+  return { design, news, feed };
 };
 
 const categoryIdsOf = async (feedId: string): Promise<string[] | undefined> =>
@@ -417,6 +427,76 @@ describe("queries", () => {
     });
 
     expect(client.getQueryState(keys.preferences)?.isInvalidated).toBe(true);
+  });
+
+  it("shows a new category label at once, then moves its id everywhere before the refetch lands", async () => {
+    const { client, wrapper } = setup();
+    vi.stubEnv("VITE_API_MODE", "real");
+    const { design, news } = seedLibrary(client);
+    const renamed: Category = { ...design, id: "Design & UX", label: "Design & UX" };
+    client.setQueryData<Counts>(keys.counts, { all: 3, feeds: {}, categories: { Design: 3 } });
+    client.setQueryData<Preferences>(keys.preferences, {
+      [CATEGORY_ORDER_KEY]: JSON.stringify(["News", "Design"]),
+    });
+    const patch = held();
+    const refetch = held();
+    server.use(
+      http.patch("/api/categories/:id", async () => {
+        await patch.wait;
+        return HttpResponse.json(renamed);
+      }),
+      http.get("/api/categories", async () => {
+        await refetch.wait;
+        return HttpResponse.json([renamed, news]);
+      }),
+    );
+    const { result } = renderHook(
+      () => ({ categories: useCategories(), rename: useRenameCategory() }),
+      { wrapper },
+    );
+
+    act(() => {
+      result.current.rename.mutate({ categoryId: "Design", label: "Design & UX" });
+    });
+    await waitFor(() => {
+      expect(client.getQueryData(keys.categories)).toEqual([
+        { ...design, label: "Design & UX" },
+        news,
+      ]);
+    });
+    patch.release();
+    await waitFor(() => {
+      expect(result.current.rename.isSuccess).toBe(true);
+    });
+
+    expect(client.getQueryState(keys.categories)?.fetchStatus).toBe("fetching");
+    expect(client.getQueryData(keys.categories)).toEqual([renamed, news]);
+    expect(client.getQueryData<Feed[]>(keys.feeds)?.[0]?.categoryIds).toEqual(["Design & UX"]);
+    expect(client.getQueryData<Counts>(keys.counts)?.categories).toEqual({ "Design & UX": 3 });
+    expect(client.getQueryData<Preferences>(keys.preferences)?.[CATEGORY_ORDER_KEY]).toBe(
+      JSON.stringify(["News", "Design & UX"]),
+    );
+    refetch.release();
+  });
+
+  it("restores the category label when the rename fails", async () => {
+    const { client, wrapper } = setup();
+    vi.stubEnv("VITE_API_MODE", "real");
+    const { design, news } = seedLibrary(client);
+    server.use(
+      http.patch("/api/categories/:id", () =>
+        HttpResponse.json({ error: "boom" }, { status: 500 }),
+      ),
+    );
+    const { result } = renderHook(() => useRenameCategory(), { wrapper });
+
+    await act(async () => {
+      await result.current
+        .mutateAsync({ categoryId: "Design", label: "Design & UX" })
+        .catch(() => undefined);
+    });
+
+    expect(client.getQueryData(keys.categories)).toEqual([design, news]);
   });
 
   it("flips the entry in every cached stream and search page at once", async () => {
@@ -841,6 +921,57 @@ describe("queries", () => {
 
     const saved = (await getFeeds()).find((feed) => feed.id === "104");
     expect(saved).toMatchObject({ title: "Renamed", categoryIds: ["Design", "News"] });
+  });
+
+  it("shows a feed's new title and categories in the feeds and categories before the PATCH resolves", async () => {
+    const { client, wrapper } = setup();
+    vi.stubEnv("VITE_API_MODE", "real");
+    const { design, news, feed } = seedLibrary(client);
+    const saved: Feed = { ...feed, title: "Renamed", categoryIds: ["News"] };
+    const patch = held();
+    server.use(
+      http.patch("/api/feeds/:id", async () => {
+        await patch.wait;
+        return HttpResponse.json(saved);
+      }),
+    );
+    const { result } = renderHook(() => useUpdateFeed(), { wrapper });
+
+    act(() => {
+      result.current.mutate({ feedId: "104", title: "Renamed", categoryIds: ["News"] });
+    });
+
+    await waitFor(() => {
+      expect(client.getQueryData(keys.feeds)).toEqual([saved]);
+    });
+    expect(client.getQueryData(keys.categories)).toEqual([
+      { ...design, feedIds: [] },
+      { ...news, feedIds: ["104"] },
+    ]);
+    patch.release();
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+    expect(client.getQueryData(keys.feeds)).toEqual([saved]);
+  });
+
+  it("restores the feed and its categories when the PATCH fails", async () => {
+    const { client, wrapper } = setup();
+    vi.stubEnv("VITE_API_MODE", "real");
+    const { design, news, feed } = seedLibrary(client);
+    server.use(
+      http.patch("/api/feeds/:id", () => HttpResponse.json({ error: "boom" }, { status: 500 })),
+    );
+    const { result } = renderHook(() => useUpdateFeed(), { wrapper });
+
+    await act(async () => {
+      await result.current
+        .mutateAsync({ feedId: "104", title: "Renamed", categoryIds: ["News"] })
+        .catch(() => undefined);
+    });
+
+    expect(client.getQueryData(keys.feeds)).toEqual([feed]);
+    expect(client.getQueryData(keys.categories)).toEqual([design, news]);
   });
 
   it("moves the orphans to the target and deletes the category", async () => {

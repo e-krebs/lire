@@ -225,6 +225,13 @@ a refetch never overtakes a mark. Every stream, search and counts fetch sends th
 first, so a list or a count never comes back with a mark still held in the 10 s batch. The start
 replay and that send share the 3 second cap, so a read POST that hangs never holds the lists.
 
+Renaming a category and editing a feed are optimistic, like the preferences: the cache changes
+before the request returns and rolls back on failure, so the old name never shows while the panel
+closes. A category id is its folder title, so a rename also rewrites the id in the feeds'
+`categoryIds`, the counts and the stored category order. A panel that closes after a rename skips
+its exit animation. A category panel whose last feed leaves swaps to the empty panel only once the
+save settles, so a failed save keeps its message.
+
 A device that sat in the background holds stale lists, and nothing refetches on focus: the stale
 time is ten minutes. [useRefreshOnForeground](../../src/client/hooks/useRefreshOnForeground.ts)
 fires when the page returns after more than 60 seconds hidden, and skips a refresh while another
