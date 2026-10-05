@@ -122,14 +122,17 @@ export const SubscriptionsManager = ({
     <>
       <div className="h-full scroll-pane">
         {/* Left-aligned on tablet, so the floating panel covers as little of the list as it can.
-            Centred on desktop at the top bar search pill's `max-w-2xl`. The page title lives in
-            the top bar beside its Back button, so it isn't repeated here. */}
+            Centred on desktop at the top bar search pill's `max-w-2xl`, and left-aligned clear of
+            the panel while one is open. The page title lives in the top bar beside its Back
+            button, so it isn't repeated here. */}
         <div
           className={`
             mx-auto flex max-w-xl flex-col gap-4 px-4 py-6
             sm:mx-0 sm:px-6
             lg:mx-auto lg:max-w-2xl
+            lg:data-panel-open:mr-[var(--side-panel-width)] lg:data-panel-open:ml-0
           `}
+          data-panel-open={shownPanel === undefined ? undefined : ""}
         >
           <Tabs
             label={t.tabsLabel}
