@@ -226,7 +226,8 @@ fixtures, which the gate checks rather than assumes.
 `injectManifest` mode from [sw.ts](../../src/client/sw.ts). The worker precaches the built assets
 and falls back to `index.html` for navigation. The fallback denylists `/api/`, because the Worker
 serves `/api/auth/login` as an HTML page: if the service worker answered that navigation with the
-SPA shell, the login would never run. In dev the manifest is nearly empty, so the fallback route is
+SPA shell, the login would never run. It also denylists `/cdn-cgi/`: Access returns from its login
+to `/cdn-cgi/access/authorized`, which sets the session cookie, and the SPA shell would swallow it. In dev the manifest is nearly empty, so the fallback route is
 skipped there.
 
 The worker also holds a `sync` handler. Read marks wait in an IndexedDB store
