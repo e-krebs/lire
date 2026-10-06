@@ -263,7 +263,7 @@ open view does not jump and the unread view refetches when it mounts.
 
 A top pull trims the list to page 1 and scrolls to the top. A bottom pull keeps every loaded page
 and the scroll position. It arms only at the true end of the list: no next page, no fetch in
-flight, no next-page error and at least one entry. It also calls `preventDefault` only after the
+flight and no next-page error. An empty result arms it too, so the no-results view refreshes the same way. It also calls `preventDefault` only after the
 touch travels a few pixels, so a scroll that reaches the pagination sentinel is not swallowed.
 
 The reader has a bottom pull of its own: past the article's end, a pull up takes the Mark exit, the

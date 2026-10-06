@@ -90,7 +90,7 @@ export const MosaicBody = ({
   // the sentinel.
   const { attach: attachPull, pull } = usePullToRefresh({
     onRefresh: refreshAsync,
-    pullUp: !hasNextPage && !result.isFetching && !isFetchNextPageError && entries.length > 0,
+    pullUp: !hasNextPage && !result.isFetching && !isFetchNextPageError,
   });
   // State, not a ref: the sentinel moves between the empty state and the grid, and the observer
   // has to follow it.
@@ -228,8 +228,9 @@ export const MosaicBody = ({
   }
 
   if (shown.length === 0) {
+    // `min-h-full` so a short empty view still leaves a finger room to pull from the bottom.
     return (
-      <div ref={attachPull} className="relative">
+      <div ref={attachPull} className="relative min-h-full">
         <PullIndicator pull={pull} />
         <div
           className="pull-content"
