@@ -25,6 +25,8 @@ Terms used across the code and the docs.
 | Folder | A NewsBlur folder. Top-level folders are the app's categories, and a folder's id is its title. |
 | Category | A top-level folder as the client sees it, with `{id, label, feedIds}`. |
 | Feed | A followed feed, with the numeric NewsBlur feed id as a string. |
+| Web feed | A feed NewsBlur builds from a page with no RSS, by reading its stories with XPath expressions. Its address is `webfeed:<page URL>`, and `isWebFeed` marks it. Creating one needs a Premium Archive account. |
+| Variant | One way to read a web feed's stories that a NewsBlur analysis proposes: a label, the XPath `fields` and up to three previews. Subscribing picks one. |
 | Story hash | NewsBlur's id for one story. It is the entry id in the contract. |
 | Unread counts | Per feed, `ps + nt + ng` from `/reader/refresh_feeds`, summed per category and for `all`. See [ADR 0009](../adr/0009-newsblur-bff.md). |
 | Cursor | The opaque paging token in a stream or search response. It is base64url JSON of the page number, and of the query for search. |

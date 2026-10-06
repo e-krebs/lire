@@ -35,6 +35,8 @@ const FeedSchema = z
     iconUrl: z.string().optional(),
     categoryIds: z.array(z.string()),
     isNewsletter: z.boolean(),
+    // Present, and true, only on a web feed.
+    isWebFeed: z.boolean().optional(),
   })
   .loose();
 export type Feed = z.infer<typeof FeedSchema>;
@@ -94,6 +96,61 @@ export const SunPhaseSchema = z
   .loose();
 export type SunPhase = z.infer<typeof SunPhaseSchema>;
 
+// One variant of a web feed analysis. `fields` holds NewsBlur's XPath expressions, which the
+// client sends back untouched to subscribe. A preview is plain text taken from the page.
+const WebFeedFieldsSchema = z
+  .object({
+    storyContainer: z.string(),
+    title: z.string(),
+    link: z.string().optional(),
+    content: z.string().optional(),
+    image: z.string().optional(),
+    author: z.string().optional(),
+    date: z.string().optional(),
+  })
+  .loose();
+
+const WebFeedVariantSchema = z
+  .object({
+    label: z.string().optional(),
+    description: z.string().optional(),
+    fields: WebFeedFieldsSchema,
+    previews: z.array(
+      z
+        .object({
+          title: z.string().optional(),
+          url: z.string().optional(),
+          summary: z.string().optional(),
+          imageUrl: z.string().optional(),
+        })
+        .loose(),
+    ),
+  })
+  .loose();
+export type WebFeedVariant = z.infer<typeof WebFeedVariantSchema>;
+
+// `requestId` to poll, or `feedUrl` alone when the URL is already a feed.
+export const WebFeedAnalysisSchema = z
+  .object({ requestId: z.string().optional(), feedUrl: z.string().optional() })
+  .loose();
+export type WebFeedAnalysis = z.infer<typeof WebFeedAnalysisSchema>;
+
+// `variants` is empty until `done`.
+export const WebFeedStatusSchema = z
+  .object({
+    status: z.enum(["pending", "done", "failed"]),
+    message: z.string().optional(),
+    variants: z.array(WebFeedVariantSchema),
+    htmlHash: z.string().optional(),
+    pageTitle: z.string().optional(),
+  })
+  .loose();
+export type WebFeedStatus = z.infer<typeof WebFeedStatusSchema>;
+
+// `url` is the page the feed reads, to send back to `POST /api/webfeeds` with the picked variant.
+export const WebFeedReanalysisSchema = z.object({ requestId: z.string(), url: z.string() }).loose();
+export type WebFeedReanalysis = z.infer<typeof WebFeedReanalysisSchema>;
+
 export const PreferencesSchema = z.record(z.string(), z.string());
 export type Preferences = z.infer<typeof PreferencesSchema>;
 
@@ -143,6 +200,19 @@ export const MarkEntriesBodySchema = z.object({ entryIds: z.array(z.string()).mi
 export const CreateFeedBodySchema = z
   .object({
     feedUrl: z.string(),
+    title: z.string().optional(),
+    categoryIds: z.array(z.string()),
+  })
+  .loose();
+
+export const AnalyzeWebFeedBodySchema = z.object({ url: z.string().min(1) }).loose();
+
+export const CreateWebFeedBodySchema = z
+  .object({
+    url: z.string().min(1),
+    variantIndex: z.number().int().nonnegative(),
+    fields: WebFeedFieldsSchema,
+    htmlHash: z.string().optional(),
     title: z.string().optional(),
     categoryIds: z.array(z.string()),
   })

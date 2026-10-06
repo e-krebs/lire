@@ -30,10 +30,14 @@ folder title, an entry id is the story hash. A stream key is `all`, `read`, `fol
 | POST | `/api/categories` | Create a category, body `{ label }`. 409 when a category already has the label |
 | PATCH | `/api/categories/:categoryId` | Rename, body `{ label }`. 409 when another category has the label. Swaps the id in `lire.categoryOrder` |
 | DELETE | `/api/categories/:categoryId` | Delete. `?moveTo=<id>` first moves its feeds to that category |
-| GET | `/api/feeds` | `[{ id, title, siteUrl?, feedUrl?, iconUrl?, categoryIds, isNewsletter }]` |
+| GET | `/api/feeds` | `[{ id, title, siteUrl?, feedUrl?, iconUrl?, categoryIds, isNewsletter, isWebFeed? }]`. `isWebFeed` is present, and true, only on a web feed, whose `feedUrl` is `webfeed:<page URL>` |
 | POST | `/api/feeds` | Subscribe, body `{ feedUrl, title?, categoryIds }` |
 | PATCH | `/api/feeds/:feedId` | Rename or move, body `{ title?, categoryIds? }` |
 | DELETE | `/api/feeds/:feedId` | Unsubscribe |
+| POST | `/api/feeds/:feedId/reanalyze` | Analyze a web feed's page again, answers `{ requestId, url }`. Poll `requestId` as below, then send the picked variant and `url` to `POST /api/webfeeds`. 400 on a feed that is not a web feed |
+| POST | `/api/webfeeds/analyze` | Analyze a page for web feed variants, body `{ url }`. Answers `{ requestId }` to poll, or `{ feedUrl }` alone when the URL is already a feed, to subscribe through `POST /api/feeds` |
+| GET | `/api/webfeeds/analyze/:requestId` | `{ status: pending\|done\|failed, message?, variants, htmlHash?, pageTitle? }`. `variants` is empty until `done`; each is `{ label?, description?, fields, previews }`, with up to three plain-text previews `{ title?, url?, summary?, imageUrl? }`. NewsBlur keeps an analysis five minutes after its last event and answers the same for an id not started yet and an expired one, so both read `pending`. A malformed id answers 404 |
+| POST | `/api/webfeeds` | Subscribe to a web feed, body `{ url, variantIndex, fields, htmlHash?, title?, categoryIds }`, with `fields` and `htmlHash` sent back as the status gave them. Answers 201 with the feed. On a web feed already followed it only swaps the variant, renames when `title` comes along, and answers 200. Needs Premium Archive: without it, 403 `premium_required` |
 | GET | `/api/counts` | `{ all, feeds: { [feedId]: n }, categories: { [id]: n } }` |
 | GET | `/api/streams/:streamKey/entries` | `?count&unreadOnly&order=newest\|oldest&cursor`, answers `{ items, cursor? }`. NewsBlur sends no end flag, so the cursor is left out on an empty page and on a page shorter than a full one: 6 stories for a feed, 12 for a river, or the `count` asked for. A read stream has no fixed page size, so it ends on an empty page only. Rivers pass `count` to NewsBlur as `limit`. A single feed has no `limit`, so the Worker chains `ceil(count / 6)` upstream pages of 6 per page. `count` is capped at 50: a larger value answers 400. The client sends `count` on desktop only: 24 for rivers (all, category, read), 12 for a single feed. Phone and tablet send none |
 | GET | `/api/entries/:entryId` | One entry |
@@ -54,7 +58,8 @@ Preference keys are `lire.categoryOrder` and `lire.directOpen.<feedId>`
 The Worker sends `Cookie: newsblur_sessionid=<id>` and `User-Agent: Lire` upstream. NewsBlur bans a request with no user agent. Non-GET requests need a same-origin
 caller, and POST and PATCH need a JSON content type. Creates answer 201 with the resource, PATCH
 answers 200, and deletes, marks and preference writes answer 204. Errors are JSON: `forbidden`,
-`not_found`, `bad_request`, `conflict` (409), `sign_in_required` (401), `upstream_error` (502). The response and
+`not_found`, `bad_request`, `conflict` (409), `sign_in_required` (401), `premium_required` (403),
+`upstream_error` (502). The response and
 request types are in [types.ts](../../src/shared/feedsApi/types.ts).
 
 ## Environment
