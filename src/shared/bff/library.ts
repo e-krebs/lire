@@ -17,6 +17,11 @@ export interface Library {
 }
 
 const NEWSLETTER_PREFIX = "newsletter:";
+const WEB_FEED_PREFIX = "webfeed:";
+
+// A web feed's address is its page URL behind a prefix.
+export const webFeedPageOf = (feedUrl: string): string =>
+  feedUrl.startsWith(WEB_FEED_PREFIX) ? feedUrl.slice(WEB_FEED_PREFIX.length) : feedUrl;
 
 const collectPlacements = (items: FolderItem[]): Map<string, FolderPath[]> => {
   const placements = new Map<string, FolderPath[]>();
@@ -57,6 +62,10 @@ export const toFeed = ({
   iconUrl: iconUrlOf(upstream.favicon_url),
   categoryIds,
   isNewsletter: upstream.feed_address.startsWith(NEWSLETTER_PREFIX),
+  // Left out on other feeds, so their literals need no `isWebFeed: false`.
+  ...((upstream.is_webfeed ?? upstream.feed_address.startsWith(WEB_FEED_PREFIX))
+    ? { isWebFeed: true }
+    : {}),
 });
 
 // Only top-level folders become categories; a nested folder's feeds count under its top-level one.

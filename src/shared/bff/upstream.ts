@@ -40,6 +40,7 @@ const UpstreamFeedSchema = z.object({
   feed_address: z.string(),
   feed_link: z.string().nullish(),
   favicon_url: z.string().nullish(),
+  is_webfeed: z.boolean().optional(),
 });
 export type UpstreamFeed = z.infer<typeof UpstreamFeedSchema>;
 
@@ -99,7 +100,57 @@ export const WriteAnswerSchema = z.object({
 });
 export type WriteAnswer = z.infer<typeof WriteAnswerSchema>;
 
+// `/reader/add_url` and `/webfeed/subscribe`.
 export const AddUrlAnswerSchema = WriteAnswerSchema.extend({ feed: UpstreamFeedSchema.nullish() });
+
+// `/webfeed/analyze` and `/webfeed/reanalyze`. Analyze answers code 2 and `feed_address`, with no
+// `request_id`, when the URL is already a feed.
+export const WebFeedAnalyzeAnswerSchema = WriteAnswerSchema.extend({
+  request_id: z.string().optional(),
+  feed_address: z.string().optional(),
+});
+
+const WebFeedVariantSchema = z.object({
+  label: z.string().nullish(),
+  description: z.string().nullish(),
+  story_container: z.string(),
+  title: z.string(),
+  link: z.string().nullish(),
+  content: z.string().nullish(),
+  image: z.string().nullish(),
+  author: z.string().nullish(),
+  date: z.string().nullish(),
+  preview_stories: z
+    .array(
+      z.object({
+        title: z.string().nullish(),
+        link: z.string().nullish(),
+        content: z.string().nullish(),
+        image: z.string().nullish(),
+      }),
+    )
+    .optional(),
+});
+export type UpstreamWebFeedVariant = z.infer<typeof WebFeedVariantSchema>;
+
+// `/webfeed/status`: the last event of the analysis task, `type` start, progress, variants,
+// complete or error, kept five minutes after each event. A complete event carries the results as
+// `variants_data`. An id with no event, not started yet or expired, answers code -1 and
+// `status: "unknown"`.
+export const WebFeedStatusAnswerSchema = z.object({
+  code: z.number(),
+  type: z.string().optional(),
+  message: z.string().nullish(),
+  error: z.string().nullish(),
+  variants_data: z
+    .object({
+      variants: z.array(WebFeedVariantSchema),
+      html_hash: z.string().nullish(),
+      page_title: z.string().nullish(),
+    })
+    .optional(),
+});
+export type WebFeedStatusAnswer = z.infer<typeof WebFeedStatusAnswerSchema>;
 
 // Every JSON object NewsBlur answers carries these, set by its `json_view`.
 export const SessionFieldsSchema = z.object({

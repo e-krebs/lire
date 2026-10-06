@@ -3,8 +3,10 @@ import { CATEGORY_ORDER_KEY } from "shared/feedsApi/preferences";
 import type { Route } from "shared/feedsApi/routes";
 import { parseStreamKey, type Stream } from "shared/feedsApi/streamKey";
 import {
+  AnalyzeWebFeedBodySchema,
   CategoryBodySchema,
   CreateFeedBodySchema,
+  CreateWebFeedBodySchema,
   DeleteCategoryQuerySchema,
   MarkEntriesBodySchema,
   PreferencesUpdateSchema,
@@ -14,6 +16,9 @@ import {
   SunPhaseSchema,
   SunQuerySchema,
   UpdateFeedBodySchema,
+  WebFeedAnalysisSchema,
+  WebFeedReanalysisSchema,
+  WebFeedStatusSchema,
   type Category,
   type Counts,
   type Entry,
@@ -21,6 +26,10 @@ import {
   type Feed,
   type FeedSearchResult,
   type Preferences,
+  type WebFeedAnalysis,
+  type WebFeedReanalysis,
+  type WebFeedStatus,
+  type WebFeedVariant,
 } from "shared/feedsApi/types";
 import { sunPhase } from "shared/sun/sun";
 import { TIMEZONE_COORDINATES } from "shared/sun/timezones.gen";
@@ -29,6 +38,7 @@ import {
   categoryIdsOf,
   toFeed,
   toLibrary,
+  webFeedPageOf,
   type FolderPath,
   type Library,
   type Subscription,
@@ -42,12 +52,16 @@ import {
   SessionFieldsSchema,
   StoriesAnswerSchema,
   UserProfileAnswerSchema,
+  WebFeedAnalyzeAnswerSchema,
+  WebFeedStatusAnswerSchema,
   WriteAnswerSchema,
   type FeedsAnswer,
   type NewsblurFetch,
   type NewsblurRequest,
   type Params,
   type Story,
+  type UpstreamWebFeedVariant,
+  type WebFeedStatusAnswer,
   type WriteAnswer,
 } from "./upstream";
 
@@ -102,6 +116,8 @@ const upstreamError = () => fail({ status: 502, error: "upstream_error" });
 const notFound = () => fail({ status: 404, error: "not_found" });
 const badRequest = (message: string) => fail({ status: 400, error: "bad_request", message });
 const conflict = (message: string) => fail({ status: 409, error: "conflict", message });
+const premiumRequired = (message: string) =>
+  fail({ status: 403, error: "premium_required", message });
 
 const ok = (body: unknown): BffResponse => ({ status: 200, body });
 const created = (body: unknown): BffResponse => ({ status: 201, body });
@@ -110,6 +126,11 @@ const NO_CONTENT: BffResponse = { status: 204, body: null };
 const LIRE_PREFIX = "lire.";
 const REJECTED = "NewsBlur rejected the request.";
 const ALREADY_EXISTS = "A category with this name already exists.";
+// NewsBlur's own check on analysis ids.
+const REQUEST_ID = /^[A-Za-z0-9_-]{8,64}$/;
+// `/webfeed/subscribe` refuses an account without Premium Archive with code -1 on HTTP 200, so the
+// message is the only signal.
+const PREMIUM_REFUSAL = /premium archive/i;
 
 const parseInput = <S extends z.ZodType>({ schema, value }: { schema: S; value: unknown }) => {
   const parsed = schema.safeParse(value);
@@ -429,6 +450,45 @@ const fetchStories = async ({
   return stories;
 };
 
+const text = (value: string | null | undefined): string | undefined => value ?? undefined;
+
+const toVariant = (variant: UpstreamWebFeedVariant): WebFeedVariant => ({
+  label: text(variant.label),
+  description: text(variant.description),
+  fields: {
+    storyContainer: variant.story_container,
+    title: variant.title,
+    link: text(variant.link),
+    content: text(variant.content),
+    image: text(variant.image),
+    author: text(variant.author),
+    date: text(variant.date),
+  },
+  previews: (variant.preview_stories ?? []).map((preview) => ({
+    title: text(preview.title),
+    url: text(preview.link),
+    summary: text(preview.content),
+    imageUrl: text(preview.image),
+  })),
+});
+
+// An id with no event yet stays pending: NewsBlur answers the same for a task the queue has not
+// started and for one past its lifetime, and the client stops polling on its own deadline.
+const toWebFeedStatus = (answer: WebFeedStatusAnswer): WebFeedStatus => {
+  if (answer.type === "error")
+    return { status: "failed", message: text(answer.error), variants: [] };
+  if (answer.type !== "complete")
+    return { status: "pending", message: text(answer.message), variants: [] };
+  const results = answer.variants_data;
+  if (!results) return { status: "failed", variants: [] };
+  return {
+    status: "done",
+    variants: results.variants.map(toVariant),
+    htmlHash: text(results.html_hash),
+    pageTitle: text(results.page_title),
+  };
+};
+
 interface HandlerInput {
   ctx: Context;
   params: Record<string, string>;
@@ -575,6 +635,111 @@ const HANDLERS: Record<RouteKey, Handler> = {
       },
     });
     return created(feed);
+  },
+
+  // Applying a new variant goes through `POST /api/webfeeds` with the `url` this answers.
+  "POST /api/feeds/:feedId/reanalyze": async ({ ctx, params }) => {
+    const { feed } = findSubscription({ library: await loadLibrary(ctx), id: params.feedId });
+    if (!feed.isWebFeed || feed.feedUrl === undefined) throw badRequest("Not a web feed.");
+    const answer = await call({
+      ctx,
+      request: post({ path: "/webfeed/reanalyze", form: { feed_id: feed.id } }),
+      schema: WebFeedAnalyzeAnswerSchema,
+    });
+    checkWrite(answer);
+    if (answer.request_id === undefined) throw upstreamError();
+    return ok(
+      WebFeedReanalysisSchema.parse({
+        requestId: answer.request_id,
+        url: webFeedPageOf(feed.feedUrl),
+      } satisfies WebFeedReanalysis),
+    );
+  },
+
+  "POST /api/webfeeds/analyze": async ({ ctx, body }) => {
+    const { url } = parseInput({ schema: AnalyzeWebFeedBodySchema, value: body });
+    const answer = await call({
+      ctx,
+      request: post({ path: "/webfeed/analyze", form: { url } }),
+      schema: WebFeedAnalyzeAnswerSchema,
+    });
+    checkWrite(answer);
+    if (answer.code === 2 && answer.feed_address !== undefined) {
+      return ok(
+        WebFeedAnalysisSchema.parse({ feedUrl: answer.feed_address } satisfies WebFeedAnalysis),
+      );
+    }
+    if (answer.request_id === undefined) throw upstreamError();
+    return ok(
+      WebFeedAnalysisSchema.parse({ requestId: answer.request_id } satisfies WebFeedAnalysis),
+    );
+  },
+
+  // No `checkWrite`: a task not started yet answers code -1.
+  "GET /api/webfeeds/analyze/:requestId": async ({ ctx, params }) => {
+    if (!REQUEST_ID.test(params.requestId)) throw notFound();
+    const answer = await call({
+      ctx,
+      request: { method: "GET", path: "/webfeed/status", query: { request_id: params.requestId } },
+      schema: WebFeedStatusAnswerSchema,
+    });
+    return ok(WebFeedStatusSchema.parse(toWebFeedStatus(answer)));
+  },
+
+  // NewsBlur keys a web feed on its page URL, so subscribing again to one already followed only
+  // swaps its variant, and its title and categories stay as they are unless a title comes along.
+  "POST /api/webfeeds": async ({ ctx, body }) => {
+    const input = parseInput({ schema: CreateWebFeedBodySchema, value: body });
+    const categoryIds = [...new Set(input.categoryIds)];
+    const library = await loadLibrary(ctx);
+    const { fields } = input;
+    return mutate({
+      ctx,
+      run: async (): Promise<BffResponse> => {
+        const answer = await call({
+          ctx,
+          request: post({
+            path: "/webfeed/subscribe",
+            form: {
+              url: input.url,
+              variant_index: String(input.variantIndex),
+              folder: categoryIds[0] ?? "",
+              feed_title: input.title ?? "",
+              story_container_xpath: fields.storyContainer,
+              title_xpath: fields.title,
+              link_xpath: fields.link ?? "",
+              content_xpath: fields.content ?? "",
+              image_xpath: fields.image ?? "",
+              author_xpath: fields.author ?? "",
+              date_xpath: fields.date ?? "",
+              html_hash: input.htmlHash ?? "",
+            },
+          }),
+          schema: AddUrlAnswerSchema,
+        });
+        if ((answer.code ?? 1) < 1 && PREMIUM_REFUSAL.test(answer.message ?? "")) {
+          throw premiumRequired(answer.message ?? "");
+        }
+        checkWrite(answer);
+        if (!answer.feed) throw upstreamError();
+        const feedId = String(answer.feed.id);
+        if (input.title !== undefined) {
+          await write({
+            ctx,
+            request: post({
+              path: "/reader/rename_feed",
+              form: { feed_id: feedId, feed_title: input.title },
+            }),
+          });
+        }
+        const existing = library.subscriptions.get(feedId);
+        if (existing) return ok({ ...existing.feed, title: input.title ?? existing.feed.title });
+        const more = categoryIds.slice(1).map((id) => [id]);
+        if (more.length > 0) await moveFeed({ ctx, feedId, from: [], to: more });
+        const added = toFeed({ upstream: answer.feed, categoryIds });
+        return created({ ...added, title: input.title ?? added.title });
+      },
+    });
   },
 
   "PATCH /api/feeds/:feedId": async ({ ctx, params, body }) => {
@@ -794,7 +959,8 @@ const HANDLERS: Record<RouteKey, Handler> = {
 };
 
 // Upstream 401 and 403 answer `sign_in_required`, other upstream failures 502, and a NewsBlur
-// write that reports a failure 400 with its message, even on HTTP 200.
+// write that reports a failure 400 with its message, even on HTTP 200. A web feed subscribe
+// refused for want of Premium Archive answers 403 `premium_required`.
 export const handle = async ({
   route,
   params,
