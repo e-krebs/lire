@@ -455,6 +455,36 @@ describe("MosaicGrid", () => {
     });
   });
 
+  it("refreshes from a bottom pull when nothing matches", async () => {
+    vi.stubEnv("VITE_API_MODE", "real");
+    server.use(fixtureBackend);
+    resetFixtureState();
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
+    });
+    const { view } = setup({ client, query: "zzzzzzzz", pane: true });
+    await ui.noMatch(view);
+    const { pane } = atBottom(view);
+
+    let requests = 0;
+    const count = ({ request }: { request: Request }) => {
+      if (new URL(request.url).pathname.endsWith("/entries")) requests += 1;
+    };
+    server.events.on("request:start", count);
+    try {
+      fireEvent(pane, touch({ type: "touchstart", y: 300 }));
+      const move = touch({ type: "touchmove", y: 100 });
+      fireEvent(pane, move);
+      expect(move.defaultPrevented).toBe(true);
+      fireEvent(pane, touch({ type: "touchend", y: 100 }));
+      await waitFor(() => {
+        expect(requests).toBeGreaterThan(0);
+      });
+    } finally {
+      server.events.removeListener("request:start", count);
+    }
+  });
+
   describe("when a card is navigated from the keyboard", () => {
     it("moves focus with the arrows, Home and End, and ignores other keys", async () => {
       vi.stubEnv("VITE_API_MODE", "mock");
