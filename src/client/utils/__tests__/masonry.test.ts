@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { layoutMasonry, neighbourOf, tileAspect, type MasonryItem } from "../masonry";
 
 const IMAGE_ASPECT = 3 / 2;
@@ -134,6 +134,45 @@ describe("masonry", () => {
     it("reports the tallest column height without a trailing gap", () => {
       const layout = layoutMasonry({ containerWidth: 800, items: stacked });
       expect(layout.height).toBe(862);
+    });
+
+    it("sizes a heightAt item from the computed column width", () => {
+      const heightAt = vi.fn<(columnWidth: number) => number>(
+        (columnWidth) => columnWidth / 4 + 0.4,
+      );
+      const layout = layoutMasonry({ containerWidth: 800, items: [{ id: "t", heightAt }] });
+      expect(heightAt).toHaveBeenCalledWith(480);
+      expect(layout.positions.get("t")?.height).toBe(120);
+    });
+
+    it("keeps the phone floor off a heightAt item", () => {
+      const layout = layoutMasonry({
+        containerWidth: 388,
+        items: [{ id: "t", heightAt: () => 111 }],
+      });
+      expect(layout.positions.get("t")?.height).toBe(111);
+    });
+
+    it("balances columns across mixed image and text items", () => {
+      // 394px columns: an image card is 263 high, a text card 111 or 156.
+      const layout = layoutMasonry({
+        containerWidth: 800,
+        items: [
+          { id: "img1", aspect: IMAGE_ASPECT },
+          { id: "txt1", heightAt: () => 111 },
+          { id: "txt2", heightAt: () => 156 },
+          { id: "img2", aspect: IMAGE_ASPECT },
+          { id: "txt3", heightAt: () => 111 },
+        ],
+      });
+      expect(layout.columnItems).toEqual([
+        ["img1", "img2"],
+        ["txt1", "txt2", "txt3"],
+      ]);
+      expect(layout.positions.get("txt2")?.y).toBe(123);
+      expect(layout.positions.get("img2")?.y).toBe(275);
+      expect(layout.positions.get("txt3")?.y).toBe(291);
+      expect(layout.height).toBe(538);
     });
 
     it("honours a custom gap", () => {

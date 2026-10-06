@@ -11,10 +11,10 @@ const TEXT_ASPECT = 16 / 9; // card without an image: a compact masthead
 // A lone column is the phone: a portrait card there would swallow most of the screen.
 const SINGLE_COLUMN_MIN_ASPECT = 4 / 3;
 
-export interface MasonryItem {
-  id: string;
-  aspect: number;
-}
+// A text card's height follows its wrapped title, so it is sized from the column width the layout picks.
+export type MasonryItem =
+  | { id: string; aspect: number }
+  | { id: string; heightAt: (columnWidth: number) => number };
 
 interface MasonryPosition {
   x: number;
@@ -71,8 +71,13 @@ export const layoutMasonry = ({
     for (let i = 1; i < columns; i += 1) {
       if (columnHeights[i] < columnHeights[column]) column = i;
     }
-    const aspect = fitting === 1 ? Math.max(item.aspect, SINGLE_COLUMN_MIN_ASPECT) : item.aspect;
-    const height = Math.round(columnWidth / aspect);
+    const height =
+      "heightAt" in item
+        ? Math.round(item.heightAt(columnWidth))
+        : Math.round(
+            columnWidth /
+              (fitting === 1 ? Math.max(item.aspect, SINGLE_COLUMN_MIN_ASPECT) : item.aspect),
+          );
     positions.set(item.id, {
       x: offsetX + column * (columnWidth + gap),
       y: columnHeights[column],
