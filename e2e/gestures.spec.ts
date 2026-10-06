@@ -55,7 +55,7 @@ const pullUpTheReader = async (page: Page) => {
   const openedId = await firstTile.evaluate((element) =>
     element.closest("[data-entry-id]")?.getAttribute("data-entry-id"),
   );
-  await firstTile.click();
+  await firstTile.click({ position: { x: 4, y: 4 } });
   await expect(pageUi.readerHeading).toBeVisible();
   const box = await pageUi.readerPane.boundingBox();
   expect(box).not.toBeNull();
@@ -200,7 +200,7 @@ test.describe("gestures", () => {
     const pageUi = ui(page);
     await page.goto("/");
 
-    await pageUi.tiles.first().click();
+    await pageUi.tiles.first().click({ position: { x: 4, y: 4 } });
     await expect(pageUi.readerHeading).toBeVisible();
     const entryUrl = page.url();
 

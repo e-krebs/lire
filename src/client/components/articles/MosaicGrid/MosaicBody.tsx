@@ -17,6 +17,7 @@ import { Icon } from "client/components/ui/icons";
 import { useT } from "client/i18n/useT";
 import { layoutMasonry, neighbourOf, tileAspect } from "client/utils/masonry";
 import type { Direction, MasonryLayout } from "client/utils/masonry";
+import { textCardHeight } from "client/utils/textHeight";
 import { useElementWidth } from "client/hooks/useElementWidth";
 import { usePullToRefresh } from "client/hooks/usePullToRefresh";
 import { useRefreshOnForeground } from "client/hooks/useRefreshOnForeground";
@@ -285,10 +286,19 @@ export const MosaicBody = ({
       ? undefined
       : layoutMasonry({
           containerWidth: width,
-          items: placed.map((entry) => ({
-            id: entry.id,
-            aspect: tileAspect(entry),
-          })),
+          items: placed.map((entry) =>
+            entry.imageUrl
+              ? { id: entry.id, aspect: tileAspect(entry) }
+              : {
+                  id: entry.id,
+                  heightAt: (columnWidth: number) =>
+                    textCardHeight({
+                      title: entry.title,
+                      untitled: t.articles.untitled,
+                      width: columnWidth,
+                    }),
+                },
+          ),
         });
 
   // Roving tabindex: one card is tabbable, the first until the user focuses another.

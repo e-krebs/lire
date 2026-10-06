@@ -460,6 +460,11 @@ body {
   background: light-dark(var(--color-card), oklch(0.35 0.08 var(--hue)));
   --tile-label: light-dark(oklch(0.4 0.17 var(--hue)), oklch(0.85 0.15 var(--hue)));
 }
+/* B1 title: 19px at 1.2, the numbers `textCardHeight` (utils/textHeight.ts) measures with. */
+[data-entry-id]:not([data-has-image]) .tile-title {
+  font-size: 19px;
+  line-height: 1.2;
+}
 /* A read text card goes nearly grayscale, keeping only a trace of its hue. */
 [data-entry-id][data-read]:not([data-has-image]) .tile-card {
   background: light-dark(oklch(0.94 0.006 var(--hue)), oklch(0.27 0.012 var(--hue)));

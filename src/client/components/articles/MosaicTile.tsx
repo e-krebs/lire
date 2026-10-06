@@ -88,10 +88,13 @@ const cardClassName = `
 `;
 
 const chipClassName = `
-  absolute top-2 left-2 z-10 inline-flex max-w-[calc(100%-3.25rem)] items-center gap-1.5
+  z-10 inline-flex max-w-[calc(100%-3.25rem)] items-center gap-1.5
   rounded-full bg-surface/90 px-2 py-0.5 text-[11px] font-semibold text-ink
   group-data-read/tile:opacity-80
 `;
+const floatingChipClassName = `absolute top-2 left-2 ${chipClassName}`;
+// A text card seats the pill in its own row (20px high), 16px above the feed row.
+const rowChipClassName = `h-[20px] flex-none self-start mb-[16px] ${chipClassName}`;
 
 const titleClassName = `
   tile-title pointer-events-auto line-clamp-3 text-xl/tight font-bold tracking-[-0.01em]
@@ -110,12 +113,12 @@ const buttonClassName = `
 `;
 
 // The masthead names the feed, so the chip carries the age alone.
-const Chip = ({ entry }: { entry: Entry }) => {
+const Chip = ({ entry, inFlow = false }: { entry: Entry; inFlow?: boolean }) => {
   const timestamp = entry.published;
   const locale = useLocale();
 
   return (
-    <span className={chipClassName}>
+    <span className={inFlow ? rowChipClassName : floatingChipClassName}>
       <time
         dateTime={new Date(timestamp).toISOString()}
         data-tip={absoluteTime({ timestamp, locale })}
@@ -165,6 +168,7 @@ const Masthead = ({
         className={`
         tile-label flex items-center gap-1.5
         text-[11px]/[14px] font-bold tracking-[0.08em] uppercase
+        group-not-data-has-image/tile:mt-auto
       `}
       >
         {feedKey === streamKey ? (
@@ -190,14 +194,21 @@ const Masthead = ({
           <span
             aria-hidden="true"
             className={`
-            inline-flex h-3.5 flex-none items-center rounded-full bg-accent px-1 text-on-accent
+            inline-flex h-[14px] flex-none items-center rounded-full bg-accent px-1 text-on-accent
           `}
           >
             <Icon name="external" className="size-2.5" />
           </span>
         ) : null}
       </span>
-      <span aria-hidden="true" className="tile-rule mt-1.5 mb-2 h-0.5 w-7 flex-none rounded-full" />
+      <span
+        aria-hidden="true"
+        className={`
+        tile-rule mt-1.5 mb-2 h-0.5 w-7 flex-none rounded-full
+        group-not-data-has-image/tile:mt-[6px] group-not-data-has-image/tile:mb-[8px]
+        group-not-data-has-image/tile:h-[2px]
+      `}
+      />
       {original === undefined ? (
         <span data-tip={title} data-tip-overflow="" className={titleClassName}>
           {title}
@@ -485,10 +496,12 @@ export const MosaicTile = ({
             className={`
             flex flex-col
             tile-glass
-            group-not-data-has-image/tile:size-full group-not-data-has-image/tile:justify-end
-            group-not-data-has-image/tile:p-3 group-not-data-has-image/tile:pt-10
+            group-not-data-has-image/tile:size-full
+            group-not-data-has-image/tile:px-[12px] group-not-data-has-image/tile:pt-[8px]
+            group-not-data-has-image/tile:pb-[14px]
           `}
           >
+            {hasImage ? null : <Chip entry={entry} inFlow />}
             <Masthead
               feedId={entry.feedId}
               streamKey={streamKey}
@@ -501,7 +514,7 @@ export const MosaicTile = ({
               onTitleClick={handleClick}
             />
           </span>
-          <Chip entry={entry} />
+          {hasImage ? <Chip entry={entry} /> : null}
         </span>
         <button
           type="button"

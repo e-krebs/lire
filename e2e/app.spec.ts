@@ -125,7 +125,7 @@ test.describe("the app", () => {
     await expect(pageUi.refreshButton).toHaveAttribute("aria-keyshortcuts", "R");
     await expect(pageUi.freshnessStatus("Updated just now")).toBeVisible();
 
-    await firstTile.click();
+    await firstTile.click({ position: { x: 4, y: 4 } });
 
     await expect(pageUi.readerHeading).toBeVisible();
     await expect(pageUi.readerHeading).not.toHaveText("");

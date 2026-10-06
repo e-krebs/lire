@@ -171,6 +171,20 @@ describe("MosaicTile", () => {
     expect(await ui.titleText()).toBeInTheDocument();
   });
 
+  it("seats the age pill in the flow of a text card", async () => {
+    const { ui } = setup({ entry: makeEntry() });
+    const pill = (await ui.age())?.parentElement;
+    expect(pill?.closest(".tile-glass")).not.toBeNull();
+    expect(pill).not.toHaveClass("absolute");
+  });
+
+  it("floats the age pill over a photo card", async () => {
+    const { ui } = setup({ entry: makeEntry({ imageUrl: "https://example.test/photo.jpg" }) });
+    const pill = (await ui.age())?.parentElement;
+    expect(pill?.closest(".tile-glass")).toBeNull();
+    expect(pill).toHaveClass("absolute");
+  });
+
   it("marks a read entry with a data attribute", async () => {
     const { ui } = setup({ entry: makeEntry({ unread: false }) });
     expect(await ui.wrapper()).toHaveAttribute("data-read");
