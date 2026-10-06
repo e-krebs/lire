@@ -121,3 +121,32 @@ export const PhoneNarrowedWithBadge: Story = {
     await expect(args.onOpen).not.toHaveBeenCalled();
   },
 };
+
+export const PhoneCategoryScope: Story = {
+  args: { tier: "phone", clearable: true, scopeLabel: "Technology" },
+  decorators: [
+    (Story) => (
+      <div className="w-97.5">
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement);
+    const clear = canvas.getByRole("button", { name: "Search everywhere instead of Technology" });
+    const label = canvas.getByText("Technology");
+    await expect(label.parentElement).toContainElement(clear);
+    await userEvent.click(clear);
+    await expect(args.onClearScope).toHaveBeenCalled();
+    await expect(args.onOpen).not.toHaveBeenCalled();
+    // A tap hits whatever paints on top: the × above the stretched opener, the opener elsewhere.
+    const hit = (element: Element): Element | null => {
+      const box = element.getBoundingClientRect();
+      return document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+    };
+    const opener = canvas.getByRole("button", { name: "Open navigator" });
+    await expect(hit(label)).toBe(opener);
+    await expect(hit(canvas.getByText("Search articles, feeds…"))).toBe(opener);
+    await expect(clear.contains(hit(clear))).toBe(true);
+  },
+};

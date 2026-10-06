@@ -9,20 +9,28 @@ interface ScopeChipProps {
   count?: MatchCount | undefined;
   /** Set when the scope is narrower than All; the phone may pass it too. */
   onClear?: () => void;
+  /** Drops the 40% cap and shrinks down to the badge and the ×, for the phone pill. */
+  fluid?: boolean;
 }
 
 const chipClassName = `
   flex h-7 max-w-[40%] flex-none items-center gap-0.5 rounded-full bg-accent-soft pl-2.5 text-xs
   font-semibold text-accent-text
   pr-2.5 data-clearable:pr-0
+  data-fluid:max-w-none data-fluid:flex-initial data-fluid:data-count:min-w-14
 `;
 
 // The stream the location bar points at, shown inside the search field. Clearing it widens both
 // the view and the next search to every article.
-export const ScopeChip = ({ label, count, onClear }: ScopeChipProps) => {
+export const ScopeChip = ({ label, count, onClear, fluid }: ScopeChipProps) => {
   const t = useT().navigation;
   return (
-    <span data-clearable={onClear ? "" : undefined} className={chipClassName}>
+    <span
+      data-clearable={onClear ? "" : undefined}
+      data-fluid={fluid ? "" : undefined}
+      data-count={count === undefined ? undefined : ""}
+      className={chipClassName}
+    >
       <span data-tip={label} data-tip-overflow="" className="truncate">
         {label}
       </span>
@@ -48,7 +56,7 @@ export const ScopeChip = ({ label, count, onClear }: ScopeChipProps) => {
           data-tip={t.searchEverywhere}
           onClick={onClear}
           className={`
-            -my-1.5 flex size-10 flex-none items-center justify-center rounded-full
+            relative -my-1.5 flex size-10 flex-none items-center justify-center rounded-full
             text-accent-text hover:text-ink
             focus-visible:outline-2 focus-visible:outline-accent
           `}

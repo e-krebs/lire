@@ -644,9 +644,13 @@ describe("Navigator", () => {
       await user.keyboard("{Escape}");
       await waitFor(() => expect(ui.dialog).not.toBeInTheDocument());
 
-      await user.click(
-        await (await ui.pill()).findByRole("button", { name: "Search everywhere instead of Tech" }),
-      );
+      const clear = await (
+        await ui.pill()
+      ).findByRole("button", {
+        name: "Search everywhere instead of Tech",
+      });
+      expect((await ui.pill()).getByText("Tech").parentElement).toContainElement(clear);
+      await user.click(clear);
 
       expect(await ui.text("received:all")).toBeInTheDocument();
       expect(ui.dialog).not.toBeInTheDocument();
