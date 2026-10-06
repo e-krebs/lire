@@ -11,6 +11,9 @@ import {
   PreferencesSchema,
   ProfileSchema,
   SunPhaseSchema,
+  WebFeedAnalysisSchema,
+  WebFeedReanalysisSchema,
+  WebFeedStatusSchema,
 } from "shared/feedsApi/types";
 import type {
   AuthStatus,
@@ -25,11 +28,15 @@ import type {
   PreferencesUpdate,
   Profile,
   SunPhase,
+  WebFeedAnalysis,
+  WebFeedReanalysis,
+  WebFeedStatus,
+  WebFeedVariant,
 } from "shared/feedsApi/types";
 import { httpTransport } from "client/api/adapters/http";
 import type { Transport, TransportRequest, TransportResponse } from "client/api/transport";
 
-type ApiErrorCode = "sign_in_required" | "rate_limited" | "http";
+type ApiErrorCode = "sign_in_required" | "premium_required" | "rate_limited" | "http";
 
 export class ApiError extends Error {
   readonly status: number;
@@ -66,6 +73,10 @@ const performRequest = async (req: TransportRequest): Promise<TransportResponse>
   const response = await transport(req);
 
   if (response.status === 401) throw new ApiError({ status: 401, code: "sign_in_required" });
+  if (response.status === 403) {
+    // Only the web feed subscribe answers 403, for an account without Premium Archive.
+    throw new ApiError({ status: 403, code: "premium_required" });
+  }
   if (response.status === 429) throw new ApiError({ status: 429, code: "rate_limited" });
   if (response.status >= 400) throw new ApiError({ status: response.status, code: "http" });
 
@@ -179,6 +190,54 @@ export const createFeed = async ({
   });
   return FeedsSchema.element.parse(json);
 };
+
+export const analyzeWebFeed = async ({ url }: { url: string }): Promise<WebFeedAnalysis> =>
+  WebFeedAnalysisSchema.parse(
+    await request({ method: "POST", path: "/api/webfeeds/analyze", body: { url } }),
+  );
+
+export const getWebFeedStatus = async ({
+  requestId,
+}: {
+  requestId: string;
+}): Promise<WebFeedStatus> =>
+  WebFeedStatusSchema.parse(
+    await request({ method: "GET", path: `/api/webfeeds/analyze/${segment(requestId)}` }),
+  );
+
+// `fields` and `htmlHash` come back untouched from the analysis. Subscribing again to a followed
+// page swaps its variant, and `categoryIds` and the title stay as they are unless a title is sent.
+export const createWebFeed = async ({
+  url,
+  variantIndex,
+  fields,
+  htmlHash,
+  title,
+  categoryIds,
+}: {
+  url: string;
+  variantIndex: number;
+  fields: WebFeedVariant["fields"];
+  htmlHash?: string;
+  title?: string;
+  categoryIds: string[];
+}): Promise<Feed> => {
+  const json = await request({
+    method: "POST",
+    path: "/api/webfeeds",
+    body: { url, variantIndex, fields, htmlHash, title, categoryIds },
+  });
+  return FeedsSchema.element.parse(json);
+};
+
+export const reanalyzeWebFeed = async ({
+  feedId,
+}: {
+  feedId: string;
+}): Promise<WebFeedReanalysis> =>
+  WebFeedReanalysisSchema.parse(
+    await request({ method: "POST", path: `/api/feeds/${segment(feedId)}/reanalyze` }),
+  );
 
 export const updateFeed = async ({
   feedId,

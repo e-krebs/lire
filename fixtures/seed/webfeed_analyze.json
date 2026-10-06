@@ -1,0 +1,59 @@
+{
+  "variants_data": {
+    "page_title": "Example Changelog",
+    "html_hash": "3f9c1b7e5a2d",
+    "favicon_url": null,
+    "variants": [
+      {
+        "label": "Release entries",
+        "description": "Each release heading with its notes.",
+        "story_container": "//main//article",
+        "title": ".//h2",
+        "link": ".//h2/a/@href",
+        "content": ".//div[@class='notes']",
+        "image": null,
+        "author": null,
+        "date": ".//time/@datetime",
+        "preview_stories": [
+          {
+            "title": "Version 4.2 adds offline mode",
+            "link": "https://changelog.example.test/releases/4-2",
+            "content": "Pages now stay readable without a connection.",
+            "image": null
+          },
+          {
+            "title": "Version 4.1 fixes sync drift",
+            "link": "https://changelog.example.test/releases/4-1",
+            "content": "A race between two tabs no longer loses a change.",
+            "image": null
+          }
+        ]
+      },
+      {
+        "label": "Sidebar links",
+        "description": "The list of recent releases in the sidebar.",
+        "story_container": "//aside//li",
+        "title": ".//a",
+        "link": ".//a/@href",
+        "content": null,
+        "image": null,
+        "author": null,
+        "date": null,
+        "preview_stories": [
+          {
+            "title": "4.2",
+            "link": "https://changelog.example.test/releases/4-2",
+            "content": null,
+            "image": null
+          },
+          {
+            "title": "4.1",
+            "link": "https://changelog.example.test/releases/4-1",
+            "content": null,
+            "image": null
+          }
+        ]
+      }
+    ]
+  }
+}

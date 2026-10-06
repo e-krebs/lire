@@ -26,6 +26,7 @@ The layout, one file per upstream call, is:
 | `refresh_feeds.json` | `/reader/refresh_feeds`, the unread counts |
 | `stories/<feedId>.json` | `/reader/feed/<feedId>`, a list of stories |
 | `read_stories.json` | `/reader/read_stories` |
+| `webfeed_analyze.json` | `variants_data` of the web feed analysis status; optional, falls back to the seed copy |
 | `feed_autocomplete.json` | `/rss_feeds/feed_autocomplete` |
 | `preferences.json` | `/profile/get_preference` |
 

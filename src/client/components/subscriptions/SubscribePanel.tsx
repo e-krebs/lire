@@ -1,11 +1,20 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { useCreateCategory, useFeedLookup, useSubscribe } from "client/api/queries";
+import {
+  isPremiumRequired,
+  useAnalyzeWebFeed,
+  useCreateCategory,
+  useCreateWebFeed,
+  useFeedLookup,
+  useSubscribe,
+  useWebFeedStatus,
+} from "client/api/queries";
 import { useT } from "client/i18n/useT";
 import type { Category } from "shared/feedsApi/types";
 import { CategoryPicker } from "./CategoryPicker";
 import { primaryClassName } from "./CategoryPanel";
 import { hostOf } from "./FeedsTab";
 import { SidePanel } from "./SidePanel";
+import { WebFeedVariants } from "./WebFeedVariants";
 
 const MIN_QUERY_LENGTH = 4;
 const FEED_URL_PLACEHOLDER = "https://example.test/rss";
@@ -15,6 +24,20 @@ const cancelClassName = `
   focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent
   motion-safe:transition-colors
 `;
+
+const webFeedLinkClassName = `
+  min-h-11 self-start rounded-xl px-3 text-sm font-medium text-accent-text
+  focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent
+`;
+
+const isPageUrl = (value: string): boolean => {
+  try {
+    const { protocol } = new URL(value);
+    return protocol === "http:" || protocol === "https:";
+  } catch {
+    return false;
+  }
+};
 
 const resultRowClassName = `
   flex min-h-11 items-center gap-3 border-b border-hairline px-3 py-2 text-sm text-ink
@@ -47,8 +70,11 @@ export const SubscribePanel = ({ categories, categoryId, onClose }: SubscribePan
       ? [categoryId]
       : [],
   );
+  const [variantIndex, setVariantIndex] = useState<number | undefined>(undefined);
   const lookup = useFeedLookup(debouncedQuery);
   const subscribe = useSubscribe();
+  const analyze = useAnalyzeWebFeed();
+  const createWebFeed = useCreateWebFeed();
   const createCategory = useCreateCategory();
 
   // Debounces the lookup against a timer, the standard "wait for typing to settle" Effect.
@@ -61,23 +87,51 @@ export const SubscribePanel = ({ categories, categoryId, onClose }: SubscribePan
     };
   }, [urlInput]);
 
-  const results = lookup.data ?? [];
+  const pageUrl = urlInput.trim();
+  const analysisUrl = analyze.variables?.url;
+  const requestId = analyze.data?.requestId;
+  // Analyze answers a bare feed address when the URL is already a feed.
+  const directFeedUrl = analyze.data?.requestId === undefined ? analyze.data?.feedUrl : undefined;
+  const webFeedStep = analyze.isPending || analyze.isError || analyze.data !== undefined;
+  const webStatus = useWebFeedStatus({ requestId });
+  const variants = webStatus.data?.status === "done" ? webStatus.data.variants : undefined;
+  const pickedIndex = variantIndex ?? (variants?.length === 1 ? 0 : undefined);
+  const pickedVariant = pickedIndex === undefined ? undefined : variants?.[pickedIndex];
+
+  const results = webFeedStep ? [] : (lookup.data ?? []);
+  const lookupSettled = lookup.isSuccess && !lookup.isFetching && debouncedQuery === urlInput;
+  const canMakeWebFeed = !webFeedStep && isPageUrl(pageUrl) && lookupSettled;
+
+  const startAnalysis = (): void => {
+    setVariantIndex(undefined);
+    analyze.mutate({ url: pageUrl });
+  };
   // A single result is the obvious pick, so it needs no extra tap.
   const chosen =
     results.find((result) => result.feedUrl === chosenId) ??
     (results.length === 1 ? results[0] : undefined);
-  const canSubscribe = chosen !== undefined && selected.length > 0 && !subscribe.isPending;
+  const canSubscribe =
+    selected.length > 0 &&
+    (webFeedStep
+      ? (pickedVariant !== undefined || directFeedUrl !== undefined) &&
+        !subscribe.isPending &&
+        !createWebFeed.isPending
+      : chosen !== undefined && !subscribe.isPending);
 
   const urlError = tooShort
     ? t.subscriptions.enterUrl
     : lookup.isError
       ? t.subscriptions.lookupFailed({ message: lookup.error.message })
       : null;
-  const submitError = subscribe.isError
-    ? t.subscriptions.subscribeFeedFailed({ message: subscribe.error.message })
-    : createCategory.isError
-      ? t.subscriptions.createCategoryFailed({ message: createCategory.error.message })
-      : null;
+  const submitError = createWebFeed.isError
+    ? isPremiumRequired(createWebFeed.error)
+      ? t.subscriptions.webFeedPremium
+      : t.subscriptions.subscribeFeedFailed({ message: createWebFeed.error.message })
+    : subscribe.isError
+      ? t.subscriptions.subscribeFeedFailed({ message: subscribe.error.message })
+      : createCategory.isError
+        ? t.subscriptions.createCategoryFailed({ message: createCategory.error.message })
+        : null;
 
   const handleSubmit = (): void => {
     if (urlInput.trim().length < MIN_QUERY_LENGTH) {
@@ -86,11 +140,37 @@ export const SubscribePanel = ({ categories, categoryId, onClose }: SubscribePan
       return;
     }
     // Before the debounce settles, submit looks the URL up now instead of subscribing.
-    if (debouncedQuery !== urlInput) {
+    if (!webFeedStep && debouncedQuery !== urlInput) {
       setDebouncedQuery(urlInput);
       return;
     }
     if (!canSubscribe) return;
+    if (webFeedStep) {
+      if (directFeedUrl !== undefined) {
+        subscribe.mutate(
+          {
+            feedUrl: directFeedUrl,
+            title: hostOf(directFeedUrl) ?? directFeedUrl,
+            categoryIds: selected,
+          },
+          { onSuccess: onClose },
+        );
+      } else if (pickedVariant !== undefined && pickedIndex !== undefined && analysisUrl) {
+        createWebFeed.mutate(
+          {
+            url: analysisUrl,
+            variantIndex: pickedIndex,
+            fields: pickedVariant.fields,
+            htmlHash: webStatus.data?.htmlHash,
+            title: webStatus.data?.pageTitle,
+            categoryIds: selected,
+          },
+          { onSuccess: onClose },
+        );
+      }
+      return;
+    }
+    if (chosen === undefined) return;
     subscribe.mutate(
       { feedUrl: chosen.feedUrl, title: chosen.title, categoryIds: selected },
       { onSuccess: onClose },
@@ -98,7 +178,7 @@ export const SubscribePanel = ({ categories, categoryId, onClose }: SubscribePan
   };
 
   const resultCount =
-    lookup.isFetching || debouncedQuery.trim().length < MIN_QUERY_LENGTH
+    webFeedStep || lookup.isFetching || debouncedQuery.trim().length < MIN_QUERY_LENGTH
       ? ""
       : t.subscriptions.resultCount({ count: results.length });
 
@@ -107,7 +187,11 @@ export const SubscribePanel = ({ categories, categoryId, onClose }: SubscribePan
       open
       onClose={onClose}
       title={t.subscriptions.addFeedTitle}
-      subtitle={chosen === undefined ? t.subscriptions.feedStep1 : t.subscriptions.feedStep2}
+      subtitle={
+        chosen === undefined && pickedVariant === undefined && directFeedUrl === undefined
+          ? t.subscriptions.feedStep1
+          : t.subscriptions.feedStep2
+      }
       actions={
         <>
           <button type="button" onClick={onClose} className={cancelClassName}>
@@ -135,7 +219,7 @@ export const SubscribePanel = ({ categories, categoryId, onClose }: SubscribePan
               {t.subscriptions.feedUrlLabel}
             </label>
             <span role="status" className="text-xs text-faint tabular-nums">
-              {lookup.isFetching ? t.subscriptions.searching : resultCount}
+              {lookup.isFetching && !webFeedStep ? t.subscriptions.searching : resultCount}
             </span>
           </div>
           <input
@@ -152,6 +236,9 @@ export const SubscribePanel = ({ categories, categoryId, onClose }: SubscribePan
             onChange={(event) => {
               setUrlInput(event.target.value);
               setTooShort(false);
+              analyze.reset();
+              createWebFeed.reset();
+              setVariantIndex(undefined);
             }}
             className={`
               min-h-11 w-full rounded-xl bg-surface px-3 text-sm text-ink ring-1 ring-hairline
@@ -203,6 +290,34 @@ export const SubscribePanel = ({ categories, categoryId, onClose }: SubscribePan
               })}
             </fieldset>
           )}
+          {canMakeWebFeed && results.length === 0 ? (
+            <>
+              <p className="text-xs text-faint">{t.subscriptions.noFeedFound}</p>
+              <button type="button" onClick={startAnalysis} className={primaryClassName}>
+                {t.subscriptions.makeWebFeed}
+              </button>
+            </>
+          ) : null}
+          {canMakeWebFeed && results.length > 0 ? (
+            <button type="button" onClick={startAnalysis} className={webFeedLinkClassName}>
+              {t.subscriptions.makeWebFeedInstead}
+            </button>
+          ) : null}
+          {directFeedUrl === undefined ? null : (
+            <p role="status" className="text-xs text-faint">
+              {t.subscriptions.alreadyFeed}
+            </p>
+          )}
+          {webFeedStep && directFeedUrl === undefined ? (
+            <WebFeedVariants
+              status={webStatus.data}
+              failed={analyze.isError || webStatus.isError}
+              timedOut={webStatus.timedOut}
+              selected={pickedIndex}
+              onSelect={setVariantIndex}
+              onRetry={startAnalysis}
+            />
+          ) : null}
         </div>
         <CategoryPicker
           categories={categories}

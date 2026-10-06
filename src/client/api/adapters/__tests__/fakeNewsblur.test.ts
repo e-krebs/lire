@@ -14,6 +14,9 @@ import {
   NewsletterAddressSchema,
   PreferencesSchema,
   ProfileSchema,
+  WebFeedAnalysisSchema,
+  WebFeedReanalysisSchema,
+  WebFeedStatusSchema,
 } from "shared/feedsApi/types";
 import feedAutocomplete from "fixtures/seed/feed_autocomplete.json";
 import feedsFixture from "fixtures/seed/feeds.json";
@@ -21,6 +24,7 @@ import preferences from "fixtures/seed/preferences.json";
 import profile from "fixtures/seed/profile.json";
 import readStories from "fixtures/seed/read_stories.json";
 import refreshFeeds from "fixtures/seed/refresh_feeds.json";
+import webfeedAnalyze from "fixtures/seed/webfeed_analyze.json";
 import { createFakeNewsblur, FAKE_USER_ID, type FakeNewsblurFixtures } from "../fakeNewsblur";
 
 const storyModules = import.meta.glob<{ default: unknown[] }>("/fixtures/seed/stories/*.json", {
@@ -41,6 +45,7 @@ const fixtures: FakeNewsblurFixtures = {
   feedAutocomplete,
   preferences,
   profile,
+  webfeedAnalyze,
 };
 
 const setup = () => {
@@ -91,8 +96,9 @@ describe("createFakeNewsblur through handle", () => {
     expect(categories.map((c) => c.id)).toEqual(["Tech", "Design", "News", "Newsletters"]);
 
     const feeds = parse({ schema: FeedsSchema, body: (await send({ url: "/api/feeds" })).body });
-    expect(feeds).toHaveLength(12);
+    expect(feeds).toHaveLength(13);
     expect(feeds.filter((f) => f.isNewsletter)).toHaveLength(2);
+    expect(feeds.filter((f) => f.isWebFeed).map((f) => f.id)).toEqual(["113"]);
     expect(feeds.find((f) => f.id === "103")?.categoryIds).toEqual(["Tech", "Design"]);
 
     const counts = parse({ schema: CountsSchema, body: (await send({ url: "/api/counts" })).body });
@@ -254,7 +260,7 @@ describe("createFakeNewsblur through handle", () => {
     expect((await send({ method: "DELETE", url: "/api/feeds/103" })).status).toBe(204);
     expect(
       parse({ schema: FeedsSchema, body: (await send({ url: "/api/feeds" })).body }),
-    ).toHaveLength(11);
+    ).toHaveLength(12);
 
     expect((await send({ method: "DELETE", url: "/api/categories/Renamed" })).status).toBe(204);
     expect((await send({ method: "DELETE", url: "/api/categories/News?moveTo=Tech" })).status).toBe(
@@ -277,6 +283,97 @@ describe("createFakeNewsblur through handle", () => {
     ).toEqual({
       "lire.directOpen.106": "visit",
       "lire.directOpen.7": "true",
+    });
+  });
+
+  describe("when handling web feeds", () => {
+    const analyze = async ({
+      send,
+      url,
+    }: {
+      send: ReturnType<typeof setup>["send"];
+      url: string;
+    }) =>
+      parse({
+        schema: WebFeedAnalysisSchema,
+        body: (await send({ method: "POST", url: "/api/webfeeds/analyze", body: { url } })).body,
+      });
+    const poll = async ({
+      send,
+      requestId,
+    }: {
+      send: ReturnType<typeof setup>["send"];
+      requestId: string;
+    }) =>
+      parse({
+        schema: WebFeedStatusSchema,
+        body: (await send({ url: `/api/webfeeds/analyze/${requestId}` })).body,
+      });
+
+    it("answers pending on the first poll, then the seed variants", async () => {
+      const { send } = setup();
+      const { requestId } = await analyze({ send, url: "https://changelog.example.test/news" });
+      expect(requestId).toBeDefined();
+      const id = String(requestId);
+      expect((await poll({ send, requestId: id })).status).toBe("pending");
+      const done = await poll({ send, requestId: id });
+      expect(done.status).toBe("done");
+      expect(done.variants.map((v) => v.label)).toEqual(["Release entries", "Sidebar links"]);
+      expect(done.htmlHash).toBe("3f9c1b7e5a2d");
+    });
+
+    it("ends one request id in failure", async () => {
+      const { send } = setup();
+      const { requestId } = await analyze({ send, url: "https://broken.example.test/page" });
+      const id = String(requestId);
+      expect((await poll({ send, requestId: id })).status).toBe("pending");
+      expect((await poll({ send, requestId: id })).status).toBe("failed");
+    });
+
+    it("keeps an unknown id pending", async () => {
+      const { send } = setup();
+      expect((await poll({ send, requestId: "unknown-request" })).status).toBe("pending");
+    });
+
+    it("answers a feed address with no request id", async () => {
+      const { send } = setup();
+      expect(await analyze({ send, url: "https://changelog.example.test/feed" })).toEqual({
+        feedUrl: "https://changelog.example.test/feed",
+      });
+    });
+
+    it("subscribes as a web feed, then swaps the variant of a followed page", async () => {
+      const { send } = setup();
+      const url = "https://changelog.example.test/news";
+      const fields = { storyContainer: "//article", title: ".//h2" };
+      const body = { url, variantIndex: 0, fields, htmlHash: "abc", categoryIds: ["News"] };
+      const first = await send({ method: "POST", url: "/api/webfeeds", body });
+      expect(first.status).toBe(201);
+      const feed = parse({ schema: FeedsSchema.element, body: first.body });
+      expect(feed).toMatchObject({ isWebFeed: true, categoryIds: ["News"] });
+
+      const again = await send({
+        method: "POST",
+        url: "/api/webfeeds",
+        body: { ...body, variantIndex: 1, categoryIds: [] },
+      });
+      expect(again.status).toBe(200);
+      expect(parse({ schema: FeedsSchema.element, body: again.body }).id).toBe(feed.id);
+    });
+
+    it("reanalyzes a web feed with a new request id and its page URL", async () => {
+      const { send } = setup();
+      const answer = parse({
+        schema: WebFeedReanalysisSchema,
+        body: (await send({ method: "POST", url: "/api/feeds/113/reanalyze" })).body,
+      });
+      expect(answer.url).toBe("https://changelog.example.test/releases");
+      expect((await poll({ send, requestId: answer.requestId })).status).toBe("pending");
+    });
+
+    it("refuses to reanalyze a feed that is not a web feed", async () => {
+      const { send } = setup();
+      expect((await send({ method: "POST", url: "/api/feeds/101/reanalyze" })).status).toBe(400);
     });
   });
 });

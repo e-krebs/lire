@@ -3,7 +3,9 @@ import { describe, expect, it, vi } from "vitest";
 import { server } from "test/msw";
 import { httpTransport } from "../adapters/http";
 import {
+  analyzeWebFeed,
   ApiError,
+  createWebFeed,
   deleteCategory,
   getAuthStatus,
   getCategories,
@@ -11,7 +13,9 @@ import {
   getNewsletterAddress,
   getProfile,
   getStreamEntries,
+  getWebFeedStatus,
   markRead,
+  reanalyzeWebFeed,
   searchEntries,
   updatePreferences,
 } from "../client";
@@ -210,5 +214,121 @@ describe("client (http adapter)", () => {
     expect(response.status).toBe(204);
     await expect(response.json()).resolves.toBeNull();
     expect(calls[0]).toMatchObject({ method: "POST", keepalive: true });
+  });
+
+  describe("when using web feeds", () => {
+    const fields = { storyContainer: "//article", title: ".//h2" };
+    const feed = {
+      id: "113",
+      title: "Changelog",
+      feedUrl: "webfeed:https://changelog.example.test/releases",
+      categoryIds: ["Tech"],
+      isNewsletter: false,
+      isWebFeed: true,
+    };
+
+    it("posts the page to analyze and parses the request id or the feed address", async () => {
+      setup();
+      const bodies: unknown[] = [];
+      server.use(
+        http.post("/api/webfeeds/analyze", async ({ request }) => {
+          bodies.push(await request.json());
+          return HttpResponse.json({ requestId: "req-12345678" });
+        }),
+      );
+
+      await expect(analyzeWebFeed({ url: "https://changelog.example.test" })).resolves.toEqual({
+        requestId: "req-12345678",
+      });
+      expect(bodies).toEqual([{ url: "https://changelog.example.test" }]);
+
+      server.use(
+        http.post("/api/webfeeds/analyze", () =>
+          HttpResponse.json({ feedUrl: "https://changelog.example.test/feed" }),
+        ),
+      );
+      await expect(analyzeWebFeed({ url: "https://changelog.example.test" })).resolves.toEqual({
+        feedUrl: "https://changelog.example.test/feed",
+      });
+    });
+
+    it("reads a status by request id", async () => {
+      setup();
+      server.use(
+        http.get("/api/webfeeds/analyze/:requestId", ({ params }) =>
+          HttpResponse.json({ status: "done", variants: [], htmlHash: String(params.requestId) }),
+        ),
+      );
+
+      await expect(getWebFeedStatus({ requestId: "req-12345678" })).resolves.toMatchObject({
+        status: "done",
+        htmlHash: "req-12345678",
+      });
+    });
+
+    it("posts the variant fields untouched and parses the feed", async () => {
+      setup();
+      const bodies: unknown[] = [];
+      server.use(
+        http.post("/api/webfeeds", async ({ request }) => {
+          bodies.push(await request.json());
+          return HttpResponse.json(feed, { status: 201 });
+        }),
+      );
+
+      await expect(
+        createWebFeed({
+          url: "https://changelog.example.test/releases",
+          variantIndex: 1,
+          fields,
+          htmlHash: "abc",
+          categoryIds: ["Tech"],
+        }),
+      ).resolves.toEqual(feed);
+      expect(bodies).toEqual([
+        {
+          url: "https://changelog.example.test/releases",
+          variantIndex: 1,
+          fields,
+          htmlHash: "abc",
+          categoryIds: ["Tech"],
+        },
+      ]);
+    });
+
+    it("maps a 403 to a premium_required ApiError", async () => {
+      setup();
+      server.use(
+        http.post("/api/webfeeds", () =>
+          HttpResponse.json({ error: "premium_required" }, { status: 403 }),
+        ),
+      );
+
+      await expect(
+        createWebFeed({
+          url: "https://changelog.example.test",
+          variantIndex: 0,
+          fields,
+          categoryIds: [],
+        }),
+      ).rejects.toMatchObject(new ApiError({ status: 403, code: "premium_required" }));
+    });
+
+    it("posts a reanalysis for the feed and parses the request id and page URL", async () => {
+      setup();
+      server.use(
+        http.post("/api/feeds/:feedId/reanalyze", ({ params }) =>
+          HttpResponse.json({
+            requestId: "req-12345678",
+            url: `https://changelog.example.test/${String(params.feedId)}`,
+          }),
+        ),
+      );
+
+      await expect(reanalyzeWebFeed({ feedId: "113" })).resolves.toEqual({
+        requestId: "req-12345678",
+        url: "https://changelog.example.test/113",
+      });
+    });
   });
 });

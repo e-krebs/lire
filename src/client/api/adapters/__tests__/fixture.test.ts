@@ -48,7 +48,7 @@ describe("fixtureTransport", () => {
       "News",
       "Newsletters",
     ]);
-    expect(categories[0]?.feedIds).toEqual(["101", "102", "103"]);
+    expect(categories[0]?.feedIds).toEqual(["101", "102", "103", "113"]);
   });
 
   it("scopes a folder stream to its feeds, nested folders included", async () => {

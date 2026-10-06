@@ -1,7 +1,11 @@
 import { useId, useRef, useState } from "react";
 import {
+  isPremiumRequired,
   unreadCountFor,
   useCreateCategory,
+  useCreateWebFeed,
+  useReanalyzeWebFeed,
+  useWebFeedStatus,
   useUpdateFeed,
   useCounts,
   useUnsubscribe,
@@ -17,6 +21,7 @@ import { CategoryPicker } from "./CategoryPicker";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { HueDot, hostOf } from "./FeedsTab";
 import { SidePanel } from "./SidePanel";
+import { WebFeedVariants } from "./WebFeedVariants";
 
 const actionClassName = `
   min-h-11 flex-1 rounded-xl px-4 text-sm font-semibold
@@ -25,6 +30,7 @@ const actionClassName = `
   motion-safe:transition-colors
 `;
 const submitClassName = `${actionClassName} bg-accent text-on-accent not-disabled:hover:bg-accent/90 data-clearing:bg-danger data-clearing:text-surface data-clearing:not-disabled:hover:bg-danger/90`;
+const neutralClassName = `${actionClassName} bg-surface-2 text-ink`;
 const dangerSoftClassName = `${actionClassName} bg-danger-soft text-danger`;
 
 const listFormats = new Map<Locale, Intl.ListFormat>();
@@ -65,7 +71,7 @@ interface FeedPanelProps {
 }
 
 export const FeedPanel = ({ feed, categories, onClose }: FeedPanelProps) => {
-  const t = useT().subscriptions;
+  const { subscriptions: t, common } = useT();
   const locale = useLocale();
   const formId = useId();
   const titleId = useId();
@@ -80,6 +86,9 @@ export const FeedPanel = ({ feed, categories, onClose }: FeedPanelProps) => {
   const save = useUpdateFeed();
   const unsubscribe = useUnsubscribe();
   const createCategory = useCreateCategory();
+  const reanalyze = useReanalyzeWebFeed();
+  const applyVariant = useCreateWebFeed();
+  const [variantIndex, setVariantIndex] = useState<number | undefined>(undefined);
   // Another row opened while the panel stays up: the drafts follow the new feed. The resets
   // also detach a pending save or create, so its onSuccess cannot close or tick this draft.
   if (draftFor !== feed.id) {
@@ -91,11 +100,46 @@ export const FeedPanel = ({ feed, categories, onClose }: FeedPanelProps) => {
     save.reset();
     unsubscribe.reset();
     createCategory.reset();
+    reanalyze.reset();
+    applyVariant.reset();
+    setVariantIndex(undefined);
   }
 
   const counts = useCounts();
   const directOpen = useDirectOpen(feed.id);
   const setDirectOpen = useSetDirectOpen();
+
+  const reanalyzing = reanalyze.isPending || reanalyze.isError || reanalyze.data !== undefined;
+  const webStatus = useWebFeedStatus({ requestId: reanalyze.data?.requestId });
+  const variants = webStatus.data?.status === "done" ? webStatus.data.variants : undefined;
+  const pickedIndex = variantIndex ?? (variants?.length === 1 ? 0 : undefined);
+  const pickedVariant = pickedIndex === undefined ? undefined : variants?.[pickedIndex];
+  const canApply = pickedVariant !== undefined && !applyVariant.isPending;
+  const applyMessage = applyVariant.isError
+    ? isPremiumRequired(applyVariant.error)
+      ? t.webFeedPremium
+      : t.applyVariantFailed({ message: applyVariant.error.message })
+    : null;
+
+  const stopReanalyzing = (): void => {
+    reanalyze.reset();
+    applyVariant.reset();
+    setVariantIndex(undefined);
+  };
+
+  const handleApply = (): void => {
+    if (pickedVariant === undefined || pickedIndex === undefined || !reanalyze.data) return;
+    applyVariant.mutate(
+      {
+        url: reanalyze.data.url,
+        variantIndex: pickedIndex,
+        fields: pickedVariant.fields,
+        htmlHash: webStatus.data?.htmlHash,
+        categoryIds: feed.categoryIds,
+      },
+      { onSuccess: onClose },
+    );
+  };
 
   const clearing = selected.length === 0;
   const saveMessage = save.isError
@@ -130,102 +174,155 @@ export const FeedPanel = ({ feed, categories, onClose }: FeedPanelProps) => {
         subtitle={hostOf(feed.siteUrl)}
         leading={<HueDot feedId={feed.id} />}
         actions={
-          <>
-            {clearing ? null : (
+          reanalyzing ? (
+            <>
               <button
                 type="button"
-                disabled={save.isPending}
-                onClick={() => {
-                  setConfirming(true);
-                }}
-                className={dangerSoftClassName}
+                disabled={applyVariant.isPending}
+                onClick={stopReanalyzing}
+                className={neutralClassName}
               >
-                {t.unsubscribeEllipsis}
+                {common.cancel}
               </button>
-            )}
-            <button
-              type="submit"
-              form={formId}
-              disabled={save.isPending || unsubscribe.isPending}
-              data-clearing={clearing || undefined}
-              className={submitClassName}
-            >
-              {clearing ? t.unsubscribeEllipsis : t.saveChanges}
-            </button>
-          </>
+              <button
+                type="button"
+                disabled={!canApply}
+                onClick={handleApply}
+                className={submitClassName}
+              >
+                {t.apply}
+              </button>
+            </>
+          ) : (
+            <>
+              {clearing ? null : (
+                <button
+                  type="button"
+                  disabled={save.isPending}
+                  onClick={() => {
+                    setConfirming(true);
+                  }}
+                  className={dangerSoftClassName}
+                >
+                  {t.unsubscribeEllipsis}
+                </button>
+              )}
+              <button
+                type="submit"
+                form={formId}
+                disabled={save.isPending || unsubscribe.isPending}
+                data-clearing={clearing || undefined}
+                className={submitClassName}
+              >
+                {clearing ? t.unsubscribeEllipsis : t.saveChanges}
+              </button>
+            </>
+          )
         }
       >
-        <form
-          id={formId}
-          noValidate
-          className="flex flex-col gap-4 px-4 py-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            handleSave();
-          }}
-        >
-          <div className="flex flex-col gap-2">
-            <label htmlFor={titleId} className="text-xs font-semibold text-muted">
-              {t.titleLabel}
-            </label>
-            <input
-              ref={titleRef}
-              id={titleId}
-              type="text"
-              autoComplete="off"
-              enterKeyHint="done"
-              value={title}
-              aria-invalid={titleEmpty || undefined}
-              aria-describedby={titleEmpty ? titleErrorId : undefined}
-              onChange={(event) => {
-                setTitle(event.target.value);
-                setTitleEmpty(false);
+        {reanalyzing ? (
+          <div className="flex flex-col gap-4 px-4 py-4">
+            <WebFeedVariants
+              status={webStatus.data}
+              failed={reanalyze.isError || webStatus.isError}
+              timedOut={webStatus.timedOut}
+              selected={pickedIndex}
+              onSelect={setVariantIndex}
+              onRetry={() => {
+                setVariantIndex(undefined);
+                reanalyze.mutate({ feedId: feed.id });
               }}
-              className={`
+            />
+            {applyMessage === null ? null : (
+              <p role="alert" className="text-sm text-danger">
+                {applyMessage}
+              </p>
+            )}
+          </div>
+        ) : (
+          <form
+            id={formId}
+            noValidate
+            className="flex flex-col gap-4 px-4 py-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              handleSave();
+            }}
+          >
+            <div className="flex flex-col gap-2">
+              <label htmlFor={titleId} className="text-xs font-semibold text-muted">
+                {t.titleLabel}
+              </label>
+              <input
+                ref={titleRef}
+                id={titleId}
+                type="text"
+                autoComplete="off"
+                enterKeyHint="done"
+                value={title}
+                aria-invalid={titleEmpty || undefined}
+                aria-describedby={titleEmpty ? titleErrorId : undefined}
+                onChange={(event) => {
+                  setTitle(event.target.value);
+                  setTitleEmpty(false);
+                }}
+                className={`
                 min-h-11 w-full rounded-xl bg-surface px-3 text-sm text-ink ring-1 ring-hairline
                 ring-inset
                 focus-visible:outline-2 focus-visible:outline-accent
                 aria-invalid:ring-danger
               `}
-            />
-            {titleEmpty ? (
-              <p id={titleErrorId} role="alert" className="text-sm text-danger">
-                {t.enterTitle}
-              </p>
-            ) : null}
-          </div>
-          <CategoryPicker
-            key={feed.id}
-            categories={categories}
-            selected={selected}
-            onChange={setSelected}
-            mode="multiple"
-            onCreate={(label) => {
-              createCategory.mutate(label, {
-                onSuccess: (created) => {
-                  setSelected((current) => [...current, created.id]);
-                },
-              });
-            }}
-          />
-          <div className="flex min-h-11 items-center">
-            <Switch
-              checked={directOpen}
-              onChange={(checked) => {
-                setDirectOpen(feed.id, checked);
+              />
+              {titleEmpty ? (
+                <p id={titleErrorId} role="alert" className="text-sm text-danger">
+                  {t.enterTitle}
+                </p>
+              ) : null}
+            </div>
+            <CategoryPicker
+              key={feed.id}
+              categories={categories}
+              selected={selected}
+              onChange={setSelected}
+              mode="multiple"
+              onCreate={(label) => {
+                createCategory.mutate(label, {
+                  onSuccess: (created) => {
+                    setSelected((current) => [...current, created.id]);
+                  },
+                });
               }}
-              className="w-full justify-between"
-            >
-              {t.opensOnSite}
-            </Switch>
-          </div>
-          {clearing ? <p className="text-xs text-faint">{t.clearingHint}</p> : null}
-          {saveMessage === null ? null : (
-            <p role="alert" className="text-sm text-danger">
-              {saveMessage}
-            </p>
-          )}
-        </form>
+            />
+            <div className="flex min-h-11 items-center">
+              <Switch
+                checked={directOpen}
+                onChange={(checked) => {
+                  setDirectOpen(feed.id, checked);
+                }}
+                className="w-full justify-between"
+              >
+                {t.opensOnSite}
+              </Switch>
+            </div>
+            {feed.isWebFeed ? (
+              <button
+                type="button"
+                onClick={() => {
+                  reanalyze.mutate({ feedId: feed.id });
+                }}
+                className={neutralClassName}
+              >
+                {t.reanalyze}
+              </button>
+            ) : null}
+            {clearing ? <p className="text-xs text-faint">{t.clearingHint}</p> : null}
+            {saveMessage === null ? null : (
+              <p role="alert" className="text-sm text-danger">
+                {saveMessage}
+              </p>
+            )}
+          </form>
+        )}
       </SidePanel>
       <ConfirmDialog
         open={confirming}

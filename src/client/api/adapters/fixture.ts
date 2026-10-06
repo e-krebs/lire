@@ -75,6 +75,7 @@ const toFixtures = (files: Map<string, unknown>): FakeNewsblurFixtures => {
     feedAutocomplete: FeedAutocompleteSchema.parse(file("feed_autocomplete.json")),
     preferences: PreferencesAnswerSchema.parse(files.get("preferences.json") ?? { payload: {} }),
     profile: file("profile.json"),
+    webfeedAnalyze: file("webfeed_analyze.json"),
   };
 };
 

@@ -25,6 +25,8 @@ export interface FakeNewsblurFixtures {
   feedAutocomplete: { feeds: { value: string; label: string; num_subscribers?: number }[] };
   preferences: { payload: Record<string, unknown> };
   profile: unknown;
+  // The `/webfeed/status` answer of a finished analysis, minus `code` and `type`.
+  webfeedAnalyze: unknown;
 }
 
 type Folders = FolderItem[];
@@ -32,6 +34,11 @@ type Folder = Record<string, Folders>;
 type Answer = Record<string, unknown>;
 
 const OK: Answer = { code: 1, result: "ok" };
+const WEB_FEED_PREFIX = "webfeed:";
+const FEED_ADDRESS = /(\/feed\/?|\.(xml|rss|atom))$/i;
+// A page with this in its URL ends its analysis in an error.
+const FAILING_PAGE = "broken";
+
 const failure = (message: string): Answer => ({ code: -1, result: "error", message });
 
 const one = ({ params, key }: { params: Params | undefined; key: string }): string => {
@@ -112,6 +119,14 @@ export const createFakeNewsblur = ({
   );
   const initiallyUnread = new Set(unread);
 
+  const analyses = new Map<string, { polls: number; failing: boolean }>();
+  let nextAnalysisId = 1;
+  const startAnalysis = (url: string): Answer => {
+    const requestId = `fake-analysis-${nextAnalysisId++}`;
+    analyses.set(requestId, { polls: 0, failing: url.includes(FAILING_PAGE) });
+    return { ...OK, request_id: requestId };
+  };
+
   let nextFeedId = Math.max(0, ...Object.keys(feeds).map(Number)) + 1;
 
   const withState = (story: Story): Story => ({
@@ -149,20 +164,23 @@ export const createFakeNewsblur = ({
 
   const folderEntries = (title: string) => tree.filter(isFolder).filter((item) => title in item);
 
-  const addUrl = (form: Params | undefined): Answer => {
+  const addUrl = ({ form, webFeed }: { form: Params | undefined; webFeed?: boolean }): Answer => {
     const url = one({ params: form, key: "url" });
     if (!URL.canParse(url)) return failure("Could not find a feed at that address.");
     const folder = one({ params: form, key: "folder" });
     const level = childrenAt({ tree, path: folder === "" ? [] : [folder] });
     if (!level) return failure("Folder not found.");
-    const feed: UpstreamFeed = Object.values(feeds).find(
-      (candidate) => candidate.feed_address === url,
-    ) ?? {
+    const address = webFeed ? `${WEB_FEED_PREFIX}${url}` : url;
+    const existing = Object.values(feeds).find((candidate) => candidate.feed_address === address);
+    // A web feed already followed only swaps its variant: it stays where it is.
+    if (existing && webFeed) return { ...OK, feed: existing };
+    const feed: UpstreamFeed = existing ?? {
       id: nextFeedId++,
-      feed_title: new URL(url).hostname,
-      feed_address: url,
-      feed_link: new URL(url).origin,
+      feed_title: one({ params: form, key: "feed_title" }) || new URL(url).hostname,
+      feed_address: address,
+      feed_link: webFeed ? url : new URL(url).origin,
       favicon_url: null,
+      ...(webFeed ? { is_webfeed: true } : {}),
     };
     feeds[String(feed.id)] = feed;
     if (!level.includes(feed.id)) level.push(feed.id);
@@ -218,7 +236,20 @@ export const createFakeNewsblur = ({
         }
         return OK;
       case "/reader/add_url":
-        return addUrl(form);
+        return addUrl({ form });
+      case "/webfeed/subscribe":
+        return addUrl({ form, webFeed: true });
+      case "/webfeed/analyze": {
+        const url = one({ params: form, key: "url" });
+        if (!URL.canParse(url)) return failure("Could not read that address.");
+        if (FEED_ADDRESS.test(new URL(url).pathname)) return { code: 2, feed_address: url };
+        return startAnalysis(url);
+      }
+      case "/webfeed/reanalyze": {
+        const feed = feeds[one({ params: form, key: "feed_id" })] as UpstreamFeed | undefined;
+        if (!feed?.is_webfeed) return failure("Feed not found.");
+        return startAnalysis(feed.feed_address.slice(WEB_FEED_PREFIX.length));
+      }
       case "/reader/rename_feed": {
         const feed = feeds[one({ params: form, key: "feed_id" })] as UpstreamFeed | undefined;
         if (!feed) return failure("Feed not found.");
@@ -263,8 +294,19 @@ export const createFakeNewsblur = ({
     return { feeds: counts };
   };
 
+  // The first poll answers pending, the next the end of the analysis.
+  const webFeedStatus = (requestId: string): Answer => {
+    const analysis = analyses.get(requestId);
+    if (!analysis) return { code: -1, status: "unknown" };
+    analysis.polls += 1;
+    if (analysis.polls < 2) return { code: 1, type: "progress", message: "Reading the page." };
+    if (analysis.failing) return { code: -1, type: "error", error: "Could not read the page." };
+    return { code: 1, type: "complete", ...asRecord(fixtures.webfeedAnalyze) };
+  };
+
   const read = ({ path, query, form }: NewsblurRequest): Answer | undefined => {
     const params: Params = { ...query, ...form };
+    if (path === "/webfeed/status") return webFeedStatus(one({ params, key: "request_id" }));
     if (path === "/reader/feeds") return { feeds, folders: tree };
     if (path === "/reader/refresh_feeds") return refreshFeeds();
     if (path === "/reader/read_stories") {
