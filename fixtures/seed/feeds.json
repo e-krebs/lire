@@ -83,6 +83,14 @@
       "feed_address": "newsletter:example-digest",
       "feed_link": null,
       "favicon_url": "/rss_feeds/icon/112"
+    },
+    "113": {
+      "id": 113,
+      "feed_title": "Example Changelog",
+      "feed_address": "webfeed:https://changelog.example.test/releases",
+      "feed_link": "https://changelog.example.test/releases",
+      "favicon_url": null,
+      "is_webfeed": true
     }
   },
   "folders": [
@@ -92,7 +100,8 @@
         {
           "Frameworks": [102]
         },
-        103
+        103,
+        113
       ]
     },
     {

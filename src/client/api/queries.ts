@@ -8,10 +8,13 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import type { InfiniteData, QueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import {
+  analyzeWebFeed,
   ApiError,
   createCategory,
   createFeed,
+  createWebFeed,
   deleteCategory,
   deleteFeed,
   getAuthStatus,
@@ -24,7 +27,9 @@ import {
   getProfile,
   getStreamEntries,
   getSunPhase,
+  getWebFeedStatus,
   markUnread,
+  reanalyzeWebFeed,
   renameCategory,
   searchEntries,
   searchFeeds,
@@ -87,10 +92,14 @@ export const keys = {
   }) => ["search", streamKey, query, { unreadOnly: unreadOnly ?? false, count }] as const,
   entry: (entryId: string) => ["entry", entryId] as const,
   feedLookup: (query: string) => ["feedLookup", query] as const,
+  webFeedStatus: (requestId: string) => ["webFeedStatus", requestId] as const,
 };
 
 export const isSignInRequired = (error: unknown): boolean =>
   error instanceof ApiError && error.code === "sign_in_required";
+
+export const isPremiumRequired = (error: unknown): boolean =>
+  error instanceof ApiError && error.code === "premium_required";
 
 // The read stream has no unread count.
 export const unreadCountFor = ({
@@ -690,6 +699,49 @@ export const useSubscribe = () => {
       invalidateLibrary(client);
     },
   });
+};
+
+export const useAnalyzeWebFeed = () => useMutation({ mutationFn: analyzeWebFeed });
+
+// Applies a variant to a page: a new web feed, or a swap on one already followed.
+export const useCreateWebFeed = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: createWebFeed,
+    onSuccess: () => {
+      invalidateLibrary(client);
+    },
+  });
+};
+
+export const useReanalyzeWebFeed = () => useMutation({ mutationFn: reanalyzeWebFeed });
+
+const WEB_FEED_POLL_MS = 2000;
+// NewsBlur keeps an analysis five minutes, and nothing tells a dead id from a slow one.
+const WEB_FEED_TIMEOUT_MS = 90_000;
+
+// Polls until the analysis is done or failed, or until `timedOut`, which stops the polling.
+export const useWebFeedStatus = ({ requestId }: { requestId: string | undefined }) => {
+  const [timedOutId, setTimedOutId] = useState<string>();
+  useEffect(() => {
+    if (requestId === undefined) return undefined;
+    const timer = setTimeout(() => {
+      setTimedOutId(requestId);
+    }, WEB_FEED_TIMEOUT_MS);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [requestId]);
+  const timedOut = requestId !== undefined && timedOutId === requestId;
+  const query = useQuery({
+    queryKey: keys.webFeedStatus(requestId ?? ""),
+    queryFn: async () => getWebFeedStatus({ requestId: requestId ?? "" }),
+    enabled: requestId !== undefined && !timedOut,
+    refetchInterval: ({ state }) =>
+      state.data && state.data.status !== "pending" ? false : WEB_FEED_POLL_MS,
+    gcTime: 0,
+  });
+  return { ...query, timedOut };
 };
 
 // The address is fixed per account, so one GET per session.

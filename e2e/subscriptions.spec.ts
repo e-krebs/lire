@@ -21,6 +21,9 @@ const ui = (page: Page) => ({
   get addNewsletterItem() {
     return page.getByRole("button", { name: "Add newsletter" });
   },
+  get addWebsiteButton() {
+    return page.getByRole("button", { name: "Add website" });
+  },
   get categoriesTab() {
     return page.getByRole("tab", { name: "Categories ·" });
   },
@@ -201,15 +204,15 @@ test.describe("Subscriptions manager", () => {
 
     const modal = pageUi.deleteModal("Tech");
     await expect(modal).toBeVisible();
-    await expect(modal.getByRole("button", { name: "Delete and move 2 feeds" })).toBeDisabled();
+    await expect(modal.getByRole("button", { name: "Delete and move 3 feeds" })).toBeDisabled();
 
     const moveAll = modal.getByRole("checkbox", {
       name: "Also move the feed that sits in another category",
     });
     await moveAll.check();
-    await expect(modal.getByRole("button", { name: "Delete and move 3 feeds" })).toBeVisible();
+    await expect(modal.getByRole("button", { name: "Delete and move 4 feeds" })).toBeVisible();
     await moveAll.uncheck();
-    await expect(modal.getByRole("button", { name: "Delete and move 2 feeds" })).toBeVisible();
+    await expect(modal.getByRole("button", { name: "Delete and move 3 feeds" })).toBeVisible();
   });
 
   test("a category moved by keyboard keeps its place after a reload", async ({
@@ -269,5 +272,48 @@ test.describe("Subscriptions manager", () => {
     await expect.poll(async () => pageUi.tabOrder()).toEqual(MOVED_ORDER);
 
     await pageUi.navigatorOrder({ phone: false });
+  });
+
+  test("makes a web feed from a page that is not a feed", async ({ page }, testInfo) => {
+    const phone = testInfo.project.name === "pixel-9-pro";
+    const pageUi = ui(page);
+    // The seed already holds one web feed with this title, the new one makes two.
+    const changelogRows = pageUi.feedRow("Example Changelog");
+
+    await page.goto("/subscriptions");
+    await pageUi.feedsTab.click();
+    await expect(changelogRows).toHaveCount(1);
+    await pageUi.addWebsiteButton.click();
+
+    const panel = pageUi.panel({ phone, title: "Add a feed" });
+    await expect(panel).toBeVisible();
+    await panel.getByLabel("Feed or site URL").fill("https://news.example.test/releases");
+    await panel.getByRole("button", { name: "Make a web feed" }).click();
+
+    await panel.getByRole("radio", { name: /Release entries/ }).check();
+    await panel.getByRole("checkbox", { name: "Design", exact: true }).check();
+    const subscribe = panel.getByRole("button", { name: "Subscribe" });
+    await expect(subscribe).toBeEnabled();
+    await subscribe.click();
+
+    await expect(panel).toBeHidden();
+    await expect(changelogRows).toHaveCount(2);
+  });
+
+  test("reanalyzes the seeded web feed and applies another variant", async ({ page }, testInfo) => {
+    const phone = testInfo.project.name === "pixel-9-pro";
+    const pageUi = ui(page);
+
+    await page.goto("/subscriptions");
+    await pageUi.feedsTab.click();
+    await pageUi.feedRow("Example Changelog").click();
+
+    const panel = pageUi.panel({ phone, title: "Example Changelog" });
+    await expect(panel).toBeVisible();
+    await panel.getByRole("button", { name: "Reanalyze" }).click();
+
+    await panel.getByRole("radio", { name: /Sidebar links/ }).check();
+    await panel.getByRole("button", { name: "Apply" }).click();
+    await expect(panel).toBeHidden();
   });
 });

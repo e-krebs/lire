@@ -136,6 +136,18 @@ NewsBlur. A new route is a contract entry plus a handler. The contract bounds wh
 or buggy client can do with the owner's session: it cannot reach any other NewsBlur endpoint. The
 Worker answers with its own JSON, never with upstream headers.
 
+Web feeds, which NewsBlur builds from a page that is not a feed, take an asynchronous analysis. The
+client posts the page URL to `/api/webfeeds/analyze`, which answers a `requestId`, or a `feedUrl`
+alone when the page is already a feed, and the client then subscribes through the ordinary feed
+route. Otherwise `useWebFeedStatus` polls the status route every 2 seconds until `done` or `failed`
+and gives up after 90 seconds, because NewsBlur answers an unknown or expired id as pending. The
+Worker keeps no job state: analyze and status skip the feed-list cache drop, and only the subscribe
+write clears it. The client sends the picked variant's fields back unchanged and never builds XPath.
+Subscribe needs Premium Archive and answers 403 `premium_required`, which the client tells from a
+signed-out 403. A feed panel's reanalyze starts a new analysis, and applying a variant is another
+`POST /api/webfeeds` with the same page URL. The route shapes are in
+[../reference/api.md](../reference/api.md).
+
 The Durable Object also caches the folder tree (`/reader/feeds`) for five minutes, since most
 reads need it, and drops it on every subscription or folder write.
 

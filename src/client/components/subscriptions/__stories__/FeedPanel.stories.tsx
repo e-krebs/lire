@@ -67,3 +67,16 @@ export const Unsubscribe: Story = {
     }, SLOW);
   },
 };
+
+export const Reanalyze: Story = {
+  args: { feed: FEEDS.find((feed) => feed.isWebFeed) ?? FEEDS[0] },
+  play: async ({ args }) => {
+    const panel = await screen.findByRole("complementary", { name: args.feed.title });
+    await userEvent.click(within(panel).getByRole("button", { name: "Reanalyze" }));
+    await userEvent.click(await within(panel).findByRole("radio", { name: /Sidebar links/ }, SLOW));
+    await userEvent.click(within(panel).getByRole("button", { name: "Apply" }));
+    await waitFor(async () => {
+      await expect(args.onClose).toHaveBeenCalledOnce();
+    }, SLOW);
+  },
+};

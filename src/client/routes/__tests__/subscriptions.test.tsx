@@ -8,7 +8,7 @@ const FEED_ID = "101";
 
 const ui = {
   get feedsTab() {
-    return screen.findByRole("tab", { name: "Feeds · 12" });
+    return screen.findByRole("tab", { name: "Feeds · 13" });
   },
   get categoriesTab() {
     return screen.findByRole("tab", { name: "Categories · 4" });

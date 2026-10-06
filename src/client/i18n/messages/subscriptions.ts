@@ -159,7 +159,7 @@ export const en = {
     `Could not load your address. ${message}`,
 
   addFeedTitle: "Add a feed",
-  feedStep1: "Step 1 of 2 · find the feed",
+  feedStep1: "Step 1 of 2 · find the feed or page",
   feedStep2: "Step 2 of 2 · pick where it lands",
   feedUrlLabel: "Feed or site URL",
   searching: "Searching…",
@@ -171,6 +171,25 @@ export const en = {
     `Could not subscribe to that feed. ${message}`,
   results: "Results",
   pickCategory: "Pick at least one category for this feed.",
+  noFeedFound: "No feed found",
+  makeWebFeed: "Make a web feed",
+  makeWebFeedInstead: "Not these? Make a web feed",
+  analyzing: "Analyzing the page…",
+  analyzeFailed: "Could not analyze this page",
+  analyzeTimedOut: "The analysis took too long",
+  webFeedPremium: "Web feeds need a premium NewsBlur account",
+  alreadyFeed: "That address is already a feed. Pick where it lands.",
+  variantsLabel: "Variant",
+  variantsFound: ({ count }: { count: number }) => `${count} found`,
+  variantsHint: ({ count }: { count: number }) =>
+    `NewsBlur found ${enPlural({ count, one: () => "1 way", other: (n) => `${n} ways` })} to read this page. Pick the one that looks right.`,
+  variantFallback: ({ index }: { index: number }) => `Variant ${index}`,
+  variantSamples: ({ count }: { count: number }) =>
+    enPlural({ count, one: () => "1 sample", other: (n) => `${n} samples` }),
+  reanalyze: "Reanalyze",
+  apply: "Apply",
+  applyVariantFailed: ({ message }: { message: string }) =>
+    `Could not apply that variant. ${message}`,
 } as const;
 
 export const fr = {
@@ -331,7 +350,7 @@ export const fr = {
   loadAddressFailed: ({ message }) => `Impossible de charger votre adresse. ${message}`,
 
   addFeedTitle: "Ajouter un flux",
-  feedStep1: "Étape 1 sur 2 · trouver le flux",
+  feedStep1: "Étape 1 sur 2 · trouver le flux ou la page",
   feedStep2: "Étape 2 sur 2 · choisir où il arrive",
   feedUrlLabel: "URL du flux ou du site",
   searching: "Recherche…",
@@ -346,4 +365,23 @@ export const fr = {
   subscribeFeedFailed: ({ message }) => `Impossible de s'abonner à ce flux. ${message}`,
   results: "Résultats",
   pickCategory: "Choisissez au moins une catégorie pour ce flux.",
+  noFeedFound: "Aucun flux trouvé",
+  makeWebFeed: "Créer un flux web",
+  makeWebFeedInstead: "Pas ceux-là ? Créer un flux web",
+  analyzing: "Analyse de la page…",
+  analyzeFailed: "Impossible d'analyser cette page",
+  analyzeTimedOut: "L'analyse a pris trop de temps",
+  webFeedPremium: "Les flux web demandent un compte NewsBlur premium",
+  alreadyFeed: "Cette adresse est déjà un flux. Choisissez où il arrive.",
+  variantsLabel: "Variante",
+  variantsFound: ({ count }) =>
+    frPlural({ count, one: (n) => `${n} trouvée`, other: (n) => `${n} trouvées` }),
+  variantsHint: ({ count }) =>
+    `NewsBlur a trouvé ${frPlural({ count, one: (n) => `${n} façon`, other: (n) => `${n} façons` })} de lire cette page. Choisissez celle qui convient.`,
+  variantFallback: ({ index }) => `Variante ${index}`,
+  variantSamples: ({ count }) =>
+    frPlural({ count, one: (n) => `${n} aperçu`, other: (n) => `${n} aperçus` }),
+  reanalyze: "Réanalyser",
+  apply: "Appliquer",
+  applyVariantFailed: ({ message }) => `Impossible d'appliquer cette variante. ${message}`,
 } satisfies Messages<typeof en>;

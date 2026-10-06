@@ -11,18 +11,22 @@ import { PreferencesUpdateSchema } from "shared/feedsApi/types";
 import { server } from "test/msw";
 import { seedCategories, seedCategoryId, seedCategoryKey } from "test/seedCategories";
 import { DEMO_NEWSLETTER_ADDRESS, resetFixtureState } from "../adapters/fixture";
-import { getFeeds } from "../client";
+import { ApiError, getFeeds } from "../client";
 import { markReadQueue } from "../markReadQueue";
 import { markReadStore } from "../markReadStore";
 import type { MatchCount } from "../queries";
 import {
   DeleteAndMoveError,
   flattenStream,
+  isPremiumRequired,
   keys,
   pageCountFor,
   unreadCountFor,
+  useAnalyzeWebFeed,
   useCounts,
   useCategories,
+  useCreateWebFeed,
+  useFeeds,
   useDeleteCategoryAndMove,
   useMarkRead,
   useMatchCount,
@@ -31,10 +35,12 @@ import {
   useRefreshAllLists,
   useRefreshEntries,
   useRenameCategory,
+  useReanalyzeWebFeed,
   useReorderCategories,
   useSearchContents,
   useStream,
   useUpdateFeed,
+  useWebFeedStatus,
 } from "../queries";
 
 const techKey = seedCategoryKey("Tech");
@@ -1357,6 +1363,145 @@ describe("queries", () => {
       await waitFor(() => {
         expect(cachedOrder()).toBe(JSON.stringify(order));
       });
+    });
+  });
+
+  describe("when checking isPremiumRequired", () => {
+    it("is true only for a premium_required ApiError", () => {
+      expect(isPremiumRequired(new ApiError({ status: 403, code: "premium_required" }))).toBe(true);
+      expect(isPremiumRequired(new ApiError({ status: 401, code: "sign_in_required" }))).toBe(
+        false,
+      );
+      expect(isPremiumRequired(new Error("nope"))).toBe(false);
+    });
+  });
+
+  describe("when using the web feed hooks", () => {
+    const pageUrl = "https://changelog.example.test/news";
+    const fields = { storyContainer: "//article", title: ".//h2" };
+
+    const analyze = async ({
+      wrapper,
+      url = pageUrl,
+    }: {
+      wrapper: ReturnType<typeof setup>["wrapper"];
+      url?: string;
+    }) => {
+      const { result } = renderHook(() => useAnalyzeWebFeed(), { wrapper });
+      let requestId: string | undefined;
+      await act(async () => {
+        requestId = (await result.current.mutateAsync({ url })).requestId;
+      });
+      return String(requestId);
+    };
+
+    it("polls an analysis from pending to done and stops", async () => {
+      const { wrapper } = setup();
+      const requestId = await analyze({ wrapper });
+
+      const { result } = renderHook(() => useWebFeedStatus({ requestId }), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.data?.status).toBe("pending");
+      });
+      await waitFor(
+        () => {
+          expect(result.current.data?.status).toBe("done");
+        },
+        { timeout: 5000 },
+      );
+      expect(result.current.data?.variants.map((variant) => variant.label)).toEqual([
+        "Release entries",
+        "Sidebar links",
+      ]);
+      expect(result.current.timedOut).toBe(false);
+      expect(result.current.isFetching).toBe(false);
+    });
+
+    it("ends in failure for the failing page", async () => {
+      const { wrapper } = setup();
+      const requestId = await analyze({ wrapper, url: "https://broken.example.test/page" });
+
+      const { result } = renderHook(() => useWebFeedStatus({ requestId }), { wrapper });
+
+      await waitFor(
+        () => {
+          expect(result.current.data?.status).toBe("failed");
+        },
+        { timeout: 5000 },
+      );
+    });
+
+    it("stays idle without a request id", () => {
+      const { wrapper } = setup();
+
+      const { result } = renderHook(() => useWebFeedStatus({ requestId: undefined }), { wrapper });
+
+      expect(result.current.fetchStatus).toBe("idle");
+      expect(result.current.timedOut).toBe(false);
+    });
+
+    it("gives up after 90 seconds on an id that never ends", async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true });
+      try {
+        const { wrapper } = setup();
+
+        const { result } = renderHook(() => useWebFeedStatus({ requestId: "unknown-request" }), {
+          wrapper,
+        });
+        await waitFor(() => {
+          expect(result.current.data?.status).toBe("pending");
+        });
+        expect(result.current.timedOut).toBe(false);
+
+        await act(async () => vi.advanceTimersByTimeAsync(90_000));
+
+        expect(result.current.timedOut).toBe(true);
+        expect(result.current.fetchStatus).toBe("idle");
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("subscribes through the hook and refreshes the library", async () => {
+      const { client, wrapper } = setup();
+      const before = renderHook(() => ({ feeds: useFeeds() }), { wrapper });
+      await waitFor(() => {
+        expect(before.result.current.feeds.data).toHaveLength(13);
+      });
+
+      const { result } = renderHook(() => useCreateWebFeed(), { wrapper });
+      await act(async () => {
+        await result.current.mutateAsync({
+          url: pageUrl,
+          variantIndex: 0,
+          fields,
+          categoryIds: ["News"],
+        });
+      });
+
+      await waitFor(() => {
+        expect(client.getQueryData<Feed[]>(keys.feeds)).toHaveLength(14);
+      });
+      expect(
+        client.getQueryData<Feed[]>(keys.feeds)?.find((feed) => feed.id === "114"),
+      ).toMatchObject({
+        isWebFeed: true,
+        categoryIds: ["News"],
+      });
+    });
+
+    it("starts a reanalysis for a web feed with its page URL", async () => {
+      const { wrapper } = setup();
+
+      const { result } = renderHook(() => useReanalyzeWebFeed(), { wrapper });
+      let answer: { requestId: string; url: string } | undefined;
+      await act(async () => {
+        answer = await result.current.mutateAsync({ feedId: "113" });
+      });
+
+      expect(answer?.url).toBe("https://changelog.example.test/releases");
+      expect(answer?.requestId).toBeTruthy();
     });
   });
 });

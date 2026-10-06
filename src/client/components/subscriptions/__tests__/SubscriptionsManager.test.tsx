@@ -73,7 +73,7 @@ const ui = {
     return screen.queryByRole("button", { name: title });
   },
   async openFeedsTab(page: Page) {
-    await page.user.click(await ui.tab("Feeds · 12"));
+    await page.user.click(await ui.tab("Feeds · 13"));
   },
   async text(text: string) {
     return screen.findByText(text);
@@ -279,9 +279,9 @@ describe("SubscriptionsManager", () => {
       const { user, router } = await setup();
 
       expect(await ui.tab("Categories · 4")).toHaveAttribute("aria-selected", "true");
-      await user.click(await ui.tab("Feeds · 12"));
+      await user.click(await ui.tab("Feeds · 13"));
 
-      expect(await ui.tab("Feeds · 12")).toHaveAttribute("aria-selected", "true");
+      expect(await ui.tab("Feeds · 13")).toHaveAttribute("aria-selected", "true");
       expect(router.state.location.search).toMatchObject({ tab: "feeds" });
       expect(await ui.search("Filter feeds")).toBeInTheDocument();
     });
@@ -313,7 +313,7 @@ describe("SubscriptionsManager", () => {
         expect(ui.queryRow("Example Type Foundry")).toBeInTheDocument();
         expect(ui.queryRow("Example Daily News")).not.toBeInTheDocument();
       });
-      expect(await ui.text("12 feeds, 1 of them in more than one category")).toBeInTheDocument();
+      expect(await ui.text("13 feeds, 1 of them in more than one category")).toBeInTheDocument();
     });
 
     it("filters the feeds in a category panel", async () => {
@@ -338,7 +338,7 @@ describe("SubscriptionsManager", () => {
 
     it("left-aligns the list clear of the panel while one is open", async () => {
       const page = await setup();
-      await page.user.click(await ui.tab("Feeds · 12"));
+      await page.user.click(await ui.tab("Feeds · 13"));
       await ui.panel.open({ page, label: "Example Daily News" });
 
       expect(await column()).toHaveAttribute("data-panel-open");
@@ -346,7 +346,7 @@ describe("SubscriptionsManager", () => {
 
     it("keeps the list clear of the panel until its exit has played", async () => {
       const page = await setup();
-      await page.user.click(await ui.tab("Feeds · 12"));
+      await page.user.click(await ui.tab("Feeds · 13"));
       await ui.panel.open({ page, label: "Example Daily News" });
       let finishExit = (): void => {};
       const exit = new Promise<void>((resolve) => {
@@ -680,7 +680,7 @@ describe("SubscriptionsManager", () => {
       await waitFor(() => {
         expect(ui.queryRow("Example Daily News")).not.toBeInTheDocument();
       }, SETTLED);
-      expect(await ui.tab("Feeds · 11")).toBeInTheDocument();
+      expect(await ui.tab("Feeds · 12")).toBeInTheDocument();
       expect(await feedCategoryIds(DAILY_NEWS)).toBeUndefined();
     });
 

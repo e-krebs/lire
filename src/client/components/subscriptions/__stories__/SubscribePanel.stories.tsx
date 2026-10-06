@@ -57,6 +57,28 @@ export const Subscribe: Story = {
   },
 };
 
+export const MakeWebFeed: Story = {
+  play: async ({ args }) => {
+    const panel = await screen.findByRole("complementary", { name: "Add a feed" });
+    await userEvent.type(
+      within(panel).getByRole("textbox", { name: "Feed or site URL" }),
+      "https://changelog.example.test/releases",
+    );
+    await userEvent.click(
+      await within(panel).findByRole("button", { name: "Make a web feed" }, SLOW),
+    );
+    await userEvent.click(await within(panel).findByRole("radio", { name: /Sidebar links/ }, SLOW));
+    await userEvent.click(within(panel).getByRole("checkbox", { name: "Tech" }));
+    await waitFor(async () => {
+      await expect(within(panel).getByRole("button", { name: "Subscribe" })).toBeEnabled();
+    }, SLOW);
+    await userEvent.click(within(panel).getByRole("button", { name: "Subscribe" }));
+    await waitFor(async () => {
+      await expect(args.onClose).toHaveBeenCalledOnce();
+    }, SLOW);
+  },
+};
+
 export const Cancel: Story = {
   play: async ({ args }) => {
     const panel = await screen.findByRole("complementary", { name: "Add a feed" });
