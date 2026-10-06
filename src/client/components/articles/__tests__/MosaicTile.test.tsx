@@ -1,4 +1,4 @@
-import { act, fireEvent, render } from "@testing-library/react";
+import { act, createEvent, fireEvent, render } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import type { KeyboardEvent } from "react";
 import {
@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { StreamKey } from "shared/feedsApi/streamKey";
 import { directOpenKey } from "shared/feedsApi/preferences";
 import type { Entry } from "shared/feedsApi/types";
 import { keys } from "client/api/queries";
@@ -37,12 +38,14 @@ const setup = ({
   slot = SLOT,
   swipeable,
   leavesWhenRead,
+  streamKey = "all",
   client = newQueryClient(),
 }: {
   entry: Entry;
   slot?: TileSlot;
   swipeable?: boolean;
   leavesWhenRead?: boolean;
+  streamKey?: StreamKey;
   client?: QueryClient;
 }) => {
   client.setQueryData(keys.feeds, [
@@ -56,7 +59,7 @@ const setup = ({
     component: () => (
       <>
         <MosaicTile
-          streamKey="all"
+          streamKey={streamKey}
           entry={entry}
           slot={slot}
           tabIndex={0}
@@ -118,6 +121,12 @@ const setup = ({
         .closest("[data-entry-id]")
         ?.querySelector<HTMLElement>(".tile-action")
         ?.style.getPropertyValue("--reveal");
+    },
+    async feedLink() {
+      return view.findByRole("link", { name: "Open Example Feed" });
+    },
+    queryFeedLink() {
+      return view.queryByRole("link", { name: "Open Example Feed" });
     },
     async toggle() {
       return view.findByRole("button");
@@ -189,6 +198,23 @@ describe("MosaicTile", () => {
     const age = await ui.age();
     expect(age).toHaveTextContent("3h");
     expect(age).toHaveAttribute("datetime", new Date(published).toISOString());
+  });
+
+  describe("when the entry shows its feed", () => {
+    it("links the feed name to its stream, out of the tab order", async () => {
+      const { ui } = setup({ entry: makeEntry() });
+      const link = await ui.feedLink();
+      expect(link).toHaveAttribute("href", "/stream/feed%3A101");
+      expect(link).toHaveAttribute("tabindex", "-1");
+      expect(link).toHaveTextContent("Example Feed");
+    });
+
+    it("stays plain text when the open stream is that feed", async () => {
+      const { ui } = setup({ entry: makeEntry(), streamKey: "feed:101" });
+      await ui.link();
+      expect(ui.queryFeedLink()).toBeNull();
+      expect(await ui.wrapper()).toHaveTextContent("Example Feed");
+    });
   });
 
   it('labels the toggle "Mark as read" for an unread entry', async () => {
@@ -381,6 +407,21 @@ describe("MosaicTile", () => {
         await vi.advanceTimersByTimeAsync(200);
       });
       expect(onToggleRead).toHaveBeenCalledTimes(1);
+    });
+
+    it("swipes from the feed name without following its link", async () => {
+      withPointerCapture();
+      const { ui, router, onToggleRead } = setup({
+        entry: makeEntry(),
+        swipeable: true,
+      });
+      const feed = await ui.feedLink();
+      swipe({ target: feed, dx: 160 });
+      const click = createEvent.click(feed);
+      fireEvent(feed, click);
+      expect(click.defaultPrevented).toBe(true);
+      expect(onToggleRead).toHaveBeenCalledTimes(1);
+      expect(router.state.location.pathname).toBe("/");
     });
 
     it("swipes left too, and a card that stays snaps back and flips at once", async () => {

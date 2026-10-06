@@ -1,5 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, render, screen } from "@testing-library/react";
+import {
+  RouterProvider,
+  createMemoryHistory,
+  createRootRoute,
+  createRoute,
+  createRouter,
+} from "@tanstack/react-router";
 import { createRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Entry } from "shared/feedsApi/types";
@@ -23,6 +30,15 @@ const ui = {
   get queryLink() {
     return screen.queryByRole("link");
   },
+  queryLinkNamed(name: RegExp) {
+    return screen.queryByRole("link", { name });
+  },
+  async heading() {
+    return screen.findByRole("heading");
+  },
+  async feedLink() {
+    return screen.findByRole("link", { name: /^Open / });
+  },
 };
 
 const stubIntersectionObserver = () => {
@@ -42,7 +58,10 @@ const stubIntersectionObserver = () => {
   return observer;
 };
 
-const setup = ({ entry = ENTRY }: { entry?: Entry } = {}) => {
+const setup = async ({
+  entry = ENTRY,
+  path = "/stream/all",
+}: { entry?: Entry; path?: string } = {}) => {
   const paneRef = createRef<HTMLDivElement>();
   const onKeep = vi.fn<() => void>();
   const onMark = vi.fn<() => void>();
@@ -58,9 +77,20 @@ const setup = ({ entry = ENTRY }: { entry?: Entry } = {}) => {
       />
     </div>
   );
+  const rootRoute = createRootRoute();
+  const streamRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/stream/$streamKey",
+    component: Pane,
+  });
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([streamRoute]),
+    history: createMemoryHistory({ initialEntries: [path] }),
+  });
+  await router.load();
   const view = render(
     <QueryClientProvider client={new QueryClient()}>
-      <Pane />
+      <RouterProvider router={router} />
     </QueryClientProvider>,
   );
   const head = () => view.container.querySelector(".reader-head");
@@ -72,9 +102,9 @@ describe("ReaderHeader", () => {
     vi.unstubAllGlobals();
   });
 
-  it("condenses once the sentinel scrolls out and expands only back at the very top", () => {
+  it("condenses once the sentinel scrolls out and expands only back at the very top", async () => {
     const observer = stubIntersectionObserver();
-    const { head } = setup();
+    const { head } = await setup();
     const report = (record: { intersectionRatio: number; isIntersecting: boolean }): void => {
       act(() => {
         observer.report?.([record]);
@@ -98,19 +128,32 @@ describe("ReaderHeader", () => {
     expect(head()).not.toHaveAttribute("data-condensed");
   });
 
-  it("stops observing on unmount", () => {
+  it("stops observing on unmount", async () => {
     const observer = stubIntersectionObserver();
-    const { view } = setup();
+    const { view } = await setup();
 
     view.unmount();
 
     expect(observer.disconnect).toHaveBeenCalledTimes(1);
   });
 
-  it("shows a plain title without an original to link to", () => {
-    setup({ entry: { ...ENTRY, url: undefined, title: undefined } });
+  it("shows a plain title without an original to link to", async () => {
+    await setup({ entry: { ...ENTRY, url: undefined, title: undefined } });
 
     expect(ui.untitledHeading).toBeInTheDocument();
-    expect(ui.queryLink).toBeNull();
+    expect(ui.queryLinkNamed(/^http|a-long-read/)).toBeNull();
+  });
+
+  it("links the feed name to its stream", async () => {
+    await setup();
+
+    expect(await ui.feedLink()).toHaveAttribute("href", "/stream/feed%3A101");
+  });
+
+  it("keeps the feed name plain on its own stream", async () => {
+    await setup({ path: "/stream/feed:101" });
+
+    await ui.heading();
+    expect(ui.queryLinkNamed(/^Open /)).toBeNull();
   });
 });
