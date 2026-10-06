@@ -61,6 +61,9 @@ The unread filter and the sort order are per device, not per account, and never 
 live in `localStorage` under `lire.view` ([viewPrefs.ts](../../src/client/utils/viewPrefs.ts)),
 behind a small store that the stream route, the view toggles and the Navigator all read.
 
+A feed that opens on its site (`lire.directOpen.<feedId>`) is never a newsletter: the switch is
+hidden for one and a stored flag is ignored.
+
 The UI speaks English and French, through a small in-house module in
 [src/client/i18n/](../../src/client/i18n/) instead of a library
 ([ADR 0008](../adr/0008-in-house-i18n.md)). The catalog is one file per UI area under

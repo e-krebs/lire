@@ -293,17 +293,19 @@ export const FeedPanel = ({ feed, categories, onClose }: FeedPanelProps) => {
                 });
               }}
             />
-            <div className="flex min-h-11 items-center">
-              <Switch
-                checked={directOpen}
-                onChange={(checked) => {
-                  setDirectOpen(feed.id, checked);
-                }}
-                className="w-full justify-between"
-              >
-                {t.opensOnSite}
-              </Switch>
-            </div>
+            {feed.isNewsletter ? null : (
+              <div className="flex min-h-11 items-center">
+                <Switch
+                  checked={directOpen}
+                  onChange={(checked) => {
+                    setDirectOpen(feed.id, checked);
+                  }}
+                  className="w-full justify-between"
+                >
+                  {t.opensOnSite}
+                </Switch>
+              </div>
+            )}
             {feed.isWebFeed ? (
               <button
                 type="button"
