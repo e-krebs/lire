@@ -49,6 +49,14 @@ describe("directOpen", () => {
     expect(renderHook(() => useDirectOpen(FEED), { wrapper }).result.current).toBe(true);
   });
 
+  it("ignores a stored flag on a newsletter", () => {
+    const { client, wrapper } = setup();
+    client.setQueryData(keys.preferences, { [directOpenKey(FEED)]: "visit" });
+    client.setQueryData(keys.feeds, [{ id: FEED, isNewsletter: true }]);
+
+    expect(renderHook(() => useDirectOpen(FEED), { wrapper }).result.current).toBe(false);
+  });
+
   it("keeps feeds independent", () => {
     const { client, wrapper } = setup();
     client.setQueryData(keys.preferences, { [directOpenKey(FEED)]: "visit" });

@@ -183,6 +183,29 @@ describe("web feed panels", { timeout: 20_000 }, () => {
       expect(ui.queryReanalyze()).toBeNull();
     });
 
+    it("shows the opens-on-its-site switch except on a newsletter", async () => {
+      prepare();
+      const plain = (await getFeeds()).find((candidate) => !candidate.isWebFeed)!;
+      const { unmount } = render(
+        <QueryClientProvider client={new QueryClient()}>
+          <FeedPanel feed={plain} categories={CATEGORIES} onClose={vi.fn<() => void>()} />
+        </QueryClientProvider>,
+      );
+      expect(await ui.findFeedPanel()).toBeInTheDocument();
+      expect(ui.panel.getByRole("checkbox", { name: "Opens on its site" })).toBeInTheDocument();
+      unmount();
+
+      renderWithClient(
+        <FeedPanel
+          feed={{ ...plain, isNewsletter: true }}
+          categories={CATEGORIES}
+          onClose={vi.fn<() => void>()}
+        />,
+      );
+      expect(await ui.findFeedPanel()).toBeInTheDocument();
+      expect(ui.panel.queryByRole("checkbox", { name: "Opens on its site" })).toBeNull();
+    });
+
     it("reanalyzes, then applies the picked variant to the page", async () => {
       const user = prepare();
       const feed = await webFeed();
