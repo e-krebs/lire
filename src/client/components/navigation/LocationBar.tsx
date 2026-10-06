@@ -164,51 +164,37 @@ export const LocationBar = forwardRef<HTMLDivElement, LocationBarProps>(
       return (
         <div className="flex min-w-0 flex-1 justify-center">
           <div ref={ref} role="group" aria-label={t.location} className={pillClassName}>
-            {/* The button is the pill's left part, padding included, so its ring lines up with
-                the pill's own left edge. The chip drops its 40% cap here and takes the room
-                before the placeholder, never narrower than its badge (min-w-14 fits "50+"), and
-                under 384px the search icon gives way too. */}
-            <button
-              type="button"
-              onClick={onOpen}
-              inert={fieldInert}
-              {...tip({ label: t.openNavigator })}
-              aria-describedby={locationId}
-              data-count={count === undefined ? undefined : ""}
-              className={`
-                flex h-10 min-w-0 flex-1 items-center gap-2.5 rounded-full pr-1.5 pl-3.5 text-left
-                focus-visible:outline-2 focus-visible:outline-accent
-                max-[24rem]:pl-1.5
-                [&>span:first-of-type]:max-w-none [&>span:first-of-type]:min-w-0
-                [&>span:first-of-type]:flex-initial [&>span:first-of-type]:overflow-hidden
-                data-count:[&>span:first-of-type]:min-w-14
-              `}
-            >
+            {/* The opener is stretched under the pill's left part, padding included, so its ring
+                lines up with the pill's own left edge, and the chip's × (a button cannot nest in
+                a button) paints above it, against the chip. The chip drops its 40% cap here and
+                takes the room before the placeholder, never narrower than its badge, and under
+                384px the search icon gives way too. */}
+            <div className="relative flex h-10 min-w-0 flex-1 items-center gap-2.5 pr-1.5 pl-3.5 max-[24rem]:pl-1.5">
+              <button
+                type="button"
+                onClick={onOpen}
+                inert={fieldInert}
+                {...tip({ label: t.openNavigator })}
+                aria-describedby={locationId}
+                className="absolute inset-0 rounded-full focus-visible:outline-2 focus-visible:outline-accent"
+              />
               <Icon name="search" className="size-4 flex-none text-faint max-[24rem]:hidden" />
-              <ScopeChip label={chipLabel} count={count} />
+              <span inert={pillInert} className="contents">
+                <ScopeChip
+                  label={chipLabel}
+                  count={count}
+                  onClear={clearable ? onClearScope : undefined}
+                  fluid
+                />
+              </span>
               <span
                 id={locationId}
-                data-tip={text === "" ? undefined : text}
-                data-tip-overflow=""
                 data-empty={text === "" || undefined}
                 className="min-w-0 flex-1 basis-12 truncate text-sm font-semibold text-ink data-empty:basis-0 data-empty:font-normal data-empty:text-faint"
               >
                 {text === "" ? placeholder : text}
               </span>
-            </button>
-            {/* A sibling of the opener, since a button cannot nest in a button. */}
-            {clearable ? (
-              <button
-                type="button"
-                aria-label={t.searchEverywhereInstead({ label: scopeLabel })}
-                data-tip={t.searchEverywhere}
-                inert={pillInert}
-                onClick={onClearScope}
-                className={`${iconButtonClassName} text-accent-text`}
-              >
-                <Icon name="close" className="size-4" />
-              </button>
-            ) : null}
+            </div>
             <PillEditLink edit={edit} inert={pillInert} />
             <PillDivider viewControls={viewControls} inert={pillInert} />
           </div>

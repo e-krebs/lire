@@ -214,7 +214,8 @@ test.describe("the app", () => {
 
     await expect(pageUi.firstEntryLink).toBeVisible();
 
-    await pageUi.openNavigatorButton.click();
+    // Scoped now, the chip's × sits over the opener's centre; the pill's left edge is the opener's.
+    await pageUi.openNavigatorButton.click({ position: { x: 8, y: 20 } });
     await expect(pageUi.navigatorDialog).toBeVisible();
     await pageUi.navigatorCategoryButton("Example Tech Daily").click();
 
