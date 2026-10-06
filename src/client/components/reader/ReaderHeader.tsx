@@ -1,5 +1,7 @@
+import { Link, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import type { CSSProperties, RefObject } from "react";
+import { toStreamKey } from "shared/feedsApi/streamKey";
 import type { Entry } from "shared/feedsApi/types";
 import { useOriginTitle } from "client/hooks/useOriginTitle";
 import { feedHue } from "client/utils/feedHue";
@@ -66,6 +68,8 @@ export const ReaderHeader = ({
   const t = useT();
   const originTitle = useOriginTitle({ feedId: entry.feedId });
   const title = entry.title ? decodeEntities(entry.title) : t.articles.untitled;
+  const openStreamKey = useParams({ strict: false }).streamKey;
+  const feedKey = toStreamKey({ kind: "feed", feedId: entry.feedId });
   const href = entry.url;
   const timestamp = entry.published;
   const locale = useLocale();
@@ -87,9 +91,23 @@ export const ReaderHeader = ({
       >
         <div className="flex items-center gap-3">
           <span className="min-w-0 flex-1">
-            <span data-tip={originTitle} data-tip-overflow="" className="reader-feed-name">
-              {originTitle}
-            </span>
+            {openStreamKey === feedKey ? (
+              <span data-tip={originTitle} data-tip-overflow="" className="reader-feed-name">
+                {originTitle}
+              </span>
+            ) : (
+              <Link
+                to="/stream/$streamKey"
+                params={{ streamKey: feedKey }}
+                search={{}}
+                aria-label={t.articles.openFeed({ title: originTitle })}
+                data-tip={originTitle}
+                data-tip-overflow=""
+                className="reader-feed-name hover:underline focus-visible:outline-2 focus-visible:outline-accent"
+              >
+                {originTitle}
+              </Link>
+            )}
             <span aria-hidden="true" className="reader-feed-rule" />
           </span>
           <span className="reader-meta">

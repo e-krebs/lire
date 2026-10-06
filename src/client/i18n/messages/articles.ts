@@ -17,6 +17,7 @@ export const en = {
   keepUnread: "Keep unread",
   opensOriginalInNewTab: ({ title }: { title: string }) =>
     `${title} (opens the original in a new tab)`,
+  openFeed: ({ title }: { title: string }) => `Open ${title}`,
   opensOnItsSite: "Opens on its site",
   openTheOriginal: "Open the original",
   resultsFor: ({ query }: { query: string }) => `Results for “${query}” ·`,
@@ -52,6 +53,7 @@ export const fr = {
   keepRead: "Garder comme lu",
   keepUnread: "Garder comme non lu",
   opensOriginalInNewTab: ({ title }) => `${title} (ouvre l'original dans un nouvel onglet)`,
+  openFeed: ({ title }) => `Ouvrir ${title}`,
   opensOnItsSite: "S'ouvre sur son site",
   openTheOriginal: "Ouvrir l'original",
   resultsFor: ({ query }) => `Résultats pour « ${query} » ·`,

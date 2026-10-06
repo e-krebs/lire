@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, MouseEvent, PointerEvent } from "react";
+import { toStreamKey } from "shared/feedsApi/streamKey";
 import type { StreamKey } from "shared/feedsApi/streamKey";
 import type { Entry } from "shared/feedsApi/types";
 import { useDirectOpen } from "client/hooks/useDirectOpen";
@@ -126,7 +127,16 @@ const Chip = ({ entry }: { entry: Entry }) => {
   );
 };
 
+const feedLinkClassName = `
+  tile-feed pointer-events-auto min-w-0 truncate
+  hover:underline
+  focus-visible:outline-2 focus-visible:outline-accent
+`;
+
 interface MastheadProps {
+  feedId: string;
+  /** The open stream: its own feed name stays plain text. */
+  streamKey: StreamKey;
   originTitle: string;
   title: string;
   original: string | undefined;
@@ -137,6 +147,8 @@ interface MastheadProps {
 }
 
 const Masthead = ({
+  feedId,
+  streamKey,
   originTitle,
   title,
   original,
@@ -146,6 +158,7 @@ const Masthead = ({
   onTitleClick,
 }: MastheadProps) => {
   const t = useT();
+  const feedKey = toStreamKey({ kind: "feed", feedId });
   return (
     <>
       <span
@@ -154,13 +167,25 @@ const Masthead = ({
         text-[11px]/[14px] font-bold tracking-[0.08em] uppercase
       `}
       >
-        <span
-          data-tip={originTitle}
-          data-tip-overflow=""
-          className="tile-feed pointer-events-auto min-w-0 truncate"
-        >
-          {originTitle}
-        </span>
+        {feedKey === streamKey ? (
+          <span data-tip={originTitle} data-tip-overflow="" className="tile-feed min-w-0 truncate">
+            {originTitle}
+          </span>
+        ) : (
+          <Link
+            to="/stream/$streamKey"
+            params={{ streamKey: feedKey }}
+            search={{}}
+            aria-label={t.articles.openFeed({ title: originTitle })}
+            data-tip={originTitle}
+            data-tip-overflow=""
+            tabIndex={-1}
+            onClick={onTitleClick}
+            className={feedLinkClassName}
+          >
+            {originTitle}
+          </Link>
+        )}
         {directOpen ? (
           <span
             aria-hidden="true"
@@ -465,6 +490,8 @@ export const MosaicTile = ({
           `}
           >
             <Masthead
+              feedId={entry.feedId}
+              streamKey={streamKey}
               originTitle={originTitle}
               title={title}
               original={original}

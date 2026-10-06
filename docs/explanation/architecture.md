@@ -61,8 +61,10 @@ The unread filter and the sort order are per device, not per account, and never 
 live in `localStorage` under `lire.view` ([viewPrefs.ts](../../src/client/utils/viewPrefs.ts)),
 behind a small store that the stream route, the view toggles and the Navigator all read.
 
-A feed that opens on its site (`lire.directOpen.<feedId>`) is never a newsletter: the switch is
-hidden for one and a stored flag is ignored.
+The feed name on a card and in the reader header links to that feed's stream, and is plain text
+when that stream is already open. The link on a card is out of the tab order, because the grid
+keeps one tab stop. A feed that opens on its site (`lire.directOpen.<feedId>`) is never a
+newsletter: the switch is hidden for one and a stored flag is ignored.
 
 The UI speaks English and French, through a small in-house module in
 [src/client/i18n/](../../src/client/i18n/) instead of a library
