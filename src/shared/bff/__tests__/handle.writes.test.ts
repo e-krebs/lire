@@ -386,32 +386,6 @@ describe("handle writes", () => {
   });
 
   describe("when entries are marked", () => {
-    it("marks every hash read in one call", async () => {
-      const upstream = fakeUpstream({ "POST /reader/mark_story_hashes_as_read": OK });
-      const response = await send({
-        method: "POST",
-        url: "/api/entries/read",
-        body: { entryIds: ["1:a", "2:b"] },
-        upstream,
-      });
-      expect(response.status).toBe(204);
-      expect(upstream.calls[0].form).toEqual({ story_hash: ["1:a", "2:b"] });
-    });
-
-    it("marks each hash unread in its own call", async () => {
-      const upstream = fakeUpstream({ "POST /reader/mark_story_hash_as_unread": OK });
-      await send({
-        method: "POST",
-        url: "/api/entries/unread",
-        body: { entryIds: ["1:a", "2:b"] },
-        upstream,
-      });
-      expect(upstream.calls.map((call) => call.form)).toEqual([
-        { story_hash: "1:a" },
-        { story_hash: "2:b" },
-      ]);
-    });
-
     it("sends the read call before the unread calls on the merged route", async () => {
       const upstream = fakeUpstream({
         "POST /reader/mark_story_hashes_as_read": OK,
@@ -474,8 +448,8 @@ describe("handle writes", () => {
       });
       const response = await send({
         method: "POST",
-        url: "/api/entries/read",
-        body: { entryIds: ["1:a"] },
+        url: "/api/entries/mark",
+        body: { read: ["1:a"] },
         upstream,
       });
       expect(response.body).toEqual({ error: "bad_request", message: "Not subscribed. Twice." });
@@ -485,8 +459,8 @@ describe("handle writes", () => {
       const upstream = fakeUpstream({ "POST /reader/mark_story_hash_as_unread": { code: 0 } });
       const response = await send({
         method: "POST",
-        url: "/api/entries/unread",
-        body: { entryIds: ["1:a"] },
+        url: "/api/entries/mark",
+        body: { unread: ["1:a"] },
         upstream,
       });
       expect(response.body).toEqual({
