@@ -31,24 +31,26 @@ export const ScopeChip = ({ label, count, onClear, fluid }: ScopeChipProps) => {
       data-count={count === undefined ? undefined : ""}
       className={chipClassName}
     >
-      <span data-tip={label} data-tip-overflow="" className="truncate">
-        {label}
-      </span>
-      {count === undefined ? null : (
-        <span
-          className={`
-            flex h-4 min-w-4 flex-none items-center justify-center rounded-full bg-accent px-1
-            text-[0.6875rem] leading-none text-on-accent tabular-nums
-          `}
-        >
-          <span aria-hidden="true">{count.capped ? `${count.count}+` : count.count}</span>
-          <span className="sr-only">
-            {count.capped
-              ? t.matchCountOrMore({ count: count.count })
-              : t.matchCount({ count: count.count })}
-          </span>
+      <span className="flex min-w-0 items-baseline gap-1.5">
+        <span data-tip={label} data-tip-overflow="" className="truncate">
+          {label}
         </span>
-      )}
+        {count === undefined ? null : (
+          <span
+            className={`
+              flex h-4 min-w-4 flex-none items-center justify-center rounded-full bg-accent px-1
+              text-[0.6875rem] leading-none text-on-accent tabular-nums
+            `}
+          >
+            <span aria-hidden="true">{count.capped ? `${count.count}+` : count.count}</span>
+            <span className="sr-only">
+              {count.capped
+                ? t.matchCountOrMore({ count: count.count })
+                : t.matchCount({ count: count.count })}
+            </span>
+          </span>
+        )}
+      </span>
       {onClear ? (
         <button
           type="button"
