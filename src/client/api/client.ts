@@ -105,6 +105,11 @@ export const getCategories = async (): Promise<Category[]> =>
 export const getFeeds = async (): Promise<Feed[]> =>
   FeedsSchema.parse(await request({ method: "GET", path: "/api/feeds" }));
 
+// Drops the Worker's cached feed list, so the next read sees a feed NewsBlur added on its own.
+export const dropFeedsCache = async (): Promise<void> => {
+  await requestVoid({ method: "POST", path: "/api/feeds/refresh" });
+};
+
 export const getCounts = async (): Promise<Counts> =>
   CountsSchema.parse(await request({ method: "GET", path: "/api/counts" }));
 

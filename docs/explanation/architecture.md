@@ -159,7 +159,9 @@ signed-out 403. A feed panel's reanalyze starts a new analysis, and applying a v
 [../reference/api.md](../reference/api.md).
 
 The Durable Object also caches the folder tree (`/reader/feeds`) for five minutes, since most
-reads need it, and drops it on every subscription or folder write.
+reads need it, and drops it on every subscription or folder write. A refresh drops it too
+(`POST /api/feeds/refresh`), because NewsBlur adds a feed by itself when a new newsletter sender
+writes in.
 
 ## Mock mode is the default
 

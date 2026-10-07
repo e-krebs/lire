@@ -13,6 +13,7 @@ export const ROUTES = [
   { method: "DELETE", path: "/api/categories/:categoryId" },
   { method: "GET", path: "/api/feeds" },
   { method: "POST", path: "/api/feeds" },
+  { method: "POST", path: "/api/feeds/refresh" },
   { method: "PATCH", path: "/api/feeds/:feedId" },
   { method: "DELETE", path: "/api/feeds/:feedId" },
   { method: "POST", path: "/api/feeds/:feedId/reanalyze" },

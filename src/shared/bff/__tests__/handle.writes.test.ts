@@ -6,6 +6,17 @@ const OK = { code: 1 };
 const cached = () => memoryCache(FeedsAnswerSchema.parse(FEEDS_ANSWER));
 
 describe("handle writes", () => {
+  describe("when the client refreshes the feed list", () => {
+    it("drops the cache and calls nothing upstream", async () => {
+      const upstream = fakeUpstream({});
+      const cache = cached();
+      const response = await send({ method: "POST", url: "/api/feeds/refresh", upstream, cache });
+      expect(response).toEqual({ status: 204, body: null });
+      expect(upstream.calls).toEqual([]);
+      expect(cache.clears).toBe(1);
+    });
+  });
+
   describe("when a category is created", () => {
     it("adds a top-level folder and drops the cache", async () => {
       const upstream = fakeUpstream({ "POST /reader/add_folder": { code: 1, message: "" } });

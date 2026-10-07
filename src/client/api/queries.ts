@@ -17,6 +17,7 @@ import {
   createWebFeed,
   deleteCategory,
   deleteFeed,
+  dropFeedsCache,
   getAuthStatus,
   getCategories,
   getCounts,
@@ -401,6 +402,7 @@ const refreshCountsThenLists = async ({
   client: QueryClient;
   refreshLists: () => Promise<unknown>;
 }): Promise<void> => {
+  await dropFeedsCache().catch(() => {});
   await Promise.all(
     [keys.counts, keys.categories, keys.feeds].map(async (queryKey) =>
       client.refetchQueries({ queryKey, type: "all" }),
