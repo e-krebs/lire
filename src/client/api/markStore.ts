@@ -1,10 +1,20 @@
-export const MARK_READ_SYNC_TAG = "mark-read";
+export const MARK_SYNC_TAG = "mark-read";
 
 const DB_NAME = "lire-mark-read";
 const STORE_NAME = "pending";
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
-const memory = new Map<string, number>();
+export type MarkState = "read" | "unread";
+export interface MarkRow {
+  id: string;
+  state: MarkState;
+}
+interface StoredMark {
+  state: MarkState;
+  at: number;
+}
+
+const memory = new Map<string, StoredMark>();
 let opening: Promise<IDBDatabase> | undefined;
 
 export const isRetryable = (status: number | undefined): boolean =>
@@ -62,28 +72,38 @@ const run = async <T = undefined>({
   });
 };
 
-const memoryAll = (): string[] => {
-  const cutoff = Date.now() - MAX_AGE_MS;
-  for (const [id, at] of memory) if (at < cutoff) memory.delete(id);
-  return [...memory.keys()];
+// A row from before unreads were stored is a bare timestamp: it was a read.
+const parse = (value: unknown): StoredMark | undefined => {
+  if (typeof value === "number") return { state: "read", at: value };
+  if (typeof value !== "object" || value === null) return undefined;
+  const { state, at } = value as Partial<StoredMark>;
+  return (state === "read" || state === "unread") && typeof at === "number"
+    ? { state, at }
+    : undefined;
 };
 
-export const markReadStore = {
-  async add(ids: string[]): Promise<void> {
-    const now = Date.now();
+const memoryAll = (): MarkRow[] => {
+  const cutoff = Date.now() - MAX_AGE_MS;
+  for (const [id, { at }] of memory) if (at < cutoff) memory.delete(id);
+  return [...memory].map(([id, { state }]) => ({ id, state }));
+};
+
+export const markStore = {
+  async add(rows: MarkRow[]): Promise<void> {
+    const at = Date.now();
     if (persistent()) {
       try {
         await run({
           mode: "readwrite",
           action: (store) => {
-            for (const id of ids) store.put(now, id);
+            for (const { id, state } of rows) store.put({ state, at } satisfies StoredMark, id);
             return undefined;
           },
         });
         return;
       } catch {}
     }
-    for (const id of ids) memory.set(id, now);
+    for (const { id, state } of rows) memory.set(id, { state, at });
   },
 
   async remove(ids: string[]): Promise<void> {
@@ -100,11 +120,32 @@ export const markReadStore = {
     } catch {}
   },
 
-  async all(): Promise<string[]> {
+  // Deletes a row only if it still holds the state given, so a mark written since the caller read it
+  // survives. The get and the delete share one transaction.
+  async removeUnchanged(rows: MarkRow[]): Promise<void> {
+    for (const { id, state } of rows) if (memory.get(id)?.state === state) memory.delete(id);
+    if (!persistent()) return;
+    try {
+      await run({
+        mode: "readwrite",
+        action: (store) => {
+          for (const { id, state } of rows) {
+            const request = store.get(id);
+            request.onsuccess = () => {
+              if (parse(request.result)?.state === state) store.delete(id);
+            };
+          }
+          return undefined;
+        },
+      });
+    } catch {}
+  },
+
+  async all(): Promise<MarkRow[]> {
     if (persistent()) {
       try {
         const cutoff = Date.now() - MAX_AGE_MS;
-        const fresh: string[] = [];
+        const fresh = new Map<string, MarkState>();
         // One readwrite transaction: the cursor deletes only what it just read as stale, so an
         // entry refreshed after this read cannot be removed.
         await run({
@@ -114,16 +155,18 @@ export const markReadStore = {
             request.onsuccess = () => {
               const cursor = request.result;
               if (!cursor) return;
-              if (typeof cursor.value === "number" && cursor.value >= cutoff) {
+              const mark = parse(cursor.value);
+              if (mark && mark.at >= cutoff) {
                 const { key } = cursor;
-                fresh.push(typeof key === "string" ? key : JSON.stringify(key));
+                fresh.set(typeof key === "string" ? key : JSON.stringify(key), mark.state);
               } else cursor.delete();
               cursor.continue();
             };
             return request;
           },
         });
-        return [...new Set([...fresh, ...memoryAll()])];
+        for (const { id, state } of memoryAll()) if (!fresh.has(id)) fresh.set(id, state);
+        return [...fresh].map(([id, state]) => ({ id, state }));
       } catch {}
     }
     return memoryAll();

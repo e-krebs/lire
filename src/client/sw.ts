@@ -5,8 +5,8 @@ import {
   precacheAndRoute,
 } from "workbox-precaching";
 import { NavigationRoute, registerRoute } from "workbox-routing";
-import { syncPending } from "./api/markReadSync";
-import { isRetryable, MARK_READ_SYNC_TAG, markReadStore } from "./api/markReadStore";
+import { syncPending } from "./api/markSync";
+import { isRetryable, MARK_SYNC_TAG, markStore } from "./api/markStore";
 
 declare const self: ServiceWorkerGlobalScope;
 
@@ -28,11 +28,15 @@ if (!import.meta.env.DEV) {
   );
 }
 
-const post = async (entryIds: string[]): Promise<void> => {
-  const response = await fetch("/api/entries/read", {
+// An empty list is left out of the body, as `markEntries` does.
+const post = async ({ read, unread }: { read: string[]; unread: string[] }): Promise<void> => {
+  const response = await fetch("/api/entries/mark", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ entryIds }),
+    body: JSON.stringify({
+      ...(read.length > 0 && { read }),
+      ...(unread.length > 0 && { unread }),
+    }),
     credentials: "same-origin",
     redirect: "manual",
   });
@@ -42,7 +46,7 @@ const post = async (entryIds: string[]): Promise<void> => {
 };
 
 self.addEventListener("sync", (event) => {
-  if (event.tag === MARK_READ_SYNC_TAG) {
-    event.waitUntil(syncPending({ store: markReadStore, post }));
+  if (event.tag === MARK_SYNC_TAG) {
+    event.waitUntil(syncPending({ store: markStore, post }));
   }
 });

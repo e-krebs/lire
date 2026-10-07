@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { markReadQueue } from "client/api/markReadQueue";
+import { markQueue } from "client/api/markQueue";
 import { registerPwa } from "client/utils/pwaUpdate";
 import { SWToast } from "client/components/shell/SWToast";
 
@@ -68,7 +68,7 @@ describe("SWToast", () => {
 
   it("flushes the read marks, then applies the update on Reload", async () => {
     const order: string[] = [];
-    vi.spyOn(markReadQueue, "flush").mockImplementation(async () => {
+    vi.spyOn(markQueue, "flush").mockImplementation(async () => {
       await Promise.resolve();
       order.push("flush");
     });

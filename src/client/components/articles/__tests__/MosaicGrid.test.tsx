@@ -14,9 +14,9 @@ import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EntryPage } from "shared/feedsApi/types";
 import { resetFixtureState } from "client/api/adapters/fixture";
-import { markReadQueue } from "client/api/markReadQueue";
+import { markQueue } from "client/api/markQueue";
 import { getStreamEntries } from "client/api/client";
-import { keys, useMarkRead } from "client/api/queries";
+import { keys, useMark } from "client/api/queries";
 import { fixtureBackend } from "test/fixtureBackend";
 import { server } from "test/msw";
 import { setViewPrefs, useViewPrefs } from "client/utils/viewPrefs";
@@ -228,7 +228,7 @@ describe("MosaicGrid", () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={client}>{children}</QueryClientProvider>
     );
-    const { result } = renderHook(() => useMarkRead(), { wrapper });
+    const { result } = renderHook(() => useMark(), { wrapper });
     act(() => {
       result.current.mutate({ entryIds: [entryId], read: true });
     });
@@ -244,7 +244,7 @@ describe("MosaicGrid", () => {
     });
     server.use(fixtureBackend);
     server.use(
-      http.post("/api/entries/read", async () => {
+      http.post("/api/entries/mark", async () => {
         await held;
         return HttpResponse.json({ error: "boom" }, { status: 400 });
       }),
@@ -255,7 +255,7 @@ describe("MosaicGrid", () => {
 
     fireEvent.click(toggle);
     await closed(card, entryId);
-    void markReadQueue.flush();
+    void markQueue.flush();
     release();
 
     await waitFor(() => {
@@ -277,7 +277,7 @@ describe("MosaicGrid", () => {
     const wrapper = ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={client}>{children}</QueryClientProvider>
     );
-    const { result } = renderHook(() => useMarkRead(), { wrapper });
+    const { result } = renderHook(() => useMark(), { wrapper });
     await act(async () => {
       await result.current.mutateAsync({ entryIds: [entryId], read: false });
     });

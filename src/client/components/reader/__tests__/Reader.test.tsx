@@ -12,7 +12,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import { EntrySchema, type Entry } from "shared/feedsApi/types";
 import { keys } from "client/api/queries";
-import { markReadQueue } from "client/api/markReadQueue";
+import { markQueue } from "client/api/markQueue";
 import { getEntry } from "client/api/client";
 import { fixtureTransport, resetFixtureState } from "client/api/adapters/fixture";
 import { Reader } from "../Reader";
@@ -522,7 +522,7 @@ describe("Reader", () => {
     await user.click(await ui.button(view, "Mark as read"));
 
     expect(await ui.text(view, "stream page")).toBeInTheDocument();
-    await markReadQueue.flush();
+    await markQueue.flush();
     await waitFor(async () => {
       expect(await fixtureUnread(UNREAD_ID)).toBe(false);
     });
@@ -535,7 +535,7 @@ describe("Reader", () => {
     swipe({ target: article, from: 400, to: 200 });
 
     expect(await ui.text(view, "stream page")).toBeInTheDocument();
-    await markReadQueue.flush();
+    await markQueue.flush();
     await waitFor(async () => {
       expect(await fixtureUnread(UNREAD_ID)).toBe(false);
     });

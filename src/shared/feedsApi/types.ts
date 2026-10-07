@@ -197,6 +197,13 @@ export const DeleteCategoryQuerySchema = z.object({ moveTo: z.string().optional(
 // Request bodies.
 export const MarkEntriesBodySchema = z.object({ entryIds: z.array(z.string()).min(1) }).loose();
 
+export const MarkBodySchema = z
+  .object({ read: z.array(z.string()).optional(), unread: z.array(z.string()).optional() })
+  .loose()
+  .refine(({ read = [], unread = [] }) => read.length + unread.length > 0, {
+    message: "read or unread must hold at least one id.",
+  });
+
 export const CreateFeedBodySchema = z
   .object({
     feedUrl: z.string(),

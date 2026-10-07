@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "client/api/client";
-import { createMarkReadQueue } from "client/api/markReadQueue";
-import { markReadStore } from "client/api/markReadStore";
+import { createMarkQueue } from "client/api/markQueue";
+import { markStore } from "client/api/markStore";
 
 const redirected = () => ({
   type: "opaqueredirect",
@@ -115,25 +115,28 @@ describe("httpTransport", () => {
     expect(replace).toHaveBeenCalledExactlyOnceWith("/api/auth/login");
   });
 
-  it("keeps the ids of a keepalive markRead in the store when the guard answers 401", async () => {
+  it("keeps the ids of a keepalive mark in the store when the guard answers 401", async () => {
     sessionStorage.setItem("lire:access-login", String(Date.now()));
     const { fetchMock, httpTransport } = await setup();
     fetchMock.mockResolvedValue(redirected());
-    const queue = createMarkReadQueue({
-      send: async ({ entryIds, keepalive }) => {
+    const queue = createMarkQueue({
+      send: async ({ read, unread, keepalive }) => {
         const response = await httpTransport({
           method: "POST",
-          path: "/api/entries/read",
-          body: { entryIds },
+          path: "/api/entries/mark",
+          body: { read, unread },
           keepalive,
         });
         if (response.status === 401) throw new ApiError({ status: 401, code: "sign_in_required" });
       },
     });
-    const added = queue.add(["e1", "e2"]);
+    const added = queue.mark({ entryIds: ["e1", "e2"], read: true });
     await queue.flush({ keepalive: true });
     await added;
     expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ keepalive: true });
-    expect(await markReadStore.all()).toEqual(["e1", "e2"]);
+    expect(await markStore.all()).toEqual([
+      { id: "e1", state: "read" },
+      { id: "e2", state: "read" },
+    ]);
   });
 });

@@ -46,9 +46,9 @@ sign-in step while the credentials hold. `GET /api/auth/login`
 SPA's `SignIn` screen links to it and appears only when the login fails. A failure answers `400`
 with a short page that links back to `/api/auth/login`. The PWA service worker is told not to
 answer that route (see [architecture.md](architecture.md#pwa)). The worker's background sync of
-read marks posts to `/api/entries/read` behind Access with the same cookie as the page. It does
+marks posts to `/api/entries/mark` behind Access with the same cookie as the page. It does
 not follow redirects: an expired Access session answers a cross-origin redirect, which counts as a
-retryable failure, and the ids stay stored for the page to send after a new sign-in.
+retryable failure, and the rows stay stored for the page to send after a new sign-in.
 
 The page fetches the same way. An expired Access session answers a page fetch with a redirect to
 the Access host, which sends no CORS header. `httpTransport` fetches with `redirect: "manual"` and

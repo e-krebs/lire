@@ -230,26 +230,27 @@ SPA shell, the login would never run. It also denylists `/cdn-cgi/`: Access retu
 to `/cdn-cgi/access/authorized`, which sets the session cookie, and the SPA shell would swallow it. In dev the manifest is nearly empty, so the fallback route is
 skipped there.
 
-The worker also holds a `sync` handler. Read marks wait in an IndexedDB store
-([markReadStore.ts](../../src/client/api/markReadStore.ts)) that the page and the worker share. The
+The worker also holds a `sync` handler. Marks, read and unread, wait in an IndexedDB store
+([markStore.ts](../../src/client/api/markStore.ts)) that the page and the worker share. The
 page queue registers the `mark-read` sync tag when it may not deliver: on hide, in parallel with the
 keepalive flush, and after a retryable failure while the page is hidden. A visible page retries
-through the `online` replay and at start. The worker then sends the stored ids
-([markReadSync.ts](../../src/client/api/markReadSync.ts)). Background Sync exists only in Chromium
+through the `online` replay and at start. The worker then replays both stored lists, reads and unreads, to `POST /api/entries/mark`
+([markSync.ts](../../src/client/api/markSync.ts)). Background Sync exists only in Chromium
 and the Android app. Elsewhere the page flushes on hide and replays stored ids at the next start
 and when the browser goes online. The real build runs all of this; the mock build keeps the ids in
-memory and registers no sync. [0012](../adr/0012-persisted-mark-read-queue.md) records why.
+memory and registers no sync. Both marks queue as `{ id, state }` rows and wait 10 seconds; a mark that is the opposite of a
+queued one cancels it, so a quick toggle sends nothing. One request carries `{ read, unread }`. [0012](../adr/0012-persisted-mark-read-queue.md) records why.
 
 The first list fetch of a session waits for the start replay (`whenReplayed` in
-[markReadQueue.ts](../../src/client/api/markReadQueue.ts)), so marks an earlier session left stored
+[markQueue.ts](../../src/client/api/markQueue.ts)), so marks an earlier session left stored
 reach NewsBlur before the page reads. The wait is capped at 3 seconds, so a slow or stuck replay
 delays the first read but never blocks it. `flush()` also waits for batches already on the wire, so
-a refetch never overtakes a mark. Every stream, search and counts fetch sends the waiting reads
+a refetch never overtakes a mark. Every stream, search and counts fetch sends the waiting marks
 first, so a list or a count never comes back with a mark still held in the 10 s batch. The start
 replay and that send share the 3 second cap, so a read POST that hangs never holds the lists.
 A refresh waits for its writes too: `settleWrites` in [queries.ts](../../src/client/api/queries.ts)
 flushes the queue and waits for running mutations, such as a mark unread or a feed edit, so the
-refetch never returns the state from before a write. Read marks are left out of the mutation wait,
+refetch never returns the state from before a write. Mark mutations, read and unread, are left out of the mutation wait,
 because the flush covers them. The flush and the wait share one 3 second cap, so a paused offline
 mutation never blocks a refresh.
 

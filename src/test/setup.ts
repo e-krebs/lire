@@ -2,8 +2,8 @@ import "fake-indexeddb/auto";
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterAll, afterEach, beforeAll, vi } from "vitest";
-import { markReadQueue } from "client/api/markReadQueue";
-import { markReadStore } from "client/api/markReadStore";
+import { markQueue } from "client/api/markQueue";
+import { markStore } from "client/api/markStore";
 import { setLocalePreference } from "client/i18n/locale";
 import { setViewPrefs } from "client/utils/viewPrefs";
 import { server } from "./msw";
@@ -35,8 +35,8 @@ beforeAll(() => {
 
 afterEach(async () => {
   // Files share one module graph, so a read mark still batched must not flush into a later test.
-  markReadQueue.reset();
-  await markReadStore.reset();
+  markQueue.reset();
+  await markStore.reset();
   server.resetHandlers();
   server.events.removeAllListeners();
   cleanup();

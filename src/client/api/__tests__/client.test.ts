@@ -14,7 +14,7 @@ import {
   getProfile,
   getStreamEntries,
   getWebFeedStatus,
-  markRead,
+  markEntries,
   reanalyzeWebFeed,
   searchEntries,
   updatePreferences,
@@ -126,14 +126,30 @@ describe("client (http adapter)", () => {
     setup();
     const seen: unknown[] = [];
     server.use(
-      http.post("/api/entries/read", async ({ request }) => {
+      http.post("/api/entries/mark", async ({ request }) => {
         seen.push(await request.json());
         return new HttpResponse(null, { status: 204 });
       }),
     );
 
-    await expect(markRead({ entryIds: ["101:aa"] })).resolves.toBeUndefined();
-    expect(seen).toEqual([{ entryIds: ["101:aa"] }]);
+    await expect(markEntries({ read: ["101:aa"] })).resolves.toBeUndefined();
+    expect(seen).toEqual([{ read: ["101:aa"] }]);
+  });
+
+  it("posts the reads and the unreads in one body, and leaves an empty list out", async () => {
+    setup();
+    const seen: unknown[] = [];
+    server.use(
+      http.post("/api/entries/mark", async ({ request }) => {
+        seen.push(await request.json());
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    await markEntries({ read: ["101:aa"], unread: ["101:bb"] });
+    await markEntries({ unread: ["101:bb"], read: [] });
+
+    expect(seen).toEqual([{ read: ["101:aa"], unread: ["101:bb"] }, { unread: ["101:bb"] }]);
   });
 
   it("sends a null preference value to delete the key", async () => {
@@ -206,8 +222,8 @@ describe("client (http adapter)", () => {
 
     const response = await httpTransport({
       method: "POST",
-      path: "/api/entries/read",
-      body: { entryIds: ["101:aa"] },
+      path: "/api/entries/mark",
+      body: { read: ["101:aa"] },
       keepalive: true,
     });
 
