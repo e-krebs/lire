@@ -257,7 +257,7 @@ describe("Reader", () => {
     expect(marked.map((img) => img.getAttribute("src"))).toEqual(["https://example.test/lone.png"]);
   });
 
-  it("marks a linked image alone in its paragraph, not one in running text or beside another", async () => {
+  it("marks a linked image alone in its paragraph and each of a run of images, not one in running text", async () => {
     const entry = await getEntry(UNREAD_ID);
     const content =
       '<p><a href="https://example.test/a"><img src="https://example.test/linked-lone.png"></a></p>' +
@@ -272,7 +272,31 @@ describe("Reader", () => {
     const marked = [...view.container.querySelectorAll("article.prose-reader img[data-lone]")];
     expect(marked.map((img) => img.getAttribute("src"))).toEqual([
       "https://example.test/linked-lone.png",
+      "https://example.test/pair-1.png",
+      "https://example.test/pair-2.png",
     ]);
+    expect(
+      [...view.container.querySelectorAll("article.prose-reader img[data-run]")].map((img) =>
+        img.getAttribute("src"),
+      ),
+    ).toEqual(["https://example.test/pair-1.png", "https://example.test/pair-2.png"]);
+  });
+
+  it("prints a lone image's title below it, not one that repeats its alt or sits in a line of text", async () => {
+    const entry = await getEntry(UNREAD_ID);
+    const content =
+      '<p><a href="https://example.test/a"><img src="https://example.test/a.png" alt="A" title="Punchline"></a></p>' +
+      '<p><img src="https://example.test/b.png" alt="Same" title="Same"></p>' +
+      '<p>Text <img src="https://example.test/c.png" alt="C" title="Inline"> more</p>';
+    const { view } = setup({ entryId: UNREAD_ID, seedEntry: { ...entry, content } });
+
+    await waitFor(() => {
+      expect(view.container.querySelector("article.prose-reader .img-title")).not.toBeNull();
+    });
+    const titles = [...view.container.querySelectorAll("article.prose-reader .img-title")];
+    expect(titles.map((title) => title.textContent)).toEqual(["Punchline"]);
+    expect(titles[0]?.closest("a")).toBeNull();
+    expect(titles[0]?.parentElement?.querySelector("a img")).not.toBeNull();
   });
 
   describe("when the body carries an embed", () => {
