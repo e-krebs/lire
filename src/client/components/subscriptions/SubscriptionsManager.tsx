@@ -10,6 +10,7 @@ import { NewsletterPanel } from "client/components/subscriptions/NewsletterPanel
 import { PanelExitContext, markPanelOrigin } from "client/components/subscriptions/SidePanel";
 import { SubscribePanel } from "client/components/subscriptions/SubscribePanel";
 import { Tabs, tabId, tabPanelId } from "client/components/subscriptions/Tabs";
+import { useTier } from "client/hooks/useTier";
 import { useT } from "client/i18n/useT";
 
 export type SubscriptionsTab = "categories" | "feeds";
@@ -65,6 +66,7 @@ export const SubscriptionsManager = ({
   onPanelChange,
 }: SubscriptionsManagerProps) => {
   const t = useT().subscriptions;
+  const phone = useTier() === "phone";
   const categoriesQuery = useCategories();
   const feedsQuery = useFeeds();
   const { categories: categoryList, ready: categoriesReady } = useOrderedCategories();
@@ -121,12 +123,13 @@ export const SubscriptionsManager = ({
 
   return (
     <>
-      {/* Inert while a panel is open: the panel's scrim sits over it, and the keyboard can't
-          reach it either. */}
+      {/* Inert while a floating panel is open: its scrim sits over the list, and the keyboard can't
+          reach it either. Not on the phone: the sheet is a modal dialog already, and an inert
+          opener could not take the focus back when it closes. */}
       <div
         className="h-full scroll-pane lg:data-panel-open:pr-[var(--side-panel-width)]"
         data-panel-open={shownPanel === undefined ? undefined : ""}
-        inert={shownPanel === undefined ? undefined : true}
+        inert={shownPanel === undefined || phone ? undefined : true}
       >
         {/* Left-aligned on tablet, so the floating panel covers as little of the list as it can.
             Centred on desktop at the top bar search pill's `max-w-2xl`, in the space left of the
