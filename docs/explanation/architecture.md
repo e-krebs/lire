@@ -317,21 +317,29 @@ holds that rule.
 
 ### A shell that owns the viewport
 
-The body is `100dvh` tall and never scrolls: each pane scrolls on its own. The viewport runs with
-`interactive-widget=resizes-content`, so on Android the keyboard shrinks the layout and a
-bottom-anchored sheet stays above the keys. With that key set, Chrome on Android can open a tab, or
-show one again, with a viewport that runs under the gesture nav bar but reports no bottom
-safe-area inset. The bottom app bar then sits half behind the nav bar. No measurement shows the
-fault: `innerHeight`, `visualViewport` and `100dvh` all carry the stale height, and a document
-that scrolls with a sticky bar is cut the same way.
+The body is `100svh` tall and never scrolls: each pane scrolls on its own. The viewport runs with
+`interactive-widget=resizes-content`, so on Android the keyboard resizes the whole layout viewport
+and `svh` shrinks with it: a field stays visible above the keys, and the bottom app bar returns
+after they close.
 
-Any change to the viewport meta makes Chrome measure again, and on a viewport that is already right
-the change fires no resize. [viewportNudge.ts](../../src/client/utils/viewportNudge.ts) builds on
-that. At load (and twice more, 0.5 s and 1.5 s later, because a reload can reach the fault late), after each burst of resizes and each time the tab shows, it waits 100 ms and flips
-the mode to `resizes-visual` and back. A flip that fixes the viewport fires one more resize, and
-the flip after it fires none, so the flips stop by themselves. The cut can still show for that
-moment before the flip, and the bar then moves up. The flip skips while a field has focus, because
-the keyboard would cover the field for the two frames of the flip.
+`svh`, not `dvh`, because of the Trusted Web Activity (the Android wrapper). After any in-tab load
+inside it (a reload, the service-worker update reload, a navigation), `dvh` and `lvh` read 56 px
+(the Chrome toolbar height) taller than the visible area, and no `resize` fires. `innerHeight`,
+`visualViewport.height` and `svh` stay correct. A `100dvh` body then runs 56 px under the screen
+and cuts the bottom bar. A fresh launch does not show it.
+
+With that key set, Chrome on Android can also open a tab, or show one again, with a viewport that
+runs under the gesture nav bar but reports no bottom safe-area inset. The bottom app bar then sits
+half behind the nav bar. Any change to the viewport meta makes Chrome measure again, and on a
+viewport that is already right the change fires no resize.
+[viewportNudge.ts](../../src/client/utils/viewportNudge.ts) builds on that. At load (and twice
+more, 0.5 s and 1.5 s later, because a reload can reach the fault late), after each burst of
+resizes and each time the tab shows, it waits 100 ms and flips the mode to `resizes-visual` and
+back. A flip that fixes the viewport fires one more resize, and the flip after it fires none, so
+the flips stop by themselves. The cut can still show for that moment before the flip, and the bar
+then moves up. The flip skips while a field has focus, because the keyboard would cover the field
+for the two frames of the flip. The flip does not move `dvh`, so it cannot repair the 56 px
+fault: only the `svh` sizing does.
 
 ### One sign-in switch
 
