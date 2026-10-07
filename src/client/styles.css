@@ -232,6 +232,11 @@ body {
   display: block;
   margin-inline: auto;
 }
+/* A run of images (a comic's panels) shares one width, whatever each file's own size. */
+.prose-reader img[data-run] {
+  width: 100%;
+  max-height: none;
+}
 .prose-reader figure {
   margin-inline: 0;
 }
@@ -239,7 +244,35 @@ body {
   display: block;
   margin-inline: auto;
 }
+.prose-reader figure:has(:is(img, [role="img"])) {
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+}
+/* Zero width, stretched back by `min-width`, so the caption follows the image, not the column. */
+.prose-reader figure:has(:is(img, [role="img"])) figcaption {
+  width: 0;
+  min-width: 100%;
+}
 .prose-reader figcaption {
+  margin-top: 0.5em;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--color-muted);
+  text-wrap: pretty;
+}
+.prose-reader .img-titled {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+}
+/* Zero width, stretched back by `min-width`, so a long title wraps under the image instead of
+   widening the box past it. */
+.prose-reader .img-title {
+  display: block;
+  width: 0;
+  min-width: 100%;
   margin-top: 0.5em;
   font-size: 0.8125rem;
   line-height: 1.45;

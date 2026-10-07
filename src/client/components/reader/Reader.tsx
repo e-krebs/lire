@@ -9,6 +9,7 @@ import { ReaderHeader } from "client/components/reader/ReaderHeader";
 import { readingTime } from "client/utils/readingTime";
 import { useT } from "client/i18n/useT";
 import { replaceBrokenImage } from "client/utils/brokenImage";
+import { INLINE_WRAPPERS, captionImageTitles } from "client/utils/imageTitles";
 import { EMBED_ALLOW, EMBED_SANDBOX, embedQuotes, iframeEmbed } from "client/utils/embeds";
 import { useImageFallback } from "client/hooks/useImageFallback";
 import { usePull } from "client/hooks/usePullToRefresh";
@@ -52,24 +53,25 @@ postPurify.addHook("afterSanitizeAttributes", (node) => {
   node.setAttribute("sandbox", EMBED_SANDBOX);
 });
 
-// CSS `:only-child` and `:has()` ignore text nodes, so only the text tells a lone image from one in a line.
-const INLINE_WRAPPERS = new Set(["A", "SPAN", "EM", "STRONG", "B", "I", "U", "SMALL", "MARK"]);
+// CSS `:only-child` and `:has()` ignore text nodes, so only the text tells an image on its own line (or a run of them) from one in a line of text.
 postPurify.addHook("afterSanitizeAttributes", (node) => {
   if (node.tagName !== "IMG" || node.classList.contains("emoji")) return;
   let container = node.parentElement;
   while (container && INLINE_WRAPPERS.has(container.tagName)) container = container.parentElement;
   if (container === null) return;
-  if (container.textContent.trim() === "" && container.querySelectorAll("img").length === 1) {
-    node.setAttribute("data-lone", "");
-  }
+  if (container.textContent.trim() !== "") return;
+  node.setAttribute("data-lone", "");
+  if (container.querySelectorAll("img").length > 1) node.setAttribute("data-run", "");
 });
 
 const sanitizePost = (html: string): string =>
-  embedQuotes({
-    html: postPurify.sanitize(html, {
-      USE_PROFILES: { html: true },
-      FORBID_TAGS: ["script", "style"],
-      ADD_TAGS: ["iframe"],
+  captionImageTitles({
+    html: embedQuotes({
+      html: postPurify.sanitize(html, {
+        USE_PROFILES: { html: true },
+        FORBID_TAGS: ["script", "style"],
+        ADD_TAGS: ["iframe"],
+      }),
     }),
   });
 
