@@ -135,7 +135,7 @@ export const PhoneCategoryScope: Story = {
     const canvas = within(canvasElement);
     const clear = canvas.getByRole("button", { name: "Search everywhere instead of Technology" });
     const label = canvas.getByText("Technology");
-    await expect(label.parentElement).toContainElement(clear);
+    await expect(label.closest("[data-clearable]")).toContainElement(clear);
     await userEvent.click(clear);
     await expect(args.onClearScope).toHaveBeenCalled();
     await expect(args.onOpen).not.toHaveBeenCalled();

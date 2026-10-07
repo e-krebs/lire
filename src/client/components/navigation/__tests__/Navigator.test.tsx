@@ -649,7 +649,9 @@ describe("Navigator", () => {
       ).findByRole("button", {
         name: "Search everywhere instead of Tech",
       });
-      expect((await ui.pill()).getByText("Tech").parentElement).toContainElement(clear);
+      expect((await ui.pill()).getByText("Tech").closest("[data-clearable]")).toContainElement(
+        clear,
+      );
       await user.click(clear);
 
       expect(await ui.text("received:all")).toBeInTheDocument();
