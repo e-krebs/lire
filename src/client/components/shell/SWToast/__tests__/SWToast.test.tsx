@@ -1,9 +1,9 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { markReadQueue } from "client/api/markReadQueue";
-import { dismiss, registerPwa } from "client/utils/pwaUpdate";
-import { UpdateToast } from "../UpdateToast";
+import { registerPwa } from "client/utils/pwaUpdate";
+import { SWToast } from "client/components/shell/SWToast";
 
 interface Callbacks {
   onNeedRefresh: () => void;
@@ -36,17 +36,16 @@ const ui = {
   get toast() {
     return screen.queryByRole("status");
   },
+  get flyingToast() {
+    return screen.getByText("A new version is ready.");
+  },
   button(name: string) {
     return screen.getByRole("button", { name });
   },
 };
 
-describe("UpdateToast", () => {
+describe("SWToast", () => {
   afterEach(() => {
-    act(() => {
-      dismiss({ kind: "update" });
-      dismiss({ kind: "offline" });
-    });
     vi.useRealTimers();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
@@ -54,7 +53,7 @@ describe("UpdateToast", () => {
 
   it("stays hidden by default and registers immediately", () => {
     const { register } = setup();
-    render(<UpdateToast />);
+    render(<SWToast />);
 
     expect(ui.toast).toBeEmptyDOMElement();
     expect(register).toHaveBeenCalledWith(expect.objectContaining({ immediate: true }));
@@ -62,7 +61,7 @@ describe("UpdateToast", () => {
 
   it("keeps the status element mounted while hidden", () => {
     setup();
-    render(<UpdateToast />);
+    render(<SWToast />);
 
     expect(ui.toast).toBeInTheDocument();
   });
@@ -88,7 +87,7 @@ describe("UpdateToast", () => {
       await Promise.resolve();
       order.push("update");
     });
-    render(<UpdateToast />);
+    render(<SWToast />);
     fire("onNeedRefresh");
 
     await userEvent.click(ui.button("Reload"));
@@ -97,20 +96,53 @@ describe("UpdateToast", () => {
     expect(order).toEqual(["flush", "update"]);
   });
 
-  it("hides on Later", async () => {
+  it("keeps the toast through the flight on Later, then hides it when the fade ends", async () => {
     const { fire } = setup();
-    render(<UpdateToast />);
+    render(<SWToast />);
     fire("onNeedRefresh");
-    expect(ui.toast).toHaveTextContent("A new version is ready.");
 
     await userEvent.click(ui.button("Later"));
+
+    expect(ui.flyingToast).toBeInTheDocument();
+    // Without AnimationEvent, jsdom makes React listen to the prefixed name, and the name is set by hand.
+    const end = new Event("webkitAnimationEnd", { bubbles: true });
+    Object.defineProperty(end, "animationName", { value: "toast-absorb-fade" });
+    fireEvent(ui.flyingToast, end);
+    expect(ui.toast).toBeEmptyDOMElement();
+  });
+
+  it("shows the toast again when another update arrives after Later", async () => {
+    const { fire } = setup();
+    render(<SWToast />);
+    fire("onNeedRefresh");
+    await userEvent.click(ui.button("Later"));
+    const end = new Event("webkitAnimationEnd", { bubbles: true });
+    Object.defineProperty(end, "animationName", { value: "toast-absorb-fade" });
+    fireEvent(ui.flyingToast, end);
+    expect(ui.toast).toBeEmptyDOMElement();
+
+    fire("onNeedRefresh");
+
+    expect(ui.toast).toHaveTextContent("A new version is ready.");
+  });
+
+  it("hides on Later even when no animation ends", () => {
+    vi.useFakeTimers();
+    const { fire } = setup();
+    render(<SWToast />);
+    fire("onNeedRefresh");
+
+    fireEvent.click(ui.button("Later"));
+    act(() => {
+      vi.advanceTimersByTime(400);
+    });
 
     expect(ui.toast).toBeEmptyDOMElement();
   });
 
   it("shows the offline notice and dismisses it", async () => {
     const { fire } = setup();
-    render(<UpdateToast />);
+    render(<SWToast />);
     fire("onOfflineReady");
     expect(ui.toast).toHaveTextContent("Lire now opens offline.");
 
