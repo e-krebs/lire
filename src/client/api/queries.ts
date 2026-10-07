@@ -38,7 +38,7 @@ import {
   type EntryOrder,
 } from "client/api/client";
 import { useTier } from "client/hooks/useTier";
-import { markReadQueue, sendQueuedReads } from "client/api/markReadQueue";
+import { markReadQueue, sendQueuedReads, settleWithin } from "client/api/markReadQueue";
 import { orderCategories, orphansOf } from "client/api/selectors";
 import { CATEGORY_ORDER_KEY } from "shared/feedsApi/preferences";
 import { parseStreamKey, type StreamKey } from "shared/feedsApi/streamKey";
@@ -429,12 +429,54 @@ const refreshEntries = async ({
       { updatedAt: client.getQueryState(queryKey)?.dataUpdatedAt },
     );
   }
-  // A mark still waiting in the queue would come back unread from the refetch.
-  await markReadQueue.flush();
+  await settleWrites({ client });
   await refreshCountsThenLists({
     client,
     refreshLists: async () => client.refetchQueries({ queryKey, exact: true }),
   });
+};
+
+const SETTLE_WRITES_MS = 3000;
+const MARK_READ_KEY = ["markRead"] as const;
+
+// Read marks are left out: flush() covers them, and a read mutation stays pending until its batch goes upstream.
+const isReadMark = (mutation: {
+  options: { mutationKey?: readonly unknown[] };
+  state: { variables: unknown };
+}) => {
+  const { variables } = mutation.state;
+  return (
+    mutation.options.mutationKey?.[0] === MARK_READ_KEY[0] &&
+    typeof variables === "object" &&
+    variables !== null &&
+    "read" in variables &&
+    variables.read === true
+  );
+};
+
+const isWriting = ({ client }: { client: QueryClient }): boolean =>
+  client.isMutating({ predicate: (mutation) => !isReadMark(mutation) }) > 0;
+
+// A write still running would come back from the refetch as the state before it.
+const settleWrites = async ({ client }: { client: QueryClient }): Promise<void> => {
+  let unsubscribe = () => {};
+  const mutationsDone = new Promise<void>((resolve) => {
+    if (!isWriting({ client })) {
+      resolve();
+      return;
+    }
+    unsubscribe = client.getMutationCache().subscribe(() => {
+      if (!isWriting({ client })) resolve();
+    });
+  });
+  await settleWithin({
+    promise: Promise.all([markReadQueue.flush(), mutationsDone]).then(
+      () => {},
+      () => {},
+    ),
+    ms: SETTLE_WRITES_MS,
+  });
+  unsubscribe();
 };
 
 export const useRefreshEntries = () => {
@@ -447,7 +489,7 @@ export const useRefreshEntries = () => {
 export const useRefreshAllLists = () => {
   const client = useQueryClient();
   return async (): Promise<void> => {
-    await markReadQueue.flush();
+    await settleWrites({ client });
     await refreshCountsThenLists({
       client,
       refreshLists: async () =>
@@ -582,6 +624,7 @@ const sendMark = async ({ entryIds, read }: { entryIds: string[]; read: boolean 
 export const useMarkRead = () => {
   const client = useQueryClient();
   return useMutation({
+    mutationKey: MARK_READ_KEY,
     mutationFn: sendMark,
     // Offline, a paused mutation would never reach the queue, so the read would not be stored.
     networkMode: "always",
