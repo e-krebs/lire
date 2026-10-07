@@ -32,6 +32,7 @@ folder title, an entry id is the story hash. A stream key is `all`, `read`, `fol
 | DELETE | `/api/categories/:categoryId` | Delete. `?moveTo=<id>` first moves its feeds to that category |
 | GET | `/api/feeds` | `[{ id, title, siteUrl?, feedUrl?, iconUrl?, categoryIds, isNewsletter, isWebFeed? }]`. `isWebFeed` is present, and true, only on a web feed, whose `feedUrl` is `webfeed:<page URL>` |
 | POST | `/api/feeds` | Subscribe, body `{ feedUrl, title?, categoryIds }` |
+| POST | `/api/feeds/refresh` | Drop the Worker's cached feed list (kept 5 minutes), so the next read sees a feed NewsBlur added on its own, such as a new newsletter sender. Answers 204. The client sends it first on every refresh |
 | PATCH | `/api/feeds/:feedId` | Rename or move, body `{ title?, categoryIds? }` |
 | DELETE | `/api/feeds/:feedId` | Unsubscribe |
 | POST | `/api/feeds/:feedId/reanalyze` | Analyze a web feed's page again, answers `{ requestId, url }`. Poll `requestId` as below, then send the picked variant and `url` to `POST /api/webfeeds`. 400 on a feed that is not a web feed |

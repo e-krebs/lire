@@ -637,6 +637,12 @@ const HANDLERS: Record<RouteKey, Handler> = {
     return created(feed);
   },
 
+  // A new sender is a new feed NewsBlur made on its own, which the cached feed list can't know.
+  "POST /api/feeds/refresh": async ({ ctx }) => {
+    await ctx.cache.clear();
+    return NO_CONTENT;
+  },
+
   // Applying a new variant goes through `POST /api/webfeeds` with the `url` this answers.
   "POST /api/feeds/:feedId/reanalyze": async ({ ctx, params }) => {
     const { feed } = findSubscription({ library: await loadLibrary(ctx), id: params.feedId });
