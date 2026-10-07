@@ -422,7 +422,12 @@ export const MosaicBody = ({
     <PullFrame attach={attachPullHost} pull={shownPull} freshness={freshness} className="relative">
       <div className="p-3">
         {/* Columns follow the frame's own width, so an open reader panel narrows the mosaic. */}
-        <div ref={attach} className="relative" style={{ height: layout?.height ?? 0 }}>
+        <div
+          ref={attach}
+          data-eased={gone.size > 0 ? "" : undefined}
+          className="relative motion-safe:data-eased:transition-[height] motion-safe:data-eased:duration-200 motion-safe:data-eased:ease-out"
+          style={{ height: layout?.height ?? 0 }}
+        >
           {layout === undefined
             ? null
             : shown.map((entry) => {
