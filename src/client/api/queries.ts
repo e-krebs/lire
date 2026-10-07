@@ -1,4 +1,5 @@
 import {
+  hashKey,
   queryOptions,
   useInfiniteQuery,
   useIsMutating,
@@ -485,20 +486,28 @@ export const useRefreshEntries = () => {
     refreshEntries({ client, queryKey, trim });
 };
 
-// No page trim here, unlike a refresh: the reader keeps the pages and the scroll position.
+// The foreground return: `refreshList` refreshes the list on screen, then every other list, search
+// and entry still mounted refetches.
 export const useRefreshAllLists = () => {
   const client = useQueryClient();
-  return async (): Promise<void> => {
-    await settleWrites({ client });
-    await refreshCountsThenLists({
-      client,
-      refreshLists: async () =>
-        Promise.all(
-          [["stream"], ["search"], ["entry"]].map(async (queryKey) =>
-            client.invalidateQueries({ queryKey }),
-          ),
-        ),
-    });
+  return async ({
+    queryKey,
+    refreshList,
+  }: {
+    queryKey: readonly unknown[];
+    refreshList: () => Promise<void>;
+  }): Promise<void> => {
+    await refreshList();
+    const own = hashKey(queryKey);
+    await Promise.all(
+      [["stream"], ["search"], ["entry"]].map(async (prefix) =>
+        client.invalidateQueries({
+          queryKey: prefix,
+          refetchType: "active",
+          predicate: (query) => query.queryHash !== own,
+        }),
+      ),
+    );
   };
 };
 

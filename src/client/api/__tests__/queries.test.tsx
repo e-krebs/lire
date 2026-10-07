@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { QueryClient, QueryClientProvider, onlineManager } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, onlineManager, useQuery } from "@tanstack/react-query";
 import type { InfiniteData } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { http, HttpResponse } from "msw";
@@ -582,41 +582,37 @@ describe("queries", () => {
     });
   });
 
-  it("flushes, then invalidates every list cache and the counts, keeping every page", async () => {
+  it("refreshes the list on screen first, then invalidates every other cached list and entry", async () => {
     const { client, wrapper } = setup();
-    const streamKey = keys.stream({ streamKey: techKey });
+    const ownKey = keys.stream({ streamKey: techKey });
+    const otherKey = keys.stream({ streamKey: "all" });
     const searchKey = keys.search({ streamKey: techKey, query: "ab" });
-    const twoPages = {
-      pages: [{ items: [entry({ id: "a" })] }, { items: [entry({ id: "b" })] }],
-      pageParams: [undefined, "2"],
-    };
-    client.setQueryData(streamKey, twoPages);
+    client.setQueryData(ownKey, page([entry({ id: "a" })]));
+    client.setQueryData(otherKey, page([entry({ id: "o" })]));
     client.setQueryData(searchKey, page([entry({ id: "s" })]));
     client.setQueryData(keys.entry("a"), entry({ id: "a" }));
-    client.setQueryDefaults(keys.counts, { queryFn: async () => resolved(counts) });
-    client.setQueryData(keys.counts, { all: 0, feeds: {}, categories: {} });
-    const countsBefore = client.getQueryState(keys.counts)?.dataUpdatedAt ?? 0;
-    await new Promise((resolve) => setTimeout(resolve, 5));
-    let release = () => {};
-    const flush = vi.spyOn(markReadQueue, "flush").mockImplementationOnce(async () => {
-      await new Promise<void>((resolve) => {
-        release = resolve;
-      });
-    });
-    const { result } = renderHook(() => useRefreshAllLists(), { wrapper });
+    const fetchEntry = vi.fn<() => Promise<Entry>>(async () => resolved(entry({ id: "a" })));
+    const list = held();
+    const refreshList = vi.fn<() => Promise<void>>(async () => list.wait);
+    const { result } = renderHook(
+      () => {
+        useQuery({ queryKey: keys.entry("a"), queryFn: fetchEntry, staleTime: Infinity });
+        return useRefreshAllLists();
+      },
+      { wrapper },
+    );
 
-    const pending = result.current();
+    const pending = result.current({ queryKey: ownKey, refreshList });
     await Promise.resolve();
+    expect(refreshList).toHaveBeenCalledOnce();
+    expect(client.getQueryState(otherKey)?.isInvalidated).toBe(false);
 
-    expect(client.getQueryState(streamKey)?.isInvalidated).toBe(false);
-    release();
+    list.release();
     await act(async () => pending);
-    expect(client.getQueryState(streamKey)?.isInvalidated).toBe(true);
+    expect(client.getQueryState(otherKey)?.isInvalidated).toBe(true);
     expect(client.getQueryState(searchKey)?.isInvalidated).toBe(true);
-    expect(client.getQueryState(keys.entry("a"))?.isInvalidated).toBe(true);
-    expect(client.getQueryState(keys.counts)?.dataUpdatedAt).toBeGreaterThan(countsBefore);
-    expect(client.getQueryData<InfiniteData<EntryPage>>(streamKey)?.pages).toHaveLength(2);
-    flush.mockRestore();
+    expect(client.getQueryState(ownKey)?.isInvalidated).toBe(false);
+    expect(fetchEntry).toHaveBeenCalledOnce();
   });
 
   describe("when counts and stories refresh together", () => {
@@ -648,7 +644,13 @@ describe("queries", () => {
       const storiesBefore = client.getQueryState(queryKey)?.dataUpdatedAt ?? 0;
       await new Promise((resolve) => setTimeout(resolve, 5));
 
-      const pending = which === "one" ? result.current.one({ queryKey }) : result.current.all();
+      const pending =
+        which === "one"
+          ? result.current.one({ queryKey })
+          : result.current.all({
+              queryKey,
+              refreshList: async () => result.current.one({ queryKey, trim: false }),
+            });
       await waitFor(() => {
         expect(client.getQueryState(keys.counts)?.fetchStatus).toBe("fetching");
       });
