@@ -60,7 +60,7 @@ export const ListCentred: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const column = (await canvas.findByRole("tab", { name: /Categories/ }, SLOW)).closest(
-      "div.flex-col",
+      "div.scroll-pane",
     )!;
     await expect(column).not.toHaveAttribute("data-panel-open");
   },
@@ -72,7 +72,7 @@ export const ListBesidePanel: Story = {
     const canvas = within(canvasElement);
     await screen.findByRole("complementary", { name: "Add a feed" }, SLOW);
     const column = (await canvas.findByRole("tab", { name: /Categories/ }, SLOW)).closest(
-      "div.flex-col",
+      "div.scroll-pane",
     )!;
     await expect(column).toHaveAttribute("data-panel-open");
   },

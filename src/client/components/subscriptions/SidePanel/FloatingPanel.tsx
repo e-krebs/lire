@@ -1,4 +1,4 @@
-import { useContext, useEffect, useLayoutEffect, useRef } from "react";
+import { useCallback, useContext, useEffect, useLayoutEffect, useRef } from "react";
 import { PanelExitContext } from "./PanelExitContext";
 import type { PanelShellProps } from "./shared";
 import { useAfterExit } from "./useAfterExit";
@@ -20,8 +20,8 @@ if (typeof document !== "undefined") {
   );
 }
 
-// Floats over the list from `sm` up, so it needs a `relative h-full` ancestor outside the list's
-// scroll pane. Not a dialog, so focus goes in and comes back by hand.
+// Floats over the list from `sm` up, behind a scrim, so it needs a `relative h-full` ancestor
+// outside the list's scroll pane. Not a dialog, so focus goes in and comes back by hand.
 export const FloatingPanel = ({
   open,
   onClose,
@@ -49,23 +49,27 @@ export const FloatingPanel = ({
     closingRef.current = closing;
   }, [closing, open, focusHeading]);
 
+  // An element around the panel, such as `body` or a scroll pane, is never the trigger. Nor is
+  // one inside a <dialog> such as ConfirmDialog, which is closed by the time focus comes back.
+  const asTrigger = useCallback((element: EventTarget | null): HTMLElement | null => {
+    const panel = panelRef.current;
+    return element instanceof HTMLElement &&
+      !panel?.contains(element) &&
+      !element.contains(panel) &&
+      element.closest("dialog") === null
+      ? element
+      : null;
+  }, []);
+  // Before paint: the list goes inert in the same commit, and the browser then drops its focus.
+  useLayoutEffect(() => {
+    if (open) triggerRef.current = asTrigger(document.activeElement) ?? asTrigger(lastPressed);
+  }, [open, asTrigger]);
+
   useEffect(() => {
     if (!open) return undefined;
-    // An element around the panel, such as `body` or a scroll pane, is never the trigger. Nor is
-    // one inside a <dialog> such as ConfirmDialog, which is closed by the time focus comes back.
-    const asTrigger = (element: EventTarget | null): HTMLElement | null => {
-      const panel = panelRef.current;
-      return element instanceof HTMLElement &&
-        !panel?.contains(element) &&
-        !element.contains(panel) &&
-        element.closest("dialog") === null
-        ? element
-        : null;
-    };
-    triggerRef.current = asTrigger(document.activeElement) ?? asTrigger(lastPressed);
     focusHeading();
-    // No scrim, so the next row stays clickable: whatever outside control is pressed or focused
-    // while the panel is open becomes the trigger focus returns to.
+    // Whatever outside control is pressed or focused while the panel is open becomes the trigger
+    // focus returns to.
     const onOutside = (element: EventTarget | null): void => {
       const trigger = asTrigger(element);
       if (trigger) triggerRef.current = trigger;
@@ -73,8 +77,8 @@ export const FloatingPanel = ({
     const onFocusIn = (event: FocusEvent): void => {
       onOutside(event.target);
     };
-    // A click outside closes the panel and still reaches its target, so another row opens its own
-    // panel. A modal over the panel is its own layer, and a drag out of the panel is no click.
+    // A click outside, on the scrim or the top bar, closes the panel and still reaches its target.
+    // A modal over the panel is its own layer, and a drag out of the panel is no click.
     const isOutside = (target: EventTarget | null): boolean =>
       target instanceof Element &&
       panelRef.current?.contains(target) === false &&
@@ -84,7 +88,7 @@ export const FloatingPanel = ({
       onOutside(lastPressed);
       pressedOutside = isOutside(event.target);
     };
-    // Capture, so it runs before a row's own click opens the next panel.
+    // Capture, so it runs before the target's own click handler.
     const onClick = (event: MouseEvent): void => {
       if (pressedOutside && isOutside(event.target) && !closingRef.current) onCloseRef.current();
       pressedOutside = false;
@@ -102,19 +106,23 @@ export const FloatingPanel = ({
       triggerRef.current = null;
       if (trigger?.isConnected) trigger.focus();
     };
-  }, [open, focusHeading]);
+  }, [open, focusHeading, asTrigger]);
 
   if (!open) return null;
   return (
-    <aside
-      ref={panelRef}
-      aria-labelledby={headingId}
-      data-side-panel=""
-      data-closing={closing || undefined}
-      inert={closing}
-      className="side-panel bg-surface text-ink"
-    >
-      {children}
-    </aside>
+    <>
+      {/* Its click reaches the document listener above, which closes the panel. */}
+      <div aria-hidden="true" data-closing={closing || undefined} className="side-panel-scrim" />
+      <aside
+        ref={panelRef}
+        aria-labelledby={headingId}
+        data-side-panel=""
+        data-closing={closing || undefined}
+        inert={closing}
+        className="side-panel bg-surface text-ink"
+      >
+        {children}
+      </aside>
+    </>
   );
 };

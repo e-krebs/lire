@@ -148,26 +148,22 @@ test.describe("Subscriptions manager", () => {
     await expect(panel).toBeHidden();
   });
 
-  test("a second row stays clickable while the panel is open", async ({ page }, testInfo) => {
+  test("a click outside closes the panel and returns to its row", async ({ page }, testInfo) => {
     test.skip(testInfo.project.name === "pixel-9-pro", "The phone sheet is modal, with a scrim");
     const pageUi = ui(page);
 
     await page.goto("/subscriptions?tab=categories");
     await pageUi.categoryRow("Tech").click();
-    await expect(pageUi.panel({ phone: false, title: "Tech" })).toBeVisible();
+    const tech = pageUi.panel({ phone: false, title: "Tech" });
+    await expect(tech).toBeVisible();
 
-    await pageUi.categoryRow("Design").click();
-    const design = pageUi.panel({ phone: false, title: "Design" });
-    await expect(design).toBeVisible();
-    await expect(pageUi.panel({ phone: false, title: "Tech" })).toBeHidden();
-
-    // The list's own gutter, left of its rows, is empty space.
-    const row = await pageUi.categoryRow("Tech").boundingBox();
+    // The list's own gutter, left of its rows, is under the scrim.
+    const row = await pageUi.categoryRow("Design").boundingBox();
     if (!row) throw new Error("Row has no box");
     await page.mouse.click(row.x - 8, row.y + row.height / 2);
-    await expect(design).toBeHidden();
+    await expect(tech).toBeHidden();
     await expect(page).not.toHaveURL(/[?&]category=/);
-    await expect(pageUi.categoryRow("Design")).toBeFocused();
+    await expect(pageUi.categoryRow("Tech")).toBeFocused();
   });
 
   test("the Add sources menu works from inside a category panel", async ({ page }, testInfo) => {
