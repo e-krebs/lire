@@ -243,8 +243,8 @@ const CategoryRow = ({
         <span
           id={unreadId}
           className={`
-            flex-none rounded-full bg-surface-2 px-2 py-0.5 text-xs font-semibold
-            text-muted tabular-nums
+            flex h-5 min-w-5 flex-none items-center justify-center rounded-full bg-surface-2 px-2
+            text-xs leading-none font-semibold text-muted tabular-nums
           `}
         >
           {unread}
