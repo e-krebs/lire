@@ -1087,8 +1087,8 @@ body {
    The subscriptions page's panel and modal (components/subscriptions/).
    ================================================================== */
 
-/* From `sm` up the panel floats over the list like the reader does at `lg`, with no scrim so the
-   next row stays clickable. Below `sm` SidePanel renders the bottom sheet instead. */
+/* From `sm` up the panel floats over the list like the reader does at `lg`, behind a scrim that
+   blocks the list. Below `sm` SidePanel renders the bottom sheet instead. */
 :root {
   --side-panel-width: 340px;
 }
@@ -1096,6 +1096,12 @@ body {
   :root {
     --side-panel-width: 372px;
   }
+}
+.side-panel-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  background: light-dark(rgb(0 0 0 / 35%), rgb(0 0 0 / 55%));
 }
 .side-panel {
   position: absolute;
@@ -1116,11 +1122,22 @@ body {
     transition-duration: 180ms;
     transition-timing-function: ease-out;
   }
+  .side-panel-scrim {
+    transition: opacity 180ms ease-out;
+  }
   @starting-style {
     .side-panel {
       opacity: 0;
       translate: 24px 0;
     }
+    .side-panel-scrim {
+      opacity: 0;
+    }
+  }
+  .side-panel-scrim[data-closing] {
+    opacity: 0;
+    transition-duration: 150ms;
+    transition-timing-function: ease-in;
   }
   .side-panel[data-closing] {
     opacity: 0;

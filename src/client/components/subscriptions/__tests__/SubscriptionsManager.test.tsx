@@ -328,20 +328,21 @@ describe("SubscriptionsManager", () => {
   });
 
   describe("when laying out the list", () => {
-    const column = async () => (await ui.tab("Categories · 4")).closest("div.flex-col")!;
+    const column = async () => (await ui.tab("Categories · 4")).closest("div.scroll-pane")!;
 
-    it("centres the list while no panel is open", async () => {
+    it("lets the list use the full width while no panel is open", async () => {
       await setup();
 
       expect(await column()).not.toHaveAttribute("data-panel-open");
     });
 
-    it("left-aligns the list clear of the panel while one is open", async () => {
+    it("centres the list in the space left of the panel while one is open", async () => {
       const page = await setup();
       await page.user.click(await ui.tab("Feeds · 13"));
       await ui.panel.open({ page, label: "Example Daily News" });
 
       expect(await column()).toHaveAttribute("data-panel-open");
+      expect(await column()).toHaveAttribute("inert");
     });
 
     it("keeps the list clear of the panel until its exit has played", async () => {
