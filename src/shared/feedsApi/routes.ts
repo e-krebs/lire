@@ -22,8 +22,6 @@ export const ROUTES = [
   { method: "GET", path: "/api/counts" },
   { method: "GET", path: "/api/streams/:streamKey/entries" },
   { method: "GET", path: "/api/entries/:entryId" },
-  { method: "POST", path: "/api/entries/read" },
-  { method: "POST", path: "/api/entries/unread" },
   { method: "POST", path: "/api/entries/mark" },
   { method: "GET", path: "/api/search/entries" },
   { method: "GET", path: "/api/search/feeds" },

@@ -195,8 +195,6 @@ export const SunQuerySchema = z
 export const DeleteCategoryQuerySchema = z.object({ moveTo: z.string().optional() }).loose();
 
 // Request bodies.
-export const MarkEntriesBodySchema = z.object({ entryIds: z.array(z.string()).min(1) }).loose();
-
 export const MarkBodySchema = z
   .object({ read: z.array(z.string()).optional(), unread: z.array(z.string()).optional() })
   .loose()

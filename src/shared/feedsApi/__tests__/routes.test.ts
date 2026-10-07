@@ -26,12 +26,6 @@ describe("matchRoute", () => {
     expect(matchRoute({ method: "PUT", pathname: "/api/feeds/42" })).toBeNull();
   });
 
-  it("prefers a static segment listed first", () => {
-    expect(matchRoute({ method: "POST", pathname: "/api/entries/read" })?.route.path).toBe(
-      "/api/entries/read",
-    );
-  });
-
   it("matches the merged mark route", () => {
     expect(matchRoute({ method: "POST", pathname: "/api/entries/mark" })?.route.path).toBe(
       "/api/entries/mark",

@@ -9,7 +9,6 @@ import {
   CreateWebFeedBodySchema,
   DeleteCategoryQuerySchema,
   MarkBodySchema,
-  MarkEntriesBodySchema,
   PreferencesUpdateSchema,
   SearchEntriesQuerySchema,
   SearchFeedsQuerySchema,
@@ -863,28 +862,6 @@ const HANDLERS: Record<RouteKey, Handler> = {
     const story = stories.find((candidate) => candidate.story_hash === params.entryId);
     if (!story) throw notFound();
     return ok(toEntry(story));
-  },
-
-  // Every hash in one call; the client batches them.
-  "POST /api/entries/read": async ({ ctx, body }) => {
-    const { entryIds } = parseInput({ schema: MarkEntriesBodySchema, value: body });
-    await write({
-      ctx,
-      request: post({ path: "/reader/mark_story_hashes_as_read", form: { story_hash: entryIds } }),
-    });
-    return NO_CONTENT;
-  },
-
-  // NewsBlur takes one hash per unread call.
-  "POST /api/entries/unread": async ({ ctx, body }) => {
-    const { entryIds } = parseInput({ schema: MarkEntriesBodySchema, value: body });
-    for (const entryId of entryIds) {
-      await write({
-        ctx,
-        request: post({ path: "/reader/mark_story_hash_as_unread", form: { story_hash: entryId } }),
-      });
-    }
-    return NO_CONTENT;
   },
 
   // Reads first, so an entry in both lists ends unread.
