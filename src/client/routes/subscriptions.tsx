@@ -31,7 +31,7 @@ function SubscriptionsPage() {
   return (
     <div className="subscriptions relative h-full">
       <SubscriptionsManager
-        tab={search.tab ?? "categories"}
+        tab={search.tab ?? "feeds"}
         panel={panelOf(search)}
         onTabChange={(tab) => {
           void navigate({

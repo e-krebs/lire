@@ -194,7 +194,7 @@ const mount = (url: string) => {
 };
 
 const setup = async ({
-  url = "/subscriptions",
+  url = "/subscriptions?tab=categories",
   seed,
 }: { url?: string; seed?: () => Promise<void> } = {}) => {
   vi.stubEnv("VITE_API_MODE", "real");
@@ -275,15 +275,15 @@ const feedCategoryIds = async (feedId: string): Promise<string[] | undefined> =>
 
 describe("SubscriptionsManager", () => {
   describe("when switching tabs and filtering", () => {
-    it("opens on categories and writes the feeds tab to the search params", async () => {
-      const { user, router } = await setup();
-
-      expect(await ui.tab("Categories · 4")).toHaveAttribute("aria-selected", "true");
-      await user.click(await ui.tab("Feeds · 13"));
+    it("opens on feeds and writes the categories tab to the search params", async () => {
+      const { user, router } = await setup({ url: "/subscriptions" });
 
       expect(await ui.tab("Feeds · 13")).toHaveAttribute("aria-selected", "true");
-      expect(router.state.location.search).toMatchObject({ tab: "feeds" });
       expect(await ui.search("Filter feeds")).toBeInTheDocument();
+      await user.click(await ui.tab("Categories · 4"));
+
+      expect(await ui.tab("Categories · 4")).toHaveAttribute("aria-selected", "true");
+      expect(router.state.location.search).toMatchObject({ tab: "categories" });
     });
 
     it("filters the categories", async () => {
@@ -449,7 +449,7 @@ describe("SubscriptionsManager", () => {
       });
 
       page.view.unmount();
-      mount("/subscriptions");
+      mount("/subscriptions?tab=categories");
       // One loaded full-suite run read the API order here before the stored order.
       await waitFor(() => {
         expect(order()).toEqual(["Tech", "News", "Design", "Newsletters"]);
