@@ -84,14 +84,16 @@ const ui = (page: Page) => ({
 });
 
 test.describe("Subscriptions manager", () => {
-  test("opens on the categories tab, and a row opens the panel", async ({ page }, testInfo) => {
+  test("opens on the feeds tab, and a category row opens the panel", async ({ page }, testInfo) => {
     const phone = testInfo.project.name === "pixel-9-pro";
     const pageUi = ui(page);
 
     await page.goto("/subscriptions");
 
+    await expect(pageUi.feedsTab).toHaveAttribute("aria-selected", "true");
+    await expect(pageUi.categoriesTab).toHaveAttribute("aria-selected", "false");
+    await pageUi.categoriesTab.click();
     await expect(pageUi.categoriesTab).toHaveAttribute("aria-selected", "true");
-    await expect(pageUi.feedsTab).toHaveAttribute("aria-selected", "false");
 
     const tech = pageUi.categoryRow("Tech");
     await tech.focus();
@@ -150,7 +152,7 @@ test.describe("Subscriptions manager", () => {
     test.skip(testInfo.project.name === "pixel-9-pro", "The phone sheet is modal, with a scrim");
     const pageUi = ui(page);
 
-    await page.goto("/subscriptions");
+    await page.goto("/subscriptions?tab=categories");
     await pageUi.categoryRow("Tech").click();
     await expect(pageUi.panel({ phone: false, title: "Tech" })).toBeVisible();
 
@@ -172,7 +174,7 @@ test.describe("Subscriptions manager", () => {
     const phone = testInfo.project.name === "pixel-9-pro";
     const pageUi = ui(page);
 
-    await page.goto("/subscriptions");
+    await page.goto("/subscriptions?tab=categories");
     await pageUi.categoryRow("Tech").click();
     const panel = pageUi.panel({ phone, title: "Tech" });
     await expect(panel).toBeVisible();
@@ -194,7 +196,7 @@ test.describe("Subscriptions manager", () => {
     const phone = testInfo.project.name === "pixel-9-pro";
     const pageUi = ui(page);
 
-    await page.goto("/subscriptions");
+    await page.goto("/subscriptions?tab=categories");
 
     // Feed 103 sits in Tech and Design.
     await pageUi.categoryRow("Tech").click();
@@ -221,7 +223,7 @@ test.describe("Subscriptions manager", () => {
     const phone = testInfo.project.name === "pixel-9-pro";
     const pageUi = ui(page);
 
-    await page.goto("/subscriptions");
+    await page.goto("/subscriptions?tab=categories");
     const handle = pageUi.reorderHandle("Design");
     // Handles only show once preferences load.
     await expect(handle).toBeVisible();
@@ -253,7 +255,7 @@ test.describe("Subscriptions manager", () => {
     test.skip(testInfo.project.name !== "desktop", "Touch projects drag by keyboard above");
     const pageUi = ui(page);
 
-    await page.goto("/subscriptions");
+    await page.goto("/subscriptions?tab=categories");
     const handle = pageUi.reorderHandle("Design");
     await expect(handle).toBeVisible();
     const from = await handle.boundingBox();
@@ -280,7 +282,7 @@ test.describe("Subscriptions manager", () => {
     // The seed already holds one web feed with this title, the new one makes two.
     const changelogRows = pageUi.feedRow("Example Changelog");
 
-    await page.goto("/subscriptions");
+    await page.goto("/subscriptions?tab=categories");
     await pageUi.feedsTab.click();
     await expect(changelogRows).toHaveCount(1);
     await pageUi.addWebsiteButton.click();
