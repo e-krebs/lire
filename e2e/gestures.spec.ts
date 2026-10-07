@@ -16,6 +16,9 @@ const ui = (page: Page) => ({
   freshnessStatus(text: string) {
     return this.entriesRegion.getByRole("status").and(page.getByText(text, { exact: true }));
   },
+  get skeleton() {
+    return page.getByRole("status", { name: "Loading articles" });
+  },
   get pullIndicator() {
     return page.locator(".pull-indicator");
   },
@@ -127,7 +130,9 @@ test.describe("gestures", () => {
 
     // The disc parks as a status for the refresh's minimum hold, then slides back out.
     await expect(pageUi.pullRefreshingStatus).toBeVisible();
+    await expect(pageUi.skeleton.or(pageUi.tiles.first())).toBeVisible();
     await expect(pageUi.pullIndicator).toHaveCount(0);
+    await expect(pageUi.skeleton).toHaveCount(0);
     await expect(pageUi.freshnessStatus("Updated just now")).toBeVisible();
     await expect(pageUi.tiles.first()).toBeVisible();
   });

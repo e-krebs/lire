@@ -580,6 +580,10 @@ body {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--color-ink) 28%, transparent) transparent;
 }
+/* A whole-list skeleton (MosaicSkeleton) hides the bar; the stable gutter keeps the width. */
+.scroll-pane[data-skeleton] {
+  overflow-y: hidden;
+}
 
 /* The shared tooltip (TooltipLayer): one `popover="manual"` in the top layer, anchored by CSS to
    the trigger that holds `anchor-name: --tip`. `data-side` is the side asked for, `data-placed`

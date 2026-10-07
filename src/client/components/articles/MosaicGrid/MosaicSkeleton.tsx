@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { layoutMasonry } from "client/utils/masonry";
 import { useElementWidth } from "client/hooks/useElementWidth";
 import { useT } from "client/i18n/useT";
@@ -5,9 +6,24 @@ import { useT } from "client/i18n/useT";
 // Aspects the real mosaic tends to produce, so the placeholder columns look like the grid.
 const SKELETON_ASPECTS = [0.8, 1, 1.33, 0.75, 1.5, 0.9, 1.2, 0.8, 1.78, 1];
 
-export const MosaicSkeleton = ({ label, count }: { label?: string; count?: number }) => {
+interface MosaicSkeletonProps {
+  label?: string;
+  count?: number;
+  // Stands for the whole list, so the pane's scrollbar hides until the grid is back.
+  wholeList?: boolean;
+}
+
+export const MosaicSkeleton = ({ label, count, wholeList = false }: MosaicSkeletonProps) => {
   const t = useT();
-  const { attach, width } = useElementWidth();
+  const { attach, element, width } = useElementWidth();
+  useEffect(() => {
+    const pane = wholeList ? element?.closest(".scroll-pane") : undefined;
+    if (!pane) return undefined;
+    pane.setAttribute("data-skeleton", "");
+    return () => {
+      pane.removeAttribute("data-skeleton");
+    };
+  }, [element, wholeList]);
   const layout =
     width === undefined
       ? undefined

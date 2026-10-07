@@ -266,8 +266,11 @@ fires when the page returns after more than 60 seconds hidden, and skips a refre
 is still running. `useRefreshAllLists` in
 [queries.ts](../../src/client/api/queries.ts) then settles the writes (the queue flush and the
 running mutations, for at most 3 seconds) and invalidates every stream,
-search and entry cache plus the counts. It keeps loaded pages, unlike a top pull-to-refresh, which
-trims to page 1. A global `refetchOnWindowFocus` would refetch every list at once.
+search and entry cache plus the counts. While the list is on screen it refreshes like every other
+refresh: it trims to page 1, scrolls to the top and shows the skeleton. With the reader covering the
+list, the return refreshes only the reader's own list and keeps its pages and position, because a trim
+would move the list behind the reader. The other cached lists and open entries refetch only
+while active. A global `refetchOnWindowFocus` would refetch every list at once.
 
 Every refresh refetches the counts, the categories and the feeds before the lists, so a new
 subscription shows up and the unread count never moves without the list it describes. A failed counts fetch does not stop the lists. The counts do not poll and a
@@ -275,10 +278,17 @@ mount does not refetch them: they refresh with a list refresh or after a read ma
 entry unread marks the unread-only stream and search lists stale without refetching them, so the
 open view does not jump and the unread view refetches when it mounts.
 
-A top pull waits for the same writes (at most 3 seconds) before it refetches, then trims the list
-to page 1 and scrolls to the top. A bottom pull keeps every loaded page
-and the scroll position. It arms only at the true end of the list: no next page, no fetch in
-flight and no next-page error. An empty result arms it too, so the no-results view refreshes the same way. It also calls `preventDefault` only after the
+Every refresh behaves the same way: the top pull, the bottom pull, the button, the shortcut and the
+foreground return. Each waits for the same writes (at most 3 seconds), trims the list to page 1,
+scrolls to the top and shows the mosaic skeleton until the first page lands. A refresh that starts
+while another runs reuses the running one. The pull wrapper, the indicator and the freshness row
+stay mounted, so the gesture survives, and only the grid swaps for the skeleton. The bottom pull's
+disc moves to the top edge for the duration. While a skeleton shows, on a refresh or a first load,
+`MosaicSkeleton` sets `data-skeleton` on the `.scroll-pane`, which hides the pane's vertical
+scrollbar. `scrollbar-gutter: stable` stays, so nothing shifts. The attribute lives on the pane
+because [AppShell.tsx](../../src/client/components/shell/AppShell.tsx) owns it and the reader and
+the subscriptions manager share the class. The bottom pull arms only at the true end of the list: no
+next page, no fetch in flight and no next-page error. An empty result arms it too, so the no-results view refreshes the same way. It also calls `preventDefault` only after the
 touch travels a few pixels, so a scroll that reaches the pagination sentinel is not swallowed.
 
 The reader has a bottom pull of its own: past the article's end, a pull up takes the Mark exit, the

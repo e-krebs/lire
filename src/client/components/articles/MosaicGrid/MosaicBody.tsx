@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import type { CSSProperties, KeyboardEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { ComponentProps, CSSProperties, KeyboardEvent, ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import type { StreamKey } from "shared/feedsApi/streamKey";
 import type { Entry } from "shared/feedsApi/types";
@@ -20,6 +20,7 @@ import type { Direction, MasonryLayout } from "client/utils/masonry";
 import { textCardHeight } from "client/utils/textHeight";
 import { useElementWidth } from "client/hooks/useElementWidth";
 import { usePullToRefresh } from "client/hooks/usePullToRefresh";
+import type { PullState } from "client/hooks/usePullToRefresh";
 import { useRefreshOnForeground } from "client/hooks/useRefreshOnForeground";
 import { useRefreshShortcut } from "client/hooks/useRefreshShortcut";
 import { useTier } from "client/hooks/useTier";
@@ -68,16 +69,26 @@ export const MosaicBody = ({
   const entries = flattenStream(result.data);
   const { hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage } = result;
   const refreshEntries = useRefreshEntries();
+  // Any element inside the pane, for the scroll to the top; the grid's frame is gone in the
+  // skeleton and the empty state.
+  const [host, setHost] = useState<HTMLElement | null>(null);
+  const [refreshingList, setRefreshingList] = useState(false);
+  // A second refresh joins the running one, or its end would bring the grid back early.
+  const running = useRef<Promise<void>>(undefined);
   // A refresh shows the newest, so the pane goes back to the top first: the cache is about to
-  // shrink to one page anyway, which would otherwise drop the reader somewhere in the middle. A
-  // bottom pull keeps both the pages and the position.
-  const refreshAsync = async ({ edge }: { edge?: "top" | "bottom" } = {}) => {
-    if (edge === "bottom") {
-      await refreshEntries({ queryKey, trim: false });
-      return;
-    }
-    frame?.closest(".scroll-pane")?.scrollTo({ top: 0 });
-    await refreshEntries({ queryKey });
+  // shrink to one page anyway, which would otherwise drop the reader somewhere in the middle.
+  const refreshAsync = async (): Promise<void> => {
+    running.current ??= (async () => {
+      host?.closest(".scroll-pane")?.scrollTo({ top: 0 });
+      setRefreshingList(true);
+      try {
+        await refreshEntries({ queryKey });
+      } finally {
+        setRefreshingList(false);
+        running.current = undefined;
+      }
+    })();
+    return running.current;
   };
   const refresh = (): void => {
     void refreshAsync();
@@ -85,14 +96,34 @@ export const MosaicBody = ({
   // The next page loading is not a refresh; only the first page fetching again is.
   const refreshing = result.isFetching && !isFetchingNextPage;
   useRefreshShortcut({ enabled: !readerOpen, onRefresh: refresh });
+  // Whether the list is on screen: at `lg` it always is, below that the reader replaces it.
+  const tier = useTier();
+  const listCovered = readerOpen && tier !== "desktop";
   const refreshAllLists = useRefreshAllLists();
-  useRefreshOnForeground({ onForeground: refreshAllLists });
+  // Under the reader a trim and a scroll to the top would move the list behind it, so it only
+  // refetches, pages and position kept.
+  useRefreshOnForeground({
+    onForeground: async () =>
+      refreshAllLists({
+        queryKey,
+        refreshList: listCovered
+          ? async () => refreshEntries({ queryKey, trim: false })
+          : refreshAsync,
+      }),
+  });
   // Pulling up past the end refreshes only once every page is in and settled, or it would race
   // the sentinel.
   const { attach: attachPull, pull } = usePullToRefresh({
     onRefresh: refreshAsync,
     pullUp: !hasNextPage && !result.isFetching && !isFetchNextPageError,
   });
+  const attachPullHost = useCallback(
+    (element: HTMLElement | null) => {
+      attachPull(element);
+      setHost(element);
+    },
+    [attachPull],
+  );
   // State, not a ref: the sentinel moves between the empty state and the grid, and the observer
   // has to follow it.
   const [sentinel, setSentinel] = useState<HTMLDivElement | null>(null);
@@ -108,9 +139,6 @@ export const MosaicBody = ({
   const [activeId, setActiveId] = useState<string>();
   // The card to focus once the render that closed the focused one has committed.
   const [handoffId, setHandoffId] = useState<string>();
-  // Whether the list is on screen: at `lg` it always is, below that the reader replaces it.
-  const tier = useTier();
-  const listCovered = readerOpen && tier !== "desktop";
   const [settling, setSettling] = useState(false);
   const [wasCovered, setWasCovered] = useState(listCovered);
   if (listCovered !== wasCovered) {
@@ -132,7 +160,8 @@ export const MosaicBody = ({
   // The sentinel's visibility is a signal from the browser, not derived state — an
   // IntersectionObserver Effect is the "synchronizing with an external system" carve-out.
   useEffect(() => {
-    if (!sentinel) return undefined;
+    // A trimmed cache still has a next page, and fetching it would cancel the refresh.
+    if (!sentinel || refreshingList) return undefined;
     const observer = new IntersectionObserver((observed) => {
       if (observed[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) void fetchNextPage();
     });
@@ -140,7 +169,7 @@ export const MosaicBody = ({
     return () => {
       observer.disconnect();
     };
-  }, [sentinel, hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [sentinel, refreshingList, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Every cached entry can be hidden as already read while later pages still hold unread ones. The
   // sentinel would sit below the skeleton, out of view, so this pages them in directly, one fetch
@@ -151,10 +180,23 @@ export const MosaicBody = ({
       (entry) => gone.has(entry.id) || (unreadOnly && !entry.unread && !seenUnread.has(entry.id)),
     );
   useEffect(() => {
-    if (allHidden && hasNextPage && !isFetchingNextPage && !isFetchNextPageError) {
+    if (
+      allHidden &&
+      !refreshingList &&
+      hasNextPage &&
+      !isFetchingNextPage &&
+      !isFetchNextPageError
+    ) {
       void fetchNextPage();
     }
-  }, [allHidden, hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage]);
+  }, [
+    allHidden,
+    refreshingList,
+    hasNextPage,
+    isFetchingNextPage,
+    isFetchNextPageError,
+    fetchNextPage,
+  ]);
 
   useEffect(() => {
     if (handoffId === undefined) return;
@@ -177,17 +219,11 @@ export const MosaicBody = ({
     };
   }, [leaving]);
 
-  if (result.isPending) {
-    return (
-      <MosaicSkeleton
-        label={
-          searchQuery === undefined
-            ? t.articles.loadingArticles
-            : t.articles.searchingFor({ query: searchQuery })
-        }
-      />
-    );
-  }
+  const loadingLabel =
+    searchQuery === undefined
+      ? t.articles.loadingArticles
+      : t.articles.searchingFor({ query: searchQuery });
+  if (result.isPending) return <MosaicSkeleton label={loadingLabel} wholeList />;
   if (result.isError) {
     return (
       <div role="alert" className="flex flex-col items-start gap-2 p-4 text-sm text-danger">
@@ -208,22 +244,38 @@ export const MosaicBody = ({
   );
   const placed = shown.filter((entry) => !leaving.has(entry.id));
 
-  // The rows ride the pull along with the disc, native style; the frame stays put, so the disc
-  // sits in the gap the rows leave. Typed as an intersection, since React's CSSProperties has no
-  // index for `--*` keys.
-  const pullStyle: CSSProperties & { "--pull": string } = { "--pull": `${pull?.distance ?? 0}px` };
+  // A bottom pull's disc would sit below the skeleton, out of reach once the pane stops
+  // scrolling, so it parks at the top for the rest of the refresh.
+  const shownPull =
+    pull?.edge === "bottom" && (refreshingList || pull.refreshing)
+      ? { ...pull, edge: "top" as const }
+      : pull;
+  const freshness: ComponentProps<typeof MosaicFreshness> = {
+    updatedAt: result.dataUpdatedAt,
+    refreshing,
+    onRefresh: refresh,
+    searchQuery,
+    count: placed.length,
+  };
+
+  if (refreshingList) {
+    return (
+      <PullFrame
+        attach={attachPullHost}
+        pull={shownPull}
+        freshness={freshness}
+        className="relative min-h-full"
+      >
+        <MosaicSkeleton label={loadingLabel} wholeList />
+      </PullFrame>
+    );
+  }
 
   if (shown.length === 0 && hasNextPage) {
     return (
-      <div>
-        <MosaicFreshness
-          updatedAt={result.dataUpdatedAt}
-          refreshing={refreshing}
-          onRefresh={refresh}
-          searchQuery={searchQuery}
-          count={placed.length}
-        />
-        <MosaicSkeleton label={t.articles.loadingMoreArticles} />
+      <div ref={setHost}>
+        <MosaicFreshness {...freshness} />
+        <MosaicSkeleton label={t.articles.loadingMoreArticles} wholeList />
       </div>
     );
   }
@@ -231,53 +283,42 @@ export const MosaicBody = ({
   if (shown.length === 0) {
     // `min-h-full` so a short empty view still leaves a finger room to pull from the bottom.
     return (
-      <div ref={attachPull} className="relative min-h-full">
-        <PullIndicator pull={pull} />
-        <div
-          className="pull-content"
-          data-edge={pull?.edge}
-          data-released={pull?.released || undefined}
-          data-refreshing={pull?.refreshing || undefined}
-          style={pullStyle}
-        >
-          <MosaicFreshness
-            updatedAt={result.dataUpdatedAt}
-            refreshing={refreshing}
-            onRefresh={refresh}
-            searchQuery={searchQuery}
-            count={placed.length}
-          />
-          <div className="flex flex-col items-center gap-4 px-4 pt-12 pb-8 text-center text-sm text-faint">
-            <MosaicEmptyArt refreshedAt={result.dataUpdatedAt} />
-            <p>
-              {searchQuery === undefined
-                ? t.articles.nothingToRead
-                : t.articles.noArticlesMatch({ query: searchQuery })}
-            </p>
-            <div className="flex flex-wrap justify-center gap-3">
-              {searchQuery === undefined ? null : (
-                <Link
-                  to="."
-                  search={(prev) => ({ ...prev, q: undefined })}
-                  className={actionClassName}
-                >
-                  {t.articles.clearSearch}
-                </Link>
-              )}
-              {/* Everything there is: the all-articles stream, read entries included, no search. */}
+      <PullFrame
+        attach={attachPullHost}
+        pull={shownPull}
+        freshness={freshness}
+        className="relative min-h-full"
+      >
+        <div className="flex flex-col items-center gap-4 px-4 pt-12 pb-8 text-center text-sm text-faint">
+          <MosaicEmptyArt refreshedAt={result.dataUpdatedAt} />
+          <p>
+            {searchQuery === undefined
+              ? t.articles.nothingToRead
+              : t.articles.noArticlesMatch({ query: searchQuery })}
+          </p>
+          <div className="flex flex-wrap justify-center gap-3">
+            {searchQuery === undefined ? null : (
               <Link
-                to="/stream/$streamKey"
-                params={{ streamKey: "all" }}
-                search={(prev) => ({ ...prev, unread: false, q: undefined })}
+                to="."
+                search={(prev) => ({ ...prev, q: undefined })}
                 className={actionClassName}
               >
-                <Icon name="everything" className="size-4" />
-                {t.articles.showAllArticles}
+                {t.articles.clearSearch}
               </Link>
-            </div>
+            )}
+            {/* Everything there is: the all-articles stream, read entries included, no search. */}
+            <Link
+              to="/stream/$streamKey"
+              params={{ streamKey: "all" }}
+              search={(prev) => ({ ...prev, unread: false, q: undefined })}
+              className={actionClassName}
+            >
+              <Icon name="everything" className="size-4" />
+              {t.articles.showAllArticles}
+            </Link>
           </div>
         </div>
-      </div>
+      </PullFrame>
     );
   }
 
@@ -383,7 +424,63 @@ export const MosaicBody = ({
   };
 
   return (
-    <div ref={attachPull} className="relative">
+    <PullFrame attach={attachPullHost} pull={shownPull} freshness={freshness} className="relative">
+      <div className="p-3">
+        {/* Columns follow the frame's own width, so an open reader panel narrows the mosaic. */}
+        <div ref={attach} className="relative" style={{ height: layout?.height ?? 0 }}>
+          {layout === undefined
+            ? null
+            : shown.map((entry) => {
+                const slot = layout.positions.get(entry.id) ?? leaving.get(entry.id);
+                if (!slot) return null;
+                return (
+                  <MosaicTile
+                    key={entry.id}
+                    streamKey={streamKey}
+                    entry={entry}
+                    muteRead={streamKey !== "read"}
+                    slot={slot}
+                    tabIndex={entry.id === tabbableId ? 0 : -1}
+                    onFocus={() => {
+                      setActiveId(entry.id);
+                    }}
+                    onKeyDown={handleTileKeyDown(entry.id)}
+                    onToggleRead={() => {
+                      toggleRead(entry);
+                    }}
+                    swipeable={layout.columns === 1}
+                    leavesWhenRead={unreadOnly}
+                    leaving={leaving.has(entry.id)}
+                  />
+                );
+              })}
+        </div>
+        <MosaicSentinel sentinelRef={setSentinel} />
+      </div>
+      {isFetchingNextPage && shown.length > 0 && layout ? (
+        <MosaicSkeleton label={t.articles.loadingMoreArticles} count={layout.columns} />
+      ) : null}
+    </PullFrame>
+  );
+};
+
+interface PullFrameProps {
+  attach: (element: HTMLElement | null) => void;
+  pull: PullState | null;
+  freshness: ComponentProps<typeof MosaicFreshness>;
+  className: string;
+  children: ReactNode;
+}
+
+// One component type in every branch, so the wrapper node survives a swap and the pull keeps its
+// element and listeners.
+const PullFrame = ({ attach, pull, freshness, className, children }: PullFrameProps) => {
+  // The rows ride the pull along with the disc, native style; the frame stays put, so the disc
+  // sits in the gap the rows leave. Typed as an intersection, since React's CSSProperties has no
+  // index for `--*` keys.
+  const pullStyle: CSSProperties & { "--pull": string } = { "--pull": `${pull?.distance ?? 0}px` };
+  return (
+    <div ref={attach} className={className}>
       <PullIndicator pull={pull} />
       <div
         className="pull-content"
@@ -392,48 +489,8 @@ export const MosaicBody = ({
         data-refreshing={pull?.refreshing || undefined}
         style={pullStyle}
       >
-        <MosaicFreshness
-          updatedAt={result.dataUpdatedAt}
-          refreshing={refreshing}
-          onRefresh={refresh}
-          searchQuery={searchQuery}
-          count={placed.length}
-        />
-        <div className="p-3">
-          {/* Columns follow the frame's own width, so an open reader panel narrows the mosaic. */}
-          <div ref={attach} className="relative" style={{ height: layout?.height ?? 0 }}>
-            {layout === undefined
-              ? null
-              : shown.map((entry) => {
-                  const slot = layout.positions.get(entry.id) ?? leaving.get(entry.id);
-                  if (!slot) return null;
-                  return (
-                    <MosaicTile
-                      key={entry.id}
-                      streamKey={streamKey}
-                      entry={entry}
-                      muteRead={streamKey !== "read"}
-                      slot={slot}
-                      tabIndex={entry.id === tabbableId ? 0 : -1}
-                      onFocus={() => {
-                        setActiveId(entry.id);
-                      }}
-                      onKeyDown={handleTileKeyDown(entry.id)}
-                      onToggleRead={() => {
-                        toggleRead(entry);
-                      }}
-                      swipeable={layout.columns === 1}
-                      leavesWhenRead={unreadOnly}
-                      leaving={leaving.has(entry.id)}
-                    />
-                  );
-                })}
-          </div>
-          <MosaicSentinel sentinelRef={setSentinel} />
-        </div>
-        {isFetchingNextPage && shown.length > 0 && layout ? (
-          <MosaicSkeleton label={t.articles.loadingMoreArticles} count={layout.columns} />
-        ) : null}
+        <MosaicFreshness {...freshness} />
+        {children}
       </div>
     </div>
   );
