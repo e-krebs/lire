@@ -247,6 +247,11 @@ delays the first read but never blocks it. `flush()` also waits for batches alre
 a refetch never overtakes a mark. Every stream, search and counts fetch sends the waiting reads
 first, so a list or a count never comes back with a mark still held in the 10 s batch. The start
 replay and that send share the 3 second cap, so a read POST that hangs never holds the lists.
+A refresh waits for its writes too: `settleWrites` in [queries.ts](../../src/client/api/queries.ts)
+flushes the queue and waits for running mutations, such as a mark unread or a feed edit, so the
+refetch never returns the state from before a write. Read marks are left out of the mutation wait,
+because the flush covers them. The flush and the wait share one 3 second cap, so a paused offline
+mutation never blocks a refresh.
 
 Renaming a category and editing a feed are optimistic, like the preferences: the cache changes
 before the request returns and rolls back on failure, so the old name never shows while the panel
@@ -259,7 +264,8 @@ A device that sat in the background holds stale lists, and nothing refetches on 
 time is ten minutes. [useRefreshOnForeground](../../src/client/hooks/useRefreshOnForeground.ts)
 fires when the page returns after more than 60 seconds hidden, and skips a refresh while another
 is still running. `useRefreshAllLists` in
-[queries.ts](../../src/client/api/queries.ts) then flushes the queue and invalidates every stream,
+[queries.ts](../../src/client/api/queries.ts) then settles the writes (the queue flush and the
+running mutations, for at most 3 seconds) and invalidates every stream,
 search and entry cache plus the counts. It keeps loaded pages, unlike a top pull-to-refresh, which
 trims to page 1. A global `refetchOnWindowFocus` would refetch every list at once.
 
@@ -269,7 +275,8 @@ mount does not refetch them: they refresh with a list refresh or after a read ma
 entry unread marks the unread-only stream and search lists stale without refetching them, so the
 open view does not jump and the unread view refetches when it mounts.
 
-A top pull trims the list to page 1 and scrolls to the top. A bottom pull keeps every loaded page
+A top pull waits for the same writes (at most 3 seconds) before it refetches, then trims the list
+to page 1 and scrolls to the top. A bottom pull keeps every loaded page
 and the scroll position. It arms only at the true end of the list: no next page, no fetch in
 flight and no next-page error. An empty result arms it too, so the no-results view refreshes the same way. It also calls `preventDefault` only after the
 touch travels a few pixels, so a scroll that reaches the pagination sentinel is not swallowed.

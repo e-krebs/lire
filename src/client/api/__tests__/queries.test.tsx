@@ -485,6 +485,103 @@ describe("queries", () => {
     flush.mockRestore();
   });
 
+  describe("when a write is running as the refresh starts", () => {
+    const setupRefresh = () => {
+      const { client, wrapper } = setup();
+      vi.stubEnv("VITE_API_MODE", "real");
+      const queryKey = keys.stream({ streamKey: techKey });
+      const fetchList = vi.fn<() => Promise<InfiniteData<EntryPage>>>(async () =>
+        Promise.resolve(page([entry({ id: "101:a" })])),
+      );
+      client.setQueryDefaults(queryKey, { queryFn: fetchList });
+      client.setQueryDefaults(keys.counts, { queryFn: async () => resolved(counts) });
+      client.setQueryData(queryKey, page([{ ...entry({ id: "101:a" }), unread: false }]));
+      const { result } = renderHook(() => ({ mark: useMarkRead(), refresh: useRefreshEntries() }), {
+        wrapper,
+      });
+      return { queryKey, fetchList, result };
+    };
+
+    it("fetches the list only after a mark unread settles", async () => {
+      let release = () => {};
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      server.use(
+        http.post("/api/entries/unread", async () => {
+          await gate;
+          return new HttpResponse(null, { status: 204 });
+        }),
+      );
+      const { queryKey, fetchList, result } = setupRefresh();
+      act(() => {
+        result.current.mark.mutate({ entryIds: ["101:a"], read: false });
+      });
+      await waitFor(() => {
+        expect(result.current.mark.isPending).toBe(true);
+      });
+
+      const pending = result.current.refresh({ queryKey });
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(fetchList).not.toHaveBeenCalled();
+
+      release();
+      await act(async () => pending);
+      expect(fetchList).toHaveBeenCalledOnce();
+    });
+
+    it("goes ahead after 3 s when a mutation never settles", async () => {
+      server.use(http.post("/api/entries/unread", async () => new Promise<never>(() => {})));
+      const { queryKey, fetchList, result } = setupRefresh();
+      act(() => {
+        result.current.mark.mutate({ entryIds: ["101:a"], read: false });
+      });
+      await waitFor(() => {
+        expect(result.current.mark.isPending).toBe(true);
+      });
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      try {
+        const pending = result.current.refresh({ queryKey });
+        await vi.advanceTimersByTimeAsync(2900);
+        expect(fetchList).not.toHaveBeenCalled();
+        await vi.advanceTimersByTimeAsync(200);
+        vi.useRealTimers();
+        await act(async () => pending);
+        expect(fetchList).toHaveBeenCalledOnce();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("does not wait for a pending read mutation", async () => {
+      const { queryKey, fetchList, result } = setupRefresh();
+      const flush = vi.spyOn(markReadQueue, "flush").mockResolvedValue();
+      try {
+        act(() => {
+          result.current.mark.mutate({ entryIds: ["101:b"], read: true });
+        });
+        await waitFor(() => {
+          expect(result.current.mark.isPending).toBe(true);
+        });
+
+        await act(async () => result.current.refresh({ queryKey }));
+        expect(fetchList).toHaveBeenCalledOnce();
+        expect(result.current.mark.isPending).toBe(true);
+      } finally {
+        flush.mockRestore();
+        markReadQueue.reset();
+      }
+    });
+
+    it("does not delay a refresh when nothing is running", async () => {
+      const { queryKey, fetchList, result } = setupRefresh();
+      const started = Date.now();
+      await act(async () => result.current.refresh({ queryKey }));
+      expect(fetchList).toHaveBeenCalledOnce();
+      expect(Date.now() - started).toBeLessThan(1000);
+    });
+  });
+
   it("flushes, then invalidates every list cache and the counts, keeping every page", async () => {
     const { client, wrapper } = setup();
     const streamKey = keys.stream({ streamKey: techKey });
