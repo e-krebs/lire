@@ -51,6 +51,9 @@ const mockSignedIn = async ({ page, limited }: { page: Page; limited: () => bool
   };
   await page.route(isApi, async (route) => {
     const { pathname } = new URL(route.request().url());
+    if (route.request().method() === "POST" && pathname === "/api/feeds/refresh") {
+      return route.fulfill({ status: 204 });
+    }
     if (route.request().method() !== "GET" || !(pathname in bodies)) return route.fallback();
     if (limited()) return route.fulfill({ status: 429, json: {} });
     return route.fulfill({ json: bodies[pathname] });
