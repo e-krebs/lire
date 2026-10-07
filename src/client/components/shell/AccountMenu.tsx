@@ -13,6 +13,7 @@ import { useOverlay } from "client/hooks/useOverlay";
 import { setLocalePreference, useLocalePreference } from "client/i18n/locale";
 import type { LocalePreference } from "client/i18n/locale";
 import { useT } from "client/i18n/useT";
+import { applyUpdate, usePwaUpdate } from "client/utils/pwaUpdate";
 import {
   browserChoices,
   getPreferredBrowser,
@@ -21,7 +22,7 @@ import {
 } from "client/utils/externalLinks";
 
 const triggerClassName = `
-  inline-flex size-10 flex-none items-center justify-center rounded-full text-muted
+  relative inline-flex size-10 flex-none items-center justify-center rounded-full text-muted
   hover:bg-surface-2
   focus-visible:outline-2 focus-visible:outline-accent
   aria-expanded:bg-surface-2 aria-expanded:text-ink
@@ -118,6 +119,7 @@ export const AccountMenu = () => {
   const authStatus = useAuthStatus();
   const barPosition = useBarPosition();
   const mock = isMockMode();
+  const { updateReady, updateDeferred } = usePwaUpdate();
   const { shell } = useT();
   useOverlay({ id: "account-menu", isOpen: open });
 
@@ -153,6 +155,12 @@ export const AccountMenu = () => {
         className={triggerClassName}
       >
         <Icon name="settings" />
+        {updateReady && updateDeferred ? (
+          <span
+            aria-hidden="true"
+            className="update-dot absolute top-2 right-2 size-2 rounded-full bg-accent"
+          />
+        ) : null}
       </button>
       <div
         ref={popoverRef}
@@ -183,6 +191,24 @@ export const AccountMenu = () => {
             {profile.data?.email ?? "—"}
           </p>
         </div>
+
+        {updateReady ? (
+          <button
+            type="button"
+            onClick={() => {
+              close();
+              void applyUpdate();
+            }}
+            className={`
+              flex h-10 w-full items-center rounded-xl bg-accent-soft px-3 text-sm font-medium
+              text-accent-text
+              hover:bg-surface-2
+              focus-visible:outline-2 focus-visible:outline-accent
+            `}
+          >
+            {shell.reloadToUpdate}
+          </button>
+        ) : null}
 
         {import.meta.env.VITE_DEMO !== "true" && (
           <Row label={shell.account}>

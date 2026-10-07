@@ -287,11 +287,16 @@ names the exit it will take. The two pulls never compete: each hook listens on i
 grid's pane is hidden while the reader is open, and at `lg`+ it is `inert` behind the scrim.
 
 Updates are prompt-style. A new worker installs and waits. The page learns of it through
-[pwaUpdate.ts](../../src/client/utils/pwaUpdate.ts) and shows `UpdateToast`
-([UpdateToast.tsx](../../src/client/components/shell/UpdateToast.tsx)) with Reload and Later.
+[pwaUpdate.ts](../../src/client/utils/pwaUpdate.ts) and shows `UpdateReadyToast` with Reload and Later.
+`SWToast` ([SWToast/](../../src/client/components/shell/SWToast/)) picks that toast or `OfflineToast` from the state, and both build on `Toast`.
 Reload flushes the read-mark queue for at most 2 seconds, then tells the worker to skip waiting, and
 the page reloads once the new worker controls it. The page reloads at once when no worker waits or
-the page has no controller, and 3 seconds after the request when the worker never takes control. The same toast announces once that the app opens offline. The page asks
+the page has no controller, and 3 seconds after the request when the worker never takes control. The same toast announces once that the app opens offline.
+
+Later does not drop the update. The toast shrinks into the cog
+(a CSS animation, `.toast-absorb` in [styles.css](../../src/client/styles.css)), a dot marks the cog, and the cog menu
+keeps a "Reload to update" entry for as long as the update waits. The entry shows beside the toast
+too. The animation aims at fixed offsets, so a change to the bar's size or padding must change them too. Reduced motion turns the flight into a short fade. The page asks
 for a new worker every hour and whenever the tab becomes visible, because an installed app rarely
 reloads on its own.
 

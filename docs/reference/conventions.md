@@ -69,7 +69,7 @@ the common content goes through `useReparentedContent` and each wrapper renders 
 the YouTube, Vimeo, X, Bluesky, Instagram, Threads and TikTok frame sources.
 A lint rule checks the hook
 file names. An external store and the hook that reads it live together in `utils`, as in `viewPrefs.ts` and `pwaUpdate.ts`
-(`usePwaUpdate`, which drives `UpdateToast`).
+(`usePwaUpdate`, which drives `SWToast`).
 
 ## Stories
 

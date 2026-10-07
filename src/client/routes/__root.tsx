@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 import { AppShell } from "client/components/shell/AppShell";
 import { SignIn } from "client/components/shell/SignIn";
 import { DemoBanner } from "client/components/shell/DemoBanner";
-import { UpdateToast } from "client/components/shell/UpdateToast";
+import { SWToast } from "client/components/shell/SWToast";
 import { useAuthStatus, isSignInRequired } from "client/api/queries";
 
 // Mirrors `useTier`'s pattern: the query cache is an external store, so a Sign-in-required error
@@ -35,7 +35,7 @@ const RootComponent = () => {
           {import.meta.env.VITE_DEMO !== "true" && signedOut ? <SignIn /> : <Outlet />}
         </div>
       </div>
-      <UpdateToast />
+      <SWToast />
     </AppShell>
   );
 };

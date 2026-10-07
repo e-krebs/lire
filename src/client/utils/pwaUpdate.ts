@@ -5,6 +5,8 @@ import { markReadQueue } from "client/api/markReadQueue";
 
 export interface PwaState {
   updateReady: boolean;
+  // The toast was sent away with Later: the update still waits, and the cog menu still offers it.
+  updateDeferred: boolean;
   offlineReady: boolean;
 }
 
@@ -22,7 +24,7 @@ type Register = (options: RegisterOptions) => (reloadPage?: boolean) => Promise<
 
 const UPDATE_CHECK_MS = 60 * 60 * 1000;
 
-const IDLE: PwaState = { updateReady: false, offlineReady: false };
+const IDLE: PwaState = { updateReady: false, updateDeferred: false, offlineReady: false };
 
 let state = IDLE;
 let updateSW: ((reloadPage?: boolean) => Promise<void>) | undefined;
@@ -43,8 +45,12 @@ const subscribe = (onChange: () => void): (() => void) => {
 
 const getSnapshot = (): PwaState => state;
 
-export const dismiss = ({ kind }: { kind: "update" | "offline" }): void => {
-  set(kind === "update" ? { updateReady: false } : { offlineReady: false });
+export const deferUpdate = (): void => {
+  set({ updateDeferred: true });
+};
+
+export const dismissOffline = (): void => {
+  set({ offlineReady: false });
 };
 
 const FLUSH_TIMEOUT_MS = 2000;
@@ -78,10 +84,11 @@ export const applyUpdate = async (): Promise<void> => {
 };
 
 export const registerPwa = ({ register }: { register: Register }): void => {
+  set(IDLE);
   updateSW = register({
     immediate: true,
     onNeedRefresh: () => {
-      set({ updateReady: true });
+      set({ updateReady: true, updateDeferred: false });
     },
     onOfflineReady: () => {
       set({ offlineReady: true });
