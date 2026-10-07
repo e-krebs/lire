@@ -428,6 +428,62 @@ body {
   }
 }
 
+/* "Later" sends the update toast into the cog. The cog sits 28px from the right edge and from the
+   bar's edge (8px padding plus half its 40px), top or bottom with `data-bar`, and the toast is
+   bottom-centred, so the offsets need no measuring. `svh`, not `dvh`: see the viewport notes in
+   architecture.md. Under reduced motion the toast only fades. The fade ends as the toast nears the cog, and that end hides it and pops the dot. */
+.toast-absorb {
+  --absorb-x: calc(50vw - 28px - env(safe-area-inset-right, 0px));
+  --absorb-y: calc(
+    -100svh + 50% + max(1rem, env(safe-area-inset-bottom, 0px)) + 28px +
+      env(safe-area-inset-top, 0px)
+  );
+  animation: toast-absorb-fade 150ms linear forwards;
+}
+[data-bar="bottom"] .toast-absorb {
+  --absorb-y: calc(
+    50% + max(1rem, env(safe-area-inset-bottom, 0px)) - 28px - env(safe-area-inset-bottom, 0px)
+  );
+}
+@media (prefers-reduced-motion: no-preference) {
+  .toast-absorb {
+    animation:
+      toast-absorb-move 280ms cubic-bezier(0.2, 0.7, 0.3, 1) forwards,
+      toast-absorb-fade 130ms linear forwards;
+  }
+}
+@keyframes toast-absorb-move {
+  to {
+    transform: translate(var(--absorb-x), var(--absorb-y)) scale(0.15);
+  }
+}
+@keyframes toast-absorb-fade {
+  25% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* The dot lands on the cog as the toast shrinks into it, so it pops in once the flight is done. */
+@media (prefers-reduced-motion: no-preference) {
+  .update-dot {
+    animation: update-dot-pop 250ms ease-out;
+  }
+}
+@keyframes update-dot-pop {
+  from {
+    transform: scale(0);
+  }
+  60% {
+    transform: scale(1.5);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
 /* Results-grid card. `--hue` is the feed's hue, set inline by the tile; every colour below
    derives from it, and `light-dark()` follows `color-scheme` on <html>. */
 .tile-card {
