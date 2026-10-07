@@ -569,6 +569,16 @@ const keepUnreadListsStale = (client: QueryClient, write: () => void): void => {
   });
 };
 
+// An entry marked unread was absent from unread-only lists; stale only, so the open view does not
+// jump. Done at mark time too: the mutation settles when its batch goes upstream, up to MARK_DELAY_MS
+// later, and a list opened before that would otherwise stay fresh without the entry.
+const staleUnreadLists = (client: QueryClient): void => {
+  void client.invalidateQueries({
+    predicate: ({ queryKey }) => isUnreadOnlyListKey(queryKey),
+    refetchType: "none",
+  });
+};
+
 const shiftUnreadCounts = ({
   client,
   entries,
@@ -653,6 +663,8 @@ export const useMark = () => {
         }
       });
 
+      if (!read) staleUnreadLists(client);
+
       for (const entryId of entryIds) {
         client.setQueryData<Entry>(keys.entry(entryId), (prev) =>
           prev ? { ...prev, unread: !read } : prev,
@@ -698,13 +710,7 @@ export const useMark = () => {
     },
     onSettled: (_data, _error, { read }) => {
       void client.invalidateQueries({ queryKey: keys.counts });
-      // An entry marked unread was absent from unread-only lists; stale only, so the open view does not jump.
-      if (!read) {
-        void client.invalidateQueries({
-          predicate: ({ queryKey }) => isUnreadOnlyListKey(queryKey),
-          refetchType: "none",
-        });
-      }
+      if (!read) staleUnreadLists(client);
     },
   });
 };
