@@ -76,8 +76,8 @@ describe("fixtureTransport", () => {
 
     const marked = await send({
       method: "POST",
-      path: "/api/entries/read",
-      body: { entryIds: ["101:0dcd64"] },
+      path: "/api/entries/mark",
+      body: { read: ["101:0dcd64"] },
     });
 
     expect(marked.status).toBe(204);
@@ -124,7 +124,7 @@ describe("fixtureTransport", () => {
   });
 
   it("answers a bad body with 400", async () => {
-    const answer = await send({ method: "POST", path: "/api/entries/read", body: {} });
+    const answer = await send({ method: "POST", path: "/api/entries/mark", body: {} });
 
     expect(answer.status).toBe(400);
   });

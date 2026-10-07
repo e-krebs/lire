@@ -1,7 +1,7 @@
 // Whether a new version or offline support is ready, from the service worker registration.
 
 import { useSyncExternalStore } from "react";
-import { markReadQueue } from "client/api/markReadQueue";
+import { markQueue } from "client/api/markQueue";
 
 export interface PwaState {
   updateReady: boolean;
@@ -62,7 +62,7 @@ const flushWithin = async ({ ms }: { ms: number }): Promise<void> => {
     timer = setTimeout(resolve, ms);
   });
   // Reloading would drop marks still waiting in the batch.
-  await Promise.race([markReadQueue.flush().catch(() => {}), timeout]);
+  await Promise.race([markQueue.flush().catch(() => {}), timeout]);
   clearTimeout(timer);
 };
 

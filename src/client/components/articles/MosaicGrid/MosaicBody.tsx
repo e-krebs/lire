@@ -3,12 +3,7 @@ import type { ComponentProps, CSSProperties, KeyboardEvent, ReactNode } from "re
 import { Link } from "@tanstack/react-router";
 import type { StreamKey } from "shared/feedsApi/streamKey";
 import type { Entry } from "shared/feedsApi/types";
-import {
-  flattenStream,
-  useMarkRead,
-  useRefreshAllLists,
-  useRefreshEntries,
-} from "client/api/queries";
+import { flattenStream, useMark, useRefreshAllLists, useRefreshEntries } from "client/api/queries";
 import type { useStream } from "client/api/queries";
 import { MosaicTile } from "client/components/articles/MosaicTile";
 import type { TileSlot } from "client/components/articles/MosaicTile";
@@ -128,7 +123,7 @@ export const MosaicBody = ({
   // has to follow it.
   const [sentinel, setSentinel] = useState<HTMLDivElement | null>(null);
   const { attach, element: frame, width } = useElementWidth();
-  const markRead = useMarkRead();
+  const mark = useMark();
   // A card marked read in an unread-only view goes through two states: `leaving`, fading out in
   // the slot it had, since the layout no longer places it; then `gone`, out of the layout for good.
   const [leaving, setLeaving] = useState<ReadonlyMap<string, TileSlot>>(() => new Map());
@@ -417,7 +412,7 @@ export const MosaicBody = ({
   }
 
   const toggleRead = (entry: Entry): void => {
-    markRead.mutate({ entryIds: [entry.id], read: entry.unread });
+    mark.mutate({ entryIds: [entry.id], read: entry.unread });
     if (!entry.unread || !unreadOnly || !cardHasFocus(entry.id)) return;
     const next = leavingNeighbour(entry.id);
     if (next !== undefined) focusTile(next);

@@ -19,27 +19,35 @@ The decision has three parts: the queue, the worker and the update flow.
 
 ### Queue
 
-Pending read ids persist in one IndexedDB store, `lire-mark-read`, which the page and the service
-worker share. A service worker cannot read `localStorage`.
+Pending marks, read and unread, persist in one IndexedDB store, `lire-mark-read`, which the page
+and the service worker share. A service worker cannot read `localStorage`. The queue, `markQueue`,
+holds one intent per entry id and the store holds `{ id, state }` rows, `state` being `read` or
+`unread`. A row from before the state existed reads as `read`. The reverse does not hold: an old
+bundle still open on the same database version deletes the rows it cannot read as numbers, so a tab
+that has not updated loses the new rows.
 
-- **Age limit.** Each id carries the time it was added, and the store drops ids older than 24 hours.
-  A failed send must not override an unread made on another device days later.
-- **Write first.** `add` writes the id to the store before the batch can leave. Mark unread cancels
-  the id and awaits its removal from the store before it calls the API, so a stored read cannot
-  land after the unread.
-  The mutation uses `networkMode: "always"`, so a read made offline still reaches the store
-  instead of pausing. An unread made offline waits for the network before it cancels and calls
-  the API, so a stored read stays until the unread can go out.
+- **Age limit.** Each row carries the time it was added, and the store drops rows older than 24
+  hours. A failed send must not override a mark made on another device days later.
+- **Write first.** A mark writes its row to the store before the batch can leave. Both marks wait
+  10 seconds, or until 5 ids are queued, and go through the same path. The mutations use
+  `networkMode: "always"`, so a mark made offline still reaches the store instead of pausing.
+- **Cancel rule.** The last mark of an id wins. A new mark that is the opposite of the queued one
+  deletes it, so no request goes out for that id, unless the server may already hold the queued
+  state (a request in flight, or a row left by a failed send or a replay): then the new mark queues
+  in its place. A mark of an id whose request is in flight queues
+  behind it, because the sent mark has reached the server and its opposite must still go out.
 - **Flush on hide.** The queue flushes with `keepalive` on `pagehide` and when the page becomes
   hidden, because mobile browsers fire `visibilitychange` more reliably. The sync registration
   starts in parallel with that flush, not after it.
-- **Replay.** At start and on the `online` event, the queue sends the ids a previous session left
-  stored. `all()` reads keys and values in one transaction and also returns the unexpired ids held
+- **One request.** A batch carries `{ read, unread }` to `POST /api/entries/mark`, and an id is in
+  one list only. One request is in flight at a time. Both marks share the retry rule below.
+- **Replay.** At start and on the `online` event, the queue sends the marks a previous session left
+  stored. `all()` reads keys and values in one transaction and also returns the unexpired rows held
   in memory. An id already pending, in flight or being written is skipped, so two replays never send
   one id twice. A replay has no caller waiting, so a failure stays silent.
-- **Retryable failures.** A network error, 401, 403, 408, 429 or 5xx keeps the ids stored and
-  resolves the waiters, so the optimistic read stays. Any other 4xx drops the ids and rejects the
-  waiters, so the read rolls back; a bad request would otherwise loop forever. One `isRetryable`
+- **Retryable failures.** A network error, 401, 403, 408, 429 or 5xx keeps the rows stored and
+  resolves the waiters, so the optimistic mark stays. Any other 4xx drops the rows and rejects the
+  waiters, so the mark rolls back; a bad request would otherwise loop forever. One `isRetryable`
   helper serves the page and the worker.
 - **Fallback.** Mock and demo builds use a memory store, because fixture state resets on reload
   and there is no real `/api`. If IndexedDB fails in a real build, that call falls back to memory
@@ -51,7 +59,7 @@ The service worker moves from the generated `generateSW` worker to `injectManife
 `src/client/sw.ts`, because a generated worker cannot hold a `sync` handler. It keeps the
 precache and the `index.html` navigation fallback with its `/api/` denylist.
 
-- **Background Sync.** A `sync` event sends the stored ids when the page is gone. The queue
+- **Background Sync.** A `sync` event replays both stored lists, reads and unreads, to `POST /api/entries/mark` when the page is gone. The queue
   registers the sync tag only when the page may not deliver: on hide, and after a retryable
   failure while the page is hidden. A visible page retries through the `online` replay and at
   start. The queue never registers on `add`: an immediate sync would bypass the batching NewsBlur asks for. Only
@@ -82,10 +90,11 @@ fallback. The worker calls `skipWaiting` only on a `SKIP_WAITING` message and ke
 
 ## Consequences
 
-- A read mark survives a closed tab, a failed send and a crash, for up to 24 hours.
+- A mark, read or unread, survives a closed tab, a failed send and a crash, for up to 24 hours.
 - Two code paths send marks: the page queue and the worker. Both read the same store, and both
-  remove an id only after a successful send.
-- After a retryable failure the entry stays read in the list, while the server counts still include
+  remove a row only after a successful send.
+- An unread waits up to 10 seconds like a read, and a quick toggle sends nothing.
+- After a retryable failure the entry keeps its optimistic state in the list, while the server counts still include
   it until delivery.
 - Firefox and Safari lose marks only when the page cannot flush, and recover them at the next start.
 - The service worker is code to maintain and typecheck (`yarn typecheck:sw`), not generated.

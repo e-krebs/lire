@@ -32,6 +32,12 @@ describe("matchRoute", () => {
     );
   });
 
+  it("matches the merged mark route", () => {
+    expect(matchRoute({ method: "POST", pathname: "/api/entries/mark" })?.route.path).toBe(
+      "/api/entries/mark",
+    );
+  });
+
   it.for(["/api", "/api/unknown", "/api/feeds/42/extra", "/profile", "/api/entries/%E0%A4%A"])(
     "rejects %s",
     (pathname) => {

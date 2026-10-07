@@ -185,7 +185,7 @@ describe("createFakeNewsblur through handle", () => {
     });
     const id = page.items[0].id;
     expect(
-      (await send({ method: "POST", url: "/api/entries/read", body: { entryIds: [id] } })).status,
+      (await send({ method: "POST", url: "/api/entries/mark", body: { read: [id] } })).status,
     ).toBe(204);
     expect(
       parse({ schema: EntrySchema, body: (await send({ url: `/api/entries/${id}` })).body }).unread,
@@ -194,7 +194,7 @@ describe("createFakeNewsblur through handle", () => {
       parse({ schema: CountsSchema, body: (await send({ url: "/api/counts" })).body }).feeds["106"],
     ).toBe(4);
     expect(
-      (await send({ method: "POST", url: "/api/entries/unread", body: { entryIds: [id] } })).status,
+      (await send({ method: "POST", url: "/api/entries/mark", body: { unread: [id] } })).status,
     ).toBe(204);
     expect(
       parse({ schema: CountsSchema, body: (await send({ url: "/api/counts" })).body }).feeds["106"],

@@ -8,6 +8,7 @@ import {
   CreateFeedBodySchema,
   CreateWebFeedBodySchema,
   DeleteCategoryQuerySchema,
+  MarkBodySchema,
   MarkEntriesBodySchema,
   PreferencesUpdateSchema,
   SearchEntriesQuerySchema,
@@ -878,6 +879,24 @@ const HANDLERS: Record<RouteKey, Handler> = {
   "POST /api/entries/unread": async ({ ctx, body }) => {
     const { entryIds } = parseInput({ schema: MarkEntriesBodySchema, value: body });
     for (const entryId of entryIds) {
+      await write({
+        ctx,
+        request: post({ path: "/reader/mark_story_hash_as_unread", form: { story_hash: entryId } }),
+      });
+    }
+    return NO_CONTENT;
+  },
+
+  // Reads first, so an entry in both lists ends unread.
+  "POST /api/entries/mark": async ({ ctx, body }) => {
+    const { read = [], unread = [] } = parseInput({ schema: MarkBodySchema, value: body });
+    if (read.length > 0) {
+      await write({
+        ctx,
+        request: post({ path: "/reader/mark_story_hashes_as_read", form: { story_hash: read } }),
+      });
+    }
+    for (const entryId of unread) {
       await write({
         ctx,
         request: post({ path: "/reader/mark_story_hash_as_unread", form: { story_hash: entryId } }),

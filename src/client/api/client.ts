@@ -160,18 +160,25 @@ export const searchFeeds = async (query: string): Promise<FeedSearchResult[]> =>
     await request({ method: "GET", path: "/api/search/feeds", query: { q: query } }),
   );
 
-export const markRead = async ({
-  entryIds,
+// An empty list is left out of the body.
+export const markEntries = async ({
+  read = [],
+  unread = [],
   keepalive,
 }: {
-  entryIds: string[];
+  read?: string[];
+  unread?: string[];
   keepalive?: boolean;
 }): Promise<void> => {
-  await requestVoid({ method: "POST", path: "/api/entries/read", body: { entryIds }, keepalive });
-};
-
-export const markUnread = async ({ entryIds }: { entryIds: string[] }): Promise<void> => {
-  await requestVoid({ method: "POST", path: "/api/entries/unread", body: { entryIds } });
+  await requestVoid({
+    method: "POST",
+    path: "/api/entries/mark",
+    body: {
+      ...(read.length > 0 && { read }),
+      ...(unread.length > 0 && { unread }),
+    },
+    keepalive,
+  });
 };
 
 export const createFeed = async ({

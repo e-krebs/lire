@@ -412,6 +412,59 @@ describe("handle writes", () => {
       ]);
     });
 
+    it("sends the read call before the unread calls on the merged route", async () => {
+      const upstream = fakeUpstream({
+        "POST /reader/mark_story_hashes_as_read": OK,
+        "POST /reader/mark_story_hash_as_unread": OK,
+      });
+      const response = await send({
+        method: "POST",
+        url: "/api/entries/mark",
+        body: { unread: ["3:c", "4:d"], read: ["1:a", "2:b"] },
+        upstream,
+      });
+      expect(response.status).toBe(204);
+      expect(upstream.calls.map((call) => [call.path, call.form])).toEqual([
+        ["/reader/mark_story_hashes_as_read", { story_hash: ["1:a", "2:b"] }],
+        ["/reader/mark_story_hash_as_unread", { story_hash: "3:c" }],
+        ["/reader/mark_story_hash_as_unread", { story_hash: "4:d" }],
+      ]);
+    });
+
+    it("skips the read call when the merged route has only unreads", async () => {
+      const upstream = fakeUpstream({ "POST /reader/mark_story_hash_as_unread": OK });
+      const response = await send({
+        method: "POST",
+        url: "/api/entries/mark",
+        body: { unread: ["3:c"] },
+        upstream,
+      });
+      expect(response.status).toBe(204);
+      expect(upstream.calls).toHaveLength(1);
+    });
+
+    it.for([{}, { read: [], unread: [] }])("rejects the merged route body %o", async (body) => {
+      const upstream = fakeUpstream({});
+      const response = await send({ method: "POST", url: "/api/entries/mark", body, upstream });
+      expect(response.status).toBe(400);
+      expect(upstream.calls).toHaveLength(0);
+    });
+
+    it("stops the merged route at the first upstream failure", async () => {
+      const upstream = fakeUpstream({
+        "POST /reader/mark_story_hashes_as_read": { code: 0 },
+        "POST /reader/mark_story_hash_as_unread": OK,
+      });
+      const response = await send({
+        method: "POST",
+        url: "/api/entries/mark",
+        body: { read: ["1:a"], unread: ["3:c"] },
+        upstream,
+      });
+      expect(response.status).toBe(400);
+      expect(upstream.calls).toHaveLength(1);
+    });
+
     it("answers 400 on a write that fails with HTTP 200", async () => {
       const upstream = fakeUpstream({
         "POST /reader/mark_story_hashes_as_read": {

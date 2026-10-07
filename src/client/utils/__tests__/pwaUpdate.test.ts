@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { markReadQueue } from "client/api/markReadQueue";
+import { markQueue } from "client/api/markQueue";
 import { applyUpdate, registerPwa } from "client/utils/pwaUpdate";
 
-const originalFlush = markReadQueue.flush;
+const originalFlush = markQueue.flush;
 
 const setup = ({ waiting, controller }: { waiting: boolean; controller: boolean }) => {
   const updateSW = vi.fn<(reloadPage?: boolean) => Promise<void>>().mockResolvedValue(undefined);
@@ -27,7 +27,7 @@ describe("applyUpdate", () => {
   });
 
   afterEach(() => {
-    markReadQueue.flush = originalFlush;
+    markQueue.flush = originalFlush;
     vi.useRealTimers();
     vi.unstubAllGlobals();
   });
@@ -69,7 +69,7 @@ describe("applyUpdate", () => {
 
   describe("when the flush never settles", () => {
     it("gives up after 2 seconds and still updates", async () => {
-      markReadQueue.flush = async () => new Promise<void>(() => {});
+      markQueue.flush = async () => new Promise<void>(() => {});
       const { updateSW } = setup({ waiting: true, controller: true });
 
       const done = applyUpdate();
@@ -82,7 +82,7 @@ describe("applyUpdate", () => {
 
   describe("when the flush fails", () => {
     it("still updates", async () => {
-      markReadQueue.flush = async () => {
+      markQueue.flush = async () => {
         await Promise.resolve();
         throw new Error("offline");
       };

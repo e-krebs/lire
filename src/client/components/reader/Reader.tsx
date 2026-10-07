@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import DOMPurify from "dompurify";
 import { useNavigate } from "@tanstack/react-router";
-import { useEntry, useFeeds, useMarkRead } from "client/api/queries";
+import { useEntry, useFeeds, useMark } from "client/api/queries";
 import { PullAction } from "client/components/articles/PullIndicator";
 import { NewsletterFrame } from "client/components/reader/NewsletterFrame";
 import { ReaderHeader } from "client/components/reader/ReaderHeader";
@@ -118,7 +118,7 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
   const t = useT();
   const entry = useEntry(entryId);
   const feeds = useFeeds();
-  const { mutate } = useMarkRead();
+  const { mutate } = useMark();
   const navigate = useNavigate();
   const paneRef = useRef<HTMLDivElement>(null);
   const { width, separatorProps } = useResizablePanel();
