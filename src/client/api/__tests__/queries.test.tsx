@@ -1027,6 +1027,31 @@ describe("queries", () => {
     expect(fetches).toBe(fetchesBefore + 1);
   });
 
+  it("marks unread-only lists stale as the unread is marked, before its batch goes upstream", async () => {
+    const { client, wrapper } = setup();
+    client.setDefaultOptions({ queries: { retry: false, staleTime: Infinity } });
+    const key = keys.stream({ streamKey: "all", unreadOnly: true });
+    const list = renderHook(() => useStream({ streamKey: "all", unreadOnly: true }), { wrapper });
+    await waitFor(() => {
+      expect(list.result.current.isSuccess).toBe(true);
+    });
+    const { result } = renderHook(() => useMark(), { wrapper });
+    const entryId = flattenStream(list.result.current.data)[0]?.id ?? "";
+
+    try {
+      act(() => {
+        result.current.mutate({ entryIds: [entryId], read: false });
+      });
+
+      await waitFor(() => {
+        expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+      });
+      expect(result.current.isPending).toBe(true);
+    } finally {
+      markQueue.reset();
+    }
+  });
+
   it("keeps an unread-only list stale across a later optimistic mark", async () => {
     const { client, wrapper } = setup();
     client.setDefaultOptions({ queries: { retry: false, staleTime: Infinity } });
