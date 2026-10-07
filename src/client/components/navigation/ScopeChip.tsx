@@ -31,7 +31,7 @@ export const ScopeChip = ({ label, count, onClear, fluid }: ScopeChipProps) => {
       data-count={count === undefined ? undefined : ""}
       className={chipClassName}
     >
-      <span className="flex min-w-0 items-baseline gap-1.5">
+      <span className="flex min-w-0 items-baseline gap-2">
         <span data-tip={label} data-tip-overflow="" className="truncate">
           {label}
         </span>
