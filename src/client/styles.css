@@ -103,8 +103,11 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  /* Installed on a phone the shell owns the viewport, so the body never scrolls: each pane does. */
-  height: 100dvh;
+  /* Installed on a phone the shell owns the viewport, so the body never scrolls: each pane does.
+     `svh`, not `dvh`: after a reload in the Android app `dvh` reads 56px taller than the visible
+     viewport, with no resize, and cuts the bottom bar. The keyboard still shrinks `svh`, because
+     `resizes-content` resizes the whole layout viewport. */
+  height: 100svh;
   overflow: hidden;
 }
 

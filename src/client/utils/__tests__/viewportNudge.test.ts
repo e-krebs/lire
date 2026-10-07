@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { installViewportNudge } from "client/utils/viewportNudge";
 
@@ -114,5 +115,16 @@ describe("installViewportNudge", () => {
     install();
 
     expect(meta.content).toBe("width=device-width, initial-scale=1");
+  });
+
+  // The nudge cannot fix this one: after an in-tab load in the Android app `dvh` reads taller than
+  // the visible viewport and fires no resize, so a `dvh` body pushes the bottom bar off screen.
+  it("leaves the body height to svh, not dvh", () => {
+    // `css: false` in the client project turns a `?raw` import into an empty string.
+    const styles = readFileSync("src/client/styles.css", "utf8");
+    const body = /(?:^|\n)body \{([^}]*)\}/.exec(styles)?.[1]?.replace(/\/\*[\s\S]*?\*\//g, "");
+
+    expect(body).toMatch(/\bheight: 100svh;/);
+    expect(body).not.toMatch(/\bdvh\b/);
   });
 });
