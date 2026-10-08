@@ -124,8 +124,10 @@ const setup = ({ entryId, seedEntry }: { entryId: string; seedEntry?: Entry }) =
 // jsdom has no TouchEvent constructor that takes touches, so the list is planted. jsdom also
 // reports every box as 0, which puts the pane at its end from the start.
 const swipe = ({ target, from, to }: { target: Element; from: number; to: number }): void => {
+  // An event from the target's own realm, so one sent inside the newsletter frame dispatches there.
+  const { Event: TargetEvent } = target.ownerDocument.defaultView!;
   const send = (type: string, ys: number[]): void => {
-    const event = new Event(type, { bubbles: true, cancelable: true });
+    const event = new TargetEvent(type, { bubbles: true, cancelable: true });
     Object.defineProperty(event, "touches", {
       value: ys.map((clientY) => ({ clientX: 0, clientY })),
     });
@@ -578,17 +580,22 @@ describe("Reader", () => {
     });
   });
 
-  it("leaves the panel open on a pull up past the end of a newsletter", async () => {
+  it("marks a newsletter read, then closes the panel, on a pull up inside its frame", async () => {
     const { view } = setup({ entryId: NEWSLETTER_ID });
-    const article = await ui.article(view);
+    await ui.heading(view, { level: 1 });
     await waitFor(() => {
-      expect(view.container.querySelectorAll("iframe")).toHaveLength(1);
+      expect(ui.frame(view)).not.toBeNull();
     });
+    const frame = ui.frame(view)!;
+    fireEvent.load(frame);
 
-    swipe({ target: article, from: 400, to: 200 });
+    swipe({ target: frame.contentDocument!.body, from: 400, to: 200 });
 
-    expect(ui.pullBand).toBeNull();
-    expect(ui.queryText(view, "stream page")).toBeNull();
+    expect(await ui.text(view, "stream page")).toBeInTheDocument();
+    await markQueue.flush();
+    await waitFor(async () => {
+      expect(await fixtureUnread(NEWSLETTER_ID)).toBe(false);
+    });
   });
 
   it("names the exit on the band while the pull is held", async () => {
