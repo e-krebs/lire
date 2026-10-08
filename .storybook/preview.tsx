@@ -1,6 +1,8 @@
 import type { Preview } from "@storybook/react-vite";
 import { setLocalePreference } from "../src/client/i18n/locale";
 import "../src/client/styles.css";
+import "./preview.css";
+import { ThemedDocsContainer } from "./ThemedDocsContainer";
 
 const preview: Preview = {
   tags: ["autodocs"],
@@ -25,6 +27,7 @@ const preview: Preview = {
   parameters: {
     layout: "centered",
     a11y: { test: "error" },
+    docs: { container: ThemedDocsContainer },
     controls: { matchers: { date: /At$/ } },
   },
 };
