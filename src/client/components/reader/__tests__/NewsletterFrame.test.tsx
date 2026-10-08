@@ -211,6 +211,30 @@ describe("NewsletterFrame", () => {
     });
   });
 
+  describe("when picking the page colors", () => {
+    const renderFrame = (html: string) => render(<NewsletterFrame html={html} dir="ltr" />);
+
+    it("follows the OS scheme when the email sets no colors", () => {
+      renderFrame("<p>Hello</p>");
+
+      expect(ui.frame.srcdoc).toContain('<meta name="color-scheme" content="light dark">');
+      expect(ui.frame.srcdoc).toContain("background: light-dark(#fff, #000)");
+      expect(ui.frame).not.toHaveAttribute("data-palette");
+    });
+
+    it.each([
+      ['<p style="color: #000">Hello</p>'],
+      ['<td style="background-color: #fafafa">Hello</td>'],
+      ['<table bgcolor="#ffffff"><tr><td>Hello</td></tr></table>'],
+      ['<font color="#333">Hello</font>'],
+    ])("stays white as authored for %s", (html) => {
+      renderFrame(html);
+
+      expect(ui.frame.srcdoc).toContain('<meta name="color-scheme" content="light">');
+      expect(ui.frame).toHaveAttribute("data-palette", "authored");
+    });
+  });
+
   describe("when the frame unmounts", () => {
     it("stops forwarding keys", () => {
       const { doc, received, press, view } = setup();

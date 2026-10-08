@@ -135,7 +135,10 @@ body {
   display: block;
   width: 100%;
   border: 0;
-  background: #fff;
+  background: light-dark(#fff, #000);
+  color-scheme: light dark;
+}
+.newsletter-frame[data-palette="authored"] {
   color-scheme: light;
 }
 

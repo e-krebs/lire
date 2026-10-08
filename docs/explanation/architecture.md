@@ -43,8 +43,9 @@ styles, and Zod to parse every response against the schemas in
 
 The reader sanitizes every article body with DOMPurify. A blog post renders inline under
 `.prose-reader`. A newsletter, recognized by the `webfeeds--newsletter` wrapper in its HTML, renders
-in a sandboxed `srcdoc` iframe on a full-width white band, so the sender's own layout and colors
-apply and the app's article styles cannot break it. The parent sizes the frame to its content and forwards key
+in a sandboxed `srcdoc` iframe on a full-width band, so the sender's own layout and colors
+apply and the app's article styles cannot break it. An email that sets no colors of its own follows
+the OS scheme, white or black; one with any inline color stays on white as authored. The parent sizes the frame to its content and forwards key
 presses out of it. The reasons and limits are in
 [ADR 0007](../adr/0007-newsletter-iframe.md).
 
