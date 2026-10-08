@@ -23,6 +23,14 @@ const WEB_FEED_PREFIX = "webfeed:";
 export const webFeedPageOf = (feedUrl: string): string =>
   feedUrl.startsWith(WEB_FEED_PREFIX) ? feedUrl.slice(WEB_FEED_PREFIX.length) : feedUrl;
 
+// A newsletter's address is `newsletter:<user pk>:<sender email>`, or `list-id:<id>` in place of
+// the email when the mail carried a List-ID header.
+const senderEmailOf = (feedUrl: string): string | undefined => {
+  if (!feedUrl.startsWith(NEWSLETTER_PREFIX)) return undefined;
+  const sender = feedUrl.split(":").slice(2).join(":");
+  return /^[^\s@:]+@[^\s@:]+$/.test(sender) ? sender : undefined;
+};
+
 const collectPlacements = (items: FolderItem[]): Map<string, FolderPath[]> => {
   const placements = new Map<string, FolderPath[]>();
   const walk = ({ children, path }: { children: FolderItem[]; path: FolderPath }) => {
@@ -48,6 +56,11 @@ export const categoryIdsOf = (paths: FolderPath[]): string[] => [
   ...new Set(paths.flatMap((path) => path.slice(0, 1))),
 ];
 
+const optionalSender = (feedUrl: string): { senderEmail?: string } => {
+  const senderEmail = senderEmailOf(feedUrl);
+  return senderEmail === undefined ? {} : { senderEmail };
+};
+
 export const toFeed = ({
   upstream,
   categoryIds,
@@ -62,6 +75,7 @@ export const toFeed = ({
   iconUrl: iconUrlOf(upstream.favicon_url),
   categoryIds,
   isNewsletter: upstream.feed_address.startsWith(NEWSLETTER_PREFIX),
+  ...optionalSender(upstream.feed_address),
   // Left out on other feeds, so their literals need no `isWebFeed: false`.
   ...((upstream.is_webfeed ?? upstream.feed_address.startsWith(WEB_FEED_PREFIX))
     ? { isWebFeed: true }

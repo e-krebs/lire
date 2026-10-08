@@ -30,7 +30,7 @@ folder title, an entry id is the story hash. A stream key is `all`, `read`, `fol
 | POST | `/api/categories` | Create a category, body `{ label }`. 409 when a category already has the label |
 | PATCH | `/api/categories/:categoryId` | Rename, body `{ label }`. 409 when another category has the label. Swaps the id in `lire.categoryOrder` |
 | DELETE | `/api/categories/:categoryId` | Delete. `?moveTo=<id>` first moves its feeds to that category |
-| GET | `/api/feeds` | `[{ id, title, siteUrl?, feedUrl?, iconUrl?, categoryIds, isNewsletter, isWebFeed? }]`. `isWebFeed` is present, and true, only on a web feed, whose `feedUrl` is `webfeed:<page URL>` |
+| GET | `/api/feeds` | `[{ id, title, siteUrl?, feedUrl?, iconUrl?, categoryIds, isNewsletter, senderEmail?, isWebFeed? }]`. `senderEmail` is present only on a newsletter whose `feedUrl` is `newsletter:<user pk>:<sender email>`, and absent when the third part is `list-id:<id>`. `isWebFeed` is present, and true, only on a web feed, whose `feedUrl` is `webfeed:<page URL>` |
 | POST | `/api/feeds` | Subscribe, body `{ feedUrl, title?, categoryIds }` |
 | POST | `/api/feeds/refresh` | Drop the Worker's cached feed list (kept 5 minutes), so the next read sees a feed NewsBlur added on its own, such as a new newsletter sender. Answers 204. The client sends it first on every refresh |
 | PATCH | `/api/feeds/:feedId` | Rename or move, body `{ title?, categoryIds? }` |

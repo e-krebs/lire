@@ -80,3 +80,51 @@ export const Reanalyze: Story = {
     }, SLOW);
   },
 };
+
+const LONG_URL =
+  "https://changelog.example.test/releases/2026/stable/channel/feeds/all-products/atom.xml?lang=en&format=full";
+
+const feedById = (id: string) => {
+  const feed = FEEDS.find((candidate) => candidate.id === id);
+  if (feed === undefined) throw new Error(`No seed feed ${id}`);
+  return feed;
+};
+
+export const TypeIconPanel: Story = {
+  play: async () => {
+    const panel = await screen.findByRole("complementary", { name: "Example Tech Daily" });
+    await expect(within(panel).getByRole("img", { name: "Website" })).toBeInTheDocument();
+    const link = within(panel).getByRole("link", { name: /tech\.example\.test\/feed\.xml/ });
+    await expect(link).toHaveAttribute("href", "https://tech.example.test/feed.xml");
+    await expect(link).toHaveAttribute("target", "_blank");
+    await expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  },
+};
+
+export const TypeIconPanelWebFeedLongUrl: Story = {
+  args: { feed: { ...feedById("113"), feedUrl: `webfeed:${LONG_URL}` } },
+  play: async () => {
+    const panel = await screen.findByRole("complementary", { name: "Example Changelog" });
+    const link = within(panel).getByRole("link", { name: /changelog\.example\.test\/releases/ });
+    await expect(link).toHaveAttribute("href", LONG_URL);
+  },
+};
+
+export const TypeIconPanelNewsletter: Story = {
+  args: { feed: feedById("111") },
+  play: async () => {
+    const panel = await screen.findByRole("complementary", { name: "Example Weekly" });
+    await expect(within(panel).getByRole("img", { name: "Newsletter" })).toBeInTheDocument();
+    await expect(within(panel).getByText("weekly@example.test")).toBeInTheDocument();
+    await expect(within(panel).queryByRole("link")).toBeNull();
+  },
+};
+
+export const TypeIconPanelListId: Story = {
+  args: { feed: feedById("112") },
+  play: async () => {
+    const panel = await screen.findByRole("complementary", { name: "Example Digest" });
+    await expect(within(panel).getByRole("img", { name: "Newsletter" })).toBeInTheDocument();
+    await expect(within(panel).queryByText(/list-id|digest\.example\.test$/)).toBeNull();
+  },
+};

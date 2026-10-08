@@ -43,3 +43,20 @@ export const AddNewsletter: Story = {
 export const Empty: Story = {
   args: { feeds: [] },
 };
+
+export const TypeIconList: Story = {
+  parameters: { layout: "padded" },
+  args: {
+    feeds: FEEDS.filter((feed) => ["101", "113", "111", "112"].includes(feed.id)).map((feed) =>
+      feed.id === "112"
+        ? { ...feed, title: "Example Digest with a very long title that must truncate" }
+        : feed,
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await expect(canvas.getAllByRole("img", { name: "Newsletter" })).toHaveLength(2);
+    await expect(canvas.getAllByRole("img", { name: "Website" })).toHaveLength(2);
+    await expect(canvas.queryByText("weekly@example.test")).toBeNull();
+  },
+};

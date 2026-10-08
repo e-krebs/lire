@@ -10,16 +10,18 @@ import {
   useCounts,
   useUnsubscribe,
 } from "client/api/queries";
+import { Icon } from "client/components/ui/icons";
 import { Switch } from "client/components/ui/Switch";
 import { useDirectOpen, useSetDirectOpen } from "client/hooks/useDirectOpen";
 import type { Locale } from "client/i18n/locale";
 import { useLocale } from "client/i18n/locale";
 import { useT } from "client/i18n/useT";
+import { webFeedPageOf } from "shared/bff/library";
 import { toStreamKey } from "shared/feedsApi/streamKey";
 import type { Category, Feed } from "shared/feedsApi/types";
 import { CategoryPicker } from "./CategoryPicker";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { HueDot, hostOf } from "./FeedsTab";
+import { FeedTypeIcon, hostOf } from "./FeedsTab";
 import { SidePanel } from "./SidePanel";
 import { WebFeedVariants } from "./WebFeedVariants";
 
@@ -42,6 +44,37 @@ const listFormatFor = (locale: Locale): Intl.ListFormat => {
     listFormats.set(locale, format);
   }
   return format;
+};
+
+const isHttpUrl = (value: string): boolean => /^https?:\/\//i.test(value);
+
+const FeedAddress = ({ feed }: { feed: Feed }) => {
+  const { subscriptions: t } = useT();
+  const address = feed.isNewsletter
+    ? undefined
+    : feed.feedUrl === undefined
+      ? undefined
+      : webFeedPageOf(feed.feedUrl);
+  const body =
+    address !== undefined && isHttpUrl(address) ? (
+      <a
+        href={address}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="
+          flex max-w-full min-w-0 items-center gap-1 rounded text-accent-text
+          focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent
+        "
+      >
+        <span className="min-w-0 truncate font-mono text-xs">{address}</span>
+        <Icon name="external" className="size-4 flex-none" />
+        <span className="sr-only">({t.opensInNewTab})</span>
+      </a>
+    ) : feed.isNewsletter && feed.senderEmail !== undefined ? (
+      <span className="min-w-0 truncate font-mono text-xs text-ink">{feed.senderEmail}</span>
+    ) : null;
+  if (body === null) return null;
+  return <div className="flex min-h-11 items-center border-b border-hairline px-4">{body}</div>;
 };
 
 const lossesOf = ({
@@ -172,7 +205,7 @@ export const FeedPanel = ({ feed, categories, onClose }: FeedPanelProps) => {
         onClose={onClose}
         title={feed.title}
         subtitle={hostOf(feed.siteUrl)}
-        leading={<HueDot feedId={feed.id} />}
+        leading={<FeedTypeIcon feed={feed} />}
         actions={
           reanalyzing ? (
             <>
@@ -240,90 +273,93 @@ export const FeedPanel = ({ feed, categories, onClose }: FeedPanelProps) => {
             )}
           </div>
         ) : (
-          <form
-            id={formId}
-            noValidate
-            className="flex flex-col gap-4 px-4 py-4"
-            onSubmit={(event) => {
-              event.preventDefault();
-              handleSave();
-            }}
-          >
-            <div className="flex flex-col gap-2">
-              <label htmlFor={titleId} className="text-xs font-semibold text-muted">
-                {t.titleLabel}
-              </label>
-              <input
-                ref={titleRef}
-                id={titleId}
-                type="text"
-                autoComplete="off"
-                enterKeyHint="done"
-                value={title}
-                aria-invalid={titleEmpty || undefined}
-                aria-describedby={titleEmpty ? titleErrorId : undefined}
-                onChange={(event) => {
-                  setTitle(event.target.value);
-                  setTitleEmpty(false);
-                }}
-                className={`
+          <>
+            <FeedAddress feed={feed} />
+            <form
+              id={formId}
+              noValidate
+              className="flex flex-col gap-4 px-4 py-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                handleSave();
+              }}
+            >
+              <div className="flex flex-col gap-2">
+                <label htmlFor={titleId} className="text-xs font-semibold text-muted">
+                  {t.titleLabel}
+                </label>
+                <input
+                  ref={titleRef}
+                  id={titleId}
+                  type="text"
+                  autoComplete="off"
+                  enterKeyHint="done"
+                  value={title}
+                  aria-invalid={titleEmpty || undefined}
+                  aria-describedby={titleEmpty ? titleErrorId : undefined}
+                  onChange={(event) => {
+                    setTitle(event.target.value);
+                    setTitleEmpty(false);
+                  }}
+                  className={`
                 min-h-11 w-full rounded-xl bg-surface px-3 text-sm text-ink ring-1 ring-hairline
                 ring-inset
                 focus-visible:outline-2 focus-visible:outline-accent
                 aria-invalid:ring-danger
               `}
-              />
-              {titleEmpty ? (
-                <p id={titleErrorId} role="alert" className="text-sm text-danger">
-                  {t.enterTitle}
-                </p>
-              ) : null}
-            </div>
-            <CategoryPicker
-              key={feed.id}
-              categories={categories}
-              selected={selected}
-              onChange={setSelected}
-              mode="multiple"
-              onCreate={(label) => {
-                createCategory.mutate(label, {
-                  onSuccess: (created) => {
-                    setSelected((current) => [...current, created.id]);
-                  },
-                });
-              }}
-            />
-            {feed.isNewsletter ? null : (
-              <div className="flex min-h-11 items-center">
-                <Switch
-                  checked={directOpen}
-                  onChange={(checked) => {
-                    setDirectOpen(feed.id, checked);
-                  }}
-                  className="w-full justify-between"
-                >
-                  {t.opensOnSite}
-                </Switch>
+                />
+                {titleEmpty ? (
+                  <p id={titleErrorId} role="alert" className="text-sm text-danger">
+                    {t.enterTitle}
+                  </p>
+                ) : null}
               </div>
-            )}
-            {feed.isWebFeed ? (
-              <button
-                type="button"
-                onClick={() => {
-                  reanalyze.mutate({ feedId: feed.id });
+              <CategoryPicker
+                key={feed.id}
+                categories={categories}
+                selected={selected}
+                onChange={setSelected}
+                mode="multiple"
+                onCreate={(label) => {
+                  createCategory.mutate(label, {
+                    onSuccess: (created) => {
+                      setSelected((current) => [...current, created.id]);
+                    },
+                  });
                 }}
-                className={neutralClassName}
-              >
-                {t.reanalyze}
-              </button>
-            ) : null}
-            {clearing ? <p className="text-xs text-faint">{t.clearingHint}</p> : null}
-            {saveMessage === null ? null : (
-              <p role="alert" className="text-sm text-danger">
-                {saveMessage}
-              </p>
-            )}
-          </form>
+              />
+              {feed.isNewsletter ? null : (
+                <div className="flex min-h-11 items-center">
+                  <Switch
+                    checked={directOpen}
+                    onChange={(checked) => {
+                      setDirectOpen(feed.id, checked);
+                    }}
+                    className="w-full justify-between"
+                  >
+                    {t.opensOnSite}
+                  </Switch>
+                </div>
+              )}
+              {feed.isWebFeed ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    reanalyze.mutate({ feedId: feed.id });
+                  }}
+                  className={neutralClassName}
+                >
+                  {t.reanalyze}
+                </button>
+              ) : null}
+              {clearing ? <p className="text-xs text-faint">{t.clearingHint}</p> : null}
+              {saveMessage === null ? null : (
+                <p role="alert" className="text-sm text-danger">
+                  {saveMessage}
+                </p>
+              )}
+            </form>
+          </>
         )}
       </SidePanel>
       <ConfirmDialog

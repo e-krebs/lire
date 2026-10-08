@@ -84,4 +84,33 @@ describe("library", () => {
       expect(webFeedPageOf("https://w.example/news")).toBe("https://w.example/news");
     });
   });
+
+  describe("when a newsletter sender is read", () => {
+    const senderOf = (feedAddress: string) =>
+      toFeed({
+        upstream: { id: 6, feed_title: "Weekly", feed_address: feedAddress },
+        categoryIds: [],
+      }).senderEmail;
+
+    it("takes the email from the third part", () => {
+      expect(senderOf("newsletter:123456:weekly@example.test")).toBe("weekly@example.test");
+    });
+
+    it("gives nothing for a list id, a bare slug or another feed", () => {
+      expect(senderOf("newsletter:123456:list-id:weekly.example.test")).toBeUndefined();
+      expect(senderOf("newsletter:abc")).toBeUndefined();
+      expect(senderOf("https://a.example/feed")).toBeUndefined();
+    });
+
+    it("sets senderEmail on a newsletter feed only when there is one", () => {
+      const upstream = { id: 6, feed_title: "Weekly", feed_address: "newsletter:1:a@b.test" };
+      expect(toFeed({ upstream, categoryIds: [] })).toMatchObject({ senderEmail: "a@b.test" });
+      expect(
+        toFeed({
+          upstream: { ...upstream, feed_address: "newsletter:1:list-id:x" },
+          categoryIds: [],
+        }),
+      ).not.toHaveProperty("senderEmail");
+    });
+  });
 });
