@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { embedQuotes, iframeEmbed } from "../embeds";
+import { embedQuotes, iframeEmbed, xResizeHeight } from "../embeds";
 
 const YOUTUBE = "https://www.youtube.com/embed/dQw4w9WgXcQ";
 const BSKY_URI = "at://did:plc:z72i7hdynmk6r22z27h6tvur/app.bsky.feed.post/3l6oveex3ii2l";
@@ -315,6 +315,27 @@ describe("embeds", () => {
       "https://evil.test/plugins/post.php?href=" + encodeURIComponent(FB_POST),
     ]) {
       expect(iframeEmbed({ src })).toBeNull();
+    }
+  });
+
+  it("xResizeHeight reads X's resize message from its origin only, clamped", () => {
+    const origin = "https://platform.twitter.com";
+    const message = (height: unknown) => ({
+      "twttr.embed": { method: "twttr.private.resize", params: [{ width: 535, height }] },
+    });
+    expect(xResizeHeight({ origin, data: message(688) })).toBe(688);
+    expect(xResizeHeight({ origin, data: JSON.stringify(message(10.5)) })).toBe(120);
+    expect(xResizeHeight({ origin, data: message(1e6) })).toBe(4000);
+    expect(xResizeHeight({ origin: "https://evil.test", data: message(688) })).toBeNull();
+    for (const data of [
+      "{",
+      null,
+      3,
+      message("688"),
+      message(NaN),
+      { "twttr.embed": { method: "x" } },
+    ]) {
+      expect(xResizeHeight({ origin, data })).toBeNull();
     }
   });
 });

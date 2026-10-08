@@ -11,7 +11,13 @@ import { useT } from "client/i18n/useT";
 import { replaceBrokenImage } from "client/utils/brokenImage";
 import { INLINE_WRAPPERS, captionImageTitles } from "client/utils/imageTitles";
 import { stripLeadingBreaks } from "client/utils/leadingBreaks";
-import { EMBED_ALLOW, EMBED_SANDBOX, embedQuotes, iframeEmbed } from "client/utils/embeds";
+import {
+  EMBED_ALLOW,
+  EMBED_SANDBOX,
+  embedQuotes,
+  iframeEmbed,
+  xResizeHeight,
+} from "client/utils/embeds";
 import { useImageFallback } from "client/hooks/useImageFallback";
 import { usePull } from "client/hooks/usePullToRefresh";
 import { useResizablePanel } from "client/hooks/useResizablePanel";
@@ -182,6 +188,22 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [close]);
+
+  useEffect(() => {
+    const onMessage = (event: MessageEvent): void => {
+      const height = xResizeHeight({ origin: event.origin, data: event.data });
+      if (height === null) return;
+      for (const frame of paneRef.current?.querySelectorAll("iframe[data-embed='x']") ?? []) {
+        if (frame instanceof HTMLIFrameElement && frame.contentWindow === event.source) {
+          frame.style.height = `${height}px`;
+        }
+      }
+    };
+    window.addEventListener("message", onMessage);
+    return () => {
+      window.removeEventListener("message", onMessage);
+    };
+  }, []);
 
   const embeds = feeds.data !== undefined && !newsletter;
   const html = useMemo(() => {

@@ -73,7 +73,11 @@ Lire's. The helpers are in `src/client/utils/embeds.ts`.
 - A feed's own X frame is dropped, and only the quote form embeds.
 - Embeds stay off until the feed list loads.
 - The X frame title is the tweet text, cut at 140 characters, or "X" when empty.
-- The X frame is 32rem tall and at most 550px wide, under the same 60vh cap as the YouTube frame.
+- The X frame starts 32rem tall and at most 550px wide, with no 60vh cap. The frame posts a
+  `twttr.private.resize` message (`{"twttr.embed": {method, params: [{width, height}]}}`, an object or
+  its JSON string) from `https://platform.twitter.com` once the tweet renders, and `Reader` sets the
+  height from it so the tweet has no inner scrollbar. It accepts the message only from that origin
+  and from a reader X frame's own window, and clamps the height to 120 to 4000px.
 - The Bluesky frame is 32rem tall and at most 600px wide, and the Vimeo frame is 16 by 9 like YouTube.
 - The Instagram frame is 44rem tall and at most 540px wide, the Threads frame 36rem and 540px, and
   the TikTok frame is 9 by 16 and at most 325px wide, all under the same 60vh cap as the others.

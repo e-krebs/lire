@@ -22,6 +22,39 @@ const BLUESKY_URI =
 export const EMBED_SANDBOX =
   "allow-scripts allow-same-origin allow-presentation allow-popups allow-popups-to-escape-sandbox";
 
+const X_EMBED_ORIGIN = "https://platform.twitter.com";
+const X_MIN_HEIGHT = 120;
+const X_MAX_HEIGHT = 4000;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+// The frame posts `{"twttr.embed": {method: "twttr.private.resize", params: [{width, height}]}}`,
+// as an object or as its JSON string.
+export const xResizeHeight = ({
+  origin,
+  data,
+}: {
+  origin: string;
+  data: unknown;
+}): number | null => {
+  if (origin !== X_EMBED_ORIGIN) return null;
+  let message = data;
+  if (typeof message === "string") {
+    try {
+      message = JSON.parse(message);
+    } catch {
+      return null;
+    }
+  }
+  const embed = isRecord(message) ? message["twttr.embed"] : null;
+  if (!isRecord(embed) || embed.method !== "twttr.private.resize") return null;
+  const params: unknown = embed.params;
+  const height = Array.isArray(params) && isRecord(params[0]) ? params[0].height : null;
+  if (typeof height !== "number" || !Number.isFinite(height)) return null;
+  return Math.min(X_MAX_HEIGHT, Math.max(X_MIN_HEIGHT, Math.ceil(height)));
+};
+
 export const EMBED_ALLOW = "encrypted-media; picture-in-picture; fullscreen";
 
 // The base resolves protocol-relative `//www.youtube.com/...` sources to https.
