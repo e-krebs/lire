@@ -18,7 +18,7 @@ export const captionImageTitles = ({ html }: { html: string }): string => {
   let changed = false;
   for (const img of doc.querySelectorAll("img[data-lone][title]")) {
     const title = img.getAttribute("title")?.trim() ?? "";
-    if (title === "" || title === img.getAttribute("alt")?.trim()) continue;
+    if (title === "") continue;
     let outer: Element = img;
     while (outer.parentElement && INLINE_WRAPPERS.has(outer.parentElement.tagName)) {
       outer = outer.parentElement;
