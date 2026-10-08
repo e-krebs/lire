@@ -36,13 +36,10 @@ export const ScopeChip = ({ label, count, onClear, fluid }: ScopeChipProps) => {
           {label}
         </span>
         {count === undefined ? null : (
-          <span
-            className={`
-              flex h-4 min-w-4 flex-none items-center justify-center rounded-full bg-accent px-1
-              text-[0.6875rem] leading-none text-on-accent tabular-nums
-            `}
-          >
-            <span aria-hidden="true">{count.capped ? `${count.count}+` : count.count}</span>
+          <span className="h-4 min-w-4 rounded-full bg-accent px-1 text-on-accent tabular-nums">
+            <span aria-hidden="true" className="block">
+              {count.capped ? `${count.count}+` : count.count}
+            </span>
             <span className="sr-only">
               {count.capped
                 ? t.matchCountOrMore({ count: count.count })
