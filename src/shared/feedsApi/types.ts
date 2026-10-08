@@ -35,6 +35,8 @@ const FeedSchema = z
     iconUrl: z.string().optional(),
     categoryIds: z.array(z.string()),
     isNewsletter: z.boolean(),
+    // Only on a newsletter whose sender address is known, not one named by a list id.
+    senderEmail: z.string().optional(),
     // Present, and true, only on a web feed.
     isWebFeed: z.boolean().optional(),
   })

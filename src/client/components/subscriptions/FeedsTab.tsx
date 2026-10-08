@@ -85,6 +85,19 @@ export const HueDot = ({ feedId }: { feedId: string }) => {
   );
 };
 
+export const FeedTypeIcon = ({ feed }: { feed: Feed }) => {
+  const t = useT().subscriptions;
+  return (
+    <span
+      role="img"
+      aria-label={feed.isNewsletter ? t.kindNewsletter : t.kindWebsite}
+      className="morph-dot flex flex-none text-muted"
+    >
+      <Icon name={feed.isNewsletter ? "newsletter" : "website"} className="size-5" />
+    </span>
+  );
+};
+
 export const matchesFilter = ({
   filter,
   texts,
@@ -186,7 +199,7 @@ export const FeedsTab = ({
                   }}
                   className={listRowClassName}
                 >
-                  <HueDot feedId={feed.id} />
+                  <FeedTypeIcon feed={feed} />
                   <span className="flex min-w-0 flex-1 flex-col sm:w-52 sm:flex-none">
                     <span
                       data-tip={feed.title}

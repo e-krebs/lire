@@ -73,14 +73,14 @@
     "111": {
       "id": 111,
       "feed_title": "Example Weekly",
-      "feed_address": "newsletter:example-weekly",
+      "feed_address": "newsletter:123456:weekly@example.test",
       "feed_link": null,
       "favicon_url": null
     },
     "112": {
       "id": 112,
       "feed_title": "Example Digest",
-      "feed_address": "newsletter:example-digest",
+      "feed_address": "newsletter:123456:list-id:digest.example.test",
       "feed_link": null,
       "favicon_url": "/rss_feeds/icon/112"
     },
