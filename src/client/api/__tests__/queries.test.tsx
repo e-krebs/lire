@@ -38,6 +38,7 @@ import {
   useReanalyzeWebFeed,
   useReorderCategories,
   useSearchContents,
+  useUnsubscribe,
   useStream,
   useUpdateFeed,
   useWebFeedStatus,
@@ -1718,6 +1719,31 @@ describe("queries", () => {
 
       expect(answer?.url).toBe("https://changelog.example.test/releases");
       expect(answer?.requestId).toBeTruthy();
+    });
+  });
+
+  describe("when unsubscribing with useUnsubscribe", () => {
+    it("removes the feed's stream and search queries and invalidates the dependants", async () => {
+      const { client, wrapper } = setup();
+      const feedStream = keys.stream({ streamKey: "feed:101" });
+      const feedSearch = keys.search({ streamKey: "feed:101", query: "chip" });
+      const otherFeed = keys.stream({ streamKey: "feed:102" });
+      const allStream = keys.stream({ streamKey: "all" });
+      const folderSearch = keys.search({ streamKey: "folder:Tech", query: "chip" });
+      for (const queryKey of [feedStream, feedSearch, otherFeed, allStream, folderSearch]) {
+        client.setQueryData(queryKey, { pages: [], pageParams: [] });
+      }
+
+      const { result } = renderHook(() => useUnsubscribe(), { wrapper });
+      await act(async () => {
+        await result.current.mutateAsync("101");
+      });
+
+      expect(client.getQueryData(feedStream)).toBeUndefined();
+      expect(client.getQueryData(feedSearch)).toBeUndefined();
+      expect(client.getQueryState(otherFeed)?.isInvalidated).toBe(false);
+      expect(client.getQueryState(allStream)?.isInvalidated).toBe(true);
+      expect(client.getQueryState(folderSearch)?.isInvalidated).toBe(true);
     });
   });
 });

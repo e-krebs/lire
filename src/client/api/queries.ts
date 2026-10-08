@@ -786,7 +786,18 @@ export const useUnsubscribe = () => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: deleteFeed,
-    onSuccess: () => {
+    onSuccess: (_data, feedId) => {
+      const feedKey = `feed:${feedId}`;
+      const isStreamOf = (key: readonly unknown[], match: (streamKey: string) => boolean) =>
+        (key[0] === "stream" || key[0] === "search") && typeof key[1] === "string" && match(key[1]);
+      client.removeQueries({
+        predicate: ({ queryKey }) => isStreamOf(queryKey, (k) => k === feedKey),
+      });
+      // These list the feed's entries.
+      void client.invalidateQueries({
+        predicate: ({ queryKey }) =>
+          isStreamOf(queryKey, (k) => k === "all" || k.startsWith("folder:")),
+      });
       invalidateLibrary(client);
     },
   });
