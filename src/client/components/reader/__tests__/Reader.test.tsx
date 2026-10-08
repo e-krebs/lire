@@ -282,7 +282,7 @@ describe("Reader", () => {
     ).toEqual(["https://example.test/pair-1.png", "https://example.test/pair-2.png"]);
   });
 
-  it("prints a lone image's title below it, not one that repeats its alt or sits in a line of text", async () => {
+  it("prints a lone image's title below it, even when it repeats the alt, but not in a line of text", async () => {
     const entry = await getEntry(UNREAD_ID);
     const content =
       '<p><a href="https://example.test/a"><img src="https://example.test/a.png" alt="A" title="Punchline"></a></p>' +
@@ -294,9 +294,22 @@ describe("Reader", () => {
       expect(view.container.querySelector("article.prose-reader .img-title")).not.toBeNull();
     });
     const titles = [...view.container.querySelectorAll("article.prose-reader .img-title")];
-    expect(titles.map((title) => title.textContent)).toEqual(["Punchline"]);
+    expect(titles.map((title) => title.textContent)).toEqual(["Punchline", "Same"]);
     expect(titles[0]?.closest("a")).toBeNull();
     expect(titles[0]?.parentElement?.querySelector("a img")).not.toBeNull();
+  });
+
+  it("prints the title of a bare image whose title equals its alt, as on an xkcd entry", async () => {
+    const entry = await getEntry(UNREAD_ID);
+    const text = "Remote sensing instruments, definitely not doing anything else.";
+    const content = `<img src="https://imgs.xkcd.com/comics/juice.png" title="${text}" alt="${text}" />`;
+    const { view } = setup({ entryId: UNREAD_ID, seedEntry: { ...entry, content } });
+
+    await waitFor(() => {
+      expect(view.container.querySelector("article.prose-reader .img-title")?.textContent).toBe(
+        text,
+      );
+    });
   });
 
   describe("when the body carries an embed", () => {
