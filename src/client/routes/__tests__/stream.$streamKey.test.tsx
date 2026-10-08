@@ -2,7 +2,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resetFixtureState } from "client/api/adapters/fixture";
-import { getProfile } from "client/api/client";
+import { getFeeds, getProfile } from "client/api/client";
 import { keys } from "client/api/queries";
 import { renderApp } from "test/renderApp";
 
@@ -58,6 +58,63 @@ describe("/stream/$streamKey", () => {
 
     await waitFor(() => {
       expect(router.state.location.pathname).toBe("/stream/all");
+    });
+  });
+
+  describe("when the selected feed is not in the feeds list", () => {
+    it("replaces the stream with all", async () => {
+      const { router } = setup({ url: "/stream/feed:999999" });
+
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe("/stream/all");
+      });
+    });
+
+    it("keeps a feed that is in the list", async () => {
+      const { router, view } = setup({ url: "/stream/feed:101" });
+
+      await waitFor(() => {
+        expect(view.container.querySelector("[data-entry-id]")).not.toBeNull();
+      });
+      expect(router.state.location.pathname).toBe("/stream/feed:101");
+    });
+
+    it("waits for the feeds list to load", async () => {
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      queryClient.setQueryDefaults(keys.feeds, { enabled: false });
+      const { router } = renderApp({ url: "/stream/feed:999999", queryClient });
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+      expect(router.state.location.pathname).toBe("/stream/feed:999999");
+
+      await act(async () => {
+        await queryClient.query({ queryKey: keys.feeds, queryFn: getFeeds });
+      });
+      await waitFor(() => {
+        expect(router.state.location.pathname).toBe("/stream/all");
+      });
+    });
+
+    it("waits for a refetch before redirecting on a stale cached list", async () => {
+      const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+      const feeds = await getFeeds();
+      queryClient.setQueryData(
+        keys.feeds,
+        feeds.filter((feed) => feed.id !== "101"),
+      );
+      const { router } = renderApp({ url: "/stream/feed:101", queryClient });
+
+      await waitFor(() => {
+        expect(queryClient.isFetching({ queryKey: keys.feeds })).toBe(1);
+      });
+      expect(router.state.location.pathname).toBe("/stream/feed:101");
+
+      await waitFor(() => {
+        expect(queryClient.isFetching({ queryKey: keys.feeds })).toBe(0);
+      });
+      expect(router.state.location.pathname).toBe("/stream/feed:101");
     });
   });
 

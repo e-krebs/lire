@@ -1,7 +1,15 @@
-import { createFileRoute, Outlet, redirect, useChildMatches } from "@tanstack/react-router";
+import { useEffect } from "react";
+import {
+  createFileRoute,
+  Outlet,
+  redirect,
+  useChildMatches,
+  useNavigate,
+} from "@tanstack/react-router";
 import { parseStreamKey, toStreamKey } from "shared/feedsApi/streamKey";
 import { Panes } from "client/components/shell/AppShell";
 import { MosaicGrid } from "client/components/articles/MosaicGrid";
+import { useFeeds } from "client/api/queries";
 import { useViewPrefs } from "client/utils/viewPrefs";
 
 export interface StreamSearch {
@@ -26,10 +34,24 @@ function StreamLayout() {
   const search = Route.useSearch();
   const prefs = useViewPrefs();
   const childMatches = useChildMatches();
+  const navigate = useNavigate();
+  const feeds = useFeeds();
 
   const stream = parseStreamKey(streamKey);
+  const missingFeedId =
+    stream?.kind === "feed" &&
+    feeds.data !== undefined &&
+    !feeds.isFetching &&
+    !feeds.data.some((feed) => feed.id === stream.feedId)
+      ? stream.feedId
+      : null;
+  // Covers Back, deep links and stale tabs after an unsubscribe.
+  useEffect(() => {
+    if (missingFeedId === null) return;
+    void navigate({ to: "/stream/$streamKey", params: { streamKey: "all" }, replace: true });
+  }, [missingFeedId, navigate]);
   // beforeLoad already redirected an unreadable key.
-  if (stream === null) return null;
+  if (stream === null || missingFeedId !== null) return null;
 
   // The recently-read stream is read entries by definition, always newest first.
   const readStream = stream.kind === "read";

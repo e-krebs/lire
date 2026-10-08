@@ -62,6 +62,10 @@ The unread filter and the sort order are per device, not per account, and never 
 live in `localStorage` under `lire.view` ([viewPrefs.ts](../../src/client/utils/viewPrefs.ts)),
 behind a small store that the stream route, the view toggles and the Navigator all read.
 
+The stream route replaces a `feed:<id>` key with `all` once the feeds list has loaded and no longer
+holds that feed, so Back, a deep link or a stale tab after an unsubscribe never lands on a dead
+stream. Unsubscribing also drops that feed's cached streams and searches.
+
 The mosaic places every card absolutely from a known height, so a card never waits on a measuring
 pass. A card with an image keeps a fixed 3:2 shape. A card without one is as high as its content:
 [textHeight.ts](../../src/client/utils/textHeight.ts) counts the title's lines (one to three) with
