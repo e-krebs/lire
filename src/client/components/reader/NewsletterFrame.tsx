@@ -6,8 +6,15 @@ import { installExternalLinks } from "client/utils/externalLinks";
 // Never `allow-scripts`: beside `allow-same-origin` it would let the email lift the sandbox.
 const SANDBOX = "allow-same-origin allow-popups allow-popups-to-escape-sandbox";
 
+// `light-dark()` resolves against the meta's `color-scheme`, so the meta alone picks the palette.
 const FRAME_STYLE =
-  "html, body { margin: 0; background: #fff; color: #000; } html { overflow-y: hidden; overflow-x: auto; } img { max-width: 100%; height: auto; } body { font-family: system-ui, sans-serif; }";
+  "html, body { margin: 0; background: light-dark(#fff, #000); color: light-dark(#000, #fff); } html { overflow-y: hidden; overflow-x: auto; } img { max-width: 100%; height: auto; } body { font-family: system-ui, sans-serif; }";
+
+// DOMPurify serializes attributes as `name="value"`. A false match only keeps the page white.
+const AUTHORED_COLORS = /\s(?:bgcolor|color)=|\sstyle="[^"]*(?:color|background)/i;
+
+// An email that sets any color assumes a white page around it, so only an uncolored one goes dark.
+const hasAuthoredColors = (html: string): boolean => AUTHORED_COLORS.test(html);
 
 // An email sized in `vh` reads the frame's own height, so without a cap it grows on every resize.
 const MAX_FRAME_HEIGHT = 20_000;
@@ -35,7 +42,7 @@ interface NewsletterFrameProps {
   onDocument?: (args: { doc: Document; capped: boolean }) => void;
 }
 
-// Emails assume a white page and a browser-default stylesheet, so they render in a sandboxed frame
+// Emails assume a browser-default stylesheet, so they render in a sandboxed frame
 // sized to its content up to `MAX_FRAME_HEIGHT`; below that the reader's pane does the scrolling.
 // Listeners are attached from here because no script runs inside the frame.
 export const NewsletterFrame = ({ html, dir, onDocument }: NewsletterFrameProps) => {
@@ -52,10 +59,11 @@ export const NewsletterFrame = ({ html, dir, onDocument }: NewsletterFrameProps)
     onDocumentRef.current = onDocument;
   }, [onDocument]);
 
+  const authored = useMemo(() => hasAuthoredColors(html), [html]);
   const srcDoc = useMemo(
     () =>
-      `<!doctype html><html dir="${dir}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta name="color-scheme" content="light"><style>${FRAME_STYLE}</style></head><body>${html}</body></html>`,
-    [html, dir],
+      `<!doctype html><html dir="${dir}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta name="color-scheme" content="${authored ? "light" : "light dark"}"><style>${FRAME_STYLE}</style></head><body>${html}</body></html>`,
+    [html, dir, authored],
   );
 
   const attach = useCallback((frame: HTMLIFrameElement) => {
@@ -166,6 +174,7 @@ export const NewsletterFrame = ({ html, dir, onDocument }: NewsletterFrameProps)
       sandbox={SANDBOX}
       title={t.articles.newsletter}
       className="newsletter-frame"
+      data-palette={authored ? "authored" : undefined}
       srcDoc={srcDoc}
       ref={frameRef}
       onLoad={(event) => {

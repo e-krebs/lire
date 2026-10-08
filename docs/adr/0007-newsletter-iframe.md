@@ -16,8 +16,17 @@ email's `<style>` blocks, so the emails bring no phone rules of their own.
 
 A body is a newsletter when its sanitized HTML holds an element with class `webfeeds--newsletter`,
 which the previous upstream adds to every email feed body. The reader renders it in a `srcdoc` iframe with the
-browser's default styles, on a full-width white band with `color-scheme: light` in both themes. Blog
-posts stay inline with `.prose-reader`, and the table overrides are gone.
+browser's default styles, on a full-width band. Blog posts stay inline with `.prose-reader`, and the
+table overrides are gone.
+
+The page follows the dark theme only when the email sets no colors of its own. An email that sets a
+color assumes a white page: "Serious gaming" writes `color: #000` inline and sets no background, so
+a black default would hide its text. The frame scans the sanitized HTML for a `style` attribute
+naming `color` or `background`, and for a `bgcolor` or `color` attribute, which covers
+`<font color>`. With none, the frame's `color-scheme` meta is `light dark` and its default page is
+`light-dark(#fff, #000)` with the opposite text color. With any, the meta is `light` and the page
+stays white, as does the band behind the frame. A false match only keeps an email white. No invert
+filter is applied, because it would also invert photos and brand colors.
 
 The sandbox is exactly `allow-same-origin allow-popups allow-popups-to-escape-sandbox`, never
 `allow-scripts`. The parent reads the iframe document, so no script runs in the frame while the
@@ -34,7 +43,9 @@ second layer. An email wider than the panel scrolls sideways inside the frame in
 
 ## Consequences
 
-- Emails look as their senders designed them and do not follow the dark theme.
+- Emails with colors of their own look as their senders designed them and stay white in the dark
+  theme. Uncolored emails follow it.
+- A dark logo on a transparent background, in an uncolored email, can fade into the dark page.
 - Height, key forwarding and the broken-image placeholder depend on `allow-same-origin`.
 - Past 20,000 px the frame scrolls inside, nested in the reader pane. An email sized in `vh` plus a
   fixed extra still grows to the cap and ends as a tall, mostly empty band.
