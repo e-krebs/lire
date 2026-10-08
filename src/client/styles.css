@@ -619,6 +619,10 @@ body {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--color-ink) 28%, transparent) transparent;
 }
+.panes > .scroll-pane {
+  /* Tiles slide while the height shrinks; anchoring would re-scroll on top of that. */
+  overflow-anchor: none;
+}
 /* A whole-list skeleton (MosaicSkeleton) hides the bar; the stable gutter keeps the width. */
 .scroll-pane[data-skeleton] {
   overflow-y: hidden;
