@@ -53,7 +53,7 @@ A blog post keeps frames for YouTube and Vimeo, plus X, Bluesky, Instagram, Thre
 Facebook frames that Lire builds from the provider's blockquote (`twitter-tweet`, `bluesky-embed`,
 `instagram-media`, `text-post-media`, `tiktok-embed`, `fb-post`, `fb-video`) and a checked
 permalink. Facebook covers posts and videos; `fb.watch` short links stay plain links, because a
-short link cannot resolve client side. Every frame loads when the post renders. The helpers are in
+short link cannot resolve client side. Every frame loads when the post renders. The X frame grows to its tweet: it posts its height, and the reader accepts that only from `platform.twitter.com` and from its own frame. The helpers are in
 [embeds.ts](../../src/client/utils/embeds.ts). Every other frame is dropped, no third-party script
 runs in the app's origin, and a newsletter never gets frames. The allowlist and the privacy cost
 are in [ADR 0011](../adr/0011-reader-embeds.md).

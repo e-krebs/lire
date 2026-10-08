@@ -130,7 +130,8 @@ body {
   padding-right: env(safe-area-inset-right, 0px);
 }
 
-/* Newsletter bodies: emails assume a white page, so the band stays white in both themes. */
+/* Newsletter bodies: the band matches the frame's own default page, which follows the OS scheme
+   unless the email sets colors of its own (NewsletterFrame.tsx). */
 .newsletter-frame {
   display: block;
   width: 100%;
@@ -185,11 +186,13 @@ body {
   width: 100%;
   aspect-ratio: 16 / 9;
 }
-/* A post is taller than wide, and X sizes its card to the frame's width. */
+/* A post is taller than wide, and X sizes its card to the frame's width. 32rem is the height until
+   X reports its own, which the reader sets inline; so the 60vh cap is lifted. */
 .prose-reader iframe[data-embed="x"] {
   width: 100%;
   max-width: 550px;
   height: 32rem;
+  max-height: none;
 }
 .prose-reader iframe[data-embed="bluesky"] {
   width: 100%;

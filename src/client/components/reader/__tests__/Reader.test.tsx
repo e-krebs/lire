@@ -442,6 +442,67 @@ describe("Reader", () => {
       expect(frame.getAttribute("title")).toContain("Hello from X");
     });
 
+    describe("when X resizes its frame", () => {
+      const X_QUOTE =
+        '<blockquote class="twitter-tweet"><a href="https://twitter.com/jack/status/1234567890">May 1</a></blockquote>';
+      const resize = (height: unknown) => ({
+        "twttr.embed": { method: "twttr.private.resize", params: [{ width: 535, height }] },
+      });
+      const xFrame = async () => {
+        const [frame] = await postFrames(X_QUOTE);
+        if (!(frame instanceof HTMLIFrameElement)) throw new Error("expected an iframe");
+        return { frame, source: frame.contentWindow };
+      };
+      const post = ({
+        data,
+        origin = "https://platform.twitter.com",
+        source,
+      }: {
+        data: unknown;
+        origin?: string;
+        source: MessageEventSource | null;
+      }) => {
+        fireEvent(window, new MessageEvent("message", { data, origin, source }));
+      };
+
+      it("sets the frame height from X's resize message, object or string", async () => {
+        const { frame, source } = await xFrame();
+
+        post({ data: resize(688), source });
+        expect(frame.style.height).toBe("688px");
+
+        post({ data: JSON.stringify(resize(412.2)), source });
+        expect(frame.style.height).toBe("413px");
+      });
+
+      it("ignores a message from another origin or another window", async () => {
+        const { frame, source } = await xFrame();
+
+        post({ data: resize(688), origin: "https://evil.test", source });
+        post({ data: resize(688), source: window });
+        expect(frame.style.height).toBe("");
+      });
+
+      it("ignores malformed data and clamps an extreme height", async () => {
+        const { frame, source } = await xFrame();
+
+        for (const data of [
+          "nope",
+          null,
+          5,
+          resize("688"),
+          resize(Infinity),
+          { "twttr.embed": {} },
+        ]) {
+          post({ data, source });
+        }
+        expect(frame.style.height).toBe("");
+
+        post({ data: resize(999_999), source });
+        expect(frame.style.height).toBe("4000px");
+      });
+    });
+
     describe.each([
       {
         brand: "Instagram",
