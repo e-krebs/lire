@@ -79,12 +79,12 @@
   {
     "story_hash": "101:18fd13",
     "story_feed_id": 101,
-    "story_title": "Synthetic story 8 from feed 101",
-    "story_authors": "Ada Writer",
-    "story_content": "<p>Short synthetic body for story 8 of feed 101.</p>",
-    "story_permalink": "https://example.test/101/8",
+    "story_title": "Margaret Hamilton, génie de l’ingénierie logicielle, est morte à 90 ans",
+    "story_authors": "Alexandre Laurent",
+    "story_content": "<br><br>\n<p class=\"wp-block-paragraph\">Margaret Hamilton, pionnière de l&rsquo;ingénierie logicielle moderne et directrice de l&rsquo;équipe en charge du logiciel embarqué dans la mission lunaire Apollo 11, est décédée le 30 septembre dernier, à 90 ans. C&rsquo;est la revue du MIT, où elle a découvert les joies du logiciel à partir de 1959 au département de météorologie, avant d&rsquo;y exercer pendant près de vingt ans, qui a <a href=\"https://news.mit.edu/2026/margaret-hamilton-computing-pioneer-dies-1007\">annoncé</a> la nouvelle, mardi 7 octobre, saluant sa contribution exceptionnelle à l&rsquo;informatique et son rôle iconique en faveur de la reconnaissance des femmes dans l&rsquo;univers des sciences et de la technologie. </p>\n\n<p class=\"wp-block-paragraph\">« <em>Dire que Margaret Hamilton était une pionnière – dire qu’elle était en avance sur son temps – serait un euphémisme dramatique. Elle était ingénieure logicielle à une époque où ce domaine en était à ses débuts, et elle a non seulement développé elle-même un code avancé, mais a également dirigé une équipe dans l’utilisation de cette technologie naissante pour développer l’un des systèmes les plus complexes jamais réalisés par l&rsquo;humanité</em> », salue Olivier de Weck, professeur du programme Apollo et directeur par intérim du département d’aéronautique et d’astronautique du MIT. </p>\n\n<p class=\"wp-block-paragraph\">Née en 1936 dans l&rsquo;Indiana, Margaret Hamilton a poursuivi des études de mathématiques à l&rsquo;université du Michigan, avant de rejoindre en 1959 le département de météorologie du MIT pour y travailler sur un logiciel de prévision météo. Deux ans plus tard, elle bascule vers le projet Semi-Automatic Ground Environment (SAGE), le premier système de défense aérienne des États-Unis, où elle écrit le logiciel d&rsquo;un prototype d&rsquo;ordinateur dédié à la détection d&rsquo;avions hostiles. </p>\n\n<p class=\"wp-block-paragraph\">En 1965, elle répond à une publicité parue dans le journal. Elle fait la promotion des recrutements ouverts par l&rsquo;Instrumentation Lab du MIT, qui cherche à monter une équipe pour envoyer l&rsquo;homme sur la lune, sur fond de course aux étoiles opposant les États-Unis à la Russie. Elle postule, et se voit confier l&rsquo;élaboration du logiciel de vol embarqué pour le programme Apollo, d&rsquo;abord seule, puis à la tête d&rsquo;une équipe. </p>",
+    "story_permalink": "https://next.ink/brief-article/margaret-hamilton-genie-de-lingenierie-logicielle-est-morte-a-90-ans/",
     "story_timestamp": "1759956800",
-    "image_urls": ["https://images.example.test/101-8.png"],
+    "image_urls": [],
     "read_status": 0
   }
 ]

@@ -10,6 +10,7 @@ import { readingTime } from "client/utils/readingTime";
 import { useT } from "client/i18n/useT";
 import { replaceBrokenImage } from "client/utils/brokenImage";
 import { INLINE_WRAPPERS, captionImageTitles } from "client/utils/imageTitles";
+import { stripLeadingBreaks } from "client/utils/leadingBreaks";
 import { EMBED_ALLOW, EMBED_SANDBOX, embedQuotes, iframeEmbed } from "client/utils/embeds";
 import { useImageFallback } from "client/hooks/useImageFallback";
 import { usePull } from "client/hooks/usePullToRefresh";
@@ -65,12 +66,14 @@ postPurify.addHook("afterSanitizeAttributes", (node) => {
 });
 
 const sanitizePost = (html: string): string =>
-  captionImageTitles({
-    html: embedQuotes({
-      html: postPurify.sanitize(html, {
-        USE_PROFILES: { html: true },
-        FORBID_TAGS: ["script", "style"],
-        ADD_TAGS: ["iframe"],
+  stripLeadingBreaks({
+    html: captionImageTitles({
+      html: embedQuotes({
+        html: postPurify.sanitize(html, {
+          USE_PROFILES: { html: true },
+          FORBID_TAGS: ["script", "style"],
+          ADD_TAGS: ["iframe"],
+        }),
       }),
     }),
   });
