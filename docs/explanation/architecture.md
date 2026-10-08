@@ -214,7 +214,9 @@ app by its own CI jobs ([ci.yml](../../.github/workflows/ci.yml)). Its Vite conf
 route generator, PWA plugin and second React plugin
 ([main.ts](../../.storybook/main.ts)), because those only make sense for the real app. Stories
 double as tests: the `storybook` Vitest project runs them in a browser with the a11y addon. A
-`locale` toolbar global switches every story between English and French.
+`locale` toolbar global switches every story between English and French. The Docs pages follow the
+OS color scheme through a themed container ([ThemedDocsContainer.tsx](../../.storybook/ThemedDocsContainer.tsx)),
+and `preview.css` lets the canvas and Docs scroll, which the app's fixed-height `body` would block.
 
 The built Storybook is deployed public at `storybook.lire.krebs.tech`, outside Access. What keeps it
 safe is the demo gate, `yarn check:demo storybook-static`
