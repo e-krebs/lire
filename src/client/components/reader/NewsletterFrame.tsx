@@ -28,12 +28,17 @@ interface NewsletterFrameProps {
   html: string;
   /** Text direction of the entry. */
   dir: "ltr" | "rtl";
+  /**
+   * The frame's document once set up, and again whenever `capped` flips. Past the height cap the
+   * frame scrolls inside, so the pane's end is no longer the content's end.
+   */
+  onDocument?: (args: { doc: Document; capped: boolean }) => void;
 }
 
 // Emails assume a white page and a browser-default stylesheet, so they render in a sandboxed frame
 // sized to its content up to `MAX_FRAME_HEIGHT`; below that the reader's pane does the scrolling.
 // Listeners are attached from here because no script runs inside the frame.
-export const NewsletterFrame = ({ html, dir }: NewsletterFrameProps) => {
+export const NewsletterFrame = ({ html, dir, onDocument }: NewsletterFrameProps) => {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const setupRef = useRef<{ doc: Document; teardown: () => void } | null>(null);
 
@@ -42,6 +47,10 @@ export const NewsletterFrame = ({ html, dir }: NewsletterFrameProps) => {
   useEffect(() => {
     labelsRef.current = t.articles;
   }, [t]);
+  const onDocumentRef = useRef(onDocument);
+  useEffect(() => {
+    onDocumentRef.current = onDocument;
+  }, [onDocument]);
 
   const srcDoc = useMemo(
     () =>
@@ -59,11 +68,16 @@ export const NewsletterFrame = ({ html, dir }: NewsletterFrameProps) => {
 
     // `scrollHeight` never drops below the frame's own height, so the frame could not shrink. The
     // horizontal scrollbar is added so it never covers the last line.
+    let capped: boolean | undefined;
     const resize = () => {
       const scrollbar = Math.max(0, win.innerHeight - root.clientHeight);
       const height = Math.ceil(root.getBoundingClientRect().height) + scrollbar;
       frame.style.height = `${Math.min(height, MAX_FRAME_HEIGHT)}px`;
-      root.style.overflowY = height > MAX_FRAME_HEIGHT ? "auto" : "";
+      const over = height > MAX_FRAME_HEIGHT;
+      root.style.overflowY = over ? "auto" : "";
+      if (over === capped) return;
+      capped = over;
+      onDocumentRef.current?.({ doc, capped });
     };
     resize();
     // Images load after setup. jsdom has no ResizeObserver.

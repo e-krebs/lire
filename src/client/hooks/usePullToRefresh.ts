@@ -47,12 +47,15 @@ interface PullOptions {
   // A promise holds the disc as a status until it settles; nothing returned slides it straight
   // back, for a commit that acts at once.
   onCommit: (args: { edge: PullEdge }) => Promise<unknown> | undefined;
+  // A same-origin frame inside the pane keeps its touches in its own document, so they are heard
+  // there too. The pane still does the scrolling, so its edges still decide.
+  frameDocument?: Document | null;
   pullDown: boolean;
   pullUp: boolean;
 }
 
 /** A touch-only pull past either end of the `.scroll-pane` around `attach`, and the state to draw it. */
-export const usePull = ({ onCommit, pullDown, pullUp }: PullOptions): Pull => {
+export const usePull = ({ onCommit, frameDocument, pullDown, pullUp }: PullOptions): Pull => {
   const [element, setElement] = useState<HTMLElement | null>(null);
   const [pull, setPull] = useState<PullState | null>(null);
   const gesture = useRef<Gesture | null>(null);
@@ -197,18 +200,23 @@ export const usePull = ({ onCommit, pullDown, pullUp }: PullOptions): Pull => {
       if (current?.phase === "pulling") release({ edge: current.edge, armed: false });
     };
 
-    scroller.addEventListener("touchstart", onTouchStart, { passive: true });
-    scroller.addEventListener("touchmove", onTouchMove, { passive: false });
-    scroller.addEventListener("touchend", onTouchEnd);
-    scroller.addEventListener("touchcancel", onTouchCancel);
+    const targets = frameDocument ? [scroller, frameDocument.documentElement] : [scroller];
+    for (const target of targets) {
+      target.addEventListener("touchstart", onTouchStart, { passive: true });
+      target.addEventListener("touchmove", onTouchMove, { passive: false });
+      target.addEventListener("touchend", onTouchEnd);
+      target.addEventListener("touchcancel", onTouchCancel);
+    }
     return () => {
       window.clearTimeout(retractTimer);
-      scroller.removeEventListener("touchstart", onTouchStart);
-      scroller.removeEventListener("touchmove", onTouchMove);
-      scroller.removeEventListener("touchend", onTouchEnd);
-      scroller.removeEventListener("touchcancel", onTouchCancel);
+      for (const target of targets) {
+        target.removeEventListener("touchstart", onTouchStart);
+        target.removeEventListener("touchmove", onTouchMove);
+        target.removeEventListener("touchend", onTouchEnd);
+        target.removeEventListener("touchcancel", onTouchCancel);
+      }
     };
-  }, [element]);
+  }, [element, frameDocument]);
 
   return { attach: setElement, pull };
 };

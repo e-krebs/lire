@@ -299,7 +299,7 @@ same as the header's Mark button, Escape or the scrim. Both pulls run on `usePul
 [usePullToRefresh.ts](../../src/client/hooks/usePullToRefresh.ts). `usePullToRefresh` is the grid's
 wrapper, and it holds the disc until the refresh settles. The reader passes a commit that returns
 nothing, so its band slides straight back while the panel closes. The reader turns the top edge off,
-so a pull down there stays a plain scroll. A newsletter has no bottom pull, because its frame swallows touch events. Its band (`PullAction` in
+so a pull down there stays a plain scroll. A newsletter's frame keeps touch events in its own document, so the reader passes that document to `usePull`, which listens there as well as on the pane. The pane still does the scrolling, so its edges still decide. Past the frame's 20,000px height cap the frame scrolls inside and the pane's end is no longer the email's, so the bottom pull stays off. The band (`PullAction` in
 [PullIndicator.tsx](../../src/client/components/articles/PullIndicator.tsx)) is tinted like the card
 swipe's action panel. The tint follows the pull's progress to the same 72px threshold, and the band
 names the exit it will take. The two pulls never compete: each hook listens on its own

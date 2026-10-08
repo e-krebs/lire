@@ -1,5 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useState } from "react";
 import { describe, expect, it, onTestFinished, vi } from "vitest";
+import { usePull } from "client/hooks/usePullToRefresh";
 import { NewsletterFrame } from "../NewsletterFrame";
 
 const HTML =
@@ -32,6 +34,40 @@ const setup = () => {
     press: ({ target, init }: { target: Element; init: KeyboardEventInit }) =>
       fireEvent.keyDown(target, init),
   };
+};
+
+// The reader's wiring, cut down: a bottom pull on the pane that also listens in the frame.
+const PullHarness = ({ onCommit }: { onCommit: () => undefined }) => {
+  const [frame, setFrame] = useState<{ doc: Document; capped: boolean } | null>(null);
+  const { attach, pull } = usePull({
+    onCommit,
+    frameDocument: frame?.doc,
+    pullDown: false,
+    pullUp: frame?.capped === false,
+  });
+  return (
+    <div className="scroll-pane">
+      <div ref={attach} data-edge={pull?.edge}>
+        <NewsletterFrame html={HTML} dir="ltr" onDocument={setFrame} />
+      </div>
+    </div>
+  );
+};
+
+// jsdom has no TouchEvent constructor that takes touches, so the list is planted. jsdom reports
+// every box as 0, which puts the pane at its end from the start.
+const swipeUp = (target: Element): void => {
+  const send = (type: string, ys: number[]): void => {
+    const view = target.ownerDocument.defaultView!;
+    const event = new view.Event(type, { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "touches", {
+      value: ys.map((clientY) => ({ clientX: 0, clientY })),
+    });
+    fireEvent(target, event);
+  };
+  send("touchstart", [400]);
+  for (let step = 1; step <= 10; step += 1) send("touchmove", [400 - 20 * step]);
+  send("touchend", []);
 };
 
 describe("NewsletterFrame", () => {
@@ -133,6 +169,45 @@ describe("NewsletterFrame", () => {
       fireEvent.error(late);
 
       expect(late.isConnected).toBe(false);
+    });
+  });
+
+  describe("when the frame reports its document", () => {
+    it("reports it uncapped when the email fits", () => {
+      const onDocument = vi.fn<(args: { doc: Document; capped: boolean }) => void>();
+      render(<NewsletterFrame html={HTML} dir="ltr" onDocument={onDocument} />);
+      fireEvent.load(ui.frame);
+
+      expect(onDocument).toHaveBeenCalledExactlyOnceWith({
+        doc: ui.frame.contentDocument,
+        capped: false,
+      });
+    });
+
+    it("reports it capped past the height cap", () => {
+      const onDocument = vi.fn<(args: { doc: Document; capped: boolean }) => void>();
+      render(<NewsletterFrame html={HTML} dir="ltr" onDocument={onDocument} />);
+      Object.defineProperty(ui.frame.contentDocument!.documentElement, "getBoundingClientRect", {
+        value: () => new DOMRect(0, 0, 0, 50_000),
+      });
+      fireEvent.load(ui.frame);
+
+      expect(onDocument).toHaveBeenCalledExactlyOnceWith({
+        doc: ui.frame.contentDocument,
+        capped: true,
+      });
+    });
+
+    it("lets a touch gesture inside the frame pull the pane", () => {
+      const onCommit = vi.fn<() => undefined>();
+      render(<PullHarness onCommit={onCommit} />);
+      const doc = ui.frame.contentDocument!;
+      doc.body.innerHTML = HTML;
+      fireEvent.load(ui.frame);
+
+      swipeUp(doc.getElementById("text")!);
+
+      expect(onCommit).toHaveBeenCalledExactlyOnceWith({ edge: "bottom" });
     });
   });
 

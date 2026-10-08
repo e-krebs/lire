@@ -157,14 +157,17 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
   const newsletter = bodyHtml !== "" && feed?.isNewsletter === true;
 
   // Touch only, and only up: a pull down at the top stays the browser's. It waits for the origin
-  // state, since the band names the exit. A newsletter has no pull: its srcdoc frame keeps touch
-  // events in its own document, so they never reach the pane.
+  // state, since the band names the exit. A newsletter's frame keeps touch events in its own
+  // document, so the pull listens there too; past the height cap the frame scrolls inside, so the
+  // pane's end is not the email's and the pull stays off.
+  const [frame, setFrame] = useState<{ doc: Document; capped: boolean } | null>(null);
   const { attach: attachPull, pull } = usePull({
     onCommit: () => {
       close(true);
     },
+    frameDocument: newsletter ? frame?.doc : null,
     pullDown: false,
-    pullUp: openedUnread !== undefined && !newsletter,
+    pullUp: openedUnread !== undefined && (!newsletter || frame?.capped === false),
   });
 
   // The tooltip layer already swallows nothing on Escape, so this listener is its own: bubble
@@ -253,7 +256,7 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
           ) : null}
           {newsletter ? (
             <article className="-mx-4 mt-4 sm:-mx-6">
-              <NewsletterFrame html={html} dir="ltr" />
+              <NewsletterFrame html={html} dir="ltr" onDocument={setFrame} />
             </article>
           ) : (
             <article
