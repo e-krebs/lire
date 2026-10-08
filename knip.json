@@ -9,5 +9,6 @@
     "scripts/**/*.ts",
     "e2e/**/*.ts"
   ],
-  "ignoreDependencies": ["cloudflare", "@vitest/expect"]
+  "ignoreDependencies": ["cloudflare", "@vitest/expect"],
+  "ignoreBinaries": ["vite"]
 }
