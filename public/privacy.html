@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Lire privacy policy</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        line-height: 1.6;
+        max-width: 42rem;
+        margin: 0 auto;
+        padding: 2rem 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Lire privacy policy</h1>
+    <p>Last updated: 9 October 2026.</p>
+
+    <p>
+      Lire is a personal feed reader. It has one user, its owner, who runs it for themselves. It
+      shows articles from the owner's NewsBlur account. This page says what the app does with data.
+    </p>
+
+    <h2>What the app handles</h2>
+    <ul>
+      <li>
+        The owner's NewsBlur account. It gives the feeds, the articles and the read state. Lire
+        sends read, subscribe and unsubscribe actions back to NewsBlur.
+      </li>
+      <li>
+        The owner's email address. Cloudflare Access checks it when the owner signs in. Lire
+        accepts only the owner's address.
+      </li>
+    </ul>
+
+    <h2>Where the data goes</h2>
+    <ul>
+      <li>
+        A Cloudflare Worker sits between the app and NewsBlur. It signs in to NewsBlur with the
+        owner's credentials. They are stored as Worker secrets. The NewsBlur session cookie is kept
+        in a Cloudflare Durable Object.
+      </li>
+      <li>The app keeps a cache of feeds and articles in the device's browser storage.</li>
+      <li>
+        Lire does not sell data, does not share it with other parties, and does not show ads. It
+        has no analytics and no tracking.
+      </li>
+    </ul>
+
+    <h2>Third parties</h2>
+    <p>
+      The data passes through two services. <a href="https://newsblur.com">NewsBlur</a> holds the
+      feeds and the account. <a href="https://www.cloudflare.com">Cloudflare</a> hosts the app and
+      runs the sign-in. Their own privacy policies apply to the data they hold.
+    </p>
+
+    <h2>The public demo</h2>
+    <p>
+      The demo at <a href="https://demo.lire.krebs.tech">demo.lire.krebs.tech</a> shows sample
+      feeds. It needs no account and collects nothing.
+    </p>
+
+    <h2>Deleting data</h2>
+    <p>
+      Clear the app's storage in the device settings to remove the local cache. To remove the
+      account data, delete the NewsBlur account at NewsBlur.
+    </p>
+
+    <h2>Contact</h2>
+    <p>
+      Questions go to the
+      <a href="https://github.com/e-krebs/lire/issues">issue tracker</a>. A change to this policy
+      appears on this page with a new date.
+    </p>
+  </body>
+</html>

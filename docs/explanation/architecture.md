@@ -195,6 +195,10 @@ then renders `DemoBanner` and never shows the sign-in screen
 `demo.lire.krebs.tech`, outside Access. Since it is public, it carries no recorded profile value;
 the demo gate enforces it on a machine that holds the recording.
 
+That public host also serves [privacy.html](../../public/privacy.html), the privacy policy that the
+Play listing links to. The real host sits behind Access, so Play could not read the page there.
+Change the page when the app starts to handle a new kind of data.
+
 The showcase is not read-only. The fixture transport applies writes (mark as read, subscription
 and category edits, preferences) to in-memory state, and nothing in the demo build blocks them.
 A reload restores the seed, including pending read marks, which a mock build keeps in memory only. The preferences bucket persists in `localStorage`; the
