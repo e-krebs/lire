@@ -14,7 +14,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { StreamKey } from "shared/feedsApi/streamKey";
 import { directOpenKey } from "shared/feedsApi/preferences";
 import type { Entry } from "shared/feedsApi/types";
-import { keys } from "client/api/queries";
+import { keys } from "client/api/keys";
 import { MosaicTile, type TileSlot } from "../MosaicTile";
 
 const ORIGINAL = "https://example.test/posts/a-test-entry";

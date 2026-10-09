@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   createFileRoute,
   Outlet,
@@ -9,6 +9,10 @@ import {
 import { parseStreamKey, toStreamKey } from "shared/feedsApi/streamKey";
 import { Panes } from "client/components/shell/AppShell";
 import { MosaicGrid } from "client/components/articles/MosaicGrid";
+import {
+  SourceListKeyContext,
+  createSourceListKeyStore,
+} from "client/components/reader/SourceListKeyContext";
 import { useFeeds } from "client/api/queries";
 import { useViewPrefs } from "client/utils/viewPrefs";
 
@@ -36,6 +40,7 @@ function StreamLayout() {
   const childMatches = useChildMatches();
   const navigate = useNavigate();
   const feeds = useFeeds();
+  const [sourceListKey] = useState(createSourceListKeyStore);
 
   const stream = parseStreamKey(streamKey);
   const missingFeedId =
@@ -60,17 +65,19 @@ function StreamLayout() {
   const readerOpen = childMatches.length > 0;
 
   return (
-    <Panes
-      list={
-        <MosaicGrid
-          streamKey={toStreamKey(stream)}
-          unreadOnly={unreadOnly}
-          ranked={ranked}
-          query={search.q}
-          readerOpen={readerOpen}
-        />
-      }
-      reader={readerOpen ? <Outlet /> : null}
-    />
+    <SourceListKeyContext.Provider value={sourceListKey}>
+      <Panes
+        list={
+          <MosaicGrid
+            streamKey={toStreamKey(stream)}
+            unreadOnly={unreadOnly}
+            ranked={ranked}
+            query={search.q}
+            readerOpen={readerOpen}
+          />
+        }
+        reader={readerOpen ? <Outlet /> : null}
+      />
+    </SourceListKeyContext.Provider>
   );
 }

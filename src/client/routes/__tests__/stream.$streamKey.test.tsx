@@ -1,9 +1,14 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient } from "@tanstack/react-query";
+import type { InfiniteData } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resetFixtureState } from "client/api/adapters/fixture";
 import { getFeeds, getProfile } from "client/api/client";
-import { keys } from "client/api/queries";
+import { keys } from "client/api/keys";
+import { pageCountFor } from "client/api/queries";
+import { queryClient as appQueryClient } from "client/api/queryClient";
+import { setViewPrefs } from "client/utils/viewPrefs";
+import type { EntryPage } from "shared/feedsApi/types";
 import { renderApp } from "test/renderApp";
 
 const ui = {
@@ -12,6 +17,9 @@ const ui = {
   },
   get articleRegion() {
     return screen.findByRole("region", { name: "Article" });
+  },
+  async readerButton(name: string) {
+    return within(await ui.articleRegion).findByRole("button", { name });
   },
   async articleLink() {
     return within(await ui.articleRegion).findByRole("link", {
@@ -171,6 +179,172 @@ describe("/stream/$streamKey", () => {
       await waitFor(() => {
         expect(view.container.querySelector('[data-entry-id="101:0dcd64"]')).not.toBeNull();
       });
+    });
+  });
+
+  describe("when a mark moves an entry between cached lists", () => {
+    // renderApp's default client has a zero stale time, which would refetch every list anyway.
+    const productionClient = () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: { ...appQueryClient.getDefaultOptions().queries, retry: false },
+        },
+      });
+
+    const tiles = (view: ReturnType<typeof renderApp>["view"]) =>
+      [...view.container.querySelectorAll("[data-entry-id]")].map((tile) =>
+        tile.getAttribute("data-entry-id"),
+      );
+
+    const goTo = async ({
+      app,
+      streamKey,
+    }: {
+      app: ReturnType<typeof renderApp>;
+      streamKey: string;
+    }) => {
+      await act(async () => {
+        await app.router.navigate({ to: "/stream/$streamKey", params: { streamKey } });
+      });
+      await waitFor(() => {
+        expect(tiles(app.view).length).toBeGreaterThan(0);
+      });
+    };
+
+    const markFromReader = async ({
+      app,
+      streamKey,
+      entryId,
+      name,
+    }: {
+      app: ReturnType<typeof renderApp>;
+      streamKey: string;
+      entryId: string;
+      name: string;
+    }) => {
+      await act(async () => {
+        await app.router.navigate({
+          to: "/stream/$streamKey/entry/$entryId",
+          params: { streamKey, entryId },
+        });
+      });
+      const button = await ui.readerButton(name);
+      await act(async () => {
+        button.click();
+        await Promise.resolve();
+      });
+      await waitFor(() => {
+        expect(decodeURIComponent(app.router.state.location.pathname)).toBe(`/stream/${streamKey}`);
+      });
+    };
+
+    // Simulates a list fetched before the entry could appear in it, which production timing keeps fresh.
+    const dropFromCachedLists = ({
+      app,
+      streamKey,
+      entryId,
+    }: {
+      app: ReturnType<typeof renderApp>;
+      streamKey: string;
+      entryId: string;
+    }) => {
+      app.queryClient.setQueriesData<InfiniteData<EntryPage>>(
+        { queryKey: ["stream", streamKey] },
+        (data) =>
+          data && {
+            ...data,
+            pages: data.pages.map((p) => ({
+              ...p,
+              items: p.items.filter(({ id }) => id !== entryId),
+            })),
+          },
+      );
+    };
+
+    const firstTile = (app: ReturnType<typeof renderApp>) => tiles(app.view)[0] ?? "";
+
+    it.each([false, true])(
+      "shows an entry marked unread in Recently read when All opens, unread-only %s",
+      async (unread) => {
+        setViewPrefs({ unread });
+        const app = renderApp({ url: "/stream/read", queryClient: productionClient() });
+        await waitFor(() => {
+          expect(tiles(app.view).length).toBeGreaterThan(0);
+        });
+        const entryId = firstTile(app);
+        await goTo({ app, streamKey: "all" });
+        // Unread-only: a read entry is never in the cached All page, so the drop is a no-op and only the refetch can add it.
+        dropFromCachedLists({ app, streamKey: "all", entryId });
+        await goTo({ app, streamKey: "read" });
+
+        await markFromReader({ app, streamKey: "read", entryId, name: "Mark as unread" });
+        await goTo({ app, streamKey: "all" });
+
+        await waitFor(() => {
+          expect(tiles(app.view)).toContain(entryId);
+        });
+      },
+    );
+
+    it("shows an entry marked unread in a feed when All opens", async () => {
+      setViewPrefs({ unread: false });
+      const app = renderApp({ url: "/stream/read", queryClient: productionClient() });
+      await waitFor(() => {
+        expect(tiles(app.view).length).toBeGreaterThan(0);
+      });
+      const entryId = firstTile(app);
+      const feedKey = `feed:${entryId.split(":")[0]}`;
+      await goTo({ app, streamKey: "all" });
+      dropFromCachedLists({ app, streamKey: "all", entryId });
+      await goTo({ app, streamKey: feedKey });
+
+      await markFromReader({ app, streamKey: feedKey, entryId, name: "Mark as unread" });
+      await goTo({ app, streamKey: "all" });
+
+      await waitFor(() => {
+        expect(tiles(app.view)).toContain(entryId);
+      });
+    });
+
+    it("shows an entry marked read in All when Recently read opens", async () => {
+      const app = renderApp({ url: "/stream/all", queryClient: productionClient() });
+      await waitFor(() => {
+        expect(tiles(app.view).length).toBeGreaterThan(0);
+      });
+      const entryId = firstTile(app);
+      await goTo({ app, streamKey: "read" });
+      await goTo({ app, streamKey: "all" });
+
+      await markFromReader({ app, streamKey: "all", entryId, name: "Mark as read" });
+      await goTo({ app, streamKey: "read" });
+
+      await waitFor(() => {
+        expect(tiles(app.view)).toContain(entryId);
+      });
+    });
+
+    it("leaves fresh only the list the reader marks from", async () => {
+      setViewPrefs({ unread: true });
+      const app = renderApp({ url: "/stream/read", queryClient: productionClient() });
+      await waitFor(() => {
+        expect(tiles(app.view).length).toBeGreaterThan(0);
+      });
+      await goTo({ app, streamKey: "all" });
+      const entryId = firstTile(app);
+
+      await markFromReader({ app, streamKey: "all", entryId, name: "Mark as read" });
+
+      const sourceKey = keys.stream({
+        streamKey: "all",
+        unreadOnly: true,
+        count: pageCountFor({ tier: "desktop", streamKey: "all" }),
+      });
+      const fresh = app.queryClient
+        .getQueryCache()
+        .findAll({ queryKey: ["stream"] })
+        .filter((query) => !query.state.isInvalidated)
+        .map((query) => query.queryKey);
+      expect(fresh).toEqual([sourceKey]);
     });
   });
 });

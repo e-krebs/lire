@@ -39,6 +39,7 @@ import {
 } from "client/api/client";
 import { useTier } from "client/hooks/useTier";
 import { markQueue, sendQueuedReads, settleWithin } from "client/api/markQueue";
+import { keys } from "client/api/keys";
 import { orderCategories, orphansOf } from "client/api/selectors";
 import { CATEGORY_ORDER_KEY } from "shared/feedsApi/preferences";
 import { parseStreamKey, type StreamKey } from "shared/feedsApi/streamKey";
@@ -54,46 +55,45 @@ import type {
 
 const FIVE_MINUTES_MS = 5 * 60 * 1000;
 
-export const keys = {
-  authStatus: ["authStatus"] as const,
-  profile: ["profile"] as const,
-  categories: ["categories"] as const,
-  feeds: ["feeds"] as const,
-  counts: ["counts"] as const,
-  preferences: ["preferences"] as const,
-  newsletterAddress: ["newsletterAddress"] as const,
-  sun: (tz: string) => ["sun", tz] as const,
-  stream: ({
+// Every entry-list key goes through here (the stream hooks and `entryListKey`), so they cannot drift.
+const buildEntryListKey = ({
+  streamKey,
+  unreadOnly,
+  order,
+  query,
+  count,
+}: {
+  streamKey: StreamKey;
+  unreadOnly?: boolean;
+  order?: EntryOrder;
+  query?: string;
+  count?: number;
+}) =>
+  query !== undefined
+    ? keys.search({ streamKey, query, unreadOnly, count })
+    : keys.stream({ streamKey, unreadOnly, order, count });
+
+// The key of the list a stream view shows: its search results while searching, else the stream.
+export const entryListKey = ({
+  streamKey,
+  unreadOnly,
+  order,
+  query,
+  count,
+}: {
+  streamKey: StreamKey;
+  unreadOnly: boolean;
+  order: EntryOrder;
+  query?: string;
+  count: number | undefined;
+}): readonly unknown[] =>
+  buildEntryListKey({
     streamKey,
     unreadOnly,
     order,
+    query: query !== undefined && query.trim() !== "" ? query : undefined,
     count,
-  }: {
-    streamKey: StreamKey;
-    unreadOnly?: boolean;
-    order?: EntryOrder;
-    count?: number;
-  }) =>
-    [
-      "stream",
-      streamKey,
-      { unreadOnly: unreadOnly ?? false, order: order ?? "newest", count },
-    ] as const,
-  search: ({
-    streamKey,
-    query,
-    unreadOnly,
-    count,
-  }: {
-    streamKey: StreamKey;
-    query: string;
-    unreadOnly?: boolean;
-    count?: number;
-  }) => ["search", streamKey, query, { unreadOnly: unreadOnly ?? false, count }] as const,
-  entry: (entryId: string) => ["entry", entryId] as const,
-  feedLookup: (query: string) => ["feedLookup", query] as const,
-  webFeedStatus: (requestId: string) => ["webFeedStatus", requestId] as const,
-};
+  });
 
 export const isSignInRequired = (error: unknown): boolean =>
   error instanceof ApiError && error.code === "sign_in_required";
@@ -290,7 +290,7 @@ export const useStream = ({
   enabled?: boolean;
 }) =>
   useInfiniteQuery({
-    queryKey: keys.stream({ streamKey, unreadOnly, order, count }),
+    queryKey: buildEntryListKey({ streamKey, unreadOnly, order, count }),
     queryFn: async ({ pageParam }) => {
       await sendQueuedReads();
       return getStreamEntries({ streamKey, unreadOnly, order, count, cursor: pageParam });
@@ -317,7 +317,7 @@ export const useSearchContents = ({
   enabled?: boolean;
 }) =>
   useInfiniteQuery({
-    queryKey: keys.search({ streamKey, query, unreadOnly, count }),
+    queryKey: buildEntryListKey({ streamKey, query, unreadOnly, count }),
     queryFn: async ({ pageParam }) => {
       await sendQueuedReads();
       return searchEntries({ streamKey, query, unreadOnly, count, cursor: pageParam });
@@ -540,41 +540,23 @@ type CachedPages = readonly [readonly unknown[], InfiniteData<EntryPage> | undef
 // The infinite caches holding entries: plain streams and in-stream article searches.
 const ENTRY_CACHE_PREFIXES = [["stream"], ["search"]] as const;
 
-const isUnreadOnlyListKey = (queryKey: readonly unknown[]): boolean => {
-  const params = queryKey.at(-1);
-  return (
-    ENTRY_CACHE_PREFIXES.some(([prefix]) => prefix === queryKey[0]) &&
-    typeof params === "object" &&
-    params !== null &&
-    "unreadOnly" in params &&
-    params.unreadOnly === true
-  );
-};
+const isEntryListKey = (queryKey: readonly unknown[]): boolean =>
+  ENTRY_CACHE_PREFIXES.some(([prefix]) => prefix === queryKey[0]);
 
-// `setQueryData` clears `isInvalidated`; re-mark the unread-only lists that were stale so an optimistic write does not hide the entries they are missing.
-const keepUnreadListsStale = (client: QueryClient, write: () => void): void => {
-  const stale = new Set(
-    client
-      .getQueryCache()
-      .findAll({
-        predicate: ({ queryKey, state }) => state.isInvalidated && isUnreadOnlyListKey(queryKey),
-      })
-      .map(({ queryHash }) => queryHash),
-  );
-  write();
-  if (stale.size === 0) return;
+// Any mark can move an entry into or out of any list (unread-only, Recently read, all); stale only,
+// so the open view does not jump. Done at mark time too: the mutation settles when its batch goes
+// upstream, up to MARK_DELAY_MS later, and a list opened before that would otherwise stay fresh.
+// The list marked from stays fresh: left stale, a remount or filter flip would refetch it and drop
+// the entry.
+const staleEntryLists = ({
+  client,
+  freshHash,
+}: {
+  client: QueryClient;
+  freshHash: string | undefined;
+}): void => {
   void client.invalidateQueries({
-    predicate: ({ queryHash }) => stale.has(queryHash),
-    refetchType: "none",
-  });
-};
-
-// An entry marked unread was absent from unread-only lists; stale only, so the open view does not
-// jump. Done at mark time too: the mutation settles when its batch goes upstream, up to MARK_DELAY_MS
-// later, and a list opened before that would otherwise stay fresh without the entry.
-const staleUnreadLists = (client: QueryClient): void => {
-  void client.invalidateQueries({
-    predicate: ({ queryKey }) => isUnreadOnlyListKey(queryKey),
+    predicate: (query) => isEntryListKey(query.queryKey) && query.queryHash !== freshHash,
     refetchType: "none",
   });
 };
@@ -608,9 +590,15 @@ const shiftUnreadCounts = ({
   client.setQueryData<Counts>(keys.counts, next);
 };
 
+interface MarkVariables {
+  entryIds: string[];
+  read: boolean;
+  // The `keys.stream` or `keys.search` key of the list marked from; absent stales every list.
+  sourceKey?: readonly unknown[];
+}
+
 // Both marks go through the batching queue, so the mutation settles when its batch went upstream.
-const sendMark = async ({ entryIds, read }: { entryIds: string[]; read: boolean }) =>
-  markQueue.mark({ entryIds, read });
+const sendMark = async ({ entryIds, read }: MarkVariables) => markQueue.mark({ entryIds, read });
 
 export const useMark = () => {
   const client = useQueryClient();
@@ -619,7 +607,7 @@ export const useMark = () => {
     mutationFn: sendMark,
     // Offline, a paused mutation would never reach the queue, so the read would not be stored.
     networkMode: "always",
-    onMutate: async ({ entryIds, read }: { entryIds: string[]; read: boolean }) => {
+    onMutate: async ({ entryIds, read, sourceKey }: MarkVariables) => {
       // Search results are the same entries under a different key prefix, so they take the same
       // optimistic flip (and the same rollback) as the plain stream caches. The counts go too: a
       // fetch in flight would land over the decrement.
@@ -636,6 +624,14 @@ export const useMark = () => {
         entryIds.map((entryId) => [entryId, client.getQueryData<Entry>(keys.entry(entryId))]),
       );
 
+      // Resolved now so settle-time staling holds even once that list unmounts. A source list already
+      // stale stays stale: the optimistic write below clears its flag.
+      const sourceHash = sourceKey && hashKey(sourceKey);
+      const freshHash =
+        sourceHash !== undefined &&
+        client.getQueryCache().get(sourceHash)?.state.isInvalidated !== true
+          ? sourceHash
+          : undefined;
       // First occurrence wins: an entry cached in several stream caches (e.g. `all` and its
       // folder) must only count once toward the feed, category and all deltas below.
       const changedEntries = new Map<string, Entry>();
@@ -648,22 +644,21 @@ export const useMark = () => {
         }
       }
 
-      keepUnreadListsStale(client, () => {
-        for (const [queryKey, data] of previousStreams) {
-          if (!data) continue;
-          client.setQueryData<InfiniteData<EntryPage>>(queryKey, {
-            ...data,
-            pages: data.pages.map((page) => ({
-              ...page,
-              items: page.items.map((item) =>
-                entryIds.includes(item.id) ? { ...item, unread: !read } : item,
-              ),
-            })),
-          });
-        }
-      });
+      for (const [queryKey, data] of previousStreams) {
+        if (!data) continue;
+        client.setQueryData<InfiniteData<EntryPage>>(queryKey, {
+          ...data,
+          pages: data.pages.map((page) => ({
+            ...page,
+            items: page.items.map((item) =>
+              entryIds.includes(item.id) ? { ...item, unread: !read } : item,
+            ),
+          })),
+        });
+      }
 
-      if (!read) staleUnreadLists(client);
+      // After the writes: `setQueryData` clears `isInvalidated`.
+      staleEntryLists({ client, freshHash });
 
       for (const entryId of entryIds) {
         client.setQueryData<Entry>(keys.entry(entryId), (prev) =>
@@ -673,44 +668,48 @@ export const useMark = () => {
 
       shiftUnreadCounts({ client, entries: [...changedEntries.values()], delta: read ? -1 : 1 });
 
-      return { previousStreams, previousEntries, changedEntries: [...changedEntries.values()] };
+      return {
+        previousStreams,
+        previousEntries,
+        changedEntries: [...changedEntries.values()],
+        freshHash,
+      };
     },
     // Undoes only this mutation's flips: restoring the whole snapshot would also undo marks that
     // landed on other entries since.
     onError: (_error, { entryIds, read }, context) => {
       if (!context) return;
       const failed = new Set(entryIds);
-      keepUnreadListsStale(client, () => {
-        for (const [queryKey, previous] of context.previousStreams) {
-          const previousUnread = new Map<string, boolean>(
-            previous?.pages.flatMap((page) => page.items.map((item) => [item.id, item.unread])),
-          );
-          client.setQueryData<InfiniteData<EntryPage>>(
-            queryKey,
-            (data) =>
-              data && {
-                ...data,
-                pages: data.pages.map((page) => ({
-                  ...page,
-                  items: page.items.map((item) => {
-                    const unread = failed.has(item.id) ? previousUnread.get(item.id) : undefined;
-                    return unread === undefined ? item : { ...item, unread };
-                  }),
-                })),
-              },
-          );
-        }
-      });
+      for (const [queryKey, previous] of context.previousStreams) {
+        const previousUnread = new Map<string, boolean>(
+          previous?.pages.flatMap((page) => page.items.map((item) => [item.id, item.unread])),
+        );
+        client.setQueryData<InfiniteData<EntryPage>>(
+          queryKey,
+          (data) =>
+            data && {
+              ...data,
+              pages: data.pages.map((page) => ({
+                ...page,
+                items: page.items.map((item) => {
+                  const unread = failed.has(item.id) ? previousUnread.get(item.id) : undefined;
+                  return unread === undefined ? item : { ...item, unread };
+                }),
+              })),
+            },
+        );
+      }
       for (const [entryId, previous] of context.previousEntries) {
         client.setQueryData<Entry>(keys.entry(entryId), (entry) =>
           entry && previous ? { ...entry, unread: previous.unread } : entry,
         );
       }
       shiftUnreadCounts({ client, entries: context.changedEntries, delta: read ? 1 : -1 });
+      staleEntryLists({ client, freshHash: context.freshHash });
     },
-    onSettled: (_data, _error, { read }) => {
+    onSettled: (_data, _error, _variables, context) => {
       void client.invalidateQueries({ queryKey: keys.counts });
-      if (!read) staleUnreadLists(client);
+      staleEntryLists({ client, freshHash: context?.freshHash });
     },
   });
 };
