@@ -432,9 +432,7 @@ export const NavigatorPanel = forwardRef<NavigatorPanelHandle, NavigatorPanelPro
               <div>
                 <p className={sectionHeadingClassName}>{t.matches}</p>
                 {noMatches ? (
-                  <p className="px-2 py-2 text-sm text-faint">
-                    {t.noMatches({ query: trimmedQuery })}
-                  </p>
+                  <p className="p-2 text-sm text-faint">{t.noMatches({ query: trimmedQuery })}</p>
                 ) : (
                   <div className="flex flex-col gap-0.5">
                     {categoryMatches.map((category, index) => (

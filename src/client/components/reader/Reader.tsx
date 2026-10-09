@@ -273,7 +273,7 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
               src={hero.src}
               alt=""
               onError={hero.onError}
-              className="mx-auto mt-3 mb-5 block h-auto max-h-[45vh] w-auto max-w-full rounded-xl outline outline-hairline-image -outline-offset-1"
+              className="mx-auto mt-3 mb-5 block size-auto max-h-[45vh] max-w-full rounded-xl outline -outline-offset-1 outline-hairline-image"
             />
           ) : null}
           {newsletter ? (
@@ -318,7 +318,7 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
         className="reader-panel flex min-h-0 flex-col"
       >
         <div {...separatorProps} />
-        <div ref={paneRef} className="min-h-0 flex-1 scroll-pane">
+        <div ref={paneRef} className="scroll-pane min-h-0 flex-1">
           {body}
         </div>
         {openedUnread === undefined ? null : <PullAction pull={pull} read={openedUnread} />}

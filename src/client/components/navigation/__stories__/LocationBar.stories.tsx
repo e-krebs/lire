@@ -16,7 +16,7 @@ const meta: Meta<Args> = {
     withTier,
     withRouter,
     (Story) => (
-      <div className="w-[36rem] max-w-full">
+      <div className="w-xl max-w-full">
         <Story />
       </div>
     ),

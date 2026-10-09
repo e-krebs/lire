@@ -66,7 +66,7 @@ export const listRowClassName = `
 `;
 
 export const EmptyLine = ({ children }: { children: ReactNode }) => (
-  <p className="px-3 py-4 text-sm text-muted text-pretty">{children}</p>
+  <p className="px-3 py-4 text-sm text-pretty text-muted">{children}</p>
 );
 
 export const hostOf = (website: string | undefined): string | undefined => {

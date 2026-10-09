@@ -65,8 +65,8 @@ export const NewsletterPanel = ({ onClose }: NewsletterPanelProps) => {
         </button>
       }
     >
-      <div className="flex flex-col gap-4 px-4 py-4">
-        <p className="text-sm text-muted text-pretty">{t.subscriptions.newsletterHelp}</p>
+      <div className="flex flex-col gap-4 p-4">
+        <p className="text-sm text-pretty text-muted">{t.subscriptions.newsletterHelp}</p>
         {address.data === undefined ? (
           address.isError ? (
             <p role="alert" className="text-sm text-danger">

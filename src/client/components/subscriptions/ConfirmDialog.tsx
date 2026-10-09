@@ -159,14 +159,14 @@ export const ConfirmDialog = ({
       className={`
         confirm-dialog m-auto hidden w-[calc(100%-2rem)] max-w-sm flex-col gap-4 rounded-2xl
         border-0 bg-surface p-5 text-ink shadow-2xl
-        open:flex
         backdrop:bg-scrim/35
+        open:flex
       `}
     >
       <h2 id={titleId} className="text-base font-semibold text-balance">
         {title}
       </h2>
-      <div className="text-sm text-muted text-pretty">{children}</div>
+      <div className="text-sm text-pretty text-muted">{children}</div>
       {extra}
       <div className="flex gap-2">
         <button
@@ -176,7 +176,7 @@ export const ConfirmDialog = ({
             const dialog = dialogRef.current;
             if (dialog) closeDialogElement(dialog);
           }}
-          className={`${buttonClassName} bg-surface-2 text-ink not-disabled:hover:bg-hairline`}
+          className={`${buttonClassName} bg-surface-2 text-ink hover:not-disabled:bg-hairline`}
         >
           {t.common.cancel}
         </button>
@@ -184,7 +184,7 @@ export const ConfirmDialog = ({
           type="button"
           disabled={confirmDisabled}
           onClick={onConfirm}
-          className={`${buttonClassName} bg-danger text-surface not-disabled:hover:bg-danger/90`}
+          className={`${buttonClassName} bg-danger text-surface hover:not-disabled:bg-danger/90`}
         >
           {confirmLabel}
         </button>

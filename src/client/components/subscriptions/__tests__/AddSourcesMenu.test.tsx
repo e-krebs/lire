@@ -43,6 +43,7 @@ const setup = ({ inDialog = false }: { inDialog?: boolean } = {}) => {
     <AddSourcesMenu
       onAddWebsite={onAddWebsite}
       onAddNewsletter={onAddNewsletter}
+      // oxlint-disable-next-line tailwindcss/no-unknown-classes
       className="trigger"
     />
   );

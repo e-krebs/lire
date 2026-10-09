@@ -194,8 +194,8 @@ const CategoryRow = ({
       data-dragging={isDragging || undefined}
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={`
-        relative flex items-center rounded-xl motion-reduce:transition-none!
-        data-dragging:z-10 data-dragging:bg-surface data-dragging:shadow-lg
+        relative flex items-center rounded-xl data-dragging:z-10
+        data-dragging:bg-surface data-dragging:shadow-lg motion-reduce:transition-none!
       `}
     >
       {sortable ? (

@@ -56,7 +56,7 @@ export const EmptyCategoryPanel = ({
           />
         }
       >
-        <div className="flex flex-col gap-4 px-4 py-4">
+        <div className="flex flex-col gap-4 p-4">
           <CategoryNameForm
             formId={formId}
             category={category}
@@ -66,7 +66,7 @@ export const EmptyCategoryPanel = ({
           />
           <div className="flex flex-col items-center gap-2 rounded-xl bg-surface-2 px-4 py-6 text-center">
             <p className="text-sm text-ink">{t.noFeedsInCategory}</p>
-            <p className="text-sm text-faint text-pretty">{t.addOrTick}</p>
+            <p className="text-sm text-pretty text-faint">{t.addOrTick}</p>
             <AddSourcesMenu
               onAddWebsite={onAddWebsite}
               onAddNewsletter={onAddNewsletter}

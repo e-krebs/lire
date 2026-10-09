@@ -45,7 +45,7 @@ const meta: Meta<Args> = {
       <div className="h-screen p-4">
         <div
           ref={anchorRef}
-          className="mx-auto h-10 w-[36rem] max-w-full rounded-full border border-hairline"
+          className="mx-auto h-10 w-xl max-w-full rounded-full border border-hairline"
         />
         <Navigator
           {...args}

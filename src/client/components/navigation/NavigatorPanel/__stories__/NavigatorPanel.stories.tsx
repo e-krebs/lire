@@ -16,7 +16,7 @@ const meta = {
     withRouteMatch,
     withQueryClient,
     (Story) => (
-      <div className="flex h-[32rem] w-96 flex-col overflow-hidden rounded-xl border border-hairline bg-surface">
+      <div className="flex h-128 w-96 flex-col overflow-hidden rounded-xl border border-hairline bg-surface">
         <Story />
       </div>
     ),
