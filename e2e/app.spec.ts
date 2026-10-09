@@ -2,6 +2,13 @@ import { mkdirSync } from "node:fs";
 import { expect, test, type Page } from "./fixtures";
 import seedFeeds from "fixtures/seed/feeds.json" with { type: "json" };
 
+// images.example.test never resolves, and each card shrinks to text height once its lookup fails,
+// so the first page can end above the fold and fetch the next one mid-test. Served, it holds still.
+const serveSeedImages = async (page: Page) =>
+  page.route("https://images.example.test/**", async (route) =>
+    route.fulfill({ path: "public/favicon.png" }),
+  );
+
 const ui = (page: Page) => ({
   get locationBar() {
     return page.getByRole("group", { name: "Location" });
@@ -224,39 +231,45 @@ test.describe("the app", () => {
     await expect(page).toHaveURL(/\/stream\/feed%3A101$/);
   });
 
-  test("moves between cards with the arrow keys and marks one read with M", async ({ page }) => {
-    const pageUi = ui(page);
-    await page.goto("/");
+  test.describe("when the seed images load", () => {
+    // page.route cannot see what the dev service worker fetches.
+    test.use({ serviceWorkers: "block" });
 
-    const tiles = pageUi.tiles;
-    await expect(tiles.first()).toBeVisible();
-    const count = await tiles.count();
-    expect(count).toBeGreaterThan(2);
+    test("moves between cards with the arrow keys and marks one read with M", async ({ page }) => {
+      const pageUi = ui(page);
+      await serveSeedImages(page);
+      await page.goto("/");
 
-    // Roving tabindex: the first card is the grid's one tab stop.
-    await tiles.first().focus();
-    await page.keyboard.press("ArrowDown");
-    const focused = pageUi.focusedTile;
-    await expect(focused).toHaveCount(1);
-    const focusedId = await focused.evaluate((element) =>
-      element.closest("[data-entry-id]")?.getAttribute("data-entry-id"),
-    );
-    expect(focusedId).toBeTruthy();
-    const firstId = await tiles
-      .first()
-      .evaluate((element) => element.closest("[data-entry-id]")?.getAttribute("data-entry-id"));
-    expect(focusedId).not.toBe(firstId);
+      const tiles = pageUi.tiles;
+      await expect(tiles.first()).toBeVisible();
+      const count = await tiles.count();
+      expect(count).toBeGreaterThan(2);
 
-    // The stream opens unread-only, so a card marked read leaves the grid and hands focus on.
-    await page.keyboard.press("m");
-    await expect(pageUi.entry(focusedId)).toHaveCount(0);
-    await expect(tiles).toHaveCount(count - 1);
-    await expect(pageUi.focusedTile).toHaveCount(1);
+      // Roving tabindex: the first card is the grid's one tab stop.
+      await tiles.first().focus();
+      await page.keyboard.press("ArrowDown");
+      const focused = pageUi.focusedTile;
+      await expect(focused).toHaveCount(1);
+      const focusedId = await focused.evaluate((element) =>
+        element.closest("[data-entry-id]")?.getAttribute("data-entry-id"),
+      );
+      expect(focusedId).toBeTruthy();
+      const firstId = await tiles
+        .first()
+        .evaluate((element) => element.closest("[data-entry-id]")?.getAttribute("data-entry-id"));
+      expect(focusedId).not.toBe(firstId);
 
-    // R refetches the first page: the cards stay, and the age resets once the new page lands.
-    await page.keyboard.press("r");
-    await expect(pageUi.freshnessStatus("Updated just now")).toBeVisible();
-    await expect(tiles.first()).toBeVisible();
+      // The stream opens unread-only, so a card marked read leaves the grid and hands focus on.
+      await page.keyboard.press("m");
+      await expect(pageUi.entry(focusedId)).toHaveCount(0);
+      await expect(tiles).toHaveCount(count - 1);
+      await expect(pageUi.focusedTile).toHaveCount(1);
+
+      // R refetches the first page: the cards stay, and the age resets once the new page lands.
+      await page.keyboard.press("r");
+      await expect(pageUi.freshnessStatus("Updated just now")).toBeVisible();
+      await expect(tiles.first()).toBeVisible();
+    });
   });
 
   test("shows a tooltip on hover and hides it on Escape", async ({ page }, testInfo) => {
