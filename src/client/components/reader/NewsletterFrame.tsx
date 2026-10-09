@@ -10,11 +10,15 @@ const SANDBOX = "allow-same-origin allow-popups allow-popups-to-escape-sandbox";
 const FRAME_STYLE =
   "html, body { margin: 0; background: light-dark(#fff, #000); color: light-dark(#000, #fff); } html { overflow-y: hidden; overflow-x: auto; } img { max-width: 100%; height: auto; } body { font-family: system-ui, sans-serif; }";
 
-// DOMPurify serializes attributes as `name="value"`. A false match only keeps the page white.
+// DOMPurify serializes attributes as `name="value"`. A false match inverts an email that would have worked natively.
 const AUTHORED_COLORS = /\s(?:bgcolor|color)=|\sstyle="[^"]*(?:color|background)/i;
 
-// An email that sets any color assumes a white page around it, so only an uncolored one goes dark.
+// An email that sets any color assumes a white page around it, so a dark OS scheme inverts it
+// instead; an uncolored one follows the scheme natively.
 const hasAuthoredColors = (html: string): boolean => AUTHORED_COLORS.test(html);
+
+const AUTHORED_DARK_STYLE =
+  "html { background: #fff; } @media (prefers-color-scheme: dark) { html { filter: invert(1) hue-rotate(180deg); } img, video, svg { filter: invert(1) hue-rotate(180deg); } }";
 
 const FIELD_TAGS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
 
@@ -56,7 +60,7 @@ export const NewsletterFrame = ({ html, dir, onDocument }: NewsletterFrameProps)
   const authored = useMemo(() => hasAuthoredColors(html), [html]);
   const srcDoc = useMemo(
     () =>
-      `<!doctype html><html dir="${dir}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta name="color-scheme" content="${authored ? "light" : "light dark"}"><style>${FRAME_STYLE}</style></head><body>${html}</body></html>`,
+      `<!doctype html><html dir="${dir}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta name="color-scheme" content="${authored ? "light" : "light dark"}"><style>${FRAME_STYLE}${authored ? ` ${AUTHORED_DARK_STYLE}` : ""}</style></head><body>${html}</body></html>`,
     [html, dir, authored],
   );
 
@@ -175,7 +179,6 @@ export const NewsletterFrame = ({ html, dir, onDocument }: NewsletterFrameProps)
       sandbox={SANDBOX}
       title={t.articles.newsletter}
       className="newsletter-frame"
-      data-palette={authored ? "authored" : undefined}
       srcDoc={srcDoc}
       ref={frameRef}
       onLoad={(event) => {

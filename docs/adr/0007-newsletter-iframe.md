@@ -24,9 +24,13 @@ color assumes a white page: "Serious gaming" writes `color: #000` inline and set
 a black default would hide its text. The frame scans the sanitized HTML for a `style` attribute
 naming `color` or `background`, and for a `bgcolor` or `color` attribute, which covers
 `<font color>`. With none, the frame's `color-scheme` meta is `light dark` and its default page is
-`light-dark(#fff, #000)` with the opposite text color. With any, the meta is `light` and the page
-stays white, as does the band behind the frame. A false match only keeps an email white. No invert
-filter is applied, because it would also invert photos and brand colors.
+`light-dark(#fff, #000)` with the opposite text color. With any, the meta stays `light` and the
+page is white, and in the dark scheme an invert filter (`invert(1) hue-rotate(180deg)`) turns it
+dark, while `img`, `video` and `svg` get the same filter again to restore their colors after the
+invert. CSS background images and color emoji stay inverted. The band behind the frame follows the
+scheme too. The filter keeps the senders' colors and the white-page assumption intact through the
+invert. The second pass restores photos only approximately, because the hue rotate clips saturated
+colors. A false match only inverts an email that would have worked natively.
 
 The sandbox is exactly `allow-same-origin allow-popups allow-popups-to-escape-sandbox`, never
 `allow-scripts`. The parent reads the iframe document, so no script runs in the frame while the
@@ -43,8 +47,9 @@ CSS `zoom`, unlike `transform`, changes layout size, so the height measure stays
 
 ## Consequences
 
-- Emails with colors of their own look as their senders designed them and stay white in the dark
-  theme. Uncolored emails follow it.
+- Emails with colors of their own keep their layout in the dark theme through an invert filter.
+  Uncolored emails follow it natively.
+- Brand colors shift by the hue rotate, and a logo image keeps its own colors.
 - A dark logo on a transparent background, in an uncolored email, can fade into the dark page.
 - Height, key forwarding and the broken-image placeholder depend on `allow-same-origin`.
 - A zoomed email's text can get small, because the scale has no floor. `overflow-x: auto` stays on the
