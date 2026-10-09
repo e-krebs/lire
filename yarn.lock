@@ -4226,7 +4226,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tailwindcss/node@npm:4.3.3":
+"@tailwindcss/node@npm:4.3.3, @tailwindcss/node@npm:^4.3.3":
   version: 4.3.3
   resolution: "@tailwindcss/node@npm:4.3.3"
   dependencies:
@@ -7634,6 +7634,7 @@ __metadata:
     msw: "npm:^3.0.2"
     oxfmt: "npm:0.71.0"
     oxlint: "npm:1.86.0"
+    oxlint-tailwindcss: "npm:^1.14.0"
     oxlint-tsgolint: "npm:7.0.2003"
     react: "npm:^19.2.8"
     react-dom: "npm:^19.2.8"
@@ -8367,6 +8368,16 @@ __metadata:
   bin:
     oxfmt: bin/oxfmt
   checksum: 10c0/10c053f9435491aff112a3f086a7d6bf99ac9191d205d750ba78dd45879011adda8e4f67cebb7df857e047452dca458bd476f1efc427da7ade989f2b5c9decc1
+  languageName: node
+  linkType: hard
+
+"oxlint-tailwindcss@npm:^1.14.0":
+  version: 1.14.0
+  resolution: "oxlint-tailwindcss@npm:1.14.0"
+  dependencies:
+    "@tailwindcss/node": "npm:^4.3.3"
+    tailwindcss: "npm:^4.3.3"
+  checksum: 10c0/4836ca786ca2a8eac0d64c8fcc4455d252ab0f3a2b986b795901c21af94819ef73ffc31a55138b3afd8d7ba1474472ea76caf0c784fb8da5bb14de11cf168d9e
   languageName: node
   linkType: hard
 
