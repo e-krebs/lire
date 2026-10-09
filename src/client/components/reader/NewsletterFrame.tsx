@@ -16,9 +16,6 @@ const AUTHORED_COLORS = /\s(?:bgcolor|color)=|\sstyle="[^"]*(?:color|background)
 // An email that sets any color assumes a white page around it, so only an uncolored one goes dark.
 const hasAuthoredColors = (html: string): boolean => AUTHORED_COLORS.test(html);
 
-// An email sized in `vh` reads the frame's own height, so without a cap it grows on every resize.
-const MAX_FRAME_HEIGHT = 20_000;
-
 const FIELD_TAGS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
 
 // Frame elements come from another realm, so `instanceof` against this window's classes fails.
@@ -35,15 +32,12 @@ interface NewsletterFrameProps {
   html: string;
   /** Text direction of the entry. */
   dir: "ltr" | "rtl";
-  /**
-   * The frame's document once set up, and again whenever `capped` flips. Past the height cap the
-   * frame scrolls inside, so the pane's end is no longer the content's end.
-   */
-  onDocument?: (args: { doc: Document; capped: boolean }) => void;
+  /** The frame's document, once set up. */
+  onDocument?: (doc: Document) => void;
 }
 
 // Emails assume a browser-default stylesheet, so they render in a sandboxed frame
-// sized to its content up to `MAX_FRAME_HEIGHT`; below that the reader's pane does the scrolling.
+// sized to its content, so the reader's pane does all the scrolling.
 // Listeners are attached from here because no script runs inside the frame.
 export const NewsletterFrame = ({ html, dir, onDocument }: NewsletterFrameProps) => {
   const frameRef = useRef<HTMLIFrameElement>(null);
@@ -76,15 +70,10 @@ export const NewsletterFrame = ({ html, dir, onDocument }: NewsletterFrameProps)
 
     // `scrollHeight` never drops below the frame's own height, so the frame could not shrink. The
     // horizontal scrollbar is added so it never covers the last line.
-    let capped: boolean | undefined;
     let zoom = 1;
     const fit = () => {
       const scrollbar = Math.max(0, win.innerHeight - root.clientHeight);
-      const height = Math.ceil(root.getBoundingClientRect().height) + scrollbar;
-      frame.style.height = `${Math.min(height, MAX_FRAME_HEIGHT)}px`;
-      const over = height > MAX_FRAME_HEIGHT;
-      root.style.overflowY = over ? "auto" : "";
-      return over;
+      frame.style.height = `${Math.ceil(root.getBoundingClientRect().height) + scrollbar}px`;
     };
     const resize = () => {
       // Reset first so the natural width is measured; growth under 1% keeps the last zoom, so
@@ -96,12 +85,10 @@ export const NewsletterFrame = ({ html, dir, onDocument }: NewsletterFrameProps)
       const next = natural > room ? Math.floor((room / natural) * 1000) / 1000 : 1;
       if (next < zoom || next - zoom >= 0.01) zoom = next;
       doc.body.style.zoom = zoom === 1 ? "" : String(zoom);
-      const over = fit();
-      if (over === capped) return;
-      capped = over;
-      onDocumentRef.current?.({ doc, capped });
+      fit();
     };
     resize();
+    onDocumentRef.current?.(doc);
     // Images load after setup. jsdom has no ResizeObserver.
     const observer = win.ResizeObserver === undefined ? null : new win.ResizeObserver(resize);
     observer?.observe(root);
