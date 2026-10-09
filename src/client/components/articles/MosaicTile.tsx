@@ -61,7 +61,7 @@ const FLY_MARGIN = 24;
 const wrapperClassName = `
   group/tile absolute top-0 left-0 touch-pan-y
   hover:scale-[1.01] has-[a:focus-visible]:scale-[1.01]
-  motion-safe:transition-[translate,opacity,scale] motion-safe:duration-200
+  motion-safe:transition-[translate,opacity,scale,height] motion-safe:duration-200
 `;
 
 // The card's visuals and links, which slide as one under the finger; the wrapper keeps the slot.
