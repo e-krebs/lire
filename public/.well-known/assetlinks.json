@@ -5,7 +5,8 @@
       "namespace": "android_app",
       "package_name": "tech.krebs.lire",
       "sha256_cert_fingerprints": [
-        "3E:67:C2:6A:08:04:20:62:3A:17:08:92:D8:29:9A:C6:D9:05:7A:37:6C:FD:B1:7C:4B:D1:E9:A6:C3:D2:9C:DF"
+        "3E:67:C2:6A:08:04:20:62:3A:17:08:92:D8:29:9A:C6:D9:05:7A:37:6C:FD:B1:7C:4B:D1:E9:A6:C3:D2:9C:DF",
+        "C3:8A:AC:8E:6B:7B:50:2B:69:4A:36:AF:BA:6B:BB:6F:E8:9D:D0:1A:31:27:F8:6B:01:D6:EC:0D:42:D3:72:B6"
       ]
     }
   }

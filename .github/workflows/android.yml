@@ -1,6 +1,6 @@
 name: Android
 
-# Builds the signed TWA and attaches the APK to a GitHub Release, to install by hand.
+# Builds the signed TWA, attaches the APK and AAB to a GitHub Release, and uploads the AAB to Play internal testing.
 on:
   push:
     branches: [main]
@@ -26,12 +26,15 @@ jobs:
           java-version: 17
           cache: gradle
       - working-directory: android
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug bundleDebug
 
   release:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 12
+    concurrency:
+      group: android-release
+      cancel-in-progress: false
     permissions:
       contents: write
     env:
@@ -54,17 +57,32 @@ jobs:
         run: |
           export LIRE_KEYSTORE_FILE="$RUNNER_TEMP/lire.keystore"
           base64 --decode <<< "$LIRE_KEYSTORE_BASE64" > "$LIRE_KEYSTORE_FILE"
-          ./gradlew assembleRelease
+          ./gradlew assembleRelease bundleRelease
           mv app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/lire-$LIRE_VERSION_NAME.apk"
-      # A re-run keeps the run number, so its release already exists: replace the APK instead.
+          mv app/build/outputs/bundle/release/app-release.aab "$RUNNER_TEMP/lire-$LIRE_VERSION_NAME.aab"
+      # A re-run keeps the run number, so its release already exists: replace the files instead.
       - env:
           GH_TOKEN: ${{ github.token }}
         run: |
           tag="android-$LIRE_VERSION_NAME"
           apk="$RUNNER_TEMP/lire-$LIRE_VERSION_NAME.apk"
+          aab="$RUNNER_TEMP/lire-$LIRE_VERSION_NAME.aab"
           if gh release view "$tag" > /dev/null 2>&1; then
-            gh release upload "$tag" "$apk" --clobber
+            gh release upload "$tag" "$apk" "$aab" --clobber
           else
-            gh release create "$tag" "$apk" --title "Android $LIRE_VERSION_NAME" \
+            gh release create "$tag" "$apk" "$aab" --title "Android $LIRE_VERSION_NAME" \
               --target "$GITHUB_SHA" --notes "Sideload this APK on Android to install or update Lire."
           fi
+      # Only this step reads the secret, and it writes just a boolean.
+      - id: play
+        env:
+          PLAY_JSON: ${{ secrets.LIRE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: echo "has=${PLAY_JSON:+true}" | sed 's/=$/=false/' >> "$GITHUB_OUTPUT"
+      - if: steps.play.outputs.has == 'true'
+        uses: r0adkll/upload-google-play@e738b9dd8f2476ea806d921b64aacd24f34515a5 # v1.1.5
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.LIRE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: tech.krebs.lire
+          releaseFiles: ${{ runner.temp }}/lire-1.${{ github.run_number }}.aab
+          tracks: internal
+          status: completed

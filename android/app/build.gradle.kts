@@ -12,8 +12,8 @@ android {
 
     defaultConfig {
         applicationId = "tech.krebs.lire"
-        minSdk = 23
-        targetSdk = 35
+        minSdk = 24
+        targetSdk = 36
         // Every update must raise it, so CI passes its run number.
         versionCode = System.getenv("LIRE_VERSION_CODE")?.toInt() ?: 1
         versionName = System.getenv("LIRE_VERSION_NAME") ?: "dev"

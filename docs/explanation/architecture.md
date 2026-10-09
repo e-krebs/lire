@@ -112,8 +112,10 @@ becomes an intent to the app's own `OpenInBrowserActivity`
 ([OpenInBrowserActivity.kt](../../android/app/src/main/kotlin/tech/krebs/lire/OpenInBrowserActivity.kt)),
 which opens it in the named browser as a plain tab. A missing browser falls back to the default
 one. Chrome hides its address bar only when
-[assetlinks.json](../../public/.well-known/assetlinks.json) lists the app's signing key. How the
-app ships is in [deploy.md](../how-to/deploy.md#android-app).
+[assetlinks.json](../../public/.well-known/assetlinks.json) lists the app's signing key. The file
+lists two keys: the upload key, which signs the APK on GitHub, and the Play app signing key, which
+signs the build Play delivers. How the app ships is in
+[deploy.md](../how-to/deploy.md#android-app).
 
 Sign-in in the TWA stays on one origin. The link to `/api/auth/login` is same-origin, and the
 Worker logs in to NewsBlur server side before it redirects home. The flow is in [auth.md](auth.md).
