@@ -39,7 +39,9 @@ composition are not forwarded. It replaces a failed image with the broken-image
 placeholder. It also routes link clicks through the external-browser preference, as on the parent
 document. It sets all of this up once the document is parsed, not on `load`, which waits for every
 image. DOMPurify still sanitizes the HTML before it enters `srcdoc`, so the sandbox is a
-second layer. An email wider than the panel scrolls sideways inside the frame instead of scaling.
+second layer. An email wider than the frame is scaled down to fit: the parent zooms the frame body
+by the ratio of the frame width to the email's natural width. CSS `zoom`, unlike `transform`, changes
+layout size, so the height measure stays right.
 
 ## Consequences
 
@@ -47,6 +49,8 @@ second layer. An email wider than the panel scrolls sideways inside the frame in
   theme. Uncolored emails follow it.
 - A dark logo on a transparent background, in an uncolored email, can fade into the dark page.
 - Height, key forwarding and the broken-image placeholder depend on `allow-same-origin`.
+- A zoomed email's text can get small, because the scale has no floor. `overflow-x: auto` stays on the
+  frame as a fallback.
 - Past 20,000 px the frame scrolls inside, nested in the reader pane. An email sized in `vh` plus a
   fixed extra still grows to the cap and ends as a tall, mostly empty band.
 - Adding `allow-scripts` beside `allow-same-origin`, or removing DOMPurify, voids the sandbox.

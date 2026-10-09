@@ -172,6 +172,88 @@ describe("NewsletterFrame", () => {
     });
   });
 
+  describe("when the email is wider than the frame", () => {
+    const WIDE =
+      '<table width="100%"><tr><td><table width="600"><tr><td>Invented weekly digest</td></tr></table></td></tr></table>';
+
+    // jsdom has no layout, so the widths are planted and the observer callback is captured.
+    const renderWide = ({ dir = "ltr" }: { dir?: "ltr" | "rtl" } = {}) => {
+      const view = render(<NewsletterFrame html={WIDE} dir={dir} />);
+      const win = ui.frame.contentWindow!;
+      let notify = () => {};
+      Object.defineProperty(win, "ResizeObserver", {
+        configurable: true,
+        value: class {
+          constructor(callback: () => void) {
+            notify = callback;
+          }
+          observe() {}
+          disconnect() {}
+        },
+      });
+      const doc = ui.frame.contentDocument!;
+      doc.body.innerHTML = WIDE;
+      const widths = { natural: 604, room: 390 };
+      Object.defineProperty(doc.documentElement, "scrollWidth", { get: () => widths.natural });
+      Object.defineProperty(doc.documentElement, "clientWidth", { get: () => widths.room });
+      fireEvent.load(ui.frame);
+      return {
+        body: doc.body,
+        widths,
+        view,
+        resize: ({ natural, room }: { natural: number; room: number }) => {
+          widths.natural = natural;
+          widths.room = room;
+          notify();
+        },
+      };
+    };
+
+    it("zooms the body to the floored ratio", () => {
+      const { body } = renderWide();
+
+      expect(body.style.zoom).toBe("0.645");
+    });
+
+    it("zooms the same when the text runs right to left", () => {
+      const { body } = renderWide({ dir: "rtl" });
+
+      expect(body.style.zoom).toBe("0.645");
+    });
+
+    it("leaves a narrow email alone", () => {
+      const { body, resize } = renderWide();
+
+      resize({ natural: 300, room: 390 });
+
+      expect(body.style.zoom).toBe("");
+    });
+
+    it("drops the zoom once the room grows", () => {
+      const { body, resize } = renderWide();
+
+      resize({ natural: 604, room: 700 });
+
+      expect(body.style.zoom).toBe("");
+    });
+
+    it("keeps the zoom for growth under 1%", () => {
+      const { body, resize } = renderWide();
+
+      resize({ natural: 604, room: 393 });
+
+      expect(body.style.zoom).toBe("0.645");
+    });
+
+    it("shrinks the zoom for a narrowing under 1%", () => {
+      const { body, resize } = renderWide();
+
+      resize({ natural: 604, room: 385 });
+
+      expect(body.style.zoom).toBe("0.637");
+    });
+  });
+
   describe("when the frame reports its document", () => {
     it("reports it uncapped when the email fits", () => {
       const onDocument = vi.fn<(args: { doc: Document; capped: boolean }) => void>();
