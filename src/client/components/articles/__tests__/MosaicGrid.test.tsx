@@ -698,6 +698,26 @@ describe("MosaicGrid", () => {
     });
   });
 
+  describe("when a card image fails to load", () => {
+    it("resizes the card slot to a text card", async () => {
+      vi.stubEnv("VITE_API_MODE", "mock");
+      resetFixtureState();
+      const { view } = setup({ client: newQueryClient() });
+      await ui.unreadToggles(view);
+      const img = view.container.querySelector("[data-entry-id] img");
+      const card = img?.closest<HTMLElement>("[data-entry-id]");
+      if (!img || !card) throw new Error("no image card");
+      const before = card.style.height;
+
+      fireEvent.error(img);
+
+      await waitFor(() => {
+        expect(card.style.height).not.toBe(before);
+      });
+      expect(card.querySelector("img")).toBeNull();
+    });
+  });
+
   describe("when a card is navigated from the keyboard", () => {
     it("moves focus with the arrows, Home and End, and ignores other keys", async () => {
       vi.stubEnv("VITE_API_MODE", "mock");
