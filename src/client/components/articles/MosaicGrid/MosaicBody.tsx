@@ -132,6 +132,11 @@ export const MosaicBody = ({
   // when it arrived (closed before a remount, or read in another view) stays out.
   const [seenUnread, setSeenUnread] = useState<ReadonlySet<string>>(() => new Set());
   const [activeId, setActiveId] = useState<string>();
+  // Image URLs that failed to load: their cards render as text, so the layout sizes them as text.
+  const [brokenImages, setBrokenImages] = useState<ReadonlySet<string>>(() => new Set());
+  const markImageBroken = useCallback((url: string) => {
+    setBrokenImages((prev) => (prev.has(url) ? prev : new Set(prev).add(url)));
+  }, []);
   // The card to focus once the render that closed the focused one has committed.
   const [handoffId, setHandoffId] = useState<string>();
   const [settling, setSettling] = useState(false);
@@ -323,7 +328,7 @@ export const MosaicBody = ({
       : layoutMasonry({
           containerWidth: width,
           items: placed.map((entry) =>
-            entry.imageUrl
+            entry.imageUrl && !brokenImages.has(entry.imageUrl)
               ? { id: entry.id, aspect: tileAspect(entry) }
               : {
                   id: entry.id,
@@ -448,6 +453,7 @@ export const MosaicBody = ({
                     onToggleRead={() => {
                       toggleRead(entry);
                     }}
+                    onImageBroken={markImageBroken}
                     swipeable={layout.columns === 1}
                     leavesWhenRead={unreadOnly}
                     leaving={leaving.has(entry.id)}

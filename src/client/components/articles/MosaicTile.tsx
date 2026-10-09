@@ -38,6 +38,8 @@ interface MosaicTileProps {
   onKeyDown: (event: KeyboardEvent<HTMLAnchorElement>) => void;
   /** Read state toggled from the card. */
   onToggleRead: () => void;
+  /** The image failed to load and the card now renders as text, so the grid must resize its slot. */
+  onImageBroken?: (url: string) => void;
   /** Single-column layout only: swiping a card either way toggles it read. */
   swipeable?: boolean;
   /** In an unread-only view a card swiped read leaves the grid, so it flies out first. */
@@ -242,6 +244,7 @@ export const MosaicTile = ({
   onFocus,
   onKeyDown,
   onToggleRead,
+  onImageBroken,
   swipeable = false,
   leavesWhenRead = false,
   leaving = false,
@@ -249,6 +252,9 @@ export const MosaicTile = ({
   const image = useImageFallback({ url: entry.imageUrl });
   const t = useT();
   const hasImage = image.src !== undefined;
+  useEffect(() => {
+    if (!hasImage && entry.imageUrl) onImageBroken?.(entry.imageUrl);
+  }, [hasImage, entry.imageUrl, onImageBroken]);
   const isRead = muteRead && !entry.unread;
   const title = entry.title ? decodeEntities(entry.title) : t.articles.untitled;
   const originTitle = useOriginTitle({ feedId: entry.feedId });
