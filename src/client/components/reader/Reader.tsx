@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import DOMPurify from "dompurify";
 import { useNavigate } from "@tanstack/react-router";
@@ -6,6 +6,7 @@ import { useEntry, useFeeds, useMark } from "client/api/queries";
 import { PullAction } from "client/components/articles/PullIndicator";
 import { NewsletterFrame } from "client/components/reader/NewsletterFrame";
 import { ReaderHeader } from "client/components/reader/ReaderHeader";
+import { SourceListKeyContext } from "client/components/reader/SourceListKeyContext";
 import { readingTime } from "client/utils/readingTime";
 import { useT } from "client/i18n/useT";
 import { replaceBrokenImage } from "client/utils/brokenImage";
@@ -130,6 +131,7 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
   const entry = useEntry(entryId);
   const feeds = useFeeds();
   const { mutate } = useMark();
+  const sourceKey = useContext(SourceListKeyContext);
   const navigate = useNavigate();
   const paneRef = useRef<HTMLDivElement>(null);
   const { width, separatorProps } = useResizablePanel();
@@ -144,7 +146,8 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
 
   const close = useCallback(
     (mark: boolean): void => {
-      if (mark && openedUnread !== undefined) mutate({ entryIds: [entryId], read: openedUnread });
+      if (mark && openedUnread !== undefined)
+        mutate({ entryIds: [entryId], read: openedUnread, sourceKey: sourceKey?.current() });
       void navigate({
         to: "/stream/$streamKey",
         params: { streamKey },
@@ -152,7 +155,7 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
         viewTransition: noViewTransitionRunning(),
       });
     },
-    [entryId, mutate, navigate, openedUnread, streamKey],
+    [entryId, mutate, navigate, openedUnread, sourceKey, streamKey],
   );
 
   const { data } = entry;

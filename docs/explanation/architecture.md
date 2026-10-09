@@ -289,10 +289,15 @@ would move the list behind the reader. The other cached lists and open entries r
 while active. A global `refetchOnWindowFocus` would refetch every list at once.
 
 Every refresh refetches the counts, the categories and the feeds before the lists, so a new
-subscription shows up and the unread count never moves without the list it describes. A failed counts fetch does not stop the lists. The counts do not poll and a
-mount does not refetch them: they refresh with a list refresh or after a read mark. Marking an
-entry unread marks the unread-only stream and search lists stale without refetching them, so the
-open view does not jump and the unread view refetches when it mounts.
+subscription shows up and the unread count never moves without the list it describes. A failed
+counts fetch does not stop the lists. The counts do not poll and a mount does not refetch them: they
+refresh with a list refresh or after a read mark. Every mark, read or unread, names the list it was
+marked from, and marks every other cached stream and search list stale without refetching any. The
+source list stays fresh, so the view does not jump and does not drop the entry, and any other list
+refetches when it mounts. The source is fixed when the mark is made, so it holds when the mark
+settles after its list has unmounted. A mark with no source list marks every list stale. A source
+list already stale before the mark stays stale. A failed mark marks the other lists stale again at
+rollback and at settle.
 
 Every refresh behaves the same way: the top pull, the bottom pull, the button, the shortcut and the
 foreground return. Each waits for the same writes (at most 3 seconds), trims the list to page 1,

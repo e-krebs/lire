@@ -6,6 +6,7 @@ import type { Entry } from "shared/feedsApi/types";
 import { flattenStream, useMark, useRefreshAllLists, useRefreshEntries } from "client/api/queries";
 import type { useStream } from "client/api/queries";
 import { MosaicTile } from "client/components/articles/MosaicTile";
+import { useRegisterSourceListKey } from "client/components/reader/SourceListKeyContext";
 import type { TileSlot } from "client/components/articles/MosaicTile";
 import { PullIndicator } from "client/components/articles/PullIndicator";
 import { Icon } from "client/components/ui/icons";
@@ -64,6 +65,7 @@ export const MosaicBody = ({
   const entries = flattenStream(result.data);
   const { hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage } = result;
   const refreshEntries = useRefreshEntries();
+  useRegisterSourceListKey(queryKey);
   // Any element inside the pane, for the scroll to the top; the grid's frame is gone in the
   // skeleton and the empty state.
   const [host, setHost] = useState<HTMLElement | null>(null);
@@ -417,7 +419,7 @@ export const MosaicBody = ({
   }
 
   const toggleRead = (entry: Entry): void => {
-    mark.mutate({ entryIds: [entry.id], read: entry.unread });
+    mark.mutate({ entryIds: [entry.id], read: entry.unread, sourceKey: queryKey });
     if (!entry.unread || !unreadOnly || !cardHasFocus(entry.id)) return;
     const next = leavingNeighbour(entry.id);
     if (next !== undefined) focusTile(next);

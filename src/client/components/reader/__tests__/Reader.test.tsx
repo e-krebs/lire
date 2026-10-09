@@ -11,7 +11,7 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { describe, expect, it, vi } from "vitest";
 import { EntrySchema, type Entry } from "shared/feedsApi/types";
-import { keys } from "client/api/queries";
+import { keys } from "client/api/keys";
 import { markQueue } from "client/api/markQueue";
 import { getEntry } from "client/api/client";
 import { fixtureTransport, resetFixtureState } from "client/api/adapters/fixture";

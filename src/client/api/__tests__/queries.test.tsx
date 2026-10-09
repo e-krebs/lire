@@ -13,13 +13,13 @@ import { seedCategories, seedCategoryId, seedCategoryKey } from "test/seedCatego
 import { DEMO_NEWSLETTER_ADDRESS, resetFixtureState } from "../adapters/fixture";
 import { ApiError, getFeeds } from "../client";
 import { markQueue } from "../markQueue";
+import { keys } from "../keys";
 import { markStore } from "../markStore";
 import type { MatchCount } from "../queries";
 import {
   DeleteAndMoveError,
   flattenStream,
   isPremiumRequired,
-  keys,
   pageCountFor,
   unreadCountFor,
   useAnalyzeWebFeed,
@@ -997,90 +997,279 @@ describe("queries", () => {
     expect(await markStore.all()).toEqual([]);
   });
 
-  it("marks unread-only lists stale on mark-unread, refetching them on the next mount", async () => {
-    const { client, wrapper } = setup();
-    client.setDefaultOptions({ queries: { retry: false, staleTime: Infinity } });
-    const key = keys.stream({ streamKey: "all", unreadOnly: true });
-    let fetches = 0;
-    client.getQueryCache().subscribe((event) => {
-      if (event.type === "updated" && event.action.type === "fetch") fetches += 1;
-    });
-    const list = renderHook(() => useStream({ streamKey: "all", unreadOnly: true }), { wrapper });
-    await waitFor(() => {
-      expect(list.result.current.isSuccess).toBe(true);
-    });
-    const { result } = renderHook(() => useMark(), { wrapper });
-    const fetchesBefore = fetches;
-    const entryId = flattenStream(list.result.current.data)[0]?.id ?? "";
+  describe("when one list is open and another is cached", () => {
+    const openKey = keys.stream({ streamKey: "all", unreadOnly: true });
+    const cachedKey = keys.stream({ streamKey: "read", unreadOnly: false });
 
-    await act(async () => {
-      await sentNow(result.current.mutateAsync({ entryIds: [entryId], read: false }));
-    });
-
-    expect(client.getQueryState(key)?.isInvalidated).toBe(true);
-    expect(fetches).toBe(fetchesBefore);
-
-    list.unmount();
-    renderHook(() => useStream({ streamKey: "all", unreadOnly: true }), { wrapper });
-    await waitFor(() => {
-      expect(client.getQueryState(key)?.isInvalidated).toBe(false);
-    });
-    expect(fetches).toBe(fetchesBefore + 1);
-  });
-
-  it("marks unread-only lists stale as the unread is marked, before its batch goes upstream", async () => {
-    const { client, wrapper } = setup();
-    client.setDefaultOptions({ queries: { retry: false, staleTime: Infinity } });
-    const key = keys.stream({ streamKey: "all", unreadOnly: true });
-    const list = renderHook(() => useStream({ streamKey: "all", unreadOnly: true }), { wrapper });
-    await waitFor(() => {
-      expect(list.result.current.isSuccess).toBe(true);
-    });
-    const { result } = renderHook(() => useMark(), { wrapper });
-    const entryId = flattenStream(list.result.current.data)[0]?.id ?? "";
-
-    try {
-      act(() => {
-        result.current.mutate({ entryIds: [entryId], read: false });
+    const openList = async () => {
+      const { client, wrapper } = setup();
+      client.setDefaultOptions({ queries: { retry: false, staleTime: Infinity } });
+      client.setQueryData(cachedKey, page([entry({ id: "101:a" })]));
+      const list = renderHook(() => useStream({ streamKey: "all", unreadOnly: true }), {
+        wrapper,
       });
-
       await waitFor(() => {
-        expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+        expect(list.result.current.isSuccess).toBe(true);
       });
-      expect(result.current.isPending).toBe(true);
-    } finally {
-      markQueue.reset();
-    }
+      const mark = renderHook(() => useMark(), { wrapper });
+      return { client, wrapper, list, mark: mark.result };
+    };
+
+    it("stales only the cached list on a mark, so remounting the open one does not refetch it", async () => {
+      const { client, wrapper, list, mark } = await openList();
+      let fetches = 0;
+      client.getQueryCache().subscribe((event) => {
+        if (event.type === "updated" && event.action.type === "fetch") fetches += 1;
+      });
+      const entryId = flattenStream(list.result.current.data)[0]?.id ?? "";
+
+      await act(async () => {
+        await sentNow(
+          mark.current.mutateAsync({ entryIds: [entryId], read: true, sourceKey: openKey }),
+        );
+      });
+
+      expect(client.getQueryState(openKey)?.isInvalidated).toBe(false);
+      expect(client.getQueryState(cachedKey)?.isInvalidated).toBe(true);
+      expect(fetches).toBe(0);
+
+      list.unmount();
+      const remounted = renderHook(() => useStream({ streamKey: "all", unreadOnly: true }), {
+        wrapper,
+      });
+      await waitFor(() => {
+        expect(remounted.result.current.isSuccess).toBe(true);
+      });
+      expect(fetches).toBe(0);
+      expect(flattenStream(remounted.result.current.data).map(({ id }) => id)).toContain(entryId);
+    });
+
+    it("stales only the cached list as the mark is made, before its batch goes upstream", async () => {
+      const { client, list, mark } = await openList();
+      const entryId = flattenStream(list.result.current.data)[0]?.id ?? "";
+
+      try {
+        act(() => {
+          mark.current.mutate({ entryIds: [entryId], read: false, sourceKey: openKey });
+        });
+
+        await waitFor(() => {
+          expect(client.getQueryState(cachedKey)?.isInvalidated).toBe(true);
+        });
+        expect(client.getQueryState(openKey)?.isInvalidated).toBe(false);
+        expect(mark.current.isPending).toBe(true);
+      } finally {
+        markQueue.reset();
+      }
+    });
+
+    it("keeps the cached list stale across a later optimistic mark", async () => {
+      const { client, list, mark } = await openList();
+      const [first, second] = flattenStream(list.result.current.data);
+
+      await act(async () => {
+        await sentNow(
+          mark.current.mutateAsync({ entryIds: [first.id], read: false, sourceKey: openKey }),
+        );
+      });
+      act(() => {
+        mark.current.mutate({ entryIds: [second.id], read: true, sourceKey: openKey });
+      });
+      await waitFor(() => {
+        expect(
+          flattenStream(client.getQueryData(openKey)).find((e) => e.id === second.id)?.unread,
+        ).toBe(false);
+      });
+
+      expect(client.getQueryState(cachedKey)?.isInvalidated).toBe(true);
+      expect(client.getQueryState(openKey)?.isInvalidated).toBe(false);
+    });
+
+    it("stales a second mounted list, even one holding the marked entry", async () => {
+      const { client, wrapper, list, mark } = await openList();
+      const entryId = flattenStream(list.result.current.data)[0]?.id ?? "";
+      const otherKey = keys.stream({ streamKey: techKey });
+      client.setQueryData(otherKey, page([entry({ id: entryId })]));
+      renderHook(() => useStream({ streamKey: techKey }), { wrapper });
+
+      await act(async () => {
+        await sentNow(
+          mark.current.mutateAsync({ entryIds: [entryId], read: true, sourceKey: openKey }),
+        );
+      });
+
+      expect(client.getQueryState(otherKey)?.isInvalidated).toBe(true);
+      expect(client.getQueryState(openKey)?.isInvalidated).toBe(false);
+    });
+
+    it("keeps the source list fresh at settle once it has unmounted", async () => {
+      const { client, list, mark } = await openList();
+      const entryId = flattenStream(list.result.current.data)[0]?.id ?? "";
+
+      await act(async () => {
+        const settled = mark.current.mutateAsync({
+          entryIds: [entryId],
+          read: true,
+          sourceKey: openKey,
+        });
+        list.unmount();
+        await sentNow(settled);
+      });
+
+      expect(mark.current.isSuccess).toBe(true);
+      expect(client.getQueryState(openKey)?.isInvalidated).toBe(false);
+      expect(client.getQueryState(cachedKey)?.isInvalidated).toBe(true);
+    });
+
+    it("stales the open list too when the mark names no source list", async () => {
+      const { client, list, mark } = await openList();
+      const entryId = flattenStream(list.result.current.data)[0]?.id ?? "";
+
+      await act(async () => {
+        await sentNow(mark.current.mutateAsync({ entryIds: [entryId], read: true }));
+      });
+
+      expect(client.getQueryState(openKey)?.isInvalidated).toBe(true);
+      expect(client.getQueryState(cachedKey)?.isInvalidated).toBe(true);
+    });
+
+    it("keeps the open list stale through a failed mark when it was stale before", async () => {
+      const { client, list, mark } = await openList();
+      vi.stubEnv("VITE_API_MODE", "real");
+      server.use(
+        http.post("/api/entries/mark", () => HttpResponse.json({ error: "bad" }, { status: 400 })),
+      );
+      void client.invalidateQueries({ queryKey: openKey, refetchType: "none" });
+      const entryId = flattenStream(list.result.current.data)[0]?.id ?? "";
+
+      await act(async () => {
+        const settled = mark.current.mutateAsync({
+          entryIds: [entryId],
+          read: true,
+          sourceKey: openKey,
+        });
+        await vi.waitFor(() => {
+          expect(flattenStream(client.getQueryData(openKey))[0]?.unread).toBe(false);
+        });
+        expect(client.getQueryState(openKey)?.isInvalidated).toBe(true);
+        await markQueue.flush();
+        await settled.catch(() => undefined);
+      });
+
+      expect(flattenStream(client.getQueryData(openKey))[0]?.unread).toBe(true);
+      expect(client.getQueryState(openKey)?.isInvalidated).toBe(true);
+    });
   });
 
-  it("keeps an unread-only list stale across a later optimistic mark", async () => {
-    const { client, wrapper } = setup();
-    client.setDefaultOptions({ queries: { retry: false, staleTime: Infinity } });
-    const key = keys.stream({ streamKey: "all", unreadOnly: true });
-    const list = renderHook(() => useStream({ streamKey: "all", unreadOnly: true }), { wrapper });
-    await waitFor(() => {
-      expect(list.result.current.isSuccess).toBe(true);
-    });
-    const [first, second] = flattenStream(list.result.current.data);
-    const { result } = renderHook(() => useMark(), { wrapper });
+  describe("when entry lists are cached", () => {
+    const lists = [
+      { name: "all", streamKey: "all" as StreamKey },
+      { name: "folder", streamKey: techKey },
+      { name: "feed", streamKey: "feed:101" as StreamKey },
+      { name: "read", streamKey: "read" as StreamKey },
+    ].flatMap(({ name, streamKey }) =>
+      [false, true].map((unreadOnly) => ({
+        label: `${name} unreadOnly ${String(unreadOnly)}`,
+        key: keys.stream({ streamKey, unreadOnly }),
+      })),
+    );
+    const searches = [false, true].map((unreadOnly) => ({
+      label: `search unreadOnly ${String(unreadOnly)}`,
+      key: keys.search({ streamKey: "all", query: "chip", unreadOnly }),
+    }));
+    const cached = [...lists, ...searches];
 
-    await act(async () => {
-      await sentNow(result.current.mutateAsync({ entryIds: [first.id], read: false }));
-    });
-    act(() => {
-      result.current.mutate({ entryIds: [second.id], read: true });
-    });
-    await waitFor(() => {
-      expect(flattenStream(client.getQueryData(key)).find((e) => e.id === second.id)?.unread).toBe(
-        false,
+    const notStale = (client: QueryClient) =>
+      cached
+        .filter(({ key }) => client.getQueryState(key)?.isInvalidated !== true)
+        .map(({ label }) => label);
+
+    const seedLists = (client: QueryClient) => {
+      client.setDefaultOptions({ queries: { retry: false, staleTime: Infinity } });
+      for (const { key } of cached) client.setQueryData(key, page([entry({ id: "101:a" })]));
+    };
+
+    it.each([false, true])(
+      "marks every cached list stale on a mark with read %s, refetching none",
+      async (read) => {
+        const { client, wrapper } = setup();
+        seedLists(client);
+        let fetches = 0;
+        client.getQueryCache().subscribe((event) => {
+          if (event.type === "updated" && event.action.type === "fetch") fetches += 1;
+        });
+        const { result } = renderHook(() => useMark(), { wrapper });
+
+        try {
+          act(() => {
+            result.current.mutate({ entryIds: ["101:a"], read });
+          });
+
+          await waitFor(() => {
+            expect(notStale(client)).toEqual([]);
+          });
+          expect(result.current.isPending).toBe(true);
+          expect(fetches).toBe(0);
+        } finally {
+          markQueue.reset();
+        }
+      },
+    );
+
+    it("marks every cached list stale again once a failed mark rolls back", async () => {
+      const { client, wrapper } = setup();
+      vi.stubEnv("VITE_API_MODE", "real");
+      seedLists(client);
+      server.use(
+        http.post("/api/entries/mark", () => HttpResponse.json({ error: "bad" }, { status: 400 })),
       );
-    });
-    expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+      const { result } = renderHook(() => useMark(), { wrapper });
 
-    list.unmount();
-    renderHook(() => useStream({ streamKey: "all", unreadOnly: true }), { wrapper });
-    await waitFor(() => {
-      expect(client.getQueryState(key)?.isInvalidated).toBe(false);
+      await act(async () => {
+        const settled = result.current.mutateAsync({ entryIds: ["101:a"], read: true });
+        await vi.waitFor(() => {
+          expect(notStale(client)).toEqual([]);
+        });
+        // Writing data clears the stale flag onMutate set, so only the failure path can restore it.
+        seedLists(client);
+        expect(notStale(client)).toEqual(cached.map(({ label }) => label));
+        await markQueue.flush();
+        await settled.catch(() => undefined);
+      });
+
+      expect(notStale(client)).toEqual([]);
+    });
+
+    it("keeps every list stale across a later optimistic mark", async () => {
+      const { client, wrapper } = setup();
+      seedLists(client);
+      for (const { key } of cached) {
+        client.setQueryData(key, page([entry({ id: "101:a" }), entry({ id: "101:b" })]));
+      }
+      const { result } = renderHook(() => useMark(), { wrapper });
+
+      try {
+        act(() => {
+          result.current.mutate({ entryIds: ["101:a"], read: false });
+        });
+        await waitFor(() => {
+          expect(client.getQueryState(cached[0].key)?.isInvalidated).toBe(true);
+        });
+        act(() => {
+          result.current.mutate({ entryIds: ["101:b"], read: true });
+        });
+        await waitFor(() => {
+          expect(result.current.variables?.entryIds).toEqual(["101:b"]);
+        });
+        await waitFor(() => {
+          const data = client.getQueryData<InfiniteData<EntryPage>>(cached[0].key);
+          expect(data?.pages[0].items.find((item) => item.id === "101:b")?.unread).toBe(false);
+        });
+
+        expect(notStale(client)).toEqual([]);
+      } finally {
+        markQueue.reset();
+      }
     });
   });
 

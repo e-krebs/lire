@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resetFixtureState } from "client/api/adapters/fixture";
 import { getPreferences } from "client/api/client";
-import { keys } from "client/api/queries";
+import { keys } from "client/api/keys";
 import { directOpenKey } from "shared/feedsApi/preferences";
 import { useDirectOpen, useSetDirectOpen } from "../useDirectOpen";
 

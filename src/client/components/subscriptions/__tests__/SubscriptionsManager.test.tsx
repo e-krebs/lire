@@ -20,7 +20,7 @@ import {
   updateFeed,
   updatePreferences,
 } from "client/api/client";
-import { keys } from "client/api/queries";
+import { keys } from "client/api/keys";
 import { useDirectOpen } from "client/hooks/useDirectOpen";
 import { Route as SubscriptionsRoute } from "client/routes/subscriptions";
 import { fixtureBackend, logRequests } from "test/fixtureBackend";

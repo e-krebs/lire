@@ -3,7 +3,7 @@ import type { StreamKey } from "shared/feedsApi/streamKey";
 import { useT } from "client/i18n/useT";
 import {
   MIN_SEARCH_LENGTH,
-  keys,
+  entryListKey,
   pageCountFor,
   useSearchContents,
   useStream,
@@ -64,9 +64,7 @@ export const MosaicGrid = ({
     );
   }
 
-  const queryKey = searching
-    ? keys.search({ streamKey, query, unreadOnly, count })
-    : keys.stream({ streamKey, unreadOnly, order: ranked, count });
+  const queryKey = entryListKey({ streamKey, unreadOnly, order: ranked, query, count });
   return (
     <MosaicBody
       key={JSON.stringify(queryKey)}
