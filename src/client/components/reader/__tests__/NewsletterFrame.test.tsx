@@ -284,7 +284,7 @@ describe("NewsletterFrame", () => {
 
       expect(ui.frame.srcdoc).toContain('<meta name="color-scheme" content="light dark">');
       expect(ui.frame.srcdoc).toContain("background: light-dark(#fff, #000)");
-      expect(ui.frame).not.toHaveAttribute("data-palette");
+      expect(ui.frame.srcdoc).not.toContain("invert(");
     });
 
     it.each([
@@ -292,11 +292,15 @@ describe("NewsletterFrame", () => {
       ['<td style="background-color: #fafafa">Hello</td>'],
       ['<table bgcolor="#ffffff"><tr><td>Hello</td></tr></table>'],
       ['<font color="#333">Hello</font>'],
-    ])("stays white as authored for %s", (html) => {
+    ])("inverts in dark mode as authored for %s", (html) => {
       renderFrame(html);
 
       expect(ui.frame.srcdoc).toContain('<meta name="color-scheme" content="light">');
-      expect(ui.frame).toHaveAttribute("data-palette", "authored");
+      expect(ui.frame.srcdoc).toContain("prefers-color-scheme: dark");
+      expect(ui.frame.srcdoc).toContain("html { filter: invert(1) hue-rotate(180deg); }");
+      expect(ui.frame.srcdoc).toContain(
+        "img, video, svg { filter: invert(1) hue-rotate(180deg); }",
+      );
     });
   });
 
