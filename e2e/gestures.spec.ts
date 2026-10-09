@@ -6,6 +6,13 @@ const FIRST_PAGE = 12;
 const DESKTOP_FIRST_PAGE = 24;
 const UNREAD_TOTAL = 45;
 
+// images.example.test never resolves, and each card shrinks to text height once its lookup fails,
+// so the first page can end above the fold and fetch the next one mid-test. Served, it holds still.
+const serveSeedImages = async (page: Page) =>
+  page.route("https://images.example.test/**", async (route) =>
+    route.fulfill({ path: "public/favicon.png" }),
+  );
+
 const ui = (page: Page) => ({
   get entriesRegion() {
     return page.getByRole("region", { name: "Entries" });
@@ -177,24 +184,30 @@ test.describe("gestures", () => {
     });
   });
 
-  test("loads the next page when the grid is scrolled to its end", async ({ page }, testInfo) => {
-    const pageUi = ui(page);
-    await page.goto("/");
+  test.describe("when the seed images load", () => {
+    // page.route cannot see what the dev service worker fetches.
+    test.use({ serviceWorkers: "block" });
 
-    await expect(pageUi.tiles.first()).toBeVisible();
-    await expect(pageUi.tiles).toHaveCount(
-      testInfo.project.name === "desktop" ? DESKTOP_FIRST_PAGE : FIRST_PAGE,
-    );
+    test("loads the next page when the grid is scrolled to its end", async ({ page }, testInfo) => {
+      const pageUi = ui(page);
+      await serveSeedImages(page);
+      await page.goto("/");
 
-    // Each scroll to the end loads one more page.
-    await expect(async () => {
-      await pageUi.tiles.last().scrollIntoViewIfNeeded();
-      await pageUi.entriesRegion.evaluate((element) => {
-        const pane = element.closest(".scroll-pane") ?? element.querySelector(".scroll-pane");
-        pane?.scrollTo({ top: pane.scrollHeight });
-      });
-      await expect(pageUi.tiles).toHaveCount(UNREAD_TOTAL, { timeout: 1_000 });
-    }).toPass();
+      await expect(pageUi.tiles.first()).toBeVisible();
+      await expect(pageUi.tiles).toHaveCount(
+        testInfo.project.name === "desktop" ? DESKTOP_FIRST_PAGE : FIRST_PAGE,
+      );
+
+      // Each scroll to the end loads one more page.
+      await expect(async () => {
+        await pageUi.tiles.last().scrollIntoViewIfNeeded();
+        await pageUi.entriesRegion.evaluate((element) => {
+          const pane = element.closest(".scroll-pane") ?? element.querySelector(".scroll-pane");
+          pane?.scrollTo({ top: pane.scrollHeight });
+        });
+        await expect(pageUi.tiles).toHaveCount(UNREAD_TOTAL, { timeout: 1_000 });
+      }).toPass();
+    });
   });
 
   test("resizes the reader panel by drag and by keys, and keeps the width", async ({
