@@ -151,7 +151,7 @@ export const Newsletter: Story = {
 
     // Not `readyState`: the seed images come from the live picsum.photos and may never settle.
     await waitFor(async () => {
-      await expect(iframe.getBoundingClientRect().height).toBeGreaterThan(150);
+      await expect(iframe.contentDocument?.body.textContent?.trim()).toBeTruthy();
       await expectFrameFitsContent(iframe);
     }, LOADED);
 

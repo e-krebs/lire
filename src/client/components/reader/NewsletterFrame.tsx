@@ -77,12 +77,26 @@ export const NewsletterFrame = ({ html, dir, onDocument }: NewsletterFrameProps)
     // `scrollHeight` never drops below the frame's own height, so the frame could not shrink. The
     // horizontal scrollbar is added so it never covers the last line.
     let capped: boolean | undefined;
-    const resize = () => {
+    let zoom = 1;
+    const fit = () => {
       const scrollbar = Math.max(0, win.innerHeight - root.clientHeight);
       const height = Math.ceil(root.getBoundingClientRect().height) + scrollbar;
       frame.style.height = `${Math.min(height, MAX_FRAME_HEIGHT)}px`;
       const over = height > MAX_FRAME_HEIGHT;
       root.style.overflowY = over ? "auto" : "";
+      return over;
+    };
+    const resize = () => {
+      // Reset first so the natural width is measured; growth under 1% keeps the last zoom, so
+      // the scrollbar the zoom adds or removes cannot loop; a decrease always applies so it fits.
+      doc.body.style.zoom = "";
+      fit();
+      const natural = root.scrollWidth;
+      const room = root.clientWidth;
+      const next = natural > room ? Math.floor((room / natural) * 1000) / 1000 : 1;
+      if (next < zoom || next - zoom >= 0.01) zoom = next;
+      doc.body.style.zoom = zoom === 1 ? "" : String(zoom);
+      const over = fit();
       if (over === capped) return;
       capped = over;
       onDocumentRef.current?.({ doc, capped });
