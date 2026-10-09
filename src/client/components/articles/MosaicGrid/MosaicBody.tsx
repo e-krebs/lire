@@ -425,7 +425,7 @@ export const MosaicBody = ({
         <div
           ref={attach}
           data-eased={gone.size > 0 ? "" : undefined}
-          className="relative motion-safe:data-eased:transition-[height] motion-safe:data-eased:duration-200 motion-safe:data-eased:ease-out"
+          className="relative motion-safe:data-eased:transition-[height] motion-safe:data-eased:duration-350 motion-safe:data-eased:ease-[cubic-bezier(0.2,0.7,0.3,1)]"
           style={{ height: layout?.height ?? 0 }}
         >
           {layout === undefined
