@@ -11,7 +11,7 @@ push to `main` that touches what each one ships or depends on. A manual run depl
 | Demo | `yarn deploy:demo` | CI, push to `main` with `app` changes, or a manual run | `lire-demo` |
 | Storybook | `yarn deploy:storybook` | CI, push to `main` with `storybook` changes, or a manual run | `lire-storybook` |
 | Worker | `yarn worker:deploy` | CI, push to `main` with `worker` changes, or a manual run | `lire-api` |
-| Android app | `./gradlew assembleRelease` in `android/` | CI, push to `main` that touches `android/`, or a manual run | A GitHub Release |
+| Android app | `./gradlew assembleRelease bundleRelease` in `android/` | CI, push to `main` that touches `android/`, or a manual run | A GitHub Release, and the Play internal track |
 
 The first upgrade from the old auto-updating service worker waits until every tab or the Android
 app closes. From then on, the update prompt flow works.
@@ -81,6 +81,7 @@ the front. The account menu's Version tells which build runs.
 | `NEWSBLUR_NEWSLETTER_ADDRESS` | GitHub repo secret, Worker secret | The newsletter address the app shows |
 | `LIRE_KEYSTORE_BASE64` | GitHub repo secret | Android signing keystore, base64 |
 | `LIRE_KEYSTORE_PASSWORD` | GitHub repo secret | Password of that keystore and its `lire` key |
+| `LIRE_PLAY_SERVICE_ACCOUNT_JSON` | GitHub repo secret | Google service account key that uploads the AAB to Play |
 
 The API token carries these scopes:
 
@@ -133,24 +134,68 @@ image type.
 [.github/workflows/android.yml](../../.github/workflows/android.yml) builds the Trusted Web Activity
 in [android/](../../android/) on every push to `main` that touches `android/`. Editing the workflow
 file alone releases nothing; a pull request that edits it still builds the debug APK. It signs the APK with the
-keystore secrets and attaches it to a new GitHub Release named `android-1.<run number>`. A pull
-request only builds the debug APK, without the secrets. To ship a release without an Android
-change, run the workflow by hand from the Actions tab.
+keystore secrets, builds a signed AAB next to it, and attaches both to a new GitHub Release named
+`android-1.<run number>`. When the `LIRE_PLAY_SERVICE_ACCOUNT_JSON` secret exists, CI also uploads
+the AAB to the Play internal track; without it the upload step is skipped. A pull request only
+builds the debug APK and AAB, without the secrets. To ship a release without an Android change,
+run the workflow by hand from the Actions tab.
 
-To install or update the app, open the latest `android-*` release on the phone, download the APK
-and open it. Android asks once to allow installs from the browser.
+A re-run keeps its run number, so a re-run after a Play upload fails on the version code. Start a
+new run from the Actions tab instead.
+
+To install or update the app from GitHub, open the latest `android-*` release on the phone,
+download the APK and open it. Android asks once to allow installs from the browser.
 
 The keystore and its password live in the owner's password manager. The CI secrets are copies of
-them. Lose the keystore and the next APK cannot update the installed app: uninstall it first, then
-change the fingerprint in [assetlinks.json](../../public/.well-known/assetlinks.json). To print the
+them. The keystore is the Play upload key. Play re-signs the app with its own key, so a lost upload
+key is reset through Play support. The APK on GitHub stays signed with the upload key. Lose the
+keystore and the next GitHub APK cannot update the installed one: uninstall it first, then change
+the fingerprint in [assetlinks.json](../../public/.well-known/assetlinks.json). To print the
 fingerprint of a keystore, run:
 
 ```sh
 keytool -list -v -keystore lire.keystore -alias lire | grep SHA256
 ```
 
-To build a signed APK locally, set `LIRE_KEYSTORE_FILE` and `LIRE_KEYSTORE_PASSWORD`, then run
-`./gradlew assembleRelease` in `android/` with JDK 17 and the Android SDK.
+To build a signed APK or AAB locally, set `LIRE_KEYSTORE_FILE` and `LIRE_KEYSTORE_PASSWORD`, then
+run `./gradlew assembleRelease bundleRelease` in `android/` with JDK 17 and the Android SDK.
+
+### First Play upload
+
+The Play API refuses a new app, so the first upload is manual.
+
+1. In `android/`, set `LIRE_KEYSTORE_FILE`, `LIRE_KEYSTORE_PASSWORD`, `LIRE_VERSION_CODE=1` and
+   `LIRE_VERSION_NAME=1.0`, then run `./gradlew bundleRelease`. The bundle is
+   `app/build/outputs/bundle/release/app-release.aab`.
+2. In the Play Console, create the app with package `tech.krebs.lire`.
+3. Open Testing, then Internal testing, then Testers, and create an email list.
+4. Create a release, keep Play App Signing, upload the AAB and finish the setup tasks the Console
+   asks for. Roll out.
+5. Open the app signing page, the Play Console URL for the app that ends in `/keymanagement`. Copy
+   the "Empreinte du certificat SHA-256" under both "Clé de signature d'application" and
+   "Certificat de clé d'importation". Add each one to
+   [assetlinks.json](../../public/.well-known/assetlinks.json) next to the existing fingerprint.
+6. Uninstall the sideloaded APK, then install through the opt-in link on a tester phone. The
+   signatures differ, so the two builds cannot update each other.
+
+### Play service account
+
+CI needs a Google service account to upload after the first release.
+
+1. In the Google Cloud Console, create a project, then enable the Google Play Android Developer API
+   in APIs & Services.
+2. Under IAM & Admin, Service Accounts, create an account. Skip the role step.
+3. On the account, open Keys, then Add key, then Create new key, then JSON. Note the account email.
+4. In the Play Console, open Users and permissions, then Invite new users. Paste the email.
+5. Under App permissions, add Lire and tick the permission to release to testing tracks.
+6. Store the whole JSON file as the repo secret, then delete the downloaded file:
+
+   ```sh
+   gh secret set LIRE_PLAY_SERVICE_ACCOUNT_JSON < <the downloaded file>.json
+   ```
+
+The Play permission can take a few minutes to apply, so the first upload may fail with a permission
+error. Start a new run.
 
 ## Pages projects and domains
 
