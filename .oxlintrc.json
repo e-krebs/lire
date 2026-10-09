@@ -1,7 +1,12 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
   "plugins": ["typescript", "unicorn", "oxc"],
-  "jsPlugins": ["./scripts/oxlint/test-conventions.js", "./scripts/oxlint/code-conventions.js"],
+  "jsPlugins": [
+    "./scripts/oxlint/test-conventions.js",
+    "./scripts/oxlint/code-conventions.js",
+    "oxlint-tailwindcss"
+  ],
+  "settings": { "tailwindcss": { "entryPoint": "src/client/styles.css" } },
   "ignorePatterns": ["src/client/routeTree.gen.ts", "src/client/sw.ts"],
   "options": { "typeAware": true },
   "categories": { "correctness": "error" },
@@ -21,6 +26,29 @@
         "code-conventions/no-raw-jsx-text": "error",
         "react-hooks/rules-of-hooks": "error",
         "react-hooks/exhaustive-deps": "error"
+      }
+    },
+    {
+      "files": ["src/client/**/*.{ts,tsx}"],
+      "rules": {
+        "tailwindcss/no-conflicting-classes": "error",
+        "tailwindcss/no-contradicting-variants": "error",
+        "tailwindcss/no-dark-without-light": "error",
+        "tailwindcss/no-duplicate-classes": "error",
+        "tailwindcss/no-dynamic-classes": "error",
+        "tailwindcss/no-unknown-classes": "error",
+        "tailwindcss/enforce-canonical": ["error", { "reportNonEquivalent": true }],
+        "tailwindcss/enforce-negative-arbitrary-values": "error",
+        "tailwindcss/no-deprecated-classes": "error",
+        "tailwindcss/no-unnecessary-arbitrary-value": "error",
+        "tailwindcss/consistent-variant-order": "error",
+        "tailwindcss/enforce-consistent-important-position": "error",
+        "tailwindcss/enforce-consistent-variable-syntax": "error",
+        "tailwindcss/enforce-shorthand": "error",
+        "tailwindcss/enforce-sort-order": "error",
+        "tailwindcss/no-unnecessary-whitespace": "error",
+        "tailwindcss/no-hardcoded-colors": "error",
+        "tailwindcss/prefer-scale-token": "error"
       }
     },
     {
