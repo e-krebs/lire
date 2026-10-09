@@ -127,7 +127,7 @@ export const SubscriptionsManager = ({
           reach it either. Not on the phone: the sheet is a modal dialog already, and an inert
           opener could not take the focus back when it closes. */}
       <div
-        className="h-full scroll-pane lg:data-panel-open:pr-[var(--side-panel-width)] motion-safe:lg:transition-[padding-right] motion-safe:lg:duration-180 motion-safe:lg:ease-out"
+        className="scroll-pane h-full lg:data-panel-open:pr-(--side-panel-width) lg:motion-safe:transition-[padding-right] lg:motion-safe:duration-180 lg:motion-safe:ease-out"
         data-panel-open={shownPanel === undefined ? undefined : ""}
         inert={shownPanel === undefined || phone ? undefined : true}
       >

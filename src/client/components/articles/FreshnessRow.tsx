@@ -68,7 +68,7 @@ export const FreshnessRow = ({ updatedAt, refreshing, onRefresh, children }: Fre
           onClick={onRefresh}
           className={`group ${buttonClassName}`}
         >
-          <Icon name="refresh" className="size-4 group-aria-busy:motion-safe:animate-spin" />
+          <Icon name="refresh" className="size-4 motion-safe:group-aria-busy:animate-spin" />
           {t.common.refresh}
         </button>
       </div>

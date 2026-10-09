@@ -2,8 +2,8 @@ export const SheetHandle = () => (
   <div
     className={`
       flex flex-none justify-center
-      in-data-keyboard:hidden
       pt-2
+      in-data-keyboard:hidden
       bar-bottom:pt-0 bar-bottom:pb-2
     `}
   >

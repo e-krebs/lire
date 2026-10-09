@@ -70,7 +70,7 @@ export const Panes = ({ list, reader }: PanesProps) => {
         // Behind the scrim the grid is out of reach for the keyboard and the reader as well.
         inert={reader ? true : undefined}
         className={`
-        min-h-0 scroll-pane
+        scroll-pane min-h-0
         group-data-reading:hidden
         lg:group-data-reading:block
       `}

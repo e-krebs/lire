@@ -1,3 +1,4 @@
+/* oxlint-disable tailwindcss/prefer-scale-token -- px, not rem: textHeight.ts sizes the card from these */
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, KeyboardEvent, MouseEvent, PointerEvent } from "react";
@@ -427,7 +428,7 @@ export const MosaicTile = ({
       }}
       inert={leaving || undefined}
       className={
-        leaving ? `${wrapperClassName} scale-95 opacity-0 pointer-events-none` : wrapperClassName
+        leaving ? `${wrapperClassName} pointer-events-none scale-95 opacity-0` : wrapperClassName
       }
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -494,14 +495,14 @@ export const MosaicTile = ({
               decoding="async"
               className={`
               block size-full object-cover object-top
-              group-data-read/tile:grayscale group-data-read/tile:opacity-70
+              group-data-read/tile:opacity-70 group-data-read/tile:grayscale
             `}
             />
           ) : null}
           <span
             className={`
-            flex flex-col
-            tile-glass
+            tile-glass flex
+            flex-col
             group-not-data-has-image/tile:size-full
             group-not-data-has-image/tile:px-[12px] group-not-data-has-image/tile:pt-[8px]
             group-not-data-has-image/tile:pb-[14px]

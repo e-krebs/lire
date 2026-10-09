@@ -38,7 +38,7 @@ function ExternalLinksTestPage() {
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-4 overflow-y-auto p-4 text-sm text-ink">
       <h1 className="text-lg font-semibold">External link test</h1>
-      <p className="break-words text-muted">{navigator.userAgent}</p>
+      <p className="wrap-break-word text-muted">{navigator.userAgent}</p>
       <p>Saved choice: {getPreferredBrowser() ?? "n/a (not iOS or the Android app)"}</p>
 
       {choices.length === 0 ? (

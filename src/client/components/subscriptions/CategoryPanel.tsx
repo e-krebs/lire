@@ -266,7 +266,7 @@ export const CategoryPanel = ({
           />
         }
       >
-        <div className="flex flex-col gap-4 px-4 py-4">
+        <div className="flex flex-col gap-4 p-4">
           <CategoryNameForm
             formId={formId}
             category={category}
@@ -376,7 +376,7 @@ export const CategoryPanel = ({
               </p>
             ) : null}
           </section>
-          <p className="text-xs text-faint text-pretty">
+          <p className="text-xs text-pretty text-faint">
             {orphans === 0 || isDeleteLocked({ category, categories, allFeeds })
               ? t.removeHint
               : t.removeHintOrphans({ count: orphans })}

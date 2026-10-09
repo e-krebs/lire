@@ -207,7 +207,7 @@ export const SubscribePanel = ({ categories, categoryId, onClose }: SubscribePan
         id={formId}
         // The lookup also takes a bare site name, which native `type="url"` validation would block.
         noValidate
-        className="flex flex-col gap-4 px-4 py-4"
+        className="flex flex-col gap-4 p-4"
         onSubmit={(event) => {
           event.preventDefault();
           handleSubmit();

@@ -19,6 +19,14 @@ The lint config also bans `../` imports in favor of the path aliases (`client/`,
 higher. Imports then read the same from any depth, and a move does not ripple through relative
 paths.
 
+The [oxlint-tailwindcss](https://oxlint-tailwindcss.pages.dev) plugin lints the class names in
+`src/client`. It reads the design system from [styles.css](../../src/client/styles.css), so it knows
+the project's own tokens, and every rule it enables is an error. Most rules autofix with
+`yarn fix`. The ones that do not are `prefer-scale-token`, which asks for `h-3.5` where `h-[14px]`
+sets the same length at a 16px root font size, and `no-unknown-classes`. A size that must stay in
+pixels, such as the text-card padding that `textHeight.ts` measures, opts out of the former. A string that is not a class list, such as a
+variable named `style`, takes an `oxlint-disable-next-line` comment.
+
 The service worker, [sw.ts](../../src/client/sw.ts), is the one client file lint ignores: it
 typechecks on its own with the `WebWorker` lib (`yarn typecheck:sw`) and is left out of the SPA
 project.

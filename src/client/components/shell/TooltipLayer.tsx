@@ -239,7 +239,9 @@ export const TooltipLayer = () => {
     };
   }, [active]);
 
+  // A CSS property, not a class: the plugin reads any variable named `style` as a class list.
   const style: CSSProperties & { "--tooltip-beak"?: string } =
+    // oxlint-disable-next-line tailwindcss/no-unknown-classes
     placement === undefined ? {} : { "--tooltip-beak": `${placement.beak}px` };
 
   return (

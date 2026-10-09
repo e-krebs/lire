@@ -242,8 +242,8 @@ export const PhoneSheet = ({
         navigator fixed inset-x-0 m-0 hidden max-h-none w-full max-w-full flex-col
         overscroll-contain border-0 bg-surface p-0 text-ink shadow-2xl
         ${sheetClassName}
-        open:flex
         backdrop:bg-scrim/35
+        open:flex
       `}
     >
       {/* Keyed rows, so flipping the bar position moves them instead of remounting the field. */}

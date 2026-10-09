@@ -88,8 +88,8 @@ export const BottomSheet = ({
         side-sheet fixed inset-x-0 top-auto bottom-0 m-0 hidden max-h-[85dvh] w-full max-w-full
         flex-col overscroll-contain rounded-t-2xl border-0 bg-surface p-0 pb-safe text-ink
         shadow-2xl
-        open:flex
         backdrop:bg-scrim/35
+        open:flex
       `}
     >
       <div className="flex flex-none justify-center pt-2">

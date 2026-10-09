@@ -7,7 +7,7 @@ const meta = {
   component: MosaicSkeleton,
   decorators: [
     (Story) => (
-      <div className="w-[64rem] max-w-full bg-surface">
+      <div className="w-5xl max-w-full bg-surface">
         <Story />
       </div>
     ),
@@ -27,7 +27,7 @@ export const WholeList: Story = {
   args: { wholeList: true },
   decorators: [
     (Story) => (
-      <div className="scroll-pane h-64 w-[64rem] max-w-full bg-surface" data-testid="pane">
+      <div className="scroll-pane h-64 w-5xl max-w-full bg-surface" data-testid="pane">
         <Story />
       </div>
     ),

@@ -254,7 +254,7 @@ export const FeedPanel = ({ feed, categories, onClose }: FeedPanelProps) => {
         }
       >
         {reanalyzing ? (
-          <div className="flex flex-col gap-4 px-4 py-4">
+          <div className="flex flex-col gap-4 p-4">
             <WebFeedVariants
               status={webStatus.data}
               failed={reanalyze.isError || webStatus.isError}
@@ -278,7 +278,7 @@ export const FeedPanel = ({ feed, categories, onClose }: FeedPanelProps) => {
             <form
               id={formId}
               noValidate
-              className="flex flex-col gap-4 px-4 py-4"
+              className="flex flex-col gap-4 p-4"
               onSubmit={(event) => {
                 event.preventDefault();
                 handleSave();
