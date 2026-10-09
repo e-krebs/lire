@@ -30,18 +30,16 @@ filter is applied, because it would also invert photos and brand colors.
 
 The sandbox is exactly `allow-same-origin allow-popups allow-popups-to-escape-sandbox`, never
 `allow-scripts`. The parent reads the iframe document, so no script runs in the frame while the
-parent can still do four things. It sizes the frame to the height of the document's root element
-and keeps it current with a `ResizeObserver` from the frame's own window. The height stops at 20,000
-px and the frame scrolls inside past that, because an email sized in `vh` units reads the frame's
-own height and would otherwise grow without end. It forwards each `keydown` to the parent
-`document`, so Escape closes the reader from inside the frame; keys typed in a field or during IME
-composition are not forwarded. It replaces a failed image with the broken-image
-placeholder. It also routes link clicks through the external-browser preference, as on the parent
-document. It sets all of this up once the document is parsed, not on `load`, which waits for every
-image. DOMPurify still sanitizes the HTML before it enters `srcdoc`, so the sandbox is a
-second layer. An email wider than the frame is scaled down to fit: the parent zooms the frame body
-by the ratio of the frame width to the email's natural width. CSS `zoom`, unlike `transform`, changes
-layout size, so the height measure stays right.
+parent can still do four things. It sizes the frame to the height of the document's root element and
+keeps it current with a `ResizeObserver` from the frame's own window. The frame always fits its
+content. It forwards each `keydown` to the parent `document`, so Escape closes the reader from
+inside the frame; keys typed in a field or during IME composition are not forwarded. It replaces a
+failed image with the broken-image placeholder. It also routes link clicks through the
+external-browser preference, as on the parent document. It sets all of this up once the document is
+parsed, not on `load`, which waits for every image. DOMPurify still sanitizes the HTML before it
+enters `srcdoc`, so the sandbox is a second layer. An email wider than the frame is scaled down to
+fit: the parent zooms the frame body by the ratio of the frame width to the email's natural width.
+CSS `zoom`, unlike `transform`, changes layout size, so the height measure stays right.
 
 ## Consequences
 
@@ -51,8 +49,7 @@ layout size, so the height measure stays right.
 - Height, key forwarding and the broken-image placeholder depend on `allow-same-origin`.
 - A zoomed email's text can get small, because the scale has no floor. `overflow-x: auto` stays on the
   frame as a fallback.
-- Past 20,000 px the frame scrolls inside, nested in the reader pane. An email sized in `vh` plus a
-  fixed extra still grows to the cap and ends as a tall, mostly empty band.
+- An unzoomed email sized in `vh` can grow without end, because the frame has no height cap.
 - Adding `allow-scripts` beside `allow-same-origin`, or removing DOMPurify, voids the sandbox.
 - A future CSP must allow `srcdoc` frames.
 - Blog posts keep `.prose-reader`.

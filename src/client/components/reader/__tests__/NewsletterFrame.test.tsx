@@ -38,12 +38,12 @@ const setup = () => {
 
 // The reader's wiring, cut down: a bottom pull on the pane that also listens in the frame.
 const PullHarness = ({ onCommit }: { onCommit: () => undefined }) => {
-  const [frame, setFrame] = useState<{ doc: Document; capped: boolean } | null>(null);
+  const [frame, setFrame] = useState<Document | null>(null);
   const { attach, pull } = usePull({
     onCommit,
-    frameDocument: frame?.doc,
+    frameDocument: frame,
     pullDown: false,
-    pullUp: frame?.capped === false,
+    pullUp: true,
   });
   return (
     <div className="scroll-pane">
@@ -86,16 +86,16 @@ describe("NewsletterFrame", () => {
     expect(ui.frame.style.height).toMatch(/^\d+px$/);
   });
 
-  it("caps the height and scrolls inside past the cap", () => {
+  it("fits the frame to the content however tall", () => {
     render(<NewsletterFrame html={HTML} dir="ltr" />);
     const root = ui.frame.contentDocument!.documentElement;
     Object.defineProperty(root, "getBoundingClientRect", {
       value: () => new DOMRect(0, 0, 0, 50_000),
     });
+    Object.defineProperty(root, "clientHeight", { value: ui.frame.contentWindow!.innerHeight });
     fireEvent.load(ui.frame);
 
-    expect(ui.frame.style.height).toBe("20000px");
-    expect(root.style.overflowY).toBe("auto");
+    expect(ui.frame.style.height).toBe("50000px");
   });
 
   it("sets up once the document is parsed, before load", async () => {
@@ -255,29 +255,12 @@ describe("NewsletterFrame", () => {
   });
 
   describe("when the frame reports its document", () => {
-    it("reports it uncapped when the email fits", () => {
-      const onDocument = vi.fn<(args: { doc: Document; capped: boolean }) => void>();
+    it("reports its document once set up", () => {
+      const onDocument = vi.fn<(doc: Document) => void>();
       render(<NewsletterFrame html={HTML} dir="ltr" onDocument={onDocument} />);
       fireEvent.load(ui.frame);
 
-      expect(onDocument).toHaveBeenCalledExactlyOnceWith({
-        doc: ui.frame.contentDocument,
-        capped: false,
-      });
-    });
-
-    it("reports it capped past the height cap", () => {
-      const onDocument = vi.fn<(args: { doc: Document; capped: boolean }) => void>();
-      render(<NewsletterFrame html={HTML} dir="ltr" onDocument={onDocument} />);
-      Object.defineProperty(ui.frame.contentDocument!.documentElement, "getBoundingClientRect", {
-        value: () => new DOMRect(0, 0, 0, 50_000),
-      });
-      fireEvent.load(ui.frame);
-
-      expect(onDocument).toHaveBeenCalledExactlyOnceWith({
-        doc: ui.frame.contentDocument,
-        capped: true,
-      });
+      expect(onDocument).toHaveBeenCalledExactlyOnceWith(ui.frame.contentDocument);
     });
 
     it("lets a touch gesture inside the frame pull the pane", () => {
