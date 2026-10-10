@@ -43,7 +43,7 @@ export function MosaicEmptyArt({
     setPicked(pickScene({ not: picked }));
   }
   const scene = sceneProp ?? picked;
-  const sunPhase = useSunPhase();
+  const { phase: sunPhase, pending } = useSunPhase();
   const scheme = useColorScheme();
   const base: Phase = phaseProp ?? sunPhase ?? (scheme === "light" ? "day" : "dusk");
 
@@ -51,6 +51,8 @@ export function MosaicEmptyArt({
   // An override only holds for the base it was made on, so a sunrise or sunset clears it.
   if (override && override.base !== base) setOverride(undefined);
   const shown = override?.base === base ? override.phase : base;
+  // Hold the art until the sun answers, so a dark-scheme browser never shows dusk before day.
+  const waitingForSun = phaseProp === undefined && pending;
 
   return (
     <button
@@ -69,7 +71,7 @@ export function MosaicEmptyArt({
           alt=""
           width={320}
           height={200}
-          className={`${imageClassName} ${phase === shown ? "" : "opacity-0"}`}
+          className={`${imageClassName} ${phase === shown && !waitingForSun ? "" : "opacity-0"}`}
         />
       ))}
     </button>
