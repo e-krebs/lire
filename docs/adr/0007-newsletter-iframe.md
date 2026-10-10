@@ -27,7 +27,9 @@ naming `color` or `background`, and for a `bgcolor` or `color` attribute, which 
 `light-dark(#fff, #000)` with the opposite text color. With any, the meta stays `light` and the
 page is white, and in the dark scheme an invert filter (`invert(1) hue-rotate(180deg)`) turns it
 dark, while `img`, `video` and `svg` get the same filter again to restore their colors after the
-invert. CSS background images and color emoji stay inverted. The band behind the frame follows the
+invert. Emoji in the text are wrapped in a span by the parent once the document is parsed, and that
+span gets the same filter, so its color survives; the pass runs only for a colored email. CSS
+background images stay inverted, and so does an emoji inside SVG text, which the pass skips. The band behind the frame follows the
 scheme too. The filter keeps the senders' colors and the white-page assumption intact through the
 invert. The second pass restores photos only approximately, because the hue rotate clips saturated
 colors. A false match only inverts an email that would have worked natively.

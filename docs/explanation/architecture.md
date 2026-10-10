@@ -45,7 +45,7 @@ The reader sanitizes every article body with DOMPurify. A blog post renders inli
 `.prose-reader`. A newsletter, recognized by the `webfeeds--newsletter` wrapper in its HTML, renders
 in a sandboxed `srcdoc` iframe on a full-width band, so the sender's own layout and colors
 apply and the app's article styles cannot break it. An email that sets no colors of its own follows
-the OS scheme, white or black; one with any inline color is inverted in the dark scheme, then images, video and svg are restored after the invert (CSS background images and color emoji stay inverted). The parent sizes the frame to its content, scales an email wider than the frame down to fit so it never scrolls sideways, and forwards key
+the OS scheme, white or black; one with any inline color is inverted in the dark scheme, then images, video, svg and emoji are restored after the invert (CSS background images stay inverted, and so does an emoji inside SVG text). The parent sizes the frame to its content, scales an email wider than the frame down to fit so it never scrolls sideways, and forwards key
 presses out of it. The reasons and limits are in
 [ADR 0007](../adr/0007-newsletter-iframe.md).
 

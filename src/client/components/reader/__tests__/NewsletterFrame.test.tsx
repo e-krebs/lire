@@ -299,8 +299,55 @@ describe("NewsletterFrame", () => {
       expect(ui.frame.srcdoc).toContain("prefers-color-scheme: dark");
       expect(ui.frame.srcdoc).toContain("html { filter: invert(1) hue-rotate(180deg); }");
       expect(ui.frame.srcdoc).toContain(
-        "img, video, svg { filter: invert(1) hue-rotate(180deg); }",
+        "img, video, svg, .lire-emoji { filter: invert(1) hue-rotate(180deg); }",
       );
+    });
+  });
+
+  describe("when the email holds emoji", () => {
+    const load = (html: string) => {
+      render(<NewsletterFrame html={html} dir="ltr" />);
+      const doc = ui.frame.contentDocument!;
+      doc.body.innerHTML = html;
+      fireEvent.load(ui.frame);
+      return doc;
+    };
+    const wrapped = (doc: Document) =>
+      [...doc.querySelectorAll(".lire-emoji")].map((span) => span.textContent);
+
+    it("wraps each emoji of a colored email so the invert cancels", () => {
+      const doc = load('<p style="color: #000">Hi 👋🏽 and 🇫🇷 and 👨‍👩‍👧 ok ©</p>');
+
+      expect(wrapped(doc)).toEqual(["👋🏽", "🇫🇷", "👨‍👩‍👧"]);
+      expect(doc.querySelector("p")?.textContent).toBe("Hi 👋🏽 and 🇫🇷 and 👨‍👩‍👧 ok ©");
+    });
+
+    it("keeps a keycap and a subdivision flag in one match", () => {
+      const doc = load('<p style="color: #000">1️⃣ #️⃣ 🏴󠁧󠁢󠁳󠁣󠁴󠁿</p>');
+
+      expect(wrapped(doc)).toEqual(["1️⃣", "#️⃣", "🏴󠁧󠁢󠁳󠁣󠁴󠁿"]);
+    });
+
+    it("leaves an emoji inside svg text alone", () => {
+      const doc = load('<p style="color: #000">👋<svg><text>👋</text></svg></p>');
+
+      expect(wrapped(doc)).toEqual(["👋"]);
+      expect(doc.querySelector("text")?.textContent).toBe("👋");
+    });
+
+    it("leaves an uncolored email alone", () => {
+      const doc = load("<p>Hi 👋</p>");
+
+      expect(wrapped(doc)).toEqual([]);
+    });
+
+    it("leaves attributes and style text alone", () => {
+      const doc = load(
+        '<p style="color: #000" title="👋">Hi</p><style>a::after{content:"👋"}</style>',
+      );
+
+      expect(wrapped(doc)).toEqual([]);
+      expect(doc.querySelector("p")?.getAttribute("title")).toBe("👋");
     });
   });
 
