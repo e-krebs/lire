@@ -51,7 +51,7 @@ export const addButtonClassName = `
 `;
 
 const iconButtonClassName = `
-  inline-flex size-11 flex-none items-center justify-center gap-px rounded-full bg-accent-soft
+  inline-flex size-11 flex-none items-center justify-center rounded-full bg-accent-soft
   text-accent-text
   hover:bg-accent-soft/70
   focus-visible:outline-2 focus-visible:outline-accent
@@ -109,6 +109,35 @@ export const matchesFilter = ({
   return texts.some((value) => value?.toLocaleLowerCase().includes(needle));
 };
 
+const GAP = 5.5;
+const PLUS = 8;
+const STROKE = 1.25;
+
+const PlusBadgeGlyph = ({ name }: { name: "website" | "newsletter" }) => (
+  <span className="relative inline-flex size-5">
+    <span
+      className="inline-flex"
+      style={{
+        maskImage: `radial-gradient(circle at 100% 0, transparent ${GAP}px, #000 ${GAP + 0.5}px)`,
+      }}
+    >
+      <Icon name={name} className="size-5" />
+    </span>
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 10 10"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={(STROKE * 10) / PLUS}
+      strokeLinecap="round"
+      className="absolute"
+      style={{ width: PLUS, height: PLUS, top: -PLUS / 2, right: -PLUS / 2 }}
+    >
+      <path d="M5 1v8M1 5h8" />
+    </svg>
+  </span>
+);
+
 interface FeedsTabProps {
   /** All feeds to list. */
   feeds: Feed[];
@@ -156,8 +185,7 @@ export const FeedsTab = ({
           onClick={onAddWebsite}
           className={iconButtonClassName}
         >
-          <Icon name="website" className="size-5" />
-          <Icon name="plus" className="size-3.5" />
+          <PlusBadgeGlyph name="website" />
         </button>
         <button
           type="button"
@@ -165,8 +193,7 @@ export const FeedsTab = ({
           onClick={onAddNewsletter}
           className={iconButtonClassName}
         >
-          <Icon name="newsletter" className="size-5" />
-          <Icon name="plus" className="size-3.5" />
+          <PlusBadgeGlyph name="newsletter" />
         </button>
       </div>
       {/* Per-category counts never add up to the total, since a feed can sit in several. */}
