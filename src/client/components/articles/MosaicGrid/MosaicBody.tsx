@@ -70,12 +70,18 @@ export const MosaicBody = ({
   // skeleton and the empty state.
   const [host, setHost] = useState<HTMLElement | null>(null);
   const [refreshingList, setRefreshingList] = useState(false);
+  const [reconciling, setReconciling] = useState(false);
+  // A next-page fetch cancels a refetch in flight, so pagination waits out both kinds of refresh.
+  const paginationHeld = refreshingList || reconciling;
   // A second refresh joins the running one, or its end would bring the grid back early.
   const running = useRef<Promise<void>>(undefined);
+  // The foreground reconcile in flight: a user refresh waits it out, and a return skips while a user refresh runs.
+  const reconcile = useRef<Promise<void>>(undefined);
   // A refresh shows the newest, so the pane goes back to the top first: the cache is about to
   // shrink to one page anyway, which would otherwise drop the reader somewhere in the middle.
   const refreshAsync = async (): Promise<void> => {
     running.current ??= (async () => {
+      await reconcile.current?.catch(() => {});
       host?.closest(".scroll-pane")?.scrollTo({ top: 0 });
       setRefreshingList(true);
       try {
@@ -97,15 +103,25 @@ export const MosaicBody = ({
   const tier = useTier();
   const listCovered = readerOpen && tier !== "desktop";
   const refreshAllLists = useRefreshAllLists();
-  // Under the reader a trim and a scroll to the top would move the list behind it, so it only
-  // refetches, pages and position kept.
+  // A foreground return never trims, scrolls or shows the skeleton: it refetches in place, pages and
+  // position kept, so the list reconciles under the reader's eyes.
   useRefreshOnForeground({
     onForeground: async () =>
       refreshAllLists({
         queryKey,
-        refreshList: listCovered
-          ? async () => refreshEntries({ queryKey, trim: false })
-          : refreshAsync,
+        refreshList: async () => {
+          if (running.current) return;
+          reconcile.current ??= (async () => {
+            setReconciling(true);
+            try {
+              await refreshEntries({ queryKey, trim: false });
+            } finally {
+              setReconciling(false);
+              reconcile.current = undefined;
+            }
+          })();
+          await reconcile.current;
+        },
       }),
   });
   // Pulling up past the end refreshes only once every page is in and settled, or it would race
@@ -163,7 +179,7 @@ export const MosaicBody = ({
   // IntersectionObserver Effect is the "synchronizing with an external system" carve-out.
   useEffect(() => {
     // A trimmed cache still has a next page, and fetching it would cancel the refresh.
-    if (!sentinel || refreshingList) return undefined;
+    if (!sentinel || paginationHeld) return undefined;
     const observer = new IntersectionObserver((observed) => {
       if (observed[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) void fetchNextPage();
     });
@@ -171,7 +187,7 @@ export const MosaicBody = ({
     return () => {
       observer.disconnect();
     };
-  }, [sentinel, refreshingList, hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [sentinel, paginationHeld, hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Every cached entry can be hidden as already read while later pages still hold unread ones. The
   // sentinel would sit below the skeleton, out of view, so this pages them in directly, one fetch
@@ -184,7 +200,7 @@ export const MosaicBody = ({
   useEffect(() => {
     if (
       allHidden &&
-      !refreshingList &&
+      !paginationHeld &&
       hasNextPage &&
       !isFetchingNextPage &&
       !isFetchNextPageError
@@ -193,7 +209,7 @@ export const MosaicBody = ({
     }
   }, [
     allHidden,
-    refreshingList,
+    paginationHeld,
     hasNextPage,
     isFetchingNextPage,
     isFetchNextPageError,

@@ -147,15 +147,17 @@ const touch = ({ type, y }: { type: string; y: number }): Event => {
 const seedTwoPages = async ({
   client,
   count,
+  more = false,
 }: {
   client: QueryClient;
   count: number | undefined;
+  more?: boolean;
 }) => {
   const params = { streamKey: "all", unreadOnly: true, order: "newest", count } as const;
   const first = await getStreamEntries(params);
   const second = await getStreamEntries({ ...params, cursor: first.cursor });
   client.setQueryData<InfiniteData<EntryPage, string | undefined>>(keys.stream(params), {
-    pages: [first, { ...second, cursor: undefined }],
+    pages: [first, { ...second, cursor: more ? "next" : undefined }],
     pageParams: [undefined, first.cursor],
   });
   return { total: first.items.length + second.items.length };
@@ -525,7 +527,10 @@ describe("MosaicGrid", () => {
         fixtureBackend,
       );
     };
-    const open = async ({ readerOpen = false }: { readerOpen?: boolean } = {}) => {
+    const open = async ({
+      readerOpen = false,
+      more = false,
+    }: { readerOpen?: boolean; more?: boolean } = {}) => {
       // The phone tier asks for the server's default page size.
       const count = readerOpen ? undefined : 24;
       vi.stubEnv("VITE_API_MODE", "real");
@@ -535,14 +540,19 @@ describe("MosaicGrid", () => {
       const client = new QueryClient({
         defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
       });
-      const { total } = await seedTwoPages({ client, count });
+      const { total } = await seedTwoPages({ client, count, more });
       const callbacks: Array<(records: Array<{ isIntersecting: boolean }>) => void> = [];
       class ReportingIntersectionObserver {
+        callback: (records: Array<{ isIntersecting: boolean }>) => void;
         constructor(callback: (records: Array<{ isIntersecting: boolean }>) => void) {
+          this.callback = callback;
           callbacks.push(callback);
         }
         observe(): void {}
-        disconnect(): void {}
+        disconnect(): void {
+          const index = callbacks.indexOf(this.callback);
+          if (index !== -1) callbacks.splice(index, 1);
+        }
       }
       const grid = setup({
         client,
@@ -656,22 +666,87 @@ describe("MosaicGrid", () => {
       });
     });
 
-    it("refreshes like a user refresh when the app returns to the foreground", async () => {
+    it("reconciles in place when the app returns to the foreground", async () => {
       const { view, cards, total } = await open();
       const { scrollTo } = atBottom(view);
       hold();
 
       returnToTheApp();
+      await waitFor(() => {
+        expect(requests.length).toBeGreaterThan(0);
+      });
 
+      expect(ui.skeleton(view)).toBeNull();
+      expect(ui.pane(view)).not.toHaveAttribute("data-skeleton");
+      expect(scrollTo).not.toHaveBeenCalled();
+      expect(cards()).toBe(total);
+
+      release();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(cards()).toBe(total);
+      expect(scrollTo).not.toHaveBeenCalled();
+    });
+
+    it("does not fetch the next page when the sentinel reports during the foreground refetch", async () => {
+      const { view, callbacks, cards, total } = await open({ more: true });
+      hold();
+
+      returnToTheApp();
+      await waitFor(() => {
+        expect(requests.length).toBeGreaterThan(0);
+      });
+      const before = requests.length;
+      act(() => {
+        for (const callback of callbacks) callback([{ isIntersecting: true }]);
+      });
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(requests.length).toBe(before);
+      expect(requests.some((url) => url.searchParams.has("cursor"))).toBe(false);
+      expect(ui.skeleton(view)).toBeNull();
+
+      release();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(cards()).toBe(total);
+    });
+
+    it("makes a user refresh wait for the foreground reconcile, then run with the skeleton", async () => {
+      const { view, cards } = await open();
+      hold();
+
+      returnToTheApp();
+      await waitFor(() => {
+        expect(requests).toHaveLength(1);
+      });
+      fireEvent.click(ui.refreshButton(view));
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(requests).toHaveLength(1);
+      expect(ui.skeleton(view)).toBeNull();
+
+      release();
+      server.use(fixtureBackend);
       expect(await ui.findSkeleton(view)).toBeInTheDocument();
-      expect(ui.pane(view)).toHaveAttribute("data-skeleton");
-      expect(scrollTo).toHaveBeenCalledWith({ top: 0 });
+      await waitFor(() => {
+        expect(cards()).toBeGreaterThan(0);
+      });
+      expect(ui.skeleton(view)).toBeNull();
+      expect(requests.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("skips the foreground refetch while a user refresh runs", async () => {
+      const { view, cards } = await open();
+      hold();
+
+      fireEvent.click(ui.refreshButton(view));
+      await ui.findSkeleton(view);
+      returnToTheApp();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      expect(requests.filter((url) => !url.searchParams.has("cursor"))).toHaveLength(1);
 
       release();
       await waitFor(() => {
         expect(cards()).toBeGreaterThan(0);
       });
-      expect(cards()).toBeLessThan(total);
     });
 
     it("keeps the pages and the skeleton away when the reader covers the list", async () => {
