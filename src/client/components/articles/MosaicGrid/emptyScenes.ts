@@ -15,6 +15,12 @@ export const EMPTY_SCENES = [
   "coastal-bench",
   "lighthouse-jetty",
   "granite-cottage",
+  "bike-cafe",
+  "bike-canal",
+  "poolside",
+  "fireside",
+  "paris-cafe",
+  "lake-peacock",
 ] as const;
 
 export type EmptyScene = (typeof EMPTY_SCENES)[number];
