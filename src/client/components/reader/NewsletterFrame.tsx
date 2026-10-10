@@ -18,7 +18,43 @@ const AUTHORED_COLORS = /\s(?:bgcolor|color)=|\sstyle="[^"]*(?:color|background)
 const hasAuthoredColors = (html: string): boolean => AUTHORED_COLORS.test(html);
 
 const AUTHORED_DARK_STYLE =
-  "html { background: #fff; } @media (prefers-color-scheme: dark) { html { filter: invert(1) hue-rotate(180deg); } img, video, svg { filter: invert(1) hue-rotate(180deg); } }";
+  "html { background: #fff; } @media (prefers-color-scheme: dark) { html { filter: invert(1) hue-rotate(180deg); } .lire-emoji { display: inline-block; } img, video, svg, .lire-emoji { filter: invert(1) hue-rotate(180deg); } }";
+
+// A bare pictograph like © stays text: only emoji presentation, a VS16 pair, a keycap, a flag or a
+// ZWJ sequence. Tag sequences (subdivision flags) and a trailing VS15 stay in the match.
+const EMOJI =
+  /[#*0-9]\uFE0F?\u20E3|\p{Regional_Indicator}{2}|(?:\p{Emoji_Presentation}|\p{Extended_Pictographic}\uFE0F)(?:\uFE0F|\p{Emoji_Modifier}|[\u{E0020}-\u{E007F}]+|\u200D(?:\p{Emoji_Presentation}|\p{Extended_Pictographic}\uFE0F?))*\uFE0E?/gu;
+
+const SKIPPED_TEXT_PARENTS = new Set(["SCRIPT", "STYLE", "TEXTAREA", "TITLE"]);
+
+// Emoji are text nodes, so the page invert would darken them; a span takes the second invert.
+const wrapEmoji = (doc: Document): void => {
+  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+  const nodes: Text[] = [];
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (
+      node instanceof doc.defaultView!.Text &&
+      !SKIPPED_TEXT_PARENTS.has(node.parentElement?.tagName ?? "") &&
+      !node.parentElement?.closest("svg") &&
+      new RegExp(EMOJI).test(node.data)
+    )
+      nodes.push(node);
+  }
+  for (const node of nodes) {
+    const fragment = doc.createDocumentFragment();
+    let last = 0;
+    for (const match of node.data.matchAll(EMOJI)) {
+      fragment.append(node.data.slice(last, match.index));
+      const span = doc.createElement("span");
+      span.className = "lire-emoji";
+      span.textContent = match[0];
+      fragment.append(span);
+      last = match.index + match[0].length;
+    }
+    fragment.append(node.data.slice(last));
+    node.replaceWith(fragment);
+  }
+};
 
 const FIELD_TAGS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
 
@@ -64,6 +100,11 @@ export const NewsletterFrame = ({ html, dir, onDocument }: NewsletterFrameProps)
     [html, dir, authored],
   );
 
+  const authoredRef = useRef(authored);
+  useEffect(() => {
+    authoredRef.current = authored;
+  }, [authored]);
+
   const attach = useCallback((frame: HTMLIFrameElement) => {
     const doc = frame.contentDocument;
     // The frame's own realm, so its observer watches its document. Window's type omits the class.
@@ -71,6 +112,7 @@ export const NewsletterFrame = ({ html, dir, onDocument }: NewsletterFrameProps)
     if (!doc || !win || setupRef.current?.doc === doc) return;
     setupRef.current?.teardown();
     const root = doc.documentElement;
+    if (authoredRef.current) wrapEmoji(doc);
 
     // `scrollHeight` never drops below the frame's own height, so the frame could not shrink. The
     // horizontal scrollbar is added so it never covers the last line.
