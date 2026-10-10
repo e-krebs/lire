@@ -282,10 +282,12 @@ fires when the page returns after more than 60 seconds hidden, and skips a refre
 is still running. `useRefreshAllLists` in
 [queries.ts](../../src/client/api/queries.ts) then settles the writes (the queue flush and the
 running mutations, for at most 3 seconds) and invalidates every stream,
-search and entry cache plus the counts. While the list is on screen it refreshes like every other
-refresh: it trims to page 1, scrolls to the top and shows the skeleton. With the reader covering the
-list, the return refreshes only the reader's own list and keeps its pages and position, because a trim
-would move the list behind the reader. The other cached lists and open entries refetch only
+search and entry cache plus the counts. The reader's own list refetches in
+place, on every tier: it keeps its pages and position, with no trim, no scroll to the top and no
+skeleton, and pagination waits until the refetch lands, because a next-page fetch would cancel it.
+A user refresh that starts during that refetch waits for it to settle, then runs as usual; a return
+that finds a user refresh running skips its own refetch.
+The other cached lists and open entries refetch only
 while active. A global `refetchOnWindowFocus` would refetch every list at once.
 
 Every refresh refetches the counts, the categories and the feeds before the lists, so a new
@@ -299,10 +301,10 @@ settles after its list has unmounted. A mark with no source list marks every lis
 list already stale before the mark stays stale. A failed mark marks the other lists stale again at
 rollback and at settle.
 
-Every refresh behaves the same way: the top pull, the bottom pull, the button, the shortcut and the
-foreground return. Each waits for the same writes (at most 3 seconds), trims the list to page 1,
-scrolls to the top and shows the mosaic skeleton until the first page lands. A refresh that starts
-while another runs reuses the running one. The pull wrapper, the indicator and the freshness row
+Every user refresh behaves the same way: the top pull, the bottom pull, the button and the
+shortcut. The foreground return is the exception (see above). Each waits for the same writes (at most 3 seconds), trims the list to page 1,
+scrolls to the top and shows the mosaic skeleton until the first page lands. A user refresh that starts
+while another user refresh runs reuses the running one. The pull wrapper, the indicator and the freshness row
 stay mounted, so the gesture survives, and only the grid swaps for the skeleton. The bottom pull's
 disc moves to the top edge for the duration. While a skeleton shows, on a refresh or a first load,
 `MosaicSkeleton` sets `data-skeleton` on the `.scroll-pane`, which hides the pane's vertical

@@ -84,18 +84,25 @@ const Wide: Decorator = (Story) => (
 
 const tiles = async (root: HTMLElement) => within(root).findAllByRole("link", {}, TIMEOUT);
 
+// Re-read on every use: the grid remounts when the page-size tier settles, which detaches a held tile.
+const firstTile = (root: HTMLElement) => within(root).getAllByRole("link")[0];
+
 export const Navigation: Story = {
   decorators: [Wide],
   play: async ({ canvasElement }) => {
-    const [first] = await tiles(canvasElement);
-    first.focus();
+    await tiles(canvasElement);
+    await waitFor(async () => {
+      const first = firstTile(canvasElement);
+      first.focus();
+      await expect(first).toHaveFocus();
+    }, TIMEOUT);
     await userEvent.keyboard("{ArrowDown}{ArrowRight}{ArrowLeft}{ArrowUp}{End}{Home}");
     await userEvent.keyboard("{ArrowUp}{ArrowLeft}x");
-    await expect(first).toHaveFocus();
+    await waitFor(async () => expect(firstTile(canvasElement)).toHaveFocus(), TIMEOUT);
     await userEvent.keyboard("{End}");
-    await expect(first).not.toHaveFocus();
+    await waitFor(async () => expect(firstTile(canvasElement)).not.toHaveFocus(), TIMEOUT);
     await userEvent.keyboard("{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}");
-    await userEvent.click(first);
+    await userEvent.click(firstTile(canvasElement));
   },
 };
 
