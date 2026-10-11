@@ -33,3 +33,11 @@ picked and shown is in [architecture.md](../explanation/architecture.md#empty-st
 6. Add the scene name to `EMPTY_SCENES` in
    [emptyScenes.ts](../../src/client/components/articles/MosaicGrid/emptyScenes.ts).
 7. Check both phases in the `Components/MosaicEmptyArt` Gallery story (`yarn storybook`).
+
+## Edit an existing scene
+
+Change the scene in `art/empty-state/colour/tiles.html` and run steps 3 to 5. Skip steps 2 (the
+`capture.py` scene list) and 6, because the scene name does not change. Update the scene's row in
+[NOTES.md](../../art/empty-state/colour/NOTES.md) when its content changes. `tiles.html` renders
+the first ten scenes in `render10Scenes` and the rest in `render6Scenes`, each with its own copy of
+the helpers, so edit the copy in the scope the scene's definition uses.

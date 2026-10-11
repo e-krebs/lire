@@ -1,13 +1,14 @@
 ---
 name: empty-state-art
-description: Make or review empty-state scenes with Codex. Use when adding a scene to art/empty-state/ or src/client/assets/empty/, or when briefing Codex for a new run or a feedback round.
+description: Make, edit or review empty-state scenes with Codex. Use when adding a scene to or changing an existing scene in art/empty-state/ or src/client/assets/empty/, or when briefing Codex for a new run or a feedback round.
 ---
 
 # Empty-state art with Codex
 
 The steps to add a scene are in
-[docs/how-to/add-an-empty-state-scene.md](../../../docs/how-to/add-an-empty-state-scene.md). This
-skill holds only the agent parts. The shipped style is `art/empty-state/colour/`; the ink style in
+[docs/how-to/add-an-empty-state-scene.md](../../../docs/how-to/add-an-empty-state-scene.md). Editing
+an existing scene follows the same steps minus the registration ones, see
+[Edit an existing scene](#edit-an-existing-scene). This skill holds only the agent parts. The shipped style is `art/empty-state/colour/`; the ink style in
 `art/empty-state/ink/` is archived, see [its notes](../../../art/empty-state/ink/NOTES.md).
 
 ## New run
@@ -33,6 +34,24 @@ codex exec resume --skip-git-repo-check -c sandbox_mode='"workspace-write"' \
 
 When two runs go at once, give each Codex session its own folder.
 
+## Edit an existing scene
+
+Brief Codex the same way as for a new run, in a new folder such as `art/empty-state/colour-round2/`
+holding copies of `tiles.html` and `capture.py`. Never let Codex edit `colour/` directly. Then:
+
+- Name each scene in the brief with what changes, and say what stays (props, palette, camera).
+- Tell Codex where the code lives. `tiles.html` has two render scopes: `render10Scenes` (the
+  first ten scenes, `hammock` to `beach`) and `render6Scenes` (the rest). Each scope has its own
+  copy of the shared helpers, and some scenes have an unused duplicate in the other scope. Edit
+  the copy in the scope that `sceneDefinitions` uses.
+- Ask for one shared helper when two scenes must match, for example the saddle of `bike-cafe` and
+  `bike-canal`.
+- Keep the geometry checks in `capture.py` passing, and update an assertion only when the change
+  makes it obsolete.
+- When the run is approved, copy the changed `tiles.html` and `capture.py` back into `colour/`,
+  convert only the changed scenes to WebP, and update `colour/NOTES.md`. Skip `EMPTY_SCENES`,
+  because the names are unchanged. Delete the round folder.
+
 ## Review checklist
 
 - No people, only what was left behind.
@@ -44,7 +63,7 @@ When two runs go at once, give each Codex session its own folder.
 ## Brief template
 
 ```md
-# Brief: <n> new scenes in the colour style
+# Brief: <n> new and <m> reworked scenes in the colour style
 
 ## Context
 
@@ -57,7 +76,7 @@ folder and do not touch other agents' folders.
 
 ## The new scenes
 
-<scene table: Name | Scene>
+<scene table: Name | New or change>
 
 ## Style
 
