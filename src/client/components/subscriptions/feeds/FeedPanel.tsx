@@ -1,0 +1,405 @@
+import { useId, useRef, useState } from "react";
+import {
+  isPremiumRequired,
+  unreadCountFor,
+  useCreateCategory,
+  useCreateWebFeed,
+  useReanalyzeWebFeed,
+  useWebFeedStatus,
+  useUpdateFeed,
+  useCounts,
+  useUnsubscribe,
+} from "client/api/queries";
+import { Icon } from "client/components/primitives/icons/icons";
+import { Switch } from "client/components/primitives/controls/Switch";
+import { useDirectOpen, useSetDirectOpen } from "client/hooks/useDirectOpen";
+import type { Locale } from "client/i18n/locale";
+import { useLocale } from "client/i18n/locale";
+import { useT } from "client/i18n/useT";
+import { webFeedPageOf } from "shared/bff/library";
+import { toStreamKey } from "shared/feedsApi/streamKey";
+import type { Category, Feed } from "shared/feedsApi/types";
+import { CategoryPicker } from "client/components/subscriptions/categories/CategoryPicker";
+import { ConfirmDialog } from "client/components/primitives/overlays/ConfirmDialog";
+import { FeedTypeIcon, hostOf } from "client/components/subscriptions/feeds/FeedsTab";
+import { SidePanel } from "client/components/primitives/overlays/SidePanel";
+import { WebFeedVariants } from "./WebFeedVariants";
+
+const actionClassName = `
+  min-h-11 flex-1 rounded-xl px-4 text-sm font-semibold
+  focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent
+  disabled:cursor-default disabled:opacity-50
+  motion-safe:transition-colors
+`;
+const submitClassName = `${actionClassName} bg-accent text-on-accent not-disabled:hover:bg-accent/90 data-clearing:bg-danger data-clearing:text-surface data-clearing:not-disabled:hover:bg-danger/90`;
+const neutralClassName = `${actionClassName} bg-surface-2 text-ink`;
+const dangerSoftClassName = `${actionClassName} bg-danger-soft text-danger`;
+
+const listFormats = new Map<Locale, Intl.ListFormat>();
+
+const listFormatFor = (locale: Locale): Intl.ListFormat => {
+  let format = listFormats.get(locale);
+  if (!format) {
+    format = new Intl.ListFormat(locale, { type: "conjunction" });
+    listFormats.set(locale, format);
+  }
+  return format;
+};
+
+const isHttpUrl = (value: string): boolean => /^https?:\/\//i.test(value);
+
+const FeedAddress = ({ feed }: { feed: Feed }) => {
+  const { subscriptions: t } = useT();
+  const address = feed.isNewsletter
+    ? undefined
+    : feed.feedUrl === undefined
+      ? undefined
+      : webFeedPageOf(feed.feedUrl);
+  const body =
+    address !== undefined && isHttpUrl(address) ? (
+      <a
+        href={address}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="
+          flex max-w-full min-w-0 items-center gap-1 rounded text-accent-text
+          focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent
+        "
+      >
+        <span className="min-w-0 truncate font-mono text-xs">{address}</span>
+        <Icon name="external" className="size-4 flex-none" />
+        <span className="sr-only">({t.opensInNewTab})</span>
+      </a>
+    ) : feed.isNewsletter && feed.senderEmail !== undefined ? (
+      <span className="min-w-0 truncate font-mono text-xs text-ink">{feed.senderEmail}</span>
+    ) : null;
+  if (body === null) return null;
+  return <div className="flex min-h-11 items-center border-b border-hairline px-4">{body}</div>;
+};
+
+const lossesOf = ({
+  categories,
+  unread,
+  t,
+  locale,
+}: {
+  categories: number;
+  unread: number;
+  t: ReturnType<typeof useT>["subscriptions"];
+  locale: Locale;
+}): string =>
+  listFormatFor(locale).format([
+    t.lossFeed,
+    ...(categories === 0 ? [] : [t.lossCategories({ count: categories })]),
+    ...(unread === 0 ? [] : [t.lossUnread({ count: unread })]),
+  ]);
+
+interface FeedPanelProps {
+  /** The subscription being edited. */
+  feed: Feed;
+  /** All categories, for the feed's category picker. */
+  categories: Category[];
+  /** Panel dismissed, or the feed was saved or removed. */
+  onClose: () => void;
+}
+
+export const FeedPanel = ({ feed, categories, onClose }: FeedPanelProps) => {
+  const { subscriptions: t, common } = useT();
+  const locale = useLocale();
+  const formId = useId();
+  const titleId = useId();
+  const titleErrorId = useId();
+  const titleRef = useRef<HTMLInputElement>(null);
+  const savedIds = feed.categoryIds;
+  const [draftFor, setDraftFor] = useState(feed.id);
+  const [title, setTitle] = useState(feed.title);
+  const [selected, setSelected] = useState(savedIds);
+  const [titleEmpty, setTitleEmpty] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const save = useUpdateFeed();
+  const unsubscribe = useUnsubscribe();
+  const createCategory = useCreateCategory();
+  const reanalyze = useReanalyzeWebFeed();
+  const applyVariant = useCreateWebFeed();
+  const [variantIndex, setVariantIndex] = useState<number | undefined>(undefined);
+  // Another row opened while the panel stays up: the drafts follow the new feed. The resets
+  // also detach a pending save or create, so its onSuccess cannot close or tick this draft.
+  if (draftFor !== feed.id) {
+    setDraftFor(feed.id);
+    setTitle(feed.title);
+    setSelected(savedIds);
+    setTitleEmpty(false);
+    setConfirming(false);
+    save.reset();
+    unsubscribe.reset();
+    createCategory.reset();
+    reanalyze.reset();
+    applyVariant.reset();
+    setVariantIndex(undefined);
+  }
+
+  const counts = useCounts();
+  const directOpen = useDirectOpen(feed.id);
+  const setDirectOpen = useSetDirectOpen();
+
+  const reanalyzing = reanalyze.isPending || reanalyze.isError || reanalyze.data !== undefined;
+  const webStatus = useWebFeedStatus({ requestId: reanalyze.data?.requestId });
+  const variants = webStatus.data?.status === "done" ? webStatus.data.variants : undefined;
+  const pickedIndex = variantIndex ?? (variants?.length === 1 ? 0 : undefined);
+  const pickedVariant = pickedIndex === undefined ? undefined : variants?.[pickedIndex];
+  const canApply = pickedVariant !== undefined && !applyVariant.isPending;
+  const applyMessage = applyVariant.isError
+    ? isPremiumRequired(applyVariant.error)
+      ? t.webFeedPremium
+      : t.applyVariantFailed({ message: applyVariant.error.message })
+    : null;
+
+  const stopReanalyzing = (): void => {
+    reanalyze.reset();
+    applyVariant.reset();
+    setVariantIndex(undefined);
+  };
+
+  const handleApply = (): void => {
+    if (pickedVariant === undefined || pickedIndex === undefined || !reanalyze.data) return;
+    applyVariant.mutate(
+      {
+        url: reanalyze.data.url,
+        variantIndex: pickedIndex,
+        fields: pickedVariant.fields,
+        htmlHash: webStatus.data?.htmlHash,
+        categoryIds: feed.categoryIds,
+      },
+      { onSuccess: onClose },
+    );
+  };
+
+  const clearing = selected.length === 0;
+  const saveMessage = save.isError
+    ? t.saveFeedFailed({ message: save.error.message })
+    : createCategory.isError
+      ? t.createCategoryFailed({ message: createCategory.error.message })
+      : null;
+
+  const handleSave = (): void => {
+    const nextTitle = title.trim();
+    if (nextTitle === "") {
+      setTitleEmpty(true);
+      titleRef.current?.focus();
+      return;
+    }
+    if (clearing) {
+      setConfirming(true);
+      return;
+    }
+    save.mutate(
+      { feedId: feed.id, title: nextTitle, categoryIds: selected },
+      { onSuccess: onClose },
+    );
+  };
+
+  return (
+    <>
+      <SidePanel
+        open
+        onClose={onClose}
+        title={feed.title}
+        subtitle={hostOf(feed.siteUrl)}
+        leading={<FeedTypeIcon feed={feed} />}
+        actions={
+          reanalyzing ? (
+            <>
+              <button
+                type="button"
+                disabled={applyVariant.isPending}
+                onClick={stopReanalyzing}
+                className={neutralClassName}
+              >
+                {common.cancel}
+              </button>
+              <button
+                type="button"
+                disabled={!canApply}
+                onClick={handleApply}
+                className={submitClassName}
+              >
+                {t.apply}
+              </button>
+            </>
+          ) : (
+            <>
+              {clearing ? null : (
+                <button
+                  type="button"
+                  disabled={save.isPending}
+                  onClick={() => {
+                    setConfirming(true);
+                  }}
+                  className={dangerSoftClassName}
+                >
+                  {t.unsubscribeEllipsis}
+                </button>
+              )}
+              <button
+                type="submit"
+                form={formId}
+                disabled={save.isPending || unsubscribe.isPending}
+                data-clearing={clearing || undefined}
+                className={submitClassName}
+              >
+                {clearing ? t.unsubscribeEllipsis : t.saveChanges}
+              </button>
+            </>
+          )
+        }
+      >
+        {reanalyzing ? (
+          <div className="flex flex-col gap-4 p-4">
+            <WebFeedVariants
+              status={webStatus.data}
+              failed={reanalyze.isError || webStatus.isError}
+              timedOut={webStatus.timedOut}
+              selected={pickedIndex}
+              onSelect={setVariantIndex}
+              onRetry={() => {
+                setVariantIndex(undefined);
+                reanalyze.mutate({ feedId: feed.id });
+              }}
+            />
+            {applyMessage === null ? null : (
+              <p role="alert" className="text-sm text-danger">
+                {applyMessage}
+              </p>
+            )}
+          </div>
+        ) : (
+          <>
+            <FeedAddress feed={feed} />
+            <form
+              id={formId}
+              noValidate
+              className="flex flex-col gap-4 p-4"
+              onSubmit={(event) => {
+                event.preventDefault();
+                handleSave();
+              }}
+            >
+              <div className="flex flex-col gap-2">
+                <label htmlFor={titleId} className="text-xs font-semibold text-muted">
+                  {t.titleLabel}
+                </label>
+                <input
+                  ref={titleRef}
+                  id={titleId}
+                  type="text"
+                  autoComplete="off"
+                  enterKeyHint="done"
+                  value={title}
+                  aria-invalid={titleEmpty || undefined}
+                  aria-describedby={titleEmpty ? titleErrorId : undefined}
+                  onChange={(event) => {
+                    setTitle(event.target.value);
+                    setTitleEmpty(false);
+                  }}
+                  className={`
+                min-h-11 w-full rounded-xl bg-surface px-3 text-sm text-ink ring-1 ring-hairline
+                ring-inset
+                focus-visible:outline-2 focus-visible:outline-accent
+                aria-invalid:ring-danger
+              `}
+                />
+                {titleEmpty ? (
+                  <p id={titleErrorId} role="alert" className="text-sm text-danger">
+                    {t.enterTitle}
+                  </p>
+                ) : null}
+              </div>
+              <CategoryPicker
+                key={feed.id}
+                categories={categories}
+                selected={selected}
+                onChange={setSelected}
+                mode="multiple"
+                onCreate={(label) => {
+                  createCategory.mutate(label, {
+                    onSuccess: (created) => {
+                      setSelected((current) => [...current, created.id]);
+                    },
+                  });
+                }}
+              />
+              {feed.isNewsletter ? null : (
+                <div className="flex min-h-11 items-center">
+                  <Switch
+                    checked={directOpen}
+                    onChange={(checked) => {
+                      setDirectOpen(feed.id, checked);
+                    }}
+                    className="w-full justify-between"
+                  >
+                    {t.opensOnSite}
+                  </Switch>
+                </div>
+              )}
+              {feed.isWebFeed ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    reanalyze.mutate({ feedId: feed.id });
+                  }}
+                  className={neutralClassName}
+                >
+                  {t.reanalyze}
+                </button>
+              ) : null}
+              {clearing ? <p className="text-xs text-faint">{t.clearingHint}</p> : null}
+              {saveMessage === null ? null : (
+                <p role="alert" className="text-sm text-danger">
+                  {saveMessage}
+                </p>
+              )}
+            </form>
+          </>
+        )}
+      </SidePanel>
+      <ConfirmDialog
+        open={confirming}
+        onCancel={() => {
+          setConfirming(false);
+        }}
+        onConfirm={() => {
+          unsubscribe.mutate(feed.id, {
+            onSuccess: () => {
+              setConfirming(false);
+              onClose();
+            },
+          });
+        }}
+        title={t.unsubscribeTitle({ title: feed.title })}
+        confirmLabel={t.unsubscribe}
+        // A DELETE that lands before a pending save's POST would be undone by it.
+        confirmDisabled={unsubscribe.isPending || save.isPending}
+        busy={unsubscribe.isPending}
+        extra={
+          unsubscribe.isError ? (
+            <p role="alert" className="text-sm text-danger">
+              {t.unsubscribeFailed({ message: unsubscribe.error.message })}
+            </p>
+          ) : undefined
+        }
+      >
+        {t.unsubscribeBody({
+          losses: lossesOf({
+            categories: feed.categoryIds.length,
+            unread: unreadCountFor({
+              counts: counts.data,
+              streamKey: toStreamKey({ kind: "feed", feedId: feed.id }),
+            }),
+            t,
+            locale,
+          }),
+        })}
+      </ConfirmDialog>
+    </>
+  );
+};

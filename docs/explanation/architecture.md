@@ -202,7 +202,7 @@ Change the page when the app starts to handle a new kind of data.
 The showcase is not read-only. The fixture transport applies writes (mark as read, subscription
 and category edits, preferences) to in-memory state, and nothing in the demo build blocks them.
 A reload restores the seed, including pending read marks, which a mock build keeps in memory only. The preferences bucket persists in `localStorage`; the
-banner's Reset button clears both ([DemoBanner.tsx](../../src/client/components/shell/DemoBanner.tsx)).
+banner's Reset button clears both ([DemoBanner.tsx](../../src/client/components/app/demo/DemoBanner.tsx)).
 Nothing a visitor does reaches an account.
 
 | | Demo | Production |
@@ -309,7 +309,7 @@ stay mounted, so the gesture survives, and only the grid swaps for the skeleton.
 disc moves to the top edge for the duration. While a skeleton shows, on a refresh or a first load,
 `MosaicSkeleton` sets `data-skeleton` on the `.scroll-pane`, which hides the pane's vertical
 scrollbar. `scrollbar-gutter: stable` stays, so nothing shifts. The attribute lives on the pane
-because [AppShell.tsx](../../src/client/components/shell/AppShell.tsx) owns it and the reader and
+because [AppShell.tsx](../../src/client/components/app/shell/AppShell.tsx) owns it and the reader and
 the subscriptions manager share the class. The bottom pull arms only at the true end of the list: no
 next page, no fetch in flight and no next-page error. An empty result arms it too, so the no-results view refreshes the same way. It also calls `preventDefault` only after the
 touch travels a few pixels, so a scroll that reaches the pagination sentinel is not swallowed.
@@ -320,7 +320,7 @@ same as the header's Mark button, Escape or the scrim. Both pulls run on `usePul
 wrapper, and it holds the disc until the refresh settles. The reader passes a commit that returns
 nothing, so its band slides straight back while the panel closes. The reader turns the top edge off,
 so a pull down there stays a plain scroll. A newsletter's frame keeps touch events in its own document, so the reader passes that document to `usePull`, which listens there as well as on the pane. The pane still does the scrolling, so its edges still decide. The frame always fits its content, so the pane's end is the email's end and the bottom pull stays valid. The band (`PullAction` in
-[PullIndicator.tsx](../../src/client/components/articles/PullIndicator.tsx)) is tinted like the card
+[PullIndicator.tsx](../../src/client/components/feed/status/PullIndicator.tsx)) is tinted like the card
 swipe's action panel. The tint follows the pull's progress to the same 72px threshold, and the band
 names the exit it will take. The two pulls never compete: each hook listens on its own
 `.scroll-pane`, and the reader is a sibling of the grid's pane, never inside it. Below `lg` the
@@ -328,7 +328,7 @@ grid's pane is hidden while the reader is open, and at `lg`+ it is `inert` behin
 
 Updates are prompt-style. A new worker installs and waits. The page learns of it through
 [pwaUpdate.ts](../../src/client/utils/pwaUpdate.ts) and shows `UpdateReadyToast` with Reload and Later.
-`SWToast` ([SWToast/](../../src/client/components/shell/SWToast/)) picks that toast or `OfflineToast` from the state, and both build on `Toast`.
+`SWToast` ([SWToast/](../../src/client/components/app/notices/SWToast/)) picks that toast or `OfflineToast` from the state, and both build on `Toast`.
 Reload flushes the read-mark queue for at most 2 seconds, then tells the worker to skip waiting, and
 the page reloads once the new worker controls it. The page reloads at once when no worker waits or
 the page has no controller, and 3 seconds after the request when the worker never takes control. The same toast announces once that the app opens offline.
@@ -397,7 +397,7 @@ noticed first. Queries never retry a `401` or a `429`
 ### Empty-state art
 
 An empty article list shows one of the "doing nothing" scenes above its text, picked at random when
-the empty state mounts and again each time a refresh lands, never the same scene twice in a row ([MosaicEmptyArt.tsx](../../src/client/components/articles/MosaicGrid/MosaicEmptyArt.tsx)).
+the empty state mounts and again each time a refresh lands, never the same scene twice in a row ([MosaicEmptyArt.tsx](../../src/client/components/feed/mosaic/MosaicGrid/MosaicEmptyArt.tsx)).
 Each scene has a day and a dusk WebP (`-light` and `-dark`) in [src/client/assets/empty](../../src/client/assets/empty).
 The phase comes from the sun: the client asks `GET /api/sun` for its time zone
 ([api.md](../reference/api.md)) and refetches when `nextChangeAt` passes, so the image swaps live

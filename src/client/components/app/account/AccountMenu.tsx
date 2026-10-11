@@ -1,0 +1,263 @@
+import { useEffect, useId, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
+import { isMockMode } from "client/api/client";
+import { useAuthStatus, useProfile } from "client/api/queries";
+import { useBarPosition } from "client/hooks/useBarPosition";
+import { setBarPosition } from "client/hooks/utils/barPosition";
+import { Icon } from "client/components/primitives/icons/icons";
+import { Switch } from "client/components/primitives/controls/Switch";
+import { swallowNextClick } from "client/utils/swallowNextClick";
+import { tip } from "client/utils/tooltip";
+import { useOverlay } from "client/hooks/useOverlay";
+import { setLocalePreference, useLocalePreference } from "client/i18n/locale";
+import type { LocalePreference } from "client/i18n/locale";
+import { useT } from "client/i18n/useT";
+import { applyUpdate, usePwaUpdate } from "client/utils/pwaUpdate";
+import {
+  browserChoices,
+  getPreferredBrowser,
+  setPreferredBrowser,
+  type BrowserId,
+} from "client/utils/externalLinks";
+
+const triggerClassName = `
+  relative inline-flex size-10 flex-none items-center justify-center rounded-full text-muted
+  hover:bg-surface-2
+  focus-visible:outline-2 focus-visible:outline-accent
+  aria-expanded:bg-surface-2 aria-expanded:text-ink
+`;
+
+const rowClassName = `
+  flex min-h-9 items-center justify-between gap-3 px-3 text-sm
+`;
+
+// Only an installed iOS app or the Android TWA has a browser to pick, so elsewhere the row is absent.
+const ExternalBrowserSelect = () => {
+  const { shell } = useT();
+  const choices = browserChoices({ defaultLabel: shell.defaultBrowser });
+  const [browser, setBrowser] = useState(getPreferredBrowser);
+  if (choices.length === 0) return null;
+  const options: { id: BrowserId; label: string }[] = [
+    ...choices,
+    { id: "none", label: shell.thisApp },
+  ];
+  return (
+    <label className={rowClassName}>
+      <span className="flex-none text-muted">{shell.openExternalLinksIn}</span>
+      <select
+        value={browser ?? "none"}
+        onChange={(event) => {
+          const next = options.find(({ id }) => id === event.target.value)?.id;
+          if (next === undefined) return;
+          setPreferredBrowser(next);
+          setBrowser(next);
+        }}
+        className={`
+          h-8 min-w-0 rounded-lg border border-hairline bg-surface px-2 text-ink
+          focus-visible:outline-2 focus-visible:outline-accent
+        `}
+      >
+        {options.map(({ id, label }) => (
+          <option key={id} value={id}>
+            {label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+};
+
+const LanguageSelect = () => {
+  const { shell } = useT();
+  const preference = useLocalePreference();
+  const options: { id: LocalePreference; label: string }[] = [
+    { id: "system", label: shell.languageSystem },
+    { id: "en", label: shell.languageEnglish },
+    { id: "fr", label: shell.languageFrench },
+  ];
+  return (
+    <label className={rowClassName}>
+      <span className="flex-none text-muted">{shell.language}</span>
+      <select
+        value={preference}
+        onChange={(event) => {
+          const next = options.find(({ id }) => id === event.target.value)?.id;
+          if (next === undefined) return;
+          setLocalePreference(next);
+        }}
+        className={`
+          h-8 min-w-0 rounded-lg border border-hairline bg-surface px-2 text-ink
+          focus-visible:outline-2 focus-visible:outline-accent
+        `}
+      >
+        {options.map(({ id, label }) => (
+          <option key={id} value={id}>
+            {label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+};
+
+const Row = ({ label, children }: { label: string; children: ReactNode }) => (
+  <div className={rowClassName}>
+    <span className="flex-none text-muted">{label}</span>
+    <span className="min-w-0 truncate text-right text-ink">{children}</span>
+  </div>
+);
+
+// Everything the old settings page held, in a native `popover="auto"` panel under the cog: light
+// dismiss and the top layer come for free, and CSS anchor positioning keeps it on the trigger.
+export const AccountMenu = () => {
+  const id = useId();
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
+  const profile = useProfile();
+  const authStatus = useAuthStatus();
+  const barPosition = useBarPosition();
+  const mock = isMockMode();
+  const { updateReady, updateDeferred } = usePwaUpdate();
+  const { shell } = useT();
+  useOverlay({ id: "account-menu", isOpen: open });
+
+  const close = (): void => {
+    popoverRef.current?.hidePopover();
+  };
+
+  // Light dismiss closes the popover on a press outside, then lets that press click whatever was
+  // under it: a card, a pill. The click is swallowed here instead. The trigger is excluded, since
+  // its own click is the toggle.
+  useEffect(() => {
+    if (!open) return undefined;
+    const handlePointerDown = (event: PointerEvent): void => {
+      if (!(event.target instanceof Node)) return;
+      if (popoverRef.current?.contains(event.target)) return;
+      if (triggerRef.current?.contains(event.target)) return;
+      swallowNextClick();
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        popoverTarget={id}
+        aria-expanded={open}
+        {...tip({ label: shell.accountAndAppInfo })}
+        className={triggerClassName}
+      >
+        <Icon name="settings" />
+        {updateReady && updateDeferred ? (
+          <span
+            aria-hidden="true"
+            className="update-dot absolute top-2 right-2 size-2 rounded-full bg-accent"
+          />
+        ) : null}
+      </button>
+      <div
+        ref={popoverRef}
+        id={id}
+        popover="auto"
+        role="group"
+        aria-label={shell.accountAndAppInfo}
+        onToggle={(event) => {
+          setOpen(event.newState === "open");
+        }}
+        className={`
+          account-menu w-72 rounded-2xl border border-hairline bg-surface p-2 text-ink shadow-lg
+        `}
+      >
+        <div className="px-3 py-1.5">
+          <p
+            data-tip={profile.data?.username}
+            data-tip-overflow=""
+            className="truncate text-sm font-semibold text-ink"
+          >
+            {profile.data?.username ?? "—"}
+          </p>
+          <p
+            data-tip={profile.data?.email}
+            data-tip-overflow=""
+            className="truncate text-xs text-faint"
+          >
+            {profile.data?.email ?? "—"}
+          </p>
+        </div>
+
+        {updateReady ? (
+          <button
+            type="button"
+            onClick={() => {
+              close();
+              void applyUpdate();
+            }}
+            className={`
+              flex h-10 w-full items-center rounded-xl bg-accent-soft px-3 text-sm font-medium
+              text-accent-text
+              hover:bg-surface-2
+              focus-visible:outline-2 focus-visible:outline-accent
+            `}
+          >
+            {shell.reloadToUpdate}
+          </button>
+        ) : null}
+
+        {import.meta.env.VITE_DEMO !== "true" && (
+          <Row label={shell.account}>
+            {mock ? (
+              shell.mockData
+            ) : authStatus.data?.signedIn ? (
+              shell.signedIn
+            ) : (
+              <a
+                href="/api/auth/login"
+                className={`
+                  text-accent-text underline underline-offset-2
+                  focus-visible:outline-2 focus-visible:outline-accent
+                `}
+              >
+                {shell.signIn}
+              </a>
+            )}
+          </Row>
+        )}
+        {/* Per device, not per account: the choice lives in localStorage. */}
+        <Switch
+          checked={barPosition === "bottom"}
+          onChange={(checked) => {
+            setBarPosition(checked ? "bottom" : "top");
+          }}
+          className="mx-3 justify-between"
+        >
+          {shell.barAtBottom}
+        </Switch>
+        <ExternalBrowserSelect />
+        <LanguageSelect />
+
+        <hr className="my-2 border-hairline" />
+
+        <Row label={shell.version}>{import.meta.env.VITE_APP_VERSION ?? "dev"}</Row>
+
+        <Link
+          to="/subscriptions"
+          onClick={close}
+          className={`
+            flex h-10 items-center rounded-xl px-3 text-sm font-medium text-ink
+            hover:bg-surface-2
+            focus-visible:outline-2 focus-visible:outline-accent
+          `}
+        >
+          {shell.manageSubscriptions}
+        </Link>
+      </div>
+    </>
+  );
+};

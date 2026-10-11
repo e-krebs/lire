@@ -31,8 +31,8 @@ picked and shown is in [architecture.md](../explanation/architecture.md#empty-st
 
    Repeat for `-dark`.
 6. Add the scene name to `EMPTY_SCENES` in
-   [emptyScenes.ts](../../src/client/components/articles/MosaicGrid/emptyScenes.ts).
-7. Check both phases in the `Components/MosaicEmptyArt` Gallery story (`yarn storybook`).
+   [emptyScenes.ts](../../src/client/components/feed/mosaic/MosaicGrid/emptyScenes.ts).
+7. Check both phases in the `Feed/Mosaic/MosaicEmptyArt` Gallery story (`yarn storybook`).
 
 ## Edit an existing scene
 

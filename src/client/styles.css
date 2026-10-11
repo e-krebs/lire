@@ -421,7 +421,7 @@ body {
   }
 }
 
-/* The add-sources menu hangs off its invoker, as the account menu does. Without anchor
+/* The AddSourcesMenu hangs off its invoker, as the account menu does. Without anchor
    positioning the browser centres the popover. */
 @supports (anchor-name: --a) {
   .add-sources-menu {

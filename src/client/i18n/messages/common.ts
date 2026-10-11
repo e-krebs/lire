@@ -1,6 +1,6 @@
 import type { Messages } from "client/i18n/types";
 
-// Frozen once seeded: a word another area needs stays in that area's file.
+// Frozen once seeded: shared verbs, plus the strings of components/primitives, which must not depend on a domain area.
 export const en = {
   alsoIn: ({ names }: { names: string }) => `, also in ${names}`,
   back: "Back",
