@@ -57,6 +57,7 @@ jobs:
               - 'vite.config.ts'
               - 'vitest.config.ts'
               - 'scripts/check-demo-brand.ts'
+              - 'scripts/check-story-order.ts'
               - 'src/test/**'
               - 'package.json'
               - 'yarn.lock'
@@ -257,6 +258,7 @@ jobs:
       - run: yarn test:storybook
       - run: yarn build:storybook
       - run: yarn check:demo storybook-static
+      - run: yarn check:stories
 
   # Every Cloudflare job reads this output — they skip cleanly on PRs, forks and until the repo secrets are set.
   cloudflare-gate:

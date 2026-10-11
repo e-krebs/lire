@@ -77,8 +77,9 @@ file names. An external store and the hook that reads it live together in `utils
 
 A story sits in the `__stories__` folder of its group, like tests in `__tests__`
 (`components/<root>/<group>/__stories__/`). Its title is the folder path in sentence case plus the
-file name, such as `Browse menu/Rows/FeedRow`.
-Keep one `Default` story per component and put states behind args and controls: do not add near-identical
+file name, such as `Browse menu/Rows/FeedRow`. `yarn check:stories` enforces the path, the title and
+the order list in `.storybook/preview.tsx` ([tooling.md](../explanation/tooling.md#check-stories)).
+A new root or group is added to that list. Keep one `Default` story per component and put states behind args and controls: do not add near-identical
 stories. A callback gets `fn()` and `control: false`. A prop the component does not use is not a
 control. Shared decorators and fixtures are in `.storybook` and imported as `stories/...`.
 

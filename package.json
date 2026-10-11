@@ -25,6 +25,7 @@
     "fix": "oxlint --fix . && oxfmt .",
     "check:secrets": "node scripts/check-dist-secrets.ts",
     "check:demo": "node scripts/check-demo-brand.ts",
+    "check:stories": "node scripts/check-story-order.ts",
     "check:links": "node scripts/check-links.ts",
     "check:access": "node scripts/check-access.ts",
     "check:live": "node scripts/check-live.ts",

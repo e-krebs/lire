@@ -29,6 +29,27 @@ const preview: Preview = {
     a11y: { test: "error" },
     docs: { container: ThemedDocsContainer },
     controls: { matchers: { date: /At$/ } },
+    options: {
+      storySort: {
+        method: "alphabetical",
+        order: [
+          "Primitives",
+          ["Controls", "Icons", "Overlays"],
+          "App",
+          ["Account", "Auth", "Demo", "Notices"],
+          "Header",
+          ["Top bar", "Location", "Views"],
+          "Browse menu",
+          ["Menu", "Rows"],
+          "Feed",
+          ["Mosaic", "Status"],
+          "Reader",
+          ["Article"],
+          "Subscriptions",
+          ["Manager", "Feeds", "Categories"],
+        ],
+      },
+    },
   },
 };
 

@@ -47,8 +47,9 @@ for the NewsBlur calls. Tests are in [src/server/__tests__](../../src/server/__t
 exports seed-based story data and [decorators.tsx](../../.storybook/decorators.tsx) the shared
 decorators. [preview.tsx](../../.storybook/preview.tsx) sets `a11y.test` to `error` and adds a
 `locale` toolbar global (English or French), which a global `beforeEach` applies through
-`setLocalePreference`. Stories live in
-`src/**/__stories__/`, and the Storybook plugin filter drops the app-only Vite plugins.
+`setLocalePreference`. It also holds the sidebar order, an inline `storySort` list of roots, each
+followed by its groups, which [check-story-order.ts](../../scripts/check-story-order.ts) reads as
+text. Stories live in `src/**/__stories__/`, and the Storybook plugin filter drops the app-only Vite plugins.
 
 ## Playwright
 
