@@ -185,6 +185,34 @@ describe("handle reads", () => {
       },
     );
 
+    it.each([
+      { label: "a short page with the flag true", has_more: true, size: 2, cursor: true },
+      { label: "a full page with the flag false", has_more: false, size: 6, cursor: false },
+    ])("lets has_more decide on $label", async ({ has_more, size, cursor }) => {
+      const upstream = fakeUpstream({
+        ...feedsReply,
+        "GET /reader/feed/1": { stories: fullPage(size), has_more },
+      });
+      const { body } = await send({ url: "/api/streams/feed%3A1/entries", upstream });
+      expect(
+        Object.hasOwn(
+          z
+            .object({ items: z.array(z.unknown()) })
+            .loose()
+            .parse(body),
+          "cursor",
+        ),
+      ).toBe(cursor);
+    });
+
+    it("reads has_more from the last chained call", async () => {
+      const upstream = fakeUpstream({
+        "GET /reader/feed/1": { stories: fullPage(6), has_more: false },
+      });
+      const { body } = await send({ url: "/api/streams/feed%3A1/entries?count=12", upstream });
+      expect(body).not.toHaveProperty("cursor");
+    });
+
     it("issues one upstream request for a feed without count", async () => {
       const upstream = fakeUpstream({ "GET /reader/feed/1": stories });
       await send({ url: "/api/streams/feed%3A1/entries", upstream });

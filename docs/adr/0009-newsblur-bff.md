@@ -28,7 +28,8 @@ NewsBlur.
   into `feeds[]` for `/reader/river_stories`. Rivers go as form-encoded POSTs, and `count` maps to
   `limit`, because `all` with every feed id can overflow a GET URL.
 - **Paging.** The token is base64url JSON `{page}`, plus the query for search, because NewsBlur
-  pages by number.
+  pages by number. The list ends on NewsBlur's `has_more` flag when the answer has it, and on a
+  short or empty page otherwise, so the Worker works before and after the upstream flag deploys.
 - **Unread counts.** The count is `ps + nt + ng`, and rivers send `include_hidden=true`, so a list
   matches its count. Do not "fix" this to `ps + nt`. Counts cover only feeds present in the folder
   tree, because orphaned subscriptions still report counts.
