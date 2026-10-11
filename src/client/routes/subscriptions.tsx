@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { SubscriptionsManager } from "client/components/subscriptions/SubscriptionsManager";
+import { SubscriptionsManager } from "client/components/subscriptions/manager/SubscriptionsManager";
 import {
   panelOf,
   searchOf,

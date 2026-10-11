@@ -1,10 +1,10 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSyncExternalStore } from "react";
-import { AppShell } from "client/components/shell/AppShell";
-import { SignIn } from "client/components/shell/SignIn";
-import { DemoBanner } from "client/components/shell/DemoBanner";
-import { SWToast } from "client/components/shell/SWToast";
+import { AppShell } from "client/components/app/shell/AppShell";
+import { SignIn } from "client/components/app/auth/SignIn";
+import { DemoBanner } from "client/components/app/demo/DemoBanner";
+import { SWToast } from "client/components/app/notices/SWToast";
 import { useAuthStatus, isSignInRequired } from "client/api/queries";
 
 // Mirrors `useTier`'s pattern: the query cache is an external store, so a Sign-in-required error

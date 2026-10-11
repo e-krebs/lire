@@ -1,0 +1,32 @@
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, userEvent, within } from "storybook/test";
+import { ViewToggles } from "client/components/header/views/ViewToggles";
+import { withRouter } from "stories/decorators";
+
+const meta = {
+  title: "Header/Views/ViewToggles",
+  component: ViewToggles,
+  decorators: [withRouter],
+  args: { search: {} },
+} satisfies Meta<typeof ViewToggles>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Unread only" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Oldest first" }));
+  },
+};
+
+export const Searching: Story = {
+  args: { search: { q: "rss" } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const sort = canvas.getByRole("button", { name: "Oldest first" });
+    await userEvent.click(sort);
+    await expect(sort).toHaveAttribute("aria-disabled", "true");
+  },
+};

@@ -1,7 +1,7 @@
 import type {
   SubscriptionsPanel,
   SubscriptionsTab,
-} from "client/components/subscriptions/SubscriptionsManager";
+} from "client/components/subscriptions/manager/SubscriptionsManager";
 
 export interface SubscriptionsSearch {
   tab?: SubscriptionsTab;

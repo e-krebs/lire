@@ -7,12 +7,12 @@ import {
   useNavigate,
 } from "@tanstack/react-router";
 import { parseStreamKey, toStreamKey } from "shared/feedsApi/streamKey";
-import { Panes } from "client/components/shell/AppShell";
-import { MosaicGrid } from "client/components/articles/MosaicGrid";
+import { Panes } from "client/components/app/shell/AppShell";
+import { MosaicGrid } from "client/components/feed/mosaic/MosaicGrid";
 import {
   SourceListKeyContext,
   createSourceListKeyStore,
-} from "client/components/reader/SourceListKeyContext";
+} from "client/components/reader/article/SourceListKeyContext";
 import { useFeeds } from "client/api/queries";
 import { useViewPrefs } from "client/utils/viewPrefs";
 

@@ -5,10 +5,12 @@ How `src/client` is laid out and which rules a linter checks. Test style lives i
 
 ## Components
 
-Components live in theme folders under `src/client/components`: `shell` (app frame, top bar,
-tooltip), `navigation` (navigator, location bar, view toggles), `articles` (mosaic, tiles,
-refresh), `reader`, `subscriptions` and `ui` (small shared controls, icons). A new component goes
-in the folder of the screen area it serves, not in a new top-level file.
+Components live three levels deep under `src/client/components`, as `<root>/<group>/<component>`.
+The seven roots are `primitives` (controls, feedback, icons, overlays), `app` (account, auth, demo
+banner, notices, shell), `header` (top bar, location, views), `browse-menu` (menu, rows), `feed`
+(mosaic, status), `reader` and `subscriptions` (manager, feeds, categories). Folder names are lowercase kebab-case. A new component goes in the group of the
+screen area it serves, not in a new top-level file. A `__stories__` and a `__tests__` folder sit at
+the group level, not beside each component.
 
 A component with parts of its own becomes a folder: one file per component, a `shared.ts` for
 class names and constants used by several files, and a constant used by one file stays in that
@@ -33,8 +35,8 @@ area (`common`, `shell`, `subscriptions`, `navigation`, `articles`), and a compo
 - A count uses the area file's `plural`, bound once with `pluralFor("en")` or `pluralFor("fr")`:
   `plural({ count, one, other })`, where `one` and `other` are functions of `count`. The CLDR rules
   of `Intl.PluralRules` pick the form, so French reads 0 as singular.
-- `common.ts` holds the shared verbs. A word another area needs keeps its own copy in that area's
-  file.
+- `common.ts` holds the shared verbs and the strings of `components/primitives`, which must not
+  depend on a domain area's file.
 - `time.ts` keeps its few fixed words in a per-locale map, so the util does not import the catalog.
 - Never translated: feed titles, category labels, article content, profile fields, and
   `error.message` from the server or from `src/client/api`. The dev-only `routes/dev.*.tsx` pages
@@ -73,8 +75,10 @@ file names. An external store and the hook that reads it live together in `utils
 
 ## Stories
 
-A story sits in a `__stories__` folder next to its component, like tests in `__tests__`. Keep one
-`Default` story per component and put states behind args and controls: do not add near-identical
+A story sits in the `__stories__` folder of its group, like tests in `__tests__`
+(`components/<root>/<group>/__stories__/`). Its title is the folder path in sentence case plus the
+file name, such as `Browse menu/Rows/FeedRow`.
+Keep one `Default` story per component and put states behind args and controls: do not add near-identical
 stories. A callback gets `fn()` and `control: false`. A prop the component does not use is not a
 control. Shared decorators and fixtures are in `.storybook` and imported as `stories/...`.
 

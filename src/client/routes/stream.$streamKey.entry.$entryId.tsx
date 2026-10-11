@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Reader } from "client/components/reader/Reader";
+import { Reader } from "client/components/reader/article/Reader";
 
 export const Route = createFileRoute("/stream/$streamKey/entry/$entryId")({
   component: EntryRoute,
