@@ -120,6 +120,12 @@ covers `lire.krebs.tech`, `lire-6s2.pages.dev` and
 differs from `ACCESS_ALLOWED_EMAIL`, or when the team domain or AUD differ from `ACCESS_TEAM_DOMAIN`
 and `ACCESS_AUD` in wrangler.toml. See [Auth](../explanation/auth.md).
 
+Set Session Duration to 1 month on the main application: in the Zero Trust dashboard, open Access
+controls, then Applications, edit the application and change Session Duration on the Basic
+information tab. A shorter value sends the owner through the Access login more often. The dashboard
+alone holds this value, and `yarn check:access` does not check it. A shorter policy-level duration
+or Global session timeout (Settings, Authentication) overrides it.
+
 A second Access application, "Lire public icons", holds a Bypass policy for Everyone on four paths
 of `lire.krebs.tech`: `/apple-touch-icon.png`, `/icon-*.png`, `/manifest.webmanifest` and
 `/.well-known/assetlinks.json`. Without it, iPad Chrome fetches the home-screen icon without the
