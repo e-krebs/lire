@@ -43,7 +43,7 @@ const moreClassName = `
 `;
 
 export const ChipSet = ({ labels, className }: ChipSetProps) => {
-  const t = useT().subscriptions;
+  const t = useT().common;
   const { attach, width } = useElementWidth();
   const measureRef = useRef<HTMLDivElement>(null);
   const [count, setCount] = useState(labels.length);

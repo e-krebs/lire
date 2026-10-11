@@ -24,7 +24,6 @@ export const en = {
   createCategoryFailed: ({ message }: { message: string }) =>
     `Could not create that category. ${message}`,
   unsubscribeFailed: ({ message }: { message: string }) => `Could not unsubscribe. ${message}`,
-  alsoIn: ({ names }: { names: string }) => `, also in ${names}`,
   unread: " unread",
 
   feedCount: ({ count }: { count: number }) =>
@@ -125,8 +124,6 @@ export const en = {
       other: (n) => `The other ${n} have no other category, so they need a new one.`,
     }),
 
-  closePanel: ({ title }: { title: string }) => `Close ${title}`,
-
   unsubscribeBody: ({ losses }: { losses: string }) =>
     `Lire drops ${losses}. Subscribing again starts from an empty history.`,
   lossFeed: "the feed",
@@ -214,7 +211,6 @@ export const fr = {
   saveChanges: "Enregistrer les modifications",
   createCategoryFailed: ({ message }) => `Impossible de créer cette catégorie. ${message}`,
   unsubscribeFailed: ({ message }) => `Impossible de se désabonner. ${message}`,
-  alsoIn: ({ names }) => `, aussi dans ${names}`,
   unread: " non lus",
 
   feedCount: ({ count }) =>
@@ -319,8 +315,6 @@ export const fr = {
       one: () => "L'autre n'a aucune autre catégorie, il lui en faut une nouvelle.",
       other: (n) => `Les ${n} autres n'ont aucune autre catégorie, il leur en faut une nouvelle.`,
     }),
-
-  closePanel: ({ title }) => `Fermer ${title}`,
 
   unsubscribeBody: ({ losses }) =>
     `Lire supprime ${losses}. Se réabonner repart d'un historique vide.`,

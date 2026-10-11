@@ -21,7 +21,7 @@ export const PanelBody = ({
   headingRef,
   onKeyDown,
 }: PanelBodyProps) => {
-  const t = useT().subscriptions;
+  const t = useT().common;
   return (
     // Escape reaches here from the focused heading or control inside; the div is no control.
     // oxlint-disable-next-line jsx-a11y/no-static-element-interactions
