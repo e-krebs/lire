@@ -21,6 +21,7 @@ export const EMPTY_SCENES = [
   "fireside",
   "paris-cafe",
   "lake-peacock",
+  "grass-level",
 ] as const;
 
 export type EmptyScene = (typeof EMPTY_SCENES)[number];
