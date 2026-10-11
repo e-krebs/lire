@@ -394,22 +394,24 @@ const pageOf = ({ token, q }: { token: string | undefined; q?: string }): number
   return cursor.page;
 };
 
-// NewsBlur sends no "more pages" flag, so a page shorter than the one asked for is the end.
-// `undefined` means the size is unknown, and only an empty page ends the list.
+// `hasMore` decides alone when NewsBlur sends it. Without it, a page shorter than the one asked
+// for is the end, and `undefined` means the size is unknown, so only an empty page ends the list.
 const toPage = ({
   stories,
+  hasMore,
   page,
   q,
   pageSize,
 }: {
   stories: Story[];
+  hasMore?: boolean;
   page: number;
   q?: string;
   pageSize?: number;
 }): EntryPage =>
-  stories.length === 0 || (pageSize !== undefined && stories.length < pageSize)
-    ? { items: stories.map(toEntry) }
-    : { items: stories.map(toEntry), cursor: encodeCursor({ page: page + 1, q }) };
+  (hasMore ?? (stories.length > 0 && (pageSize === undefined || stories.length >= pageSize)))
+    ? { items: stories.map(toEntry), cursor: encodeCursor({ page: page + 1, q }) }
+    : { items: stories.map(toEntry) };
 
 interface StoriesQuery {
   ctx: Context;
@@ -445,7 +447,7 @@ const fetchStories = async ({
   unreadOnly,
   order,
   q,
-}: StoriesQuery): Promise<Story[]> => {
+}: StoriesQuery): Promise<{ stories: Story[]; hasMore?: boolean }> => {
   const common: Params = { page: String(page), order, ...(q === undefined ? {} : { query: q }) };
   const limit: Params = count === undefined ? {} : { limit: String(count) };
   const filters = { read_filter: unreadOnly ? "unread" : "all", include_hidden: "true" };
@@ -468,22 +470,25 @@ const fetchStories = async ({
         }),
       ),
     );
-    return answers.flatMap(({ stories }) => stories);
+    return {
+      stories: answers.flatMap(({ stories }) => stories),
+      hasMore: answers[answers.length - 1]?.has_more,
+    };
   } else if (stream.kind === "all") {
     // Upstream returns every active subscription when `feeds` is absent.
     request = post({ path: "/reader/river_stories", form: { ...common, ...limit, ...filters } });
   } else {
     const feedIds = findCategory({ library: await loadLibrary(ctx), id: stream.label }).feedIds;
     // An empty `feeds` on a folder would widen to every feed, so an empty folder answers here.
-    if (feedIds.length === 0) return [];
+    if (feedIds.length === 0) return { stories: [] };
     // A POST, because a folder's feed ids can overflow a GET URL.
     request = post({
       path: "/reader/river_stories",
       form: { ...common, ...limit, ...filters, feeds: feedIds },
     });
   }
-  const { stories } = await call({ ctx, request, schema: StoriesAnswerSchema });
-  return stories;
+  const { stories, has_more: hasMore } = await call({ ctx, request, schema: StoriesAnswerSchema });
+  return { stories, hasMore };
 };
 
 const text = (value: string | null | undefined): string | undefined => value ?? undefined;
@@ -873,7 +878,7 @@ const HANDLERS: Record<RouteKey, Handler> = {
     if (!stream) throw notFound();
     const input = parseInput({ schema: StreamEntriesQuerySchema, value: query });
     const page = pageOf({ token: input.cursor });
-    const stories = await fetchStories({
+    const { stories, hasMore } = await fetchStories({
       ctx,
       stream,
       page,
@@ -881,7 +886,9 @@ const HANDLERS: Record<RouteKey, Handler> = {
       unreadOnly: input.unreadOnly ?? false,
       order: input.order ?? "newest",
     });
-    return ok(toPage({ stories, page, pageSize: pageSizeOf({ stream, count: input.count }) }));
+    return ok(
+      toPage({ stories, hasMore, page, pageSize: pageSizeOf({ stream, count: input.count }) }),
+    );
   },
 
   "GET /api/entries/:entryId": async ({ ctx, params }) => {
@@ -924,7 +931,7 @@ const HANDLERS: Record<RouteKey, Handler> = {
     const stream = parseStreamKey(input.streamKey);
     if (!stream) throw badRequest("Unknown streamKey.");
     const page = pageOf({ token: input.cursor, q: input.q });
-    const stories = await fetchStories({
+    const { stories, hasMore } = await fetchStories({
       ctx,
       stream,
       page,
@@ -933,7 +940,7 @@ const HANDLERS: Record<RouteKey, Handler> = {
       order: "newest",
       q: input.q,
     });
-    return ok(toPage({ stories, page, q: input.q }));
+    return ok(toPage({ stories, hasMore, page, q: input.q }));
   },
 
   "GET /api/search/feeds": async ({ ctx, query }) => {
