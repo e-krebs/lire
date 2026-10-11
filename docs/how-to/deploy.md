@@ -23,7 +23,7 @@ sets one output per area. Each check and deploy job runs only when its area chan
 
 | Area | Deploys and checks it turns on | Changed files that set it |
 | --- | --- | --- |
-| `app` | `verify`, `e2e`, SPA and demo deploys, `preflight` | `src/client/**`, `src/shared/**`, `public/**`, `index.html`, `vite.config.ts`, `fixtures/**`, the dist and demo-brand check scripts |
+| `app` | `verify`, `e2e`, SPA and demo deploys, `preflight` | `src/client/**`, `src/shared/**`, `public/**`, `index.html`, `vite.config.ts`, `fixtures/**`, the dist, demo-brand and story-order check scripts |
 | `storybook` | `verify`, `storybook`, Storybook deploy, `preflight` | `.storybook/**`, `src/client/**`, `src/shared/**`, `src/test/**`, `public/**`, `fixtures/**`, `vite.config.ts`, `vitest.config.ts`, the demo-brand check script |
 | `worker` | `verify`, `e2e`, Worker deploy, `preflight` | `src/server/**`, `src/shared/**`, `wrangler.toml` |
 | `tooling` | `verify`, `e2e` | `src/test/**`, `e2e/**`, `scripts/**`, Playwright, Vitest, knip, lint and format config |
@@ -53,7 +53,8 @@ skipped by the change filter does not block a deploy, but a failed one does. The
 runs last, once the deploys that ran finish, and runs `yarn check:live`. The `docs-links` job runs
 the docs link gate on every run, because docs link to code paths and a rename breaks them. `verify`
 runs lockfile dedupe, lint, knip, format, every typecheck, both coverage runs, the export-coverage
-check, and the three build-and-secret gates. It skips when only docs, Android or other ignored
+check, and the three build-and-secret gates. The `storybook` job runs the browser tests, the demo
+gate on `storybook-static` and `yarn check:stories`. It skips when only docs, Android or other ignored
 files changed. `e2e` also skips then, and runs on `app`, `worker` and `tooling` changes. See
 [Run the tests](run-the-tests.md).
 

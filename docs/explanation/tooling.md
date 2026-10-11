@@ -69,8 +69,9 @@ project.
 
 ## Gates in scripts/
 
-Four Node scripts guard what lint and types cannot see. Each one exits non-zero on a hit, and CI
-runs three in its `verify` job and the link gate in its own `docs-links` job
+Node scripts guard what lint and types cannot see. Each one exits non-zero on a hit. CI runs the
+build, export coverage and access gates in its `verify`, `preflight` and `check-live` jobs, the
+link gate in its own `docs-links` job and the story gate in the `storybook` job
 ([ci.yml](../../.github/workflows/ci.yml)).
 
 ### check-links
@@ -134,13 +135,29 @@ can stay high while a whole export goes untested; this gate makes "every export 
 test" a hard rule. It runs after `yarn test:coverage` and `yarn test:worker:coverage`, whose
 reports it reads.
 
+### check-stories
+
+[check-story-order.ts](../../scripts/check-story-order.ts) (`yarn check:stories`) reads the inline
+`storySort` order in [preview.tsx](../../.storybook/preview.tsx) as text and walks every
+`src/**/__stories__/*.stories.tsx`. A story must sit in
+`src/client/components/<root>/<group>/__stories__/`, with kebab-case folder names, and its title
+must equal the sentence-case root, the sentence-case group and the file name, so the title is the
+folder path. Every story root and group must appear in the order list, every listed root and group
+must hold a story, and no two titles are equal.
+
+Storybook's own sort cannot catch this. It keeps a title that the order list does not name and
+places it after the listed ones, so a typo in a title moves the story down the sidebar and
+nothing fails. The order has to be a literal in `preview.tsx`, because Storybook rejects an
+imported one, which is why the script parses the file instead of importing it. A group with no
+story stays out of the list, as `Feedback` does until it gets one.
+
 ## Where CI runs what
 
 The `docs-links` job runs the link gate on every run. The `verify` job runs `yarn dedupe --check`, lint, both knip passes, the format
 check, the five typecheck projects, both coverage runs and the export coverage gate. Then it
 builds three times, default, real and demo, and runs the secret gate after each and the demo
 gate after the demo build. The `e2e` and `storybook` jobs run the browser tests, and the
-`storybook` job also runs the gate on `storybook-static`. The
+`storybook` job also runs the demo gate on `storybook-static` and the story order gate. The
 `cloudflare-gate` job runs only on `main` and checks that the Cloudflare secrets exist. The
 `preflight` job then runs `check-access` and `provision-pages`. The deploy jobs for the SPA, demo,
 Storybook and Worker follow once their dependencies pass, and `check-live` runs after all four.
