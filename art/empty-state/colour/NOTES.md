@@ -24,18 +24,18 @@ The scenes use flat-shaded forms on bevelled hexagonal tiles. The bases have thr
 
 | Scene | Modelling details |
 | --- | --- |
-| hammock | Two trees with three dodecahedral crowns each, a deep cocoon hammock in striped canvas with a coarse weave, thick edge ropes, seams and a stitched patch, a closed book and a red six-panel cap. The cap has a cream button and a short curved bill. |
-| bath | Thick, opaque walls, a continuous plinth, a footless tub, connected soap suds, a small duck and a book on a stool. |
-| spring | A checked picnic blanket, brimmed straw hat, closed book and flower clusters. |
-| autumn | An orange tree, shaped fallen leaves, a slatted bench, book and mug with two steam trails. |
-| winter | An opaque room corner, framed snowy window, armchair, fringed folded blanket and mug on a table. |
-| fishing | A planked jetty, open bucket and rod held by a forked rod rest at 30 to 40 degrees. The slack line sags to a small float on the water. |
+| hammock | Fresh green grass and trees. Two trees with three dodecahedral crowns each, a deep cocoon hammock in striped canvas with a coarse weave, thick edge ropes, seams and a stitched patch, a closed book and a red six-panel cap. The cap has a cream button and a short curved bill. |
+| bath | Thick, opaque walls, a continuous plinth, a footless tub, connected soap suds, a small duck and a book on a stool with four crossbars. The floor has small cream and peach tiles with thin grout. |
+| spring | A checked picnic blanket, brimmed straw hat, closed book and flower clusters on fresh green grass. |
+| autumn | An orange tree, shaped fallen leaves, a slatted bench, book and mug with two steam trails. The park ground has grass patches, tufts, packed earth and fine gravel. |
+| winter | An opaque room corner with a plank floor, a framed mountain picture, a recessed window onto a deep snowy valley with a mountain range, a fringed rug, a floor lamp, a side table with a mug, and a yellow wing armchair (after the IKEA OSKARSHAMN) with a folded blanket. The chair is built by `buildWinterChair` in [chair.js](chair.js): one shell with low flared arms, a plump seat cushion and a headrest on the same curved arc. |
+| fishing | A planked jetty with worn planks, nails and stains, over a sand, grass and gravel bank. Open bucket and rod held by a forked rod rest at 30 to 40 degrees. The slack line sags to a small float on the water. |
 | cat | A sleeping cat with pointed ears, closed eyes and a curled tail. Newspaper headlines and columns come from an inline canvas. |
-| rooftop | A chimney, reclining deck chair, folded blanket and mug. Five stars appear at dusk. |
-| boat | An open wooden hull, two seats, two stowed oars and a book. The lower hull sits below the water, with reeds along the shore. |
-| beach | A striped chair and umbrella, with sunglasses and a book on a towel beside a narrow band of sea. |
+| rooftop | A gravel roof floor, a chimney of eight staggered brick courses with a stone cap, a reclining deck chair, folded blanket and mug. Five stars appear at dusk. |
+| boat | An open wooden hull, two seats, two stowed oars and a book. The lower hull sits below the water, with reeds along the shore. The shore has sand, soil and sage patches, pebbles and tufts. |
+| beach | A striped chair and umbrella, with sunglasses and a book on a towel beside the sea. The sand has ripples, shells and pebbles, and the sea runs to the right tile edge. |
 | alpine-lake | Several grey, angular rock masses of different heights, with clean flanks and thick snow caps, gullies and foot patches. The lake runs off the tile edge. Boots, backpack, folded map and drying socks sit clear of the rocks, and every loose rock rests on the ground or another rock. |
-| bivouac | A tent with solid sides, thick triangular back and raised floor above the ridge. A teal sleeping bag and cream pillow face the open entrance; a stove and mug sit outside. |
+| bivouac | Dry grass patches, tussocks, low shrubs and tiny flowers on the rock and soil. A tent with solid sides, thick triangular back and raised floor above the ridge. A teal sleeping bag and cream pillow face the open entrance; a stove and mug sit outside. |
 | hut-terrace | A complete hut with four walls, gables, a thick pitched roof, framed door and side window. The terrace holds a chair, boots, railing and a bench with a thermos and book. |
 | coastal-bench | A folded blue-and-white towel with layered fabric and fringes. A small gull stands on the rail above it. Grey-pink granite uses deterministic mineral flecks projected onto the boulder faces. |
 | lighthouse-jetty | A white and red lighthouse, stone jetty, a heap of rope net with floats and one corner over the edge, two red and white buoys, a wooden crate and a bollard. |
@@ -43,7 +43,7 @@ The scenes use flat-shaded forms on bevelled hexagonal tiles. The bases have thr
 | bike-cafe | A cafe facade wall on the back edge of the hex, with window, awning and sign, over cobbles (pavés). A bike stands on its kickstand, with a table, espresso, croissant and a chair holding a blue helmet. |
 | bike-canal | A canal towpath with water running off the edge, five evenly spaced bollards, a step-through city bike (same tapered saddle as bike-cafe) with a baguette in its basket leaning on one, and a bench with a bottle and a folded map. |
 | poolside | A tiled pool deck with the pool running off the tile edges. The pool floor and walls use small mosaic tiles in nine blues, with a darker waterline band. A ladder, ring float, folded towel, goggles and a flat folded swim cap sit around it. |
-| fireside | A stone fireplace built into a wall on the back edge, with angular flames and logs, a log basket, a woven carpet, a mug, a closed book and a pair of slippers. |
+| fireside | A stone fireplace built into a wall on the back edge, over a flagstone floor, with angular flames and logs, a log basket, a woven carpet, a mug, a closed book and a pair of slippers. |
 | paris-cafe | A cream facade with a dark green window frame on the back edge, a raised wooden platform with one step on cobbles, a marble bistro table with two red wines and two different lunches, two rattan chairs, a slate menu board and a potted shrub. |
 | lake-peacock | A grassy lakeshore with the lake running off the tile edges, a low-poly peacock with a trailing tail, three bushes, a sapling, flower tufts, a fern, reeds and a rock. The day grass is a fresher green than the other scenes. |
 | grass-level | A close-up lawn of about 11,000 individual blades, a tall daisy with a stem and two leaves, a honey bee on the flower head and a seven-spot ladybird on a bent blade. The bee is about twice the ladybird's length. |
