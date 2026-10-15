@@ -185,3 +185,10 @@ mistake. [deploy.md](../how-to/deploy.md) has the area table.
 the GitHub Actions. The npm PR groups minor and patch updates. A major update gets its own PR. Each
 PR runs the full CI, so the gates above decide whether it is safe to merge. Nothing merges on its
 own.
+
+Dependabot resolves the lockfile on its own and never deduplicates it, so the `yarn dedupe --check`
+gate would fail on most npm PRs. [dependabot-dedupe.yml](../../.github/workflows/dependabot-dedupe.yml)
+runs `yarn dedupe` on each Dependabot PR that changes `yarn.lock` and pushes the result as a
+commit. The push uses a personal access token stored as the `DEPENDABOT_DEDUPE_TOKEN` Dependabot
+secret, because a push made with the default token starts no CI run. The workflow skips any run
+whose actor is not Dependabot, so its own push does not loop.
