@@ -253,12 +253,13 @@ through the `online` replay and at start. The worker then replays both stored li
 ([markSync.ts](../../src/client/api/markSync.ts)). Background Sync exists only in Chromium
 and the Android app. Elsewhere the page flushes on hide and replays stored ids at the next start
 and when the browser goes online. The real build runs all of this; the mock build keeps the ids in
-memory and registers no sync. Both marks queue as `{ id, state }` rows and wait 10 seconds; a mark that is the opposite of a
+memory and registers no sync. Both marks queue as `{ id, state, userId }` rows and wait 10 seconds; a mark that is the opposite of a
 queued one cancels it, so a quick toggle sends nothing. One request carries `{ read, unread }`. [0012](../adr/0012-persisted-mark-read-queue.md) records why.
 
 The first list fetch of a session waits for the start replay (`whenReplayed` in
 [markQueue.ts](../../src/client/api/markQueue.ts)), so marks an earlier session left stored
-reach NewsBlur before the page reads. The wait is capped at 3 seconds, so a slow or stuck replay
+reach NewsBlur before the page reads. The replay starts only once the page knows the user, and the
+queue drops rows of another user. Sign-out clears the queue ([auth](auth.md#sign-out)). The wait is capped at 3 seconds, so a slow or stuck replay
 delays the first read but never blocks it. `flush()` also waits for batches already on the wire, so
 a refetch never overtakes a mark. Every stream, search and counts fetch sends the waiting marks
 first, so a list or a count never comes back with a mark still held in the 10 s batch. The start

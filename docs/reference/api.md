@@ -32,7 +32,7 @@ folder title, an entry id is the story hash. A stream key is `all`, `read`, `fol
 
 | Method | Path | Behavior |
 | --- | --- | --- |
-| GET | `/api/auth/status` | `{ signedIn }`, true when the cookie is valid and a session is stored or a login succeeds. Without a valid cookie, `200 { signedIn: false }` |
+| GET | `/api/auth/status` | `{ signedIn, userId }`, `signedIn` true when the cookie is valid and a session is stored or a login succeeds; `userId` is the NewsBlur user id then. Without a valid cookie, `200 { signedIn: false }` |
 | GET | `/api/profile` | `{ username, email? }` |
 | GET | `/api/categories` | `[{ id, label, feedIds }]`, ordered by the `lire.categoryOrder` preference |
 | POST | `/api/categories` | Create a category, body `{ label }`. 409 when a category already has the label |
