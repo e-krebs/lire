@@ -368,6 +368,60 @@ describe("worker", () => {
     });
   });
 
+  describe("when NewsBlur rate-limits the sign-in", () => {
+    const rateLimitedOn =
+      (path: string): Upstream =>
+      async (request) =>
+        pathOf(request) === path ? new Response(null, { status: 429 }) : signInUpstream()(request);
+
+    const expectRateLimited = async (response: Response) => {
+      expect(response.status).toBe(429);
+      expect(await response.json()).toMatchObject({
+        error: "rate_limited",
+        retryAfter: 60,
+      });
+    };
+
+    it.for(["/api/login", "/social/load_user_profile"])(
+      "answers 429 from the login route when %s is rate-limited",
+      async (path) => {
+        await setup();
+        upstream = rateLimitedOn(path);
+        await expectRateLimited(await anonymous("/api/auth/login"));
+        expect(await auth().hasSession()).toBe(false);
+      },
+    );
+
+    it("keeps the session when the explicit login is rate-limited", async () => {
+      await setup();
+      await signIn();
+      upstream = rateLimitedOn("/api/login");
+      await expectRateLimited(await anonymous("/api/auth/login"));
+      expect(await auth().hasSession()).toBe(true);
+    });
+
+    it.for(["/api/login", "/social/load_user_profile"])(
+      "answers 429 on a lazy login when %s is rate-limited",
+      async (path) => {
+        await setup();
+        upstream = rateLimitedOn(path);
+        await expectRateLimited(await authed("/api/profile"));
+        expect(await auth().hasSession()).toBe(false);
+      },
+    );
+
+    it("keeps the rejected session when the re-login is rate-limited", async () => {
+      await setup();
+      await signIn();
+      upstream = (request) =>
+        pathOf(request) === "/api/login"
+          ? new Response(null, { status: 429 })
+          : new Response(null, { status: 401 });
+      await expectRateLimited(await authed("/api/profile"));
+      expect(await auth().hasSession()).toBe(true);
+    });
+  });
+
   describe("when serving a contract route", () => {
     const sameOrigin = { Origin: ORIGIN };
 
@@ -634,6 +688,19 @@ describe("worker", () => {
         method: "POST",
         headers: { ...sameOrigin, "Content-Type": "application/json" },
         body: "{",
+      });
+      expect(response.status).toBe(400);
+      expect(await response.json()).toMatchObject({ error: "bad_request" });
+      expect(upstreamCalls).toHaveLength(0);
+    });
+
+    it("answers 400 and calls nothing upstream for a ban sequence", async () => {
+      await setup();
+      await signIn();
+      const response = await authed("/api/preferences", {
+        method: "POST",
+        headers: { ...sameOrigin, "Content-Type": "application/json" },
+        body: JSON.stringify({ "lire.categoryOrder": "../../../etc" }),
       });
       expect(response.status).toBe(400);
       expect(await response.json()).toMatchObject({ error: "bad_request" });

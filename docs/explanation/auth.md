@@ -41,6 +41,9 @@ The Worker holds the owner's NewsBlur username and password as the `NEWSBLUR_USE
 2. It reads the NewsBlur user id from `/social/load_user_profile` with the new cookie.
 3. It stores the cookie and the user id in the Durable Object.
 
+If NewsBlur answers `429` to either request, the sign-in fails with `429 rate_limited` and stores
+no session.
+
 `GET /api/auth/login` ([worker.ts](../../src/server/worker.ts)) runs the login, stores the session,
 issues a browser token, sets the `lire_session` cookie and redirects to `/`. Only this route sets the
 cookie. A request without a valid cookie never reaches the login: it answers `401`, and the SPA shows

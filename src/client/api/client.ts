@@ -41,12 +41,24 @@ type ApiErrorCode = "sign_in_required" | "premium_required" | "rate_limited" | "
 export class ApiError extends Error {
   readonly status: number;
   readonly code: ApiErrorCode;
+  readonly retryAfter?: number;
 
-  constructor({ status, code, message }: { status: number; code: ApiErrorCode; message?: string }) {
+  constructor({
+    status,
+    code,
+    message,
+    retryAfter,
+  }: {
+    status: number;
+    code: ApiErrorCode;
+    message?: string;
+    retryAfter?: number;
+  }) {
     super(message ?? `API error (${status})`);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.retryAfter = retryAfter;
   }
 }
 
@@ -68,6 +80,21 @@ const loadTransport = async (): Promise<Transport> => {
   return fixtureTransport;
 };
 
+// A 429 without a JSON body, or with a body that lacks a positive `retryAfter`, has no wait.
+const readRetryAfter = async (response: TransportResponse): Promise<number | undefined> => {
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    return undefined;
+  }
+  if (typeof body !== "object" || body === null || !("retryAfter" in body)) return undefined;
+  const { retryAfter } = body;
+  return typeof retryAfter === "number" && Number.isFinite(retryAfter) && retryAfter > 0
+    ? retryAfter
+    : undefined;
+};
+
 const performRequest = async (req: TransportRequest): Promise<TransportResponse> => {
   const transport = await loadTransport();
   const response = await transport(req);
@@ -77,7 +104,13 @@ const performRequest = async (req: TransportRequest): Promise<TransportResponse>
     // Only the web feed subscribe answers 403, for an account without Premium Archive.
     throw new ApiError({ status: 403, code: "premium_required" });
   }
-  if (response.status === 429) throw new ApiError({ status: 429, code: "rate_limited" });
+  if (response.status === 429) {
+    throw new ApiError({
+      status: 429,
+      code: "rate_limited",
+      retryAfter: await readRetryAfter(response),
+    });
+  }
   if (response.status >= 400) throw new ApiError({ status: response.status, code: "http" });
 
   return response;
@@ -333,7 +366,13 @@ export const getSunPhase = async ({ tz }: { tz: string }): Promise<SunPhase | nu
 
 export const getAuthStatus = async (): Promise<AuthStatus> => {
   if (isMockMode()) return { signedIn: true, userId: MOCK_USER_ID };
-  const response = await httpTransport({ method: "GET", path: "/api/auth/status" });
+  let response: TransportResponse;
+  try {
+    response = await performRequest({ method: "GET", path: "/api/auth/status" });
+  } catch (error) {
+    if (error instanceof ApiError && error.code !== "rate_limited") return { signedIn: false };
+    throw error;
+  }
   if (response.status !== 200) return { signedIn: false };
   return AuthStatusSchema.parse(await response.json());
 };

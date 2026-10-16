@@ -34,6 +34,7 @@ import {
 import { sunPhase } from "shared/sun/sun";
 import { TIMEZONE_COORDINATES } from "shared/sun/timezones.gen";
 import { decodeCursor, encodeCursor } from "./cursor";
+import { hasBanPayload } from "./guard";
 import {
   categoryIdsOf,
   toFeed,
@@ -112,6 +113,15 @@ const fail = ({ status, error, message }: { status: number; error: string; messa
 
 const signInRequired = () => fail({ status: 401, error: "sign_in_required" });
 const upstreamError = () => fail({ status: 502, error: "upstream_error" });
+// NewsBlur limits `/reader/*` per IP, and every Lire user shares the Worker's IP, so the Worker
+// holds no cooldown and tells the client how long to wait.
+const RATE_LIMIT_RETRY_AFTER = 60;
+export const rateLimitedBody = () => ({
+  error: "rate_limited",
+  message: "NewsBlur is rate limiting requests. Try again shortly.",
+  retryAfter: RATE_LIMIT_RETRY_AFTER,
+});
+const rateLimited = () => new BffError({ status: 429, body: rateLimitedBody() });
 const notFound = () => fail({ status: 404, error: "not_found" });
 const badRequest = (message: string) => fail({ status: 400, error: "bad_request", message });
 const conflict = (message: string) => fail({ status: 409, error: "conflict", message });
@@ -155,6 +165,7 @@ const call = async <S extends z.ZodType>({
     throw upstreamError();
   }
   if (response.status === 401 || response.status === 403) throw signInRequired();
+  if (response.status === 429) throw rateLimited();
   if (!response.ok) throw upstreamError();
 
   let json: unknown;
@@ -968,9 +979,11 @@ const HANDLERS: Record<RouteKey, Handler> = {
   },
 };
 
-// Upstream 401 and 403 answer `sign_in_required`, other upstream failures 502, and a NewsBlur
-// write that reports a failure 400 with its message, even on HTTP 200. A web feed subscribe
-// refused for want of Premium Archive answers 403 `premium_required`.
+// Upstream 401 and 403 answer `sign_in_required`, upstream 429 answers `rate_limited` with a
+// `retryAfter`, other upstream failures 502, and a NewsBlur write that reports a failure 400 with
+// its message, even on HTTP 200. A web feed subscribe refused for want of Premium Archive answers
+// 403 `premium_required`. Input holding a sequence NewsBlur bans answers 400 before any upstream
+// call, because a ban locks the Worker's shared IP (see guard.ts).
 export const handle = async ({
   route,
   params,
@@ -982,13 +995,10 @@ export const handle = async ({
 }: HandleRequest): Promise<BffResponse> => {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- every Route builds a RouteKey
   const handler = HANDLERS[`${route.method} ${route.path}` as RouteKey];
+  const input = { params, query: Object.fromEntries(query), body };
   try {
-    return await handler({
-      ctx: { upstream, config, cache },
-      params,
-      query: Object.fromEntries(query),
-      body,
-    });
+    if (hasBanPayload(input)) throw badRequest("Request holds a character sequence NewsBlur bans.");
+    return await handler({ ctx: { upstream, config, cache }, ...input });
   } catch (error) {
     if (error instanceof BffError) return error.response;
     throw error;

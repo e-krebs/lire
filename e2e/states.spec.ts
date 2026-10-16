@@ -55,7 +55,8 @@ const mockSignedIn = async ({ page, limited }: { page: Page; limited: () => bool
       return route.fulfill({ status: 204 });
     }
     if (route.request().method() !== "GET" || !(pathname in bodies)) return route.fallback();
-    if (limited()) return route.fulfill({ status: 429, json: {} });
+    // A tiny retryAfter keeps the client's two rate-limit retries from waiting the 60 s fallback.
+    if (limited()) return route.fulfill({ status: 429, json: { retryAfter: 0.01 } });
     return route.fulfill({ json: bodies[pathname] });
   });
   await page.route("**/api/auth/status", async (route) =>

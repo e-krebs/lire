@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { handle, type FeedsCache } from "shared/bff/handle";
+import { handle, rateLimitedBody, type FeedsCache } from "shared/bff/handle";
 import { encodeParams, type NewsblurFetch } from "shared/bff/upstream";
 import { matchRoute } from "shared/feedsApi/routes";
 import { AccessError, verifyAccess } from "./access";
@@ -88,12 +88,21 @@ const sessionCookie = (sessionId: string) => ({
   Cookie: `${NEWSBLUR_SESSION_COOKIE}=${sessionId}`,
 });
 
+// Kept apart from a failed login, which signs the user out. A rate-limited login keeps the session.
+const RATE_LIMITED = "rate_limited";
+type LoginResult = StoredCredential | typeof RATE_LIMITED | undefined;
+
 const failLogin = (reason: string): StoredCredential | undefined => {
   console.warn(`NewsBlur login failed: ${reason}`);
   return undefined;
 };
 
-const logIn = async (env: Env): Promise<StoredCredential | undefined> => {
+const rateLimitLogin = (reason: string): typeof RATE_LIMITED => {
+  console.warn(`NewsBlur login rate limited: ${reason}`);
+  return RATE_LIMITED;
+};
+
+const logIn = async (env: Env): Promise<LoginResult> => {
   try {
     const loginResponse = await fetch(`${env.NEWSBLUR_HOST}/api/login`, {
       method: "POST",
@@ -103,6 +112,7 @@ const logIn = async (env: Env): Promise<StoredCredential | undefined> => {
         password: env.NEWSBLUR_PASSWORD,
       }),
     });
+    if (loginResponse.status === 429) return rateLimitLogin("login");
     if (!loginResponse.ok) return failLogin(`login answered ${loginResponse.status}`);
     const login = LoginAnswerSchema.safeParse(await loginResponse.json());
     const sessionId = readSessionId(loginResponse);
@@ -114,6 +124,7 @@ const logIn = async (env: Env): Promise<StoredCredential | undefined> => {
     const profileResponse = await fetch(`${env.NEWSBLUR_HOST}/social/load_user_profile`, {
       headers: sessionCookie(sessionId),
     });
+    if (profileResponse.status === 429) return rateLimitLogin("profile");
     if (!profileResponse.ok) return failLogin(`profile answered ${profileResponse.status}`);
     const profile = ProfileAnswerSchema.safeParse(await profileResponse.json());
     if (!profile.success) return failLogin("profile answer has an unexpected shape");
@@ -123,8 +134,11 @@ const logIn = async (env: Env): Promise<StoredCredential | undefined> => {
   }
 };
 
+const rateLimited = (): Response => json({ body: rateLimitedBody(), status: 429 });
+
 const handleLogin = async ({ request, env }: { request: Request; env: Env }): Promise<Response> => {
   const session = await logIn(env);
+  if (session === RATE_LIMITED) return rateLimited();
   if (!session) return signInFailedPage();
   const userKey = env.NEWSBLUR_USERNAME;
   const auth = userObject({ env, userKey });
@@ -232,9 +246,11 @@ const serve = async ({ request, env }: { request: Request; env: Env }): Promise<
   let session = await auth.getSession();
   let loggedInNow = false;
   if (!session) {
-    session = await logIn(env);
-    if (!session) return signedOut();
-    await auth.setSession(session);
+    const login = await logIn(env);
+    if (login === RATE_LIMITED) return rateLimited();
+    if (!login) return signedOut();
+    await auth.setSession(login);
+    session = login;
     loggedInNow = true;
   }
 
@@ -262,6 +278,7 @@ const serve = async ({ request, env }: { request: Request; env: Env }): Promise<
   let used = session;
   if (result.status === 401 && !loggedInNow && request.method === "GET") {
     const fresh = await logIn(env);
+    if (fresh === RATE_LIMITED) return rateLimited();
     if (fresh) {
       await auth.setSession(fresh);
       used = fresh;
