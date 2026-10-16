@@ -1,4 +1,3 @@
-import { createRef } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { fn } from "storybook/test";
 import { ReaderHeader } from "client/components/reader/article/ReaderHeader";
@@ -10,12 +9,10 @@ const meta = {
   component: ReaderHeader,
   decorators: [withQueryClient, withUrl],
   parameters: { layout: "fullscreen", url: "/stream/all" },
-  argTypes: { paneRef: { control: false } },
   args: {
     entry: ENTRY,
     minutes: 6,
     openedUnread: true,
-    paneRef: createRef<HTMLDivElement>(),
     onKeep: fn(),
     onMark: fn(),
   },

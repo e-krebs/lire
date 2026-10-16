@@ -255,7 +255,6 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
           entry={data}
           minutes={minutes}
           openedUnread={openedUnread}
-          paneRef={paneRef}
           onKeep={() => {
             close(false);
           }}
