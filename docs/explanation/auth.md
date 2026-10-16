@@ -2,14 +2,15 @@
 
 Lire has one user, its owner, and two layers of auth. Cloudflare Access decides who may reach the
 Worker at all. A NewsBlur session cookie, obtained by logging in with the owner's credentials, decides what the
-Worker may do upstream ([ADR 0010](../adr/0010-newsblur-session-cookie.md)).
+Worker may do upstream ([ADR 0010](../adr/0010-newsblur-session-cookie.md)). A `lire_session`
+cookie, set by the login, names the browser that may call the Worker's `/api` routes.
 
 ## Layer 1: Cloudflare Access and the owner pin
 
 Access sits in front of `lire.krebs.tech`. It runs the login, applies its policy, and adds a
 signed JWT to each request it lets through. The Worker does not trust that the request passed
 Access; it checks the JWT itself on every `/api/` request before any routing
-([worker.ts](../../src/server/worker.ts#L190-L201)), and answers `403` on any failure.
+([worker.ts](../../src/server/worker.ts#L285-L296)), and answers `403` on any failure.
 
 [verifyAccess](../../src/server/access.ts) does four things:
 
@@ -40,11 +41,11 @@ The Worker holds the owner's NewsBlur username and password as the `NEWSBLUR_USE
 2. It reads the NewsBlur user id from `/social/load_user_profile` with the new cookie.
 3. It stores the cookie and the user id in the Durable Object.
 
-Any `/api` request that finds no stored session runs this login first, so the owner never sees a
-sign-in step while the credentials hold. `GET /api/auth/login`
-([worker.ts](../../src/server/worker.ts)) runs the same login by hand and redirects to `/`. The
-SPA's `SignIn` screen links to it and appears only when the login fails. A failure answers `400`
-with a short page that links back to `/api/auth/login`. The PWA service worker is told not to
+`GET /api/auth/login` ([worker.ts](../../src/server/worker.ts)) runs the login, stores the session,
+issues a browser token, sets the `lire_session` cookie and redirects to `/`. Only this route sets the
+cookie. A request without a valid cookie never reaches the login: it answers `401`, and the SPA shows
+its `SignIn` screen, whose link runs this route. A failure answers `400` with a short page that links
+back to `/api/auth/login` and sets no cookie. The PWA service worker is told not to
 answer that route (see [architecture.md](architecture.md#pwa)). The worker's background sync of
 marks posts to `/api/entries/mark` behind Access with the same cookie as the page. It does
 not follow redirects: an expired Access session answers a cross-origin redirect, which counts as a
@@ -58,6 +59,30 @@ Access; `/api/` paths bypass the worker. A `sessionStorage` guard allows one nav
 Unsent read marks survive in IndexedDB. When the guard blocks, the reader sees the `SignIn` screen,
 and its link runs Access again.
 
+### The session cookie
+
+The cookie is `lire_session=<userKey>.<token>`, with `HttpOnly; Secure; SameSite=Lax; Path=/api;
+Max-Age=15552000` (180 days). `<userKey>` is the NewsBlur username, which names the Durable Object,
+and `<token>` is 32 random bytes in base64url. The Worker splits the value on its last dot, because
+a username may hold dots and a token holds none. `Path=/api` keeps the cookie off the SPA's pages.
+
+Each contract route reads the cookie before any upstream work. A missing or malformed cookie, a user
+key that is not the owner's, or a token the object does not hold answers `401 sign_in_required`, and
+a key that is not the owner's answers before any object lookup, so a forged key creates no object.
+`GET /api/auth/status` answers `200 { signedIn: false }` instead. Only a cookie that passes this check
+reaches the stored session, and only then does the Worker log in upstream when no session is stored.
+
+A login with a valid cookie replaces that cookie's token, so one browser holds one token. A browser
+with no cookie, as every browser is until its first login after the cookie was introduced, shows the
+SignIn screen.
+
+### Sign-out
+
+`POST /api/auth/logout` ([worker.ts](../../src/server/worker.ts)) applies the same-origin and JSON
+checks, revokes the token that the cookie presents, clears the cookie with `Max-Age=0` and answers
+`204`. A request without a cookie also answers `204`. Sign-out ends one browser's access. It leaves
+the NewsBlur session and the feed cache in the object, because the owner's other browsers use them.
+
 ### Session storage
 
 The session lives in one Durable Object, [NewsblurAuth](../../src/server/newsblurAuth.ts), addressed
@@ -68,6 +93,11 @@ stores `{kind: "cookie", sessionId, userId}` under one key in its SQLite-backed 
 
 The same object holds the cache of the folder tree (see
 [architecture.md](architecture.md#worker)). Storing or clearing the session drops the cache.
+
+The same object holds the browser tokens under one key. It stores the SHA-256 hash of each token,
+with an expiry 180 days out, and never the token, so a read of the storage yields no usable cookie.
+It keeps at most 20 live tokens: an issue drops expired ones first, then the oldest. Storing or
+clearing the NewsBlur session leaves the tokens alone.
 
 ### When NewsBlur rejects the session
 
@@ -89,14 +119,17 @@ cookie on a cross-site form post too. A valid JWT alone therefore does not prove
 owner's own page sent the request, so the Worker adds its own checks on every state-changing
 call:
 
-- [isSameOrigin](../../src/server/worker.ts#L95-L106) compares `Origin`, or `Referer` when
+- [isSameOrigin](../../src/server/worker.ts#L145-L156) compares `Origin`, or `Referer` when
   `Origin` is absent, with the Worker's own origin. A request with neither fails.
 - On the contract routes, every method other than `GET` must pass `isSameOrigin`, and a `POST` or
   `PATCH` must carry a JSON `Content-Type` ([worker.ts](../../src/server/worker.ts)). A cross-site
   HTML form cannot send `application/json`, so this closes the simple-request path. It is also why
   the client sends `{}` as the body of a bodiless POST.
+- `POST /api/auth/logout` applies the same two checks as a contract route, and a cross-origin call
+  answers `403` before it revokes anything.
 - The login route is a `GET` that only logs in with the Worker's own credentials and redirects
-  home. A cross-site request can trigger a login but gains nothing, so it skips these checks.
+  home. A cross-site request can trigger a login and rotate the cookie, but it reads nothing, so it
+  skips these checks.
 
 `GET /api/auth/status` and every other `GET` call change nothing, so they skip these checks.
 
@@ -107,11 +140,13 @@ call:
 - **Password required.** `/api/login` needs a NewsBlur account with a password. An account that
   only signs in through a third party cannot use it.
 - **Password changes.** A new NewsBlur password breaks the login until CI deploys the new secret.
-- **No sign-out route.** The Worker exposes no endpoint that clears the stored session; it clears
-  it only when NewsBlur rejects it.
-- **Session at rest.** The cookie sits in Durable Object storage in plain form, protected by
-  Cloudflare's storage and by the Worker being its only reader. It is not encrypted with a key of
-  the app's own.
+- **Cookie lifetime and rotation.** The `lire_session` cookie lasts 180 days, and its token expires
+  with it. A cross-site navigation to `/api/auth/login` logs in upstream and replaces the token of
+  the cookie it carries, which invalidates any other copy of that cookie. It is a nuisance, not a
+  leak.
+- **Session at rest.** The NewsBlur session cookie sits in Durable Object storage in plain form,
+  protected by Cloudflare's storage and by the Worker being its only reader. It is not encrypted
+  with a key of the app's own. Browser tokens are stored only as SHA-256 hashes.
 - **Credentials.** `NEWSBLUR_USERNAME` and `NEWSBLUR_PASSWORD` are Worker secrets, set by CI from
   GitHub secrets. The password has full account power and no scope. It never reaches the client.
 - **Pin is required for a CI deploy only.** The code treats the `ACCESS_ALLOWED_EMAIL` secret as

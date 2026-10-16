@@ -6,6 +6,9 @@ const SESSION_KEY = "session";
 const FEEDS_CACHE_KEY = "feedsCache";
 const FEEDS_GENERATION_KEY = "feedsGeneration";
 const FEEDS_CACHE_TTL_MS = 5 * 60_000;
+const TOKENS_KEY = "tokens";
+const TOKEN_TTL_MS = 180 * 24 * 60 * 60_000;
+const MAX_TOKENS = 20;
 
 export interface StoredCredential {
   kind: "cookie";
@@ -15,6 +18,21 @@ export interface StoredCredential {
 }
 
 type StoredFeedsCache = { value: FeedsAnswer; expiresAt: number };
+
+type StoredToken = { hash: string; expiresAt: number };
+
+const sha256Hex = async (value: string): Promise<string> => {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+};
+
+const newToken = (): string => {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+};
 
 export class NewsblurAuth extends DurableObject<Env> {
   hasSession(): boolean {
@@ -55,6 +73,34 @@ export class NewsblurAuth extends DurableObject<Env> {
   clearFeedsCache(): void {
     this.ctx.storage.kv.put(FEEDS_GENERATION_KEY, this.feedsGeneration() + 1);
     this.ctx.storage.kv.delete(FEEDS_CACHE_KEY);
+  }
+
+  // The hash is awaited before storage is touched, so the read-change-write below has no await in it.
+  async issueToken(): Promise<string> {
+    const token = newToken();
+    const hash = await sha256Hex(token);
+    const now = Date.now();
+    const tokens = [...this.liveTokens(now), { hash, expiresAt: now + TOKEN_TTL_MS }];
+    this.ctx.storage.kv.put(TOKENS_KEY, tokens.slice(-MAX_TOKENS));
+    return token;
+  }
+
+  async hasToken(token: string): Promise<boolean> {
+    const hash = await sha256Hex(token);
+    return this.liveTokens(Date.now()).some((stored) => stored.hash === hash);
+  }
+
+  async revokeToken(token: string): Promise<void> {
+    const hash = await sha256Hex(token);
+    this.ctx.storage.kv.put(
+      TOKENS_KEY,
+      this.liveTokens(Date.now()).filter((stored) => stored.hash !== hash),
+    );
+  }
+
+  private liveTokens(now: number): StoredToken[] {
+    const stored = this.ctx.storage.kv.get<StoredToken[]>(TOKENS_KEY) ?? [];
+    return stored.filter((token) => token.expiresAt > now);
   }
 
   private feedsGeneration(): number {

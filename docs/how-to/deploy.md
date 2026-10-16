@@ -232,6 +232,9 @@ yarn worker:deploy --secrets-file <file>
 Use JSON, not a `.env` file. The `.env` format cuts a value at its first `#`, so a password
 with a `#` reaches the Worker truncated.
 
+The first visit after this deploy shows the SignIn screen, because no browser holds the
+`lire_session` cookie yet. Its link signs in once.
+
 Check the host is closed and the sites answer. The whole host sits behind Access, so an
 unauthenticated request stops at the edge with a redirect to the Access login, not a Worker `403`:
 
@@ -280,7 +283,7 @@ It returns `200` with no Access redirect.
 ## Re-auth
 
 When the Worker cannot log in to NewsBlur, the SPA shows the sign-in screen and
-`/api/auth/status` returns `false`. The usual cause is a changed password: update the
+`/api/auth/status` returns `{"signedIn":false}`. The usual cause is a changed password: update the
 `NEWSBLUR_PASSWORD` secret and redeploy the Worker (see [NewsBlur account](#newsblur-account)).
 
 1. Open `https://lire.krebs.tech/api/auth/login` and pass Access.

@@ -31,11 +31,26 @@ const signJwt = async ({
     .setExpirationTime("5m")
     .sign(key);
 
-const authed = async (path: string, init: RequestInit = {}) => {
+// The browser's copy of lire_session, which the helpers send unless a test calls anonymous.
+let lireCookie: string | undefined;
+
+const send = async (path: string, init: RequestInit, cookie: string | undefined) => {
   const headers = new Headers(init.headers);
   headers.set("Cf-Access-Jwt-Assertion", ownerJwt);
+  if (cookie) headers.set("Cookie", cookie);
   return SELF.fetch(`${ORIGIN}${path}`, { redirect: "manual", ...init, headers });
 };
+
+const authed = async (path: string, init: RequestInit = {}) => send(path, init, lireCookie);
+const anonymous = async (path: string, init: RequestInit = {}) => send(path, init, undefined);
+
+const cookieFrom = (response: Response) => response.headers.get("Set-Cookie")?.split(";")[0];
+
+const storedTokenCount = async () =>
+  runInDurableObject(
+    auth(),
+    (_instance, state) => (state.storage.kv.get<unknown[]>("tokens") ?? []).length,
+  );
 
 type Upstream = (request: Request) => Response | Promise<Response>;
 // Bodies are read eagerly: a Request created inside the DO can't be read from the test's context.
@@ -55,6 +70,13 @@ const loginReply = (sessionId: string) =>
     { authenticated: true, code: 1, errors: {} },
     { headers: { "Set-Cookie": `newsblur_sessionid=${sessionId}; Path=/; HttpOnly` } },
   );
+
+// The login a browser makes: its new cookie replaces the one the helpers send from here on.
+const login = async (init: RequestInit = {}) => {
+  const response = await authed("/api/auth/login", init);
+  lireCookie = cookieFrom(response) ?? lireCookie;
+  return response;
+};
 
 // The answers a successful sign-in reads: the login that sets the cookie, then the profile that
 // names the user.
@@ -76,7 +98,7 @@ const status = async () => (await authed("/api/auth/status")).json();
 
 const signIn = async () => {
   upstream = signInUpstream();
-  const response = await authed("/api/auth/login");
+  const response = await login();
   expect(response.status).toBe(302);
   upstreamCalls.length = 0;
 };
@@ -101,6 +123,8 @@ const setup = async () => {
   keysReady ??= generateKeys();
   await keysReady;
   await auth().clearSession();
+  await runInDurableObject(auth(), (_instance, state) => state.storage.kv.delete("tokens"));
+  lireCookie = `lire_session=${env.NEWSBLUR_USERNAME}.${await auth().issueToken()}`;
   upstreamCalls.length = 0;
   upstream = () => new Response("unexpected upstream call", { status: 599 });
   // The main worker and its DO share the test isolate, so a global fetch stub reaches both.
@@ -188,10 +212,14 @@ describe("worker", () => {
       await setup();
       upstream = signInUpstream();
 
-      const response = await authed("/api/auth/login");
+      const response = await anonymous("/api/auth/login");
       expect(response.status).toBe(302);
       expect(response.headers.get("Location")).toBe("/");
       expect(response.headers.get("Cache-Control")).toBe("no-store");
+      expect(response.headers.get("Set-Cookie")).toMatch(
+        /^lire_session=owner\.[A-Za-z0-9_-]{43}; HttpOnly; Secure; SameSite=Lax; Path=\/api; Max-Age=15552000$/,
+      );
+      lireCookie = cookieFrom(response);
 
       const [login, profile] = upstreamCalls;
       expect(login.url).toBe(`${env.NEWSBLUR_HOST}/api/login`);
@@ -221,7 +249,7 @@ describe("worker", () => {
         return new Response(JSON.stringify({ authenticated: true }), { headers });
       };
 
-      const response = await authed("/api/auth/login");
+      const response = await login();
       expect(response.status).toBe(302);
       expect((await auth().getSession())?.sessionId).toBe(SESSION_ID);
     });
@@ -232,7 +260,7 @@ describe("worker", () => {
       env.NEWSBLUR_USERNAME = "singleton";
       try {
         upstream = signInUpstream();
-        await authed("/api/auth/login");
+        await login();
         expect(await status()).toEqual({ signedIn: true });
       } finally {
         env.NEWSBLUR_USERNAME = username;
@@ -310,11 +338,33 @@ describe("worker", () => {
     ])("answers 400 and stays signed out when %s", async (_label, reply) => {
       await setup();
       upstream = reply;
-      const response = await authed("/api/auth/login");
+      const response = await login();
       expect(response.status).toBe(400);
+      expect(response.headers.get("Set-Cookie")).toBeNull();
       expect(await response.text()).toContain("Sign-in to NewsBlur failed");
       expect(await auth().hasSession()).toBe(false);
       expect(await status()).toEqual({ signedIn: false });
+    });
+
+    it("keeps one token for a browser that signs in again", async () => {
+      await setup();
+      upstream = signInUpstream();
+      const previous = lireCookie;
+      await login();
+      await login();
+      expect(await storedTokenCount()).toBe(1);
+      expect(await (await send("/api/auth/status", {}, previous)).json()).toEqual({
+        signedIn: false,
+      });
+    });
+
+    it("adds a token for each browser", async () => {
+      await setup();
+      upstream = signInUpstream();
+      await login();
+      const second = await anonymous("/api/auth/login");
+      expect(second.status).toBe(302);
+      expect(await storedTokenCount()).toBe(2);
     });
   });
 
@@ -591,6 +641,133 @@ describe("worker", () => {
       const response = await authed("/api/feeds/1", { method: "DELETE", headers });
       expect(response.status).toBe(403);
       await response.text();
+    });
+  });
+
+  describe("when the browser's lire_session cookie is checked", () => {
+    it("answers 401 and calls nothing upstream with no cookie", async () => {
+      await setup();
+      const response = await anonymous("/api/profile");
+      expect(response.status).toBe(401);
+      expect(await response.json()).toEqual({ error: "sign_in_required" });
+      expect(upstreamCalls).toHaveLength(0);
+    });
+
+    it("answers signedIn false with no cookie", async () => {
+      await setup();
+      const response = await anonymous("/api/auth/status");
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({ signedIn: false });
+      expect(upstreamCalls).toHaveLength(0);
+    });
+
+    it.each([
+      ["no dot", "owner"],
+      ["an empty token", "owner."],
+      ["an empty user key", ".token"],
+    ])("rejects a cookie with %s", async (_label, value) => {
+      await setup();
+      const response = await send("/api/profile", {}, `lire_session=${value}`);
+      expect(response.status).toBe(401);
+      await response.text();
+      expect(upstreamCalls).toHaveLength(0);
+    });
+
+    it("rejects a token that was never issued", async () => {
+      await setup();
+      const response = await send("/api/profile", {}, "lire_session=owner.never-issued");
+      expect(response.status).toBe(401);
+      await response.text();
+      expect(upstreamCalls).toHaveLength(0);
+    });
+
+    it("rejects a token past its expiry", async () => {
+      await setup();
+      await runInDurableObject(auth(), (_instance, state) => {
+        const stored = state.storage.kv.get<{ hash: string; expiresAt: number }[]>("tokens") ?? [];
+        state.storage.kv.put(
+          "tokens",
+          stored.map((token) => ({ ...token, expiresAt: Date.now() - 1 })),
+        );
+      });
+      const response = await authed("/api/profile");
+      expect(response.status).toBe(401);
+      await response.text();
+      expect(upstreamCalls).toHaveLength(0);
+    });
+
+    it("rejects a cookie for another user key, creating no session", async () => {
+      await setup();
+      const token = lireCookie?.split(".").pop();
+      const response = await send("/api/profile", {}, `lire_session=attacker.${token}`);
+      expect(response.status).toBe(401);
+      await response.text();
+      expect(upstreamCalls).toHaveLength(0);
+      expect(await objectFor("attacker").hasSession()).toBe(false);
+    });
+  });
+
+  describe("when the owner signs out", () => {
+    const sameOriginJson = { Origin: ORIGIN, "Content-Type": "application/json" };
+    const CLEARED_COOKIE = "lire_session=; HttpOnly; Secure; SameSite=Lax; Path=/api; Max-Age=0";
+
+    it("revokes the presented token, clears the cookie and keeps the NewsBlur session", async () => {
+      await setup();
+      await signIn();
+      const response = await authed("/api/auth/logout", {
+        method: "POST",
+        headers: sameOriginJson,
+      });
+      expect(response.status).toBe(204);
+      expect(response.headers.get("Cache-Control")).toBe("no-store");
+      expect(response.headers.get("Set-Cookie")).toBe(CLEARED_COOKIE);
+      expect(await response.text()).toBe("");
+      expect(upstreamCalls).toHaveLength(0);
+      expect(await storedTokenCount()).toBe(0);
+      expect(await auth().hasSession()).toBe(true);
+      expect(await status()).toEqual({ signedIn: false });
+    });
+
+    it("answers 204 with no cookie and leaves the owner's token alone", async () => {
+      await setup();
+      await signIn();
+      const response = await anonymous("/api/auth/logout", {
+        method: "POST",
+        headers: sameOriginJson,
+      });
+      expect(response.status).toBe(204);
+      expect(response.headers.get("Set-Cookie")).toBe(CLEARED_COOKIE);
+      expect(upstreamCalls).toHaveLength(0);
+      expect(await status()).toEqual({ signedIn: true });
+    });
+
+    it("leaves another user key's token alone", async () => {
+      await setup();
+      await signIn();
+      const token = lireCookie?.split(".").pop();
+      const response = await send(
+        "/api/auth/logout",
+        { method: "POST", headers: sameOriginJson },
+        `lire_session=attacker.${token}`,
+      );
+      expect(response.status).toBe(204);
+      expect(await status()).toEqual({ signedIn: true });
+    });
+
+    it.each([
+      [
+        "a cross-origin request",
+        { Origin: "https://evil.example", "Content-Type": "application/json" },
+      ],
+      ["a same-origin request that is not JSON", { Origin: ORIGIN, "Content-Type": "text/plain" }],
+      ["a same-origin request with no Content-Type", { Origin: ORIGIN }],
+    ])("rejects %s before revoking anything", async (_label, headers) => {
+      await setup();
+      await signIn();
+      const response = await authed("/api/auth/logout", { method: "POST", headers });
+      expect(response.status).toBe(403);
+      expect(await response.json()).toEqual({ error: "forbidden" });
+      expect(await status()).toEqual({ signedIn: true });
     });
   });
 
