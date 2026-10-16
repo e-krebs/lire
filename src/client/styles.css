@@ -893,13 +893,6 @@ body {
   border-bottom: 1px solid var(--color-hairline);
   --reader-feed: light-dark(oklch(0.46 0.19 var(--hue)), oklch(0.85 0.15 var(--hue)));
 }
-/* The condense trigger: a sticky element cannot observe its own stuck state, so an
-   IntersectionObserver watches this box instead. Its 40px are given straight back, so it costs
-   no layout and the opaque header paints over it. */
-.reader-sentinel {
-  height: 40px;
-  margin-bottom: -40px;
-}
 .reader-feed-name {
   display: block;
   color: var(--reader-feed);
@@ -930,8 +923,7 @@ body {
 .reader-title-row {
   margin-top: 2px;
 }
-/* The title wraps freely; the clamp is a safety net for a pathological headline, not a design.
-   Condensing relayouts the pane once, early — the one thing in the block that moves. */
+/* The title wraps freely; the clamp is a safety net for a pathological headline, not a design. */
 .reader-title {
   display: -webkit-box;
   -webkit-line-clamp: 4;
@@ -944,15 +936,6 @@ body {
   letter-spacing: -0.005em;
   text-decoration: none;
   text-wrap: pretty;
-}
-.reader-head[data-condensed] .reader-title {
-  font-size: 15px;
-  line-height: 1.4;
-}
-@media (prefers-reduced-motion: no-preference) {
-  .reader-title {
-    transition: font-size 150ms ease;
-  }
 }
 .reader-arrow {
   margin-left: 0.18em;
