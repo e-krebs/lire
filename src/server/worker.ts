@@ -21,10 +21,6 @@ const json = ({ body, status = 200 }: { body: unknown; status?: number }): Respo
 const userObject = ({ env, userKey }: { env: Env; userKey: string }) =>
   env.NEWSBLUR_AUTH.get(env.NEWSBLUR_AUTH.idFromName(`user:${userKey}`));
 
-// Remove after the B10 deploy ran.
-const purgeLegacyObject = async (env: Env): Promise<void> =>
-  env.NEWSBLUR_AUTH.get(env.NEWSBLUR_AUTH.idFromName("singleton")).purge();
-
 const signInFailedPage = (): Response =>
   new Response(
     `<!doctype html>
@@ -107,7 +103,6 @@ const handleLogin = async ({ env }: { env: Env }): Promise<Response> => {
   const session = await logIn(env);
   if (!session) return signInFailedPage();
   await userObject({ env, userKey: env.NEWSBLUR_USERNAME }).setSession(session);
-  await purgeLegacyObject(env);
   return new Response(null, {
     status: 302,
     headers: { Location: "/", "Cache-Control": "no-store" },
@@ -180,7 +175,6 @@ const serve = async ({ request, env }: { request: Request; env: Env }): Promise<
       return json({ body: { error: "sign_in_required" }, status: 401 });
     }
     await auth.setSession(session);
-    await purgeLegacyObject(env);
     loggedInNow = true;
   }
 
