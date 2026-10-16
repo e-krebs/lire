@@ -239,16 +239,6 @@ describe("worker", () => {
       }
     });
 
-    it("empties the legacy singleton object on login", async () => {
-      await setup();
-      const legacy = env.NEWSBLUR_AUTH.get(env.NEWSBLUR_AUTH.idFromName("singleton"));
-      await legacy.setSession({ kind: "cookie", sessionId: "legacy", userId: USER_ID });
-      upstream = signInUpstream();
-
-      await authed("/api/auth/login");
-      expect(await legacy.getSession()).toBeUndefined();
-    });
-
     it("keeps the sessions and feed caches of two usernames apart", async () => {
       await setup();
       await auth().setSession({ kind: "cookie", sessionId: "session-1", userId: USER_ID });

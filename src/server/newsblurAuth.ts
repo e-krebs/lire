@@ -57,10 +57,6 @@ export class NewsblurAuth extends DurableObject<Env> {
     this.ctx.storage.kv.delete(FEEDS_CACHE_KEY);
   }
 
-  async purge(): Promise<void> {
-    await this.ctx.storage.deleteAll();
-  }
-
   private feedsGeneration(): number {
     return this.ctx.storage.kv.get<number>(FEEDS_GENERATION_KEY) ?? 0;
   }

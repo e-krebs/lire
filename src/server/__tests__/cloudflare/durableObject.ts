@@ -7,7 +7,6 @@ export interface KvStorage {
 
 export interface DurableObjectStorage {
   kv: KvStorage;
-  deleteAll(): Promise<void>;
 }
 
 export interface DurableObjectState {
@@ -25,10 +24,6 @@ export const createStorage = (): DurableObjectStorage => {
       },
       put: (key, value) => void values.set(key, structuredClone(value)),
       delete: (key) => values.delete(key),
-    },
-    deleteAll: async () => {
-      values.clear();
-      await Promise.resolve();
     },
   };
 };
