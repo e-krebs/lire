@@ -4,6 +4,8 @@ import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { resetFixtureState } from "client/api/adapters/fixture";
 import { ApiError } from "client/api/client";
+import { keys } from "client/api/keys";
+import { markQueue } from "client/api/markQueue";
 import { fixtureBackend } from "test/fixtureBackend";
 import { server } from "test/msw";
 import { renderApp } from "test/renderApp";
@@ -32,7 +34,8 @@ const setup = ({
   url = "/stream/all",
   signedOut = false,
   demo = false,
-}: { url?: string; signedOut?: boolean; demo?: boolean } = {}) => {
+  userId,
+}: { url?: string; signedOut?: boolean; demo?: boolean; userId?: number } = {}) => {
   vi.stubEnv("VITE_API_MODE", "real");
   if (demo) vi.stubEnv("VITE_DEMO", "true");
   vi.stubGlobal("IntersectionObserver", NoIntersectionObserver);
@@ -40,6 +43,8 @@ const setup = ({
   // fixtureBackend answers the auth status as signed in, so a signed-out case overrides it.
   if (signedOut)
     server.use(http.get("/api/auth/status", () => HttpResponse.json({ signedIn: false })));
+  if (userId !== undefined)
+    server.use(http.get("/api/auth/status", () => HttpResponse.json({ signedIn: true, userId })));
   resetFixtureState();
   const app = renderApp({ url });
   queryClient = app.queryClient;
@@ -49,7 +54,8 @@ const setup = ({
 describe("root route", () => {
   // A request landing late would change the fixture state the next test starts from. Loops because
   // the render a response triggers can start the next request, and TanStack Query notifies
-  // observers on a setTimeout(0), so one task passes before the count is read again.
+  // observers on a setTimeout(0), so one task passes before the count is read again. The timeout
+  // outlasts the 3s a list fetch can wait for the first mark replay.
   afterEach(async () => {
     cleanup();
     const client = queryClient;
@@ -57,9 +63,12 @@ describe("root route", () => {
     if (!client) return;
     do {
       await act(async () => {
-        await waitFor(() => {
-          if (client.isFetching() > 0) throw new Error("still fetching");
-        });
+        await waitFor(
+          () => {
+            if (client.isFetching() > 0) throw new Error("still fetching");
+          },
+          { timeout: 5000 },
+        );
         await new Promise((resolve) => setTimeout(resolve, 0));
       });
     } while (client.isFetching() > 0);
@@ -99,6 +108,33 @@ describe("root route", () => {
 
     await waitFor(() => {
       expect(ui.signInLink).toBeInTheDocument();
+    });
+  });
+
+  it("tells the mark queue the signed-in user from the auth status", async () => {
+    markQueue.reset();
+    setup({ userId: 42 });
+
+    await waitFor(() => {
+      expect(markQueue.currentUser()).toBe(42);
+    });
+  });
+
+  it("tells the mark queue the user again after a clear and a refetch", async () => {
+    markQueue.reset();
+    const { queryClient: client } = setup({ userId: 42 });
+    await waitFor(() => {
+      expect(markQueue.currentUser()).toBe(42);
+    });
+    await markQueue.clear();
+    expect(markQueue.currentUser()).toBeUndefined();
+
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: keys.authStatus });
+    });
+
+    await waitFor(() => {
+      expect(markQueue.currentUser()).toBe(42);
     });
   });
 

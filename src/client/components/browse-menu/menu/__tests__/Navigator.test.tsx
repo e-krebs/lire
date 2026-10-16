@@ -31,6 +31,7 @@ import type { Category, Feed } from "shared/feedsApi/types";
 import { fixtureBackend } from "test/fixtureBackend";
 import { server } from "test/msw";
 import { seedCategoryId, seedCategoryKey } from "test/seedCategories";
+import { markQueue } from "client/api/markQueue";
 import { LocationBar } from "client/components/header/location/LocationBar";
 import { Navigator } from "../Navigator";
 import type { NavigatorPanelHandle } from "../Navigator";
@@ -150,6 +151,7 @@ const setup = ({
   handlers?: HttpHandler[];
 } = {}) => {
   vi.stubEnv("VITE_API_MODE", "real");
+  markQueue.noUser();
   server.use(fixtureBackend);
   // Added after the catch-all, so they match first.
   server.use(...handlers);

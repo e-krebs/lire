@@ -22,7 +22,7 @@ interface Waiter {
 }
 
 type Send = (batch: { read: string[]; unread: string[]; keepalive: boolean }) => Promise<void>;
-type Store = Pick<typeof markStore, "add" | "remove" | "all">;
+type Store = Pick<typeof markStore, "add" | "remove" | "all" | "removeUnchanged" | "clear">;
 
 const statusOf = (error: unknown): number | undefined =>
   error instanceof ApiError ? error.status : undefined;
@@ -69,6 +69,17 @@ export function createMarkQueue({ send, store = markStore }: { send: Send; store
   let storeChain: Promise<unknown> = Promise.resolve();
   // Ids marked while a replay reads the store: its snapshot is stale for them.
   const watching = new Set<Set<string>>();
+  // Unknown until the page learns the signed-in user. A row written before that stays untagged.
+  let user: number | undefined;
+  // Bumped by `clear` and by a user change: a send or replay that started earlier skips its store writes.
+  let generation = 0;
+  let resolveFirstReplay = () => {};
+  const firstReplay = new Promise<void>((resolve) => {
+    resolveFirstReplay = resolve;
+  });
+
+  const tagged = ({ id, state }: { id: string; state: MarkState }): MarkRow =>
+    user === undefined ? { id, state } : { id, state, userId: user };
 
   const inOrder = async <T>(operation: () => Promise<T>): Promise<T> => {
     const result = storeChain.then(operation);
@@ -110,6 +121,7 @@ export function createMarkQueue({ send, store = markStore }: { send: Send; store
     const idsOf = (state: MarkState) =>
       batch.filter(([, mark]) => mark.state === state).map(([id]) => id);
     const waiters = batch.flatMap(([, mark]) => mark.waiters);
+    const startedIn = generation;
     // A row whose id was marked again holds that newer mark. Read now: `finally` may move those ids
     // to the next batch before the store chain runs.
     const removeSent = (): void => {
@@ -118,11 +130,17 @@ export function createMarkQueue({ send, store = markStore }: { send: Send; store
     };
     try {
       await send({ read: idsOf("read"), unread: idsOf("unread"), keepalive });
+      if (startedIn !== generation) {
+        for (const waiter of waiters) settleOne(waiter);
+        return;
+      }
       for (const [id] of batch) unsent.delete(id);
       removeSent();
       for (const waiter of waiters) settleOne(waiter);
     } catch (error) {
-      if (isRetryable(statusOf(error))) {
+      if (startedIn !== generation) {
+        for (const waiter of waiters) settleOne(waiter);
+      } else if (isRetryable(statusOf(error))) {
         for (const [id, { state }] of batch) unsent.set(id, state);
         if (document.visibilityState === "hidden") registerSync();
         for (const waiter of waiters) settleOne(waiter);
@@ -162,17 +180,17 @@ export function createMarkQueue({ send, store = markStore }: { send: Send; store
           // The server may already hold the queued state, so cancelling it would not undo it.
           if (baseline === current.state) {
             queued.set(id, { state, waiters: [waiter] });
-            written.push({ id, state });
+            written.push(tagged({ id, state }));
             continue;
           }
           queued.delete(id);
-          if (baseline) written.push({ id, state: baseline });
+          if (baseline) written.push(tagged({ id, state: baseline }));
           else removed.push(id);
           settleOne(waiter);
           continue;
         }
         queued.set(id, { state, waiters: [waiter] });
-        written.push({ id, state });
+        written.push(tagged({ id, state }));
       }
       if (written.length > 0) void inOrder(async () => store.add(written)).catch(() => {});
       if (removed.length > 0) void inOrder(async () => store.remove(removed)).catch(() => {});
@@ -190,8 +208,10 @@ export function createMarkQueue({ send, store = markStore }: { send: Send; store
     }
   };
 
-  // Sends what an earlier session left stored. No caller waits on it, so a failure stays silent.
+  // Sends what an earlier session left stored, for the current user. A row of another user goes
+  // away unsent; an untagged one is adopted.
   const replay = async (): Promise<void> => {
+    const startedIn = generation;
     const marked = new Set<string>();
     watching.add(marked);
     let rows: MarkRow[];
@@ -200,27 +220,98 @@ export function createMarkQueue({ send, store = markStore }: { send: Send; store
     } finally {
       watching.delete(marked);
     }
-    const stored = rows.filter(({ id }) => !queued.has(id) && !inFlight.has(id) && !marked.has(id));
+    if (startedIn !== generation) return;
+    const foreign = rows.filter(({ userId }) => userId !== undefined && userId !== user);
+    if (foreign.length > 0)
+      void inOrder(async () => store.removeUnchanged(foreign)).catch(() => {});
+    const stored = rows.filter(
+      (row) =>
+        !foreign.includes(row) &&
+        !queued.has(row.id) &&
+        !inFlight.has(row.id) &&
+        !marked.has(row.id),
+    );
     if (stored.length === 0) return;
-    for (const { id, state } of stored) {
+    const adopted: MarkRow[] = [];
+    for (const { id, state, userId } of stored) {
       queued.set(id, { state, waiters: [] });
       unsent.set(id, state);
+      if (userId === undefined && user !== undefined) adopted.push(tagged({ id, state }));
     }
+    if (adopted.length > 0) void inOrder(async () => store.add(adopted)).catch(() => {});
     await flush();
   };
 
-  // Tests only: drops what is queued without sending it.
-  const reset = (): void => {
+  const dropQueued = (): void => {
+    generation++;
     clearTimeout(timer);
     timer = undefined;
     due = false;
     dueKeepalive = false;
     unsent.clear();
+    inFlight.clear();
     for (const { waiters } of queued.values()) for (const waiter of waiters) waiter.resolve();
     queued.clear();
   };
 
-  return { mark, flush, replay, reset };
+  // Marks made before the user was known belong to the first one the page learns. A different user
+  // drops the previous one's marks with no request. Resolves once the replay for this user is done.
+  const setUser = async ({ userId }: { userId: number }): Promise<void> => {
+    if (userId === user) return;
+    const previous = user;
+    user = userId;
+    if (previous === undefined) {
+      const rows = new Map<string, MarkState>([...inFlight, ...unsent]);
+      for (const [id, { state }] of queued) rows.set(id, state);
+      if (rows.size > 0) {
+        const adopted = [...rows].map(([id, state]) => tagged({ id, state }));
+        void inOrder(async () => store.add(adopted)).catch(() => {});
+      }
+    } else {
+      dropQueued();
+      void inOrder(async () => {
+        const stored = await store.all();
+        await store.removeUnchanged(
+          stored.filter((row) => row.userId !== undefined && row.userId !== userId),
+        );
+      }).catch(() => {});
+    }
+    try {
+      await replay();
+    } finally {
+      resolveFirstReplay();
+    }
+  };
+
+  // Sign-out: forgets the user and every stored mark.
+  const clear = async (): Promise<void> => {
+    dropQueued();
+    user = undefined;
+    await inOrder(async () => store.clear()).catch(() => {});
+  };
+
+  // The status settled without a user: opens the replay gate, and stored rows stay untagged.
+  const noUser = (): void => {
+    resolveFirstReplay();
+  };
+
+  // Tests only: drops what is queued without sending it.
+  const reset = (): void => {
+    dropQueued();
+    user = undefined;
+  };
+
+  return {
+    mark,
+    flush,
+    replay,
+    reset,
+    setUser,
+    noUser,
+    clear,
+    firstReplay,
+    currentUser: () => user,
+  };
 }
 
 export const markQueue = createMarkQueue({
@@ -244,7 +335,7 @@ export const settleWithin = async ({
     });
   });
 
-/** Resolves once the startup replay has sent what an earlier session left stored, or after 3 s if it hangs. */
+/** Resolves once the replay for the first known user has sent what an earlier session left stored, or after 3 s if it hangs. */
 let whenReplayed: Promise<void> = Promise.resolve();
 
 if (typeof window !== "undefined") {
@@ -263,11 +354,10 @@ if (typeof window !== "undefined") {
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") flushOnLeave();
   });
-  window.addEventListener("online", () => void markQueue.replay());
-  whenReplayed = settleWithin({
-    promise: markQueue.replay().catch(() => {}),
-    ms: REPLAY_WAIT_MS,
+  window.addEventListener("online", () => {
+    if (markQueue.currentUser() !== undefined) void markQueue.replay();
   });
+  whenReplayed = settleWithin({ promise: markQueue.firstReplay, ms: REPLAY_WAIT_MS });
 }
 
 // A mark still waiting in the batch would come back undone from a fetch. Bounded like the replay,
@@ -275,7 +365,8 @@ if (typeof window !== "undefined") {
 export const sendQueuedReads = async (): Promise<void> =>
   settleWithin({
     promise: (async () => {
-      await whenReplayed;
+      // Only a real build stores marks across sessions, so only it waits for the user.
+      if (import.meta.env.VITE_API_MODE === "real") await whenReplayed;
       await markQueue.flush();
     })().catch(() => {}),
     ms: REPLAY_WAIT_MS,

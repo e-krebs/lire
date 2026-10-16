@@ -45,8 +45,22 @@ const post = async ({ read, unread }: { read: string[]; unread: string[] }): Pro
   }
 };
 
+// Throws when the user is unknown, so the rows stay stored for the next sync.
+const currentUserId = async (): Promise<number> => {
+  const response = await fetch("/api/auth/status", {
+    credentials: "same-origin",
+    redirect: "manual",
+  });
+  if (response.status !== 200) throw new Error(`mark-read sync status failed: ${response.status}`);
+  const body = (await response.json()) as { signedIn?: boolean; userId?: unknown };
+  if (!body.signedIn || typeof body.userId !== "number") {
+    throw new Error("mark-read sync: no signed-in user");
+  }
+  return body.userId;
+};
+
 self.addEventListener("sync", (event) => {
   if (event.tag === MARK_SYNC_TAG) {
-    event.waitUntil(syncPending({ store: markStore, post }));
+    event.waitUntil(syncPending({ store: markStore, post, currentUserId }));
   }
 });

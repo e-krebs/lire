@@ -20,6 +20,37 @@ describe("markStore", () => {
       expect(await markStore.all()).toEqual([row("101:b", "unread")]);
     });
 
+    it("stores the user of a row and reads an untagged one without it", async () => {
+      real();
+
+      await markStore.add([{ id: "101:a", state: "read", userId: 7 }, row("101:b")]);
+
+      expect(sorted(await markStore.all())).toEqual([
+        { id: "101:a", state: "read", userId: 7 },
+        row("101:b"),
+      ]);
+    });
+
+    it("keeps a row of another user when removing unchanged rows", async () => {
+      real();
+      await markStore.add([{ id: "101:a", state: "read", userId: 8 }]);
+
+      await markStore.removeUnchanged([{ id: "101:a", state: "read", userId: 7 }]);
+      expect(await markStore.all()).toEqual([{ id: "101:a", state: "read", userId: 8 }]);
+      await markStore.removeUnchanged([{ id: "101:a", state: "read", userId: 8 }]);
+
+      expect(await markStore.all()).toEqual([]);
+    });
+
+    it("empties the store on clear", async () => {
+      real();
+      await markStore.add([row("101:a"), row("101:b", "unread")]);
+
+      await markStore.clear();
+
+      expect(await markStore.all()).toEqual([]);
+    });
+
     it("keeps one entry when an id is added twice", async () => {
       real();
 

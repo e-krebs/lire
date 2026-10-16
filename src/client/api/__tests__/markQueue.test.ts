@@ -32,19 +32,46 @@ const setup = ({ fail = false }: { fail?: boolean } = {}) => {
 
 const fakeStore = (initial: MarkRow[] = []) => {
   const stored = new Map<string, MarkState>(initial.map(({ id, state }) => [id, state]));
+  const users = new Map<string, number>();
+  for (const { id, userId } of initial) if (userId !== undefined) users.set(id, userId);
   return {
     stored,
+    users,
     add: vi.fn<(rows: MarkRow[]) => Promise<void>>(async (rows) => {
       await Promise.resolve();
-      for (const { id, state } of rows) stored.set(id, state);
+      for (const { id, state, userId } of rows) {
+        stored.set(id, state);
+        if (userId === undefined) users.delete(id);
+        else users.set(id, userId);
+      }
     }),
     remove: vi.fn<(removed: string[]) => Promise<void>>(async (removed) => {
       await Promise.resolve();
-      for (const id of removed) stored.delete(id);
+      for (const id of removed) {
+        stored.delete(id);
+        users.delete(id);
+      }
+    }),
+    removeUnchanged: vi.fn<(rows: MarkRow[]) => Promise<void>>(async (rows) => {
+      await Promise.resolve();
+      for (const { id, state, userId } of rows) {
+        if (stored.get(id) === state && users.get(id) === userId) {
+          stored.delete(id);
+          users.delete(id);
+        }
+      }
     }),
     all: vi.fn<() => Promise<MarkRow[]>>(async () => {
       await Promise.resolve();
-      return [...stored].map(([id, state]) => ({ id, state }));
+      return [...stored].map(([id, state]) => {
+        const userId = users.get(id);
+        return userId === undefined ? { id, state } : { id, state, userId };
+      });
+    }),
+    clear: vi.fn<() => Promise<void>>(async () => {
+      await Promise.resolve();
+      stored.clear();
+      users.clear();
     }),
   };
 };
@@ -150,6 +177,24 @@ describe("markQueue", () => {
     await expect(sendQueuedReads()).resolves.toBeUndefined();
   });
 
+  it("lets queued reads go on once the status settles without a user", async () => {
+    vi.stubEnv("VITE_API_MODE", "real");
+    const flush = vi.spyOn(markQueue, "flush").mockResolvedValue(undefined);
+    try {
+      void sendQueuedReads();
+      await settle();
+      expect(flush).not.toHaveBeenCalled();
+
+      markQueue.noUser();
+
+      await vi.waitFor(() => {
+        expect(flush).toHaveBeenCalled();
+      });
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
   it("stops waiting for a hung replay after the cap", async () => {
     vi.stubEnv("VITE_API_MODE", "real");
     server.use(http.post("/api/entries/mark", async () => new Promise<never>(() => {})));
@@ -161,7 +206,8 @@ describe("markQueue", () => {
     await fresh.markStore.add([{ id: "101:hung", state: "read" }]);
     vi.useFakeTimers();
     try {
-      const { sendQueuedReads: sendHung } = await import("../markQueue");
+      const { sendQueuedReads: sendHung, markQueue: freshQueue } = await import("../markQueue");
+      void freshQueue.setUser({ userId: 7 });
       let settled = false;
       void sendHung().then(() => {
         settled = true;
@@ -839,13 +885,162 @@ describe("markQueue", () => {
           return new HttpResponse(null, { status: 204 });
         }),
       );
-      await markStore.add([{ id: "101:z", state: "read" }]);
+      await markQueue.setUser({ userId: 7 });
+      await markStore.add([{ id: "101:z", state: "read", userId: 7 }]);
 
       window.dispatchEvent(new Event("online"));
 
       await vi.waitFor(() => {
         expect(seen).toEqual([{ read: ["101:z"] }]);
       });
+    });
+  });
+
+  describe("when users share the browser", () => {
+    const withStore = ({ initial = [] }: { initial?: MarkRow[] } = {}) => {
+      const store = fakeStore(initial);
+      const sent: Batch[] = [];
+      let release: (() => void) | undefined;
+      const queue = createMarkQueue({
+        send: async (batch) => {
+          sent.push(batch);
+          await Promise.resolve();
+          if (release === undefined && hold) {
+            await new Promise<void>((resolve) => {
+              release = resolve;
+            });
+          }
+        },
+        store,
+      });
+      return { queue, store, sent, release: () => release?.() };
+    };
+    let hold = false;
+    afterEach(() => {
+      hold = false;
+    });
+
+    it("tags a stored mark with the current user", async () => {
+      const { queue, store } = withStore();
+      await queue.setUser({ userId: 7 });
+
+      void queue.mark({ entryIds: ["101:a"], read: true });
+      await settle();
+
+      expect(await store.all()).toEqual([{ id: "101:a", state: "read", userId: 7 }]);
+    });
+
+    it("adopts an untagged queued mark and a stored row when the first user is set", async () => {
+      const { queue, store, sent } = withStore({ initial: [{ id: "101:old", state: "unread" }] });
+      void queue.mark({ entryIds: ["101:a"], read: true });
+      await settle();
+      expect(await store.all()).toContainEqual({ id: "101:a", state: "read" });
+
+      await queue.setUser({ userId: 7 });
+
+      expect(sent).toEqual([{ read: ["101:a"], unread: ["101:old"], keepalive: false }]);
+    });
+
+    it("drops the queued and stored marks of the previous user with no request", async () => {
+      const { queue, store, sent } = withStore({
+        initial: [{ id: "101:b", state: "read", userId: 7 }],
+      });
+      await queue.setUser({ userId: 7 });
+      sent.length = 0;
+      store.stored.set("101:b", "read");
+      store.users.set("101:b", 7);
+      const settled = queue.mark({ entryIds: ["101:a"], read: true });
+      await settle();
+
+      await queue.setUser({ userId: 8 });
+      await settled;
+      await queue.flush();
+
+      expect(sent).toEqual([]);
+      expect(await store.all()).toEqual([]);
+    });
+
+    it("skips and removes the stored rows of another user on replay", async () => {
+      const { queue, store, sent } = withStore({
+        initial: [
+          { id: "101:a", state: "read", userId: 8 },
+          { id: "101:b", state: "read", userId: 7 },
+        ],
+      });
+
+      await queue.setUser({ userId: 7 });
+      await settle();
+
+      expect(sent).toEqual([{ read: ["101:b"], unread: [], keepalive: false }]);
+      expect(await store.all()).toEqual([]);
+    });
+
+    it("sends the stored rows only once a user is set", async () => {
+      const { queue, sent } = withStore({ initial: [{ id: "101:a", state: "read" }] });
+      await settle();
+      expect(sent).toEqual([]);
+      expect(queue.currentUser()).toBeUndefined();
+
+      await queue.setUser({ userId: 7 });
+
+      expect(sent).toEqual([{ read: ["101:a"], unread: [], keepalive: false }]);
+    });
+
+    it("empties the queue and the store on clear, and forgets the user", async () => {
+      const { queue, store, sent } = withStore();
+      await queue.setUser({ userId: 7 });
+      const settled = queue.mark({ entryIds: ["101:a"], read: true });
+      await settle();
+
+      await queue.clear();
+
+      await expect(settled).resolves.toBeUndefined();
+      expect(store.clear).toHaveBeenCalled();
+      expect(await store.all()).toEqual([]);
+      expect(queue.currentUser()).toBeUndefined();
+      await queue.flush();
+      expect(sent).toEqual([]);
+    });
+
+    it("writes nothing to the store when a send ends after clear", async () => {
+      hold = true;
+      const { queue, store, release } = withStore();
+      await queue.setUser({ userId: 7 });
+      void queue.mark({ entryIds: ["101:a"], read: true });
+      const flushed = queue.flush();
+      await settle();
+
+      await queue.clear();
+      store.remove.mockClear();
+      release();
+      await flushed;
+      await settle();
+
+      expect(store.remove).not.toHaveBeenCalled();
+    });
+
+    it("keeps a mark untagged, and the gate open, when there is no user", async () => {
+      const { queue, store, sent } = withStore({ initial: [{ id: "101:old", state: "read" }] });
+
+      queue.noUser();
+      await queue.firstReplay;
+      void queue.mark({ entryIds: ["101:a"], read: true });
+      await settle();
+
+      expect(queue.currentUser()).toBeUndefined();
+      expect(await store.all()).toEqual([
+        { id: "101:old", state: "read" },
+        { id: "101:a", state: "read" },
+      ]);
+      expect(sent).toEqual([]);
+    });
+
+    it("keeps a row another user replaced when removing unchanged rows", async () => {
+      const { store } = withStore({ initial: [{ id: "101:a", state: "read", userId: 8 }] });
+
+      await store.removeUnchanged([{ id: "101:a", state: "read", userId: 7 }]);
+
+      expect(await store.all()).toEqual([{ id: "101:a", state: "read", userId: 8 }]);
     });
   });
 });
