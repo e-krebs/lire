@@ -93,6 +93,8 @@ const requestVoid = async (req: TransportRequest): Promise<void> => {
   await performRequest(req);
 };
 
+const MOCK_USER_ID = 7;
+
 const segment = (value: string): string => encodeURIComponent(value);
 
 export const getProfile = async (): Promise<Profile> =>
@@ -330,7 +332,7 @@ export const getSunPhase = async ({ tz }: { tz: string }): Promise<SunPhase | nu
 };
 
 export const getAuthStatus = async (): Promise<AuthStatus> => {
-  if (isMockMode()) return { signedIn: true };
+  if (isMockMode()) return { signedIn: true, userId: MOCK_USER_ID };
   const response = await httpTransport({ method: "GET", path: "/api/auth/status" });
   if (response.status !== 200) return { signedIn: false };
   return AuthStatusSchema.parse(await response.json());

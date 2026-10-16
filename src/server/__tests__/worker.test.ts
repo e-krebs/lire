@@ -236,7 +236,7 @@ describe("worker", () => {
         sessionId: SESSION_ID,
         userId: USER_ID,
       });
-      expect(await status()).toEqual({ signedIn: true });
+      expect(await status()).toEqual({ signedIn: true, userId: USER_ID });
     });
 
     it("finds the session cookie among other Set-Cookie lines", async () => {
@@ -261,7 +261,7 @@ describe("worker", () => {
       try {
         upstream = signInUpstream();
         await login();
-        expect(await status()).toEqual({ signedIn: true });
+        expect(await status()).toEqual({ signedIn: true, userId: USER_ID });
       } finally {
         env.NEWSBLUR_USERNAME = username;
       }
@@ -738,7 +738,7 @@ describe("worker", () => {
       expect(response.status).toBe(204);
       expect(response.headers.get("Set-Cookie")).toBe(CLEARED_COOKIE);
       expect(upstreamCalls).toHaveLength(0);
-      expect(await status()).toEqual({ signedIn: true });
+      expect(await status()).toEqual({ signedIn: true, userId: USER_ID });
     });
 
     it("leaves another user key's token alone", async () => {
@@ -751,7 +751,7 @@ describe("worker", () => {
         `lire_session=attacker.${token}`,
       );
       expect(response.status).toBe(204);
-      expect(await status()).toEqual({ signedIn: true });
+      expect(await status()).toEqual({ signedIn: true, userId: USER_ID });
     });
 
     it.each([
@@ -767,7 +767,7 @@ describe("worker", () => {
       const response = await authed("/api/auth/logout", { method: "POST", headers });
       expect(response.status).toBe(403);
       expect(await response.json()).toEqual({ error: "forbidden" });
-      expect(await status()).toEqual({ signedIn: true });
+      expect(await status()).toEqual({ signedIn: true, userId: USER_ID });
     });
   });
 

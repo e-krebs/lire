@@ -11,7 +11,7 @@ describe("handle reads", () => {
   it("answers the auth status as signed in", async () => {
     expect(await send({ url: "/api/auth/status", upstream: fakeUpstream({}) })).toEqual({
       status: 200,
-      body: { signedIn: true },
+      body: { signedIn: true, userId: 42 },
     });
   });
 

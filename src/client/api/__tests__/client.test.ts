@@ -201,8 +201,10 @@ describe("client (http adapter)", () => {
 
   it("reads the auth status, and counts any failure as signed out", async () => {
     setup();
-    server.use(http.get("/api/auth/status", () => HttpResponse.json({ signedIn: true })));
-    await expect(getAuthStatus()).resolves.toEqual({ signedIn: true });
+    server.use(
+      http.get("/api/auth/status", () => HttpResponse.json({ signedIn: true, userId: 42 })),
+    );
+    await expect(getAuthStatus()).resolves.toEqual({ signedIn: true, userId: 42 });
 
     server.use(http.get("/api/auth/status", () => new HttpResponse(null, { status: 500 })));
     await expect(getAuthStatus()).resolves.toEqual({ signedIn: false });
@@ -211,7 +213,7 @@ describe("client (http adapter)", () => {
   it("answers signed in without a request in mock mode", async () => {
     vi.stubEnv("VITE_API_MODE", "mock");
 
-    await expect(getAuthStatus()).resolves.toEqual({ signedIn: true });
+    await expect(getAuthStatus()).resolves.toEqual({ signedIn: true, userId: 7 });
   });
   it("passes keepalive through to fetch in the http transport", async () => {
     const calls: RequestInit[] = [];

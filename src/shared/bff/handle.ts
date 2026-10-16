@@ -505,7 +505,7 @@ type RouteKey = KeyOf<Route>;
 
 const HANDLERS: Record<RouteKey, Handler> = {
   // The Worker answers this one itself when it has no session and the login fails; reaching the core means signed in.
-  "GET /api/auth/status": () => ok({ signedIn: true }),
+  "GET /api/auth/status": ({ ctx }) => ok({ signedIn: true, userId: ctx.config.userId }),
 
   "GET /api/profile": async ({ ctx }) => {
     const { user_profile } = await call({
