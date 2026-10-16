@@ -4,7 +4,7 @@ import { encodeParams, type NewsblurFetch } from "shared/bff/upstream";
 import { matchRoute } from "shared/feedsApi/routes";
 import { AccessError, verifyAccess } from "./access";
 import type { Env } from "./env";
-import type { StoredSession } from "./newsblurAuth";
+import type { StoredCredential } from "./newsblurAuth";
 
 export { NewsblurAuth } from "./newsblurAuth";
 
@@ -17,7 +17,13 @@ const json = ({ body, status = 200 }: { body: unknown; status?: number }): Respo
     headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
   });
 
-const newsblurAuth = (env: Env) => env.NEWSBLUR_AUTH.get(env.NEWSBLUR_AUTH.idFromName("singleton"));
+// B11 takes the key from the session cookie instead of the owner username.
+const userObject = ({ env, userKey }: { env: Env; userKey: string }) =>
+  env.NEWSBLUR_AUTH.get(env.NEWSBLUR_AUTH.idFromName(`user:${userKey}`));
+
+// Remove after the B10 deploy ran.
+const purgeLegacyObject = async (env: Env): Promise<void> =>
+  env.NEWSBLUR_AUTH.get(env.NEWSBLUR_AUTH.idFromName("singleton")).purge();
 
 const signInFailedPage = (): Response =>
   new Response(
@@ -62,12 +68,12 @@ const sessionCookie = (sessionId: string) => ({
   Cookie: `${SESSION_COOKIE}=${sessionId}`,
 });
 
-const failLogin = (reason: string): StoredSession | undefined => {
+const failLogin = (reason: string): StoredCredential | undefined => {
   console.warn(`NewsBlur login failed: ${reason}`);
   return undefined;
 };
 
-const logIn = async (env: Env): Promise<StoredSession | undefined> => {
+const logIn = async (env: Env): Promise<StoredCredential | undefined> => {
   try {
     const loginResponse = await fetch(`${env.NEWSBLUR_HOST}/api/login`, {
       method: "POST",
@@ -91,7 +97,7 @@ const logIn = async (env: Env): Promise<StoredSession | undefined> => {
     if (!profileResponse.ok) return failLogin(`profile answered ${profileResponse.status}`);
     const profile = ProfileAnswerSchema.safeParse(await profileResponse.json());
     if (!profile.success) return failLogin("profile answer has an unexpected shape");
-    return { sessionId, userId: profile.data.user_profile.user_id };
+    return { kind: "cookie", sessionId, userId: profile.data.user_profile.user_id };
   } catch (error) {
     return failLogin(String(error));
   }
@@ -100,7 +106,8 @@ const logIn = async (env: Env): Promise<StoredSession | undefined> => {
 const handleLogin = async ({ env }: { env: Env }): Promise<Response> => {
   const session = await logIn(env);
   if (!session) return signInFailedPage();
-  await newsblurAuth(env).setSession(session);
+  await userObject({ env, userKey: env.NEWSBLUR_USERNAME }).setSession(session);
+  await purgeLegacyObject(env);
   return new Response(null, {
     status: 302,
     headers: { Location: "/", "Cache-Control": "no-store" },
@@ -163,7 +170,7 @@ const serve = async ({ request, env }: { request: Request; env: Env }): Promise<
     }
   }
 
-  const auth = newsblurAuth(env);
+  const auth = userObject({ env, userKey: env.NEWSBLUR_USERNAME });
   let session = await auth.getSession();
   let loggedInNow = false;
   if (!session) {
@@ -173,6 +180,7 @@ const serve = async ({ request, env }: { request: Request; env: Env }): Promise<
       return json({ body: { error: "sign_in_required" }, status: 401 });
     }
     await auth.setSession(session);
+    await purgeLegacyObject(env);
     loggedInNow = true;
   }
 
@@ -181,7 +189,7 @@ const serve = async ({ request, env }: { request: Request; env: Env }): Promise<
     set: async (input) => auth.setFeedsCache(input),
     clear: async () => auth.clearFeedsCache(),
   };
-  const run = async (current: StoredSession) =>
+  const run = async (current: StoredCredential) =>
     handle({
       route: match.route,
       params: match.params,

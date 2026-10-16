@@ -7,7 +7,8 @@ const FEEDS_CACHE_KEY = "feedsCache";
 const FEEDS_GENERATION_KEY = "feedsGeneration";
 const FEEDS_CACHE_TTL_MS = 5 * 60_000;
 
-export interface StoredSession {
+export interface StoredCredential {
+  kind: "cookie";
   sessionId: string;
   // The NewsBlur user the session signed in as, checked against every read answer.
   userId: number;
@@ -20,12 +21,12 @@ export class NewsblurAuth extends DurableObject<Env> {
     return this.getSession() !== undefined;
   }
 
-  getSession(): StoredSession | undefined {
-    return this.ctx.storage.kv.get<StoredSession>(SESSION_KEY);
+  getSession(): StoredCredential | undefined {
+    return this.ctx.storage.kv.get<StoredCredential>(SESSION_KEY);
   }
 
   // A cached feed list belongs to the account it was read with, so it goes with every session change.
-  setSession(session: StoredSession): void {
+  setSession(session: StoredCredential): void {
     this.ctx.storage.kv.put(SESSION_KEY, session);
     this.clearFeedsCache();
   }
@@ -54,6 +55,10 @@ export class NewsblurAuth extends DurableObject<Env> {
   clearFeedsCache(): void {
     this.ctx.storage.kv.put(FEEDS_GENERATION_KEY, this.feedsGeneration() + 1);
     this.ctx.storage.kv.delete(FEEDS_CACHE_KEY);
+  }
+
+  async purge(): Promise<void> {
+    await this.ctx.storage.deleteAll();
   }
 
   private feedsGeneration(): number {

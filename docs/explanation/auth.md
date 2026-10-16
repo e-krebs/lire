@@ -61,9 +61,9 @@ and its link runs Access again.
 ### Session storage
 
 The session lives in one Durable Object, [NewsblurAuth](../../src/server/newsblurAuth.ts), addressed
-by the fixed name `singleton` ([worker.ts](../../src/server/worker.ts)). One user means one object,
-so every request in every isolate sees the same session. The object stores `{sessionId, userId}`
-under one key in its SQLite-backed storage. The Worker sends the cookie as
+by the NewsBlur username ([worker.ts](../../src/server/worker.ts), `userObject`). One NewsBlur
+account means one object, so every request in every isolate sees the same session. The object
+stores `{kind: "cookie", sessionId, userId}` under one key in its SQLite-backed storage. The Worker sends the cookie as
 `Cookie: newsblur_sessionid=<id>` on each upstream call and never forwards it to the client.
 
 The same object holds the cache of the folder tree (see
@@ -102,7 +102,7 @@ call:
 
 ## Limitations
 
-- **One user.** The singleton Durable Object holds one session. A second user would need a key per
+- **One account.** The Durable Object for a NewsBlur account holds one session. A second account would need its own object, and a second user would need a key per
   Access identity and is out of scope.
 - **Password required.** `/api/login` needs a NewsBlur account with a password. An account that
   only signs in through a third party cannot use it.
