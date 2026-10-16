@@ -2,7 +2,7 @@
 import worker from "server/worker";
 import { NewsblurAuth } from "server/newsblurAuth";
 import type { Env } from "server/env";
-import { createKvStorage, type DurableObjectState } from "./durableObject";
+import { createStorage, type DurableObjectState } from "./durableObject";
 
 const WORKERS_ENV = {
   NEWSBLUR_HOST: "https://newsblur.com",
@@ -25,7 +25,7 @@ const stubs = new WeakMap<object, Entry>();
 const entryFor = ({ name }: { name: string }): Entry => {
   let entry = entries.get(name);
   if (!entry) {
-    const state: DurableObjectState = { storage: { kv: createKvStorage() } };
+    const state: DurableObjectState = { storage: createStorage() };
     entry = { instance: new NewsblurAuth(state as never, env), state };
     entries.set(name, entry);
   }

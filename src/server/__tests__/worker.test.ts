@@ -44,7 +44,9 @@ type UpstreamCall = { url: string; method: string; headers: Headers; body: strin
 let upstream: Upstream;
 const upstreamCalls: UpstreamCall[] = [];
 
-const auth = () => env.NEWSBLUR_AUTH.get(env.NEWSBLUR_AUTH.idFromName("singleton"));
+const objectFor = (userKey: string) =>
+  env.NEWSBLUR_AUTH.get(env.NEWSBLUR_AUTH.idFromName(`user:${userKey}`));
+const auth = () => objectFor(env.NEWSBLUR_USERNAME);
 
 const pathOf = (request: Request) => new URL(request.url).pathname;
 
@@ -201,7 +203,11 @@ describe("worker", () => {
       expect(profile.url).toBe(`${env.NEWSBLUR_HOST}/social/load_user_profile`);
       expect(profile.headers.get("Cookie")).toBe(`newsblur_sessionid=${SESSION_ID}`);
 
-      expect(await auth().getSession()).toEqual({ sessionId: SESSION_ID, userId: USER_ID });
+      expect(await auth().getSession()).toEqual({
+        kind: "cookie",
+        sessionId: SESSION_ID,
+        userId: USER_ID,
+      });
       expect(await status()).toEqual({ signedIn: true });
     });
 
@@ -218,6 +224,45 @@ describe("worker", () => {
       const response = await authed("/api/auth/login");
       expect(response.status).toBe(302);
       expect((await auth().getSession())?.sessionId).toBe(SESSION_ID);
+    });
+
+    it("keeps the session of a user named singleton", async () => {
+      await setup();
+      const username = env.NEWSBLUR_USERNAME;
+      env.NEWSBLUR_USERNAME = "singleton";
+      try {
+        upstream = signInUpstream();
+        await authed("/api/auth/login");
+        expect(await status()).toEqual({ signedIn: true });
+      } finally {
+        env.NEWSBLUR_USERNAME = username;
+      }
+    });
+
+    it("empties the legacy singleton object on login", async () => {
+      await setup();
+      const legacy = env.NEWSBLUR_AUTH.get(env.NEWSBLUR_AUTH.idFromName("singleton"));
+      await legacy.setSession({ kind: "cookie", sessionId: "legacy", userId: USER_ID });
+      upstream = signInUpstream();
+
+      await authed("/api/auth/login");
+      expect(await legacy.getSession()).toBeUndefined();
+    });
+
+    it("keeps the sessions and feed caches of two usernames apart", async () => {
+      await setup();
+      await auth().setSession({ kind: "cookie", sessionId: "session-1", userId: USER_ID });
+      const { generation } = await auth().getFeedsCache();
+      await auth().setFeedsCache({ value: feedsAnswer, generation });
+
+      const other = objectFor("other");
+      await other.clearSession();
+      expect(await other.getSession()).toBeUndefined();
+      expect((await other.getFeedsCache()).value).toBeUndefined();
+
+      await other.setSession({ kind: "cookie", sessionId: "session-2", userId: 7 });
+      expect((await auth().getSession())?.sessionId).toBe("session-1");
+      expect((await auth().getFeedsCache()).value).toEqual(feedsAnswer);
     });
 
     it("sends a User-Agent on every NewsBlur call", async () => {
@@ -565,7 +610,7 @@ describe("worker", () => {
       const { generation } = await auth().getFeedsCache();
       await auth().setFeedsCache({ value: feedsAnswer, generation });
       expect((await auth().getFeedsCache()).value).toEqual(feedsAnswer);
-      await auth().setSession({ sessionId: "session-2", userId: USER_ID });
+      await auth().setSession({ kind: "cookie", sessionId: "session-2", userId: USER_ID });
       expect((await auth().getFeedsCache()).value).toBeUndefined();
     });
 
@@ -581,7 +626,7 @@ describe("worker", () => {
 
     it("clears a session only when it is still the one that failed", async () => {
       await setup();
-      await auth().setSession({ sessionId: "session-2", userId: USER_ID });
+      await auth().setSession({ kind: "cookie", sessionId: "session-2", userId: USER_ID });
       await auth().clearSession({ onlySessionId: "session-1" });
       expect(await auth().hasSession()).toBe(true);
       await auth().clearSession({ onlySessionId: "session-2" });

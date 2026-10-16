@@ -5,20 +5,31 @@ export interface KvStorage {
   delete(key: string): boolean;
 }
 
+export interface DurableObjectStorage {
+  kv: KvStorage;
+  deleteAll(): Promise<void>;
+}
+
 export interface DurableObjectState {
-  storage: { kv: KvStorage };
+  storage: DurableObjectStorage;
 }
 
 // A real Durable Object stores structured-cloneable values, so the fake clones on the way in and out.
-export const createKvStorage = (): KvStorage => {
+export const createStorage = (): DurableObjectStorage => {
   const values = new Map<string, unknown>();
   return {
-    get: <T>(key: string) => {
-      const value = values.get(key);
-      return value === undefined ? undefined : (structuredClone(value) as T);
+    kv: {
+      get: <T>(key: string) => {
+        const value = values.get(key);
+        return value === undefined ? undefined : (structuredClone(value) as T);
+      },
+      put: (key, value) => void values.set(key, structuredClone(value)),
+      delete: (key) => values.delete(key),
     },
-    put: (key, value) => void values.set(key, structuredClone(value)),
-    delete: (key) => values.delete(key),
+    deleteAll: async () => {
+      values.clear();
+      await Promise.resolve();
+    },
   };
 };
 

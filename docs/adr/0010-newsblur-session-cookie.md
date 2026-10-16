@@ -14,7 +14,7 @@ Worker already holds secrets, which suits a username and a password.
 
 The Worker holds `NEWSBLUR_USERNAME` and `NEWSBLUR_PASSWORD` as secrets and posts them to
 `${NEWSBLUR_HOST}/api/login`. It keeps the `newsblur_sessionid` cookie and the NewsBlur user id in
-the `NewsblurAuth` Durable Object, addressed by the name `singleton`, and sends the cookie on every
+the `NewsblurAuth` Durable Object, addressed by the NewsBlur username (`NEWSBLUR_USERNAME`), and sends the cookie on every
 upstream call. A request that finds no stored session logs in first. A 401 or 403 from upstream, or
 an answer for another user, makes a `GET` log in once more and retry. A write does not retry. If
 the retry or the login fails, the Worker clears the session and answers `sign_in_required`. `GET /api/auth/login` runs the same login by hand and
