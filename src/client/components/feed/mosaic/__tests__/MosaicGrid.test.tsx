@@ -178,6 +178,10 @@ const closed = async (card: (entryId: string) => Element | null, entryId: string
 };
 
 describe("MosaicGrid", () => {
+  beforeEach(() => {
+    markQueue.noUser();
+  });
+
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();

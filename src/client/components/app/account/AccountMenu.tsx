@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { isMockMode } from "client/api/client";
 import { useAuthStatus, useProfile } from "client/api/queries";
+import { signOut } from "client/api/signOut";
 import { useBarPosition } from "client/hooks/useBarPosition";
 import { setBarPosition } from "client/hooks/utils/barPosition";
 import { Icon } from "client/components/primitives/icons/icons";
@@ -215,7 +216,23 @@ export const AccountMenu = () => {
             {mock ? (
               shell.mockData
             ) : authStatus.data?.signedIn ? (
-              shell.signedIn
+              <span className="flex min-w-0 items-center gap-3">
+                {shell.signedIn}
+                <button
+                  type="button"
+                  onClick={() => {
+                    close();
+                    // A failed sign-out keeps the session, so the row keeps showing it.
+                    void signOut().catch(() => {});
+                  }}
+                  className={`
+                    text-accent-text underline underline-offset-2
+                    focus-visible:outline-2 focus-visible:outline-accent
+                  `}
+                >
+                  {shell.signOut}
+                </button>
+              </span>
             ) : (
               <a
                 href="/api/auth/login"

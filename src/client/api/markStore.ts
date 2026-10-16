@@ -8,10 +8,12 @@ export type MarkState = "read" | "unread";
 export interface MarkRow {
   id: string;
   state: MarkState;
+  userId?: number;
 }
 interface StoredMark {
   state: MarkState;
   at: number;
+  userId?: number;
 }
 
 const memory = new Map<string, StoredMark>();
@@ -76,16 +78,25 @@ const run = async <T = undefined>({
 const parse = (value: unknown): StoredMark | undefined => {
   if (typeof value === "number") return { state: "read", at: value };
   if (typeof value !== "object" || value === null) return undefined;
-  const { state, at } = value as Partial<StoredMark>;
-  return (state === "read" || state === "unread") && typeof at === "number"
-    ? { state, at }
-    : undefined;
+  const { state, at, userId } = value as Partial<StoredMark>;
+  if ((state !== "read" && state !== "unread") || typeof at !== "number") return undefined;
+  return typeof userId === "number" ? { state, at, userId } : { state, at };
 };
+
+const rowOf = ({ id, mark }: { id: string; mark: StoredMark }): MarkRow =>
+  mark.userId === undefined
+    ? { id, state: mark.state }
+    : { id, state: mark.state, userId: mark.userId };
+
+const stored = ({ row, at }: { row: MarkRow; at: number }): StoredMark =>
+  row.userId === undefined
+    ? { state: row.state, at }
+    : { state: row.state, at, userId: row.userId };
 
 const memoryAll = (): MarkRow[] => {
   const cutoff = Date.now() - MAX_AGE_MS;
   for (const [id, { at }] of memory) if (at < cutoff) memory.delete(id);
-  return [...memory].map(([id, { state }]) => ({ id, state }));
+  return [...memory].map(([id, mark]) => rowOf({ id, mark }));
 };
 
 export const markStore = {
@@ -96,14 +107,14 @@ export const markStore = {
         await run({
           mode: "readwrite",
           action: (store) => {
-            for (const { id, state } of rows) store.put({ state, at } satisfies StoredMark, id);
+            for (const row of rows) store.put(stored({ row, at }), row.id);
             return undefined;
           },
         });
         return;
       } catch {}
     }
-    for (const { id, state } of rows) memory.set(id, { state, at });
+    for (const row of rows) memory.set(row.id, stored({ row, at }));
   },
 
   async remove(ids: string[]): Promise<void> {
@@ -120,19 +131,23 @@ export const markStore = {
     } catch {}
   },
 
-  // Deletes a row only if it still holds the state given, so a mark written since the caller read it
-  // survives. The get and the delete share one transaction.
+  // Deletes a row only if it still holds the state and user given, so a mark written since the
+  // caller read it survives. The get and the delete share one transaction.
   async removeUnchanged(rows: MarkRow[]): Promise<void> {
-    for (const { id, state } of rows) if (memory.get(id)?.state === state) memory.delete(id);
+    for (const { id, state, userId } of rows) {
+      const mark = memory.get(id);
+      if (mark?.state === state && mark.userId === userId) memory.delete(id);
+    }
     if (!persistent()) return;
     try {
       await run({
         mode: "readwrite",
         action: (store) => {
-          for (const { id, state } of rows) {
+          for (const { id, state, userId } of rows) {
             const request = store.get(id);
             request.onsuccess = () => {
-              if (parse(request.result)?.state === state) store.delete(id);
+              const mark = parse(request.result);
+              if (mark?.state === state && mark.userId === userId) store.delete(id);
             };
           }
           return undefined;
@@ -145,7 +160,7 @@ export const markStore = {
     if (persistent()) {
       try {
         const cutoff = Date.now() - MAX_AGE_MS;
-        const fresh = new Map<string, MarkState>();
+        const fresh = new Map<string, MarkRow>();
         // One readwrite transaction: the cursor deletes only what it just read as stale, so an
         // entry refreshed after this read cannot be removed.
         await run({
@@ -158,18 +173,27 @@ export const markStore = {
               const mark = parse(cursor.value);
               if (mark && mark.at >= cutoff) {
                 const { key } = cursor;
-                fresh.set(typeof key === "string" ? key : JSON.stringify(key), mark.state);
+                const id = typeof key === "string" ? key : JSON.stringify(key);
+                fresh.set(id, rowOf({ id, mark }));
               } else cursor.delete();
               cursor.continue();
             };
             return request;
           },
         });
-        for (const { id, state } of memoryAll()) if (!fresh.has(id)) fresh.set(id, state);
-        return [...fresh].map(([id, state]) => ({ id, state }));
+        for (const row of memoryAll()) if (!fresh.has(row.id)) fresh.set(row.id, row);
+        return [...fresh.values()];
       } catch {}
     }
     return memoryAll();
+  },
+
+  async clear(): Promise<void> {
+    memory.clear();
+    if (!persistent()) return;
+    try {
+      await run({ mode: "readwrite", action: (store) => store.clear() });
+    } catch {}
   },
 
   async reset(): Promise<void> {

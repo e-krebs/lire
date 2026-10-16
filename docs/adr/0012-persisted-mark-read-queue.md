@@ -21,11 +21,14 @@ The decision has three parts: the queue, the worker and the update flow.
 
 Pending marks, read and unread, persist in one IndexedDB store, `lire-mark-read`, which the page
 and the service worker share. A service worker cannot read `localStorage`. The queue, `markQueue`,
-holds one intent per entry id and the store holds `{ id, state }` rows, `state` being `read` or
+holds one intent per entry id and the store holds `{ id, state, userId }` rows, `state` being `read` or
 `unread`. A row from before the state existed reads as `read`. The reverse does not hold: an old
 bundle still open on the same database version deletes the rows it cannot read as numbers, so a tab
 that has not updated loses the new rows.
 
+- **User tag.** Each row carries the NewsBlur user id that queued it, once the page knows the user.
+  A row without one is adopted by the next user the page learns. The page drops rows of another
+  user, at `setUser` and at replay, so a shared browser never sends one account's marks as another's.
 - **Age limit.** Each row carries the time it was added, and the store drops rows older than 24
   hours. A failed send must not override a mark made on another device days later.
 - **Write first.** A mark writes its row to the store before the batch can leave. Both marks wait
@@ -44,7 +47,8 @@ that has not updated loses the new rows.
 - **Replay.** At start and on the `online` event, the queue sends the marks a previous session left
   stored. `all()` reads keys and values in one transaction and also returns the unexpired rows held
   in memory. An id already pending, in flight or being written is skipped, so two replays never send
-  one id twice. A replay has no caller waiting, so a failure stays silent.
+  one id twice. A replay has no caller waiting, so a failure stays silent. It starts only after the page knows the
+  user (`setUser`), so a stored row is never sent before its owner is known.
 - **Retryable failures.** A network error, 401, 403, 408, 429 or 5xx keeps the rows stored and
   resolves the waiters, so the optimistic mark stays. Any other 4xx drops the rows and rejects the
   waiters, so the mark rolls back; a bad request would otherwise loop forever. One `isRetryable`
@@ -59,7 +63,9 @@ The service worker moves from the generated `generateSW` worker to `injectManife
 `src/client/sw.ts`, because a generated worker cannot hold a `sync` handler. It keeps the
 precache and the `index.html` navigation fallback with its `/api/` denylist.
 
-- **Background Sync.** A `sync` event replays both stored lists, reads and unreads, to `POST /api/entries/mark` when the page is gone. The queue
+- **Background Sync.** A `sync` event replays both stored lists, reads and unreads, to `POST /api/entries/mark` when the page is gone.
+  Before it sends, it fetches `/api/auth/status` and drops the rows of another user; when that fetch
+  fails, it keeps them. The queue
   registers the sync tag only when the page may not deliver: on hide, and after a retryable
   failure while the page is hidden. A visible page retries through the `online` replay and at
   start. The queue never registers on `add`: an immediate sync would bypass the batching NewsBlur asks for. Only
@@ -99,4 +105,7 @@ fallback. The worker calls `skipWaiting` only on a `SKIP_WAITING` message and ke
 - Firefox and Safari lose marks only when the page cannot flush, and recover them at the next start.
 - The service worker is code to maintain and typecheck (`yarn typecheck:sw`), not generated.
 - A reader on an old tab sees the update only on Reload or when every tab closes.
+- An old bundle ignores the user tag, so its marks reach the store untagged and the next user adopts
+  them. The cookie-switch race between the worker's status lookup and its POST stays open until B4
+  checks the user id on `POST /api/entries/mark` in the Worker.
 - Detail: [architecture](../explanation/architecture.md#pwa).

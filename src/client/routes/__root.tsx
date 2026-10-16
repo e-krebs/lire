@@ -1,10 +1,11 @@
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { AppShell } from "client/components/app/shell/AppShell";
 import { SignIn } from "client/components/app/auth/SignIn";
 import { DemoBanner } from "client/components/app/demo/DemoBanner";
 import { SWToast } from "client/components/app/notices/SWToast";
+import { markQueue } from "client/api/markQueue";
 import { useAuthStatus, isSignInRequired } from "client/api/queries";
 
 // Mirrors `useTier`'s pattern: the query cache is an external store, so a Sign-in-required error
@@ -24,6 +25,15 @@ const useAnySignInRequired = (): boolean => {
 const RootComponent = () => {
   const authStatus = useAuthStatus();
   const anySignInRequired = useAnySignInRequired();
+  const userId = authStatus.data?.userId;
+  const unknownUser = authStatus.isError || (authStatus.data !== undefined && userId === undefined);
+  const { dataUpdatedAt } = authStatus;
+
+  // A refetch re-runs this, since a `clear` forgets the user the same id would set again.
+  useEffect(() => {
+    if (userId !== undefined) void markQueue.setUser({ userId });
+    else if (unknownUser) markQueue.noUser();
+  }, [userId, unknownUser, dataUpdatedAt]);
 
   const signedOut = authStatus.data?.signedIn === false || anySignInRequired;
 

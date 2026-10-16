@@ -82,7 +82,7 @@ test.describe("Login", () => {
       expect(profile.cookie).toBe(`newsblur_sessionid=${SESSION_ID}`);
       const cookie = cookieOf(response);
       expect(cookie).toMatch(/^lire_session=owner\./);
-      expect(await signedIn({ request, worker, cookie })).toEqual({ signedIn: true });
+      expect(await signedIn({ request, worker, cookie })).toEqual({ signedIn: true, userId: 42 });
     });
 
     test("a request with no cookie answers signedIn false and makes no NewsBlur call", async ({

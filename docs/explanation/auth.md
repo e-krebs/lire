@@ -47,7 +47,8 @@ cookie. A request without a valid cookie never reaches the login: it answers `40
 its `SignIn` screen, whose link runs this route. A failure answers `400` with a short page that links
 back to `/api/auth/login` and sets no cookie. The PWA service worker is told not to
 answer that route (see [architecture.md](architecture.md#pwa)). The worker's background sync of
-marks posts to `/api/entries/mark` behind Access with the same cookie as the page. It does
+marks fetches `/api/auth/status` for the user id, then posts to `/api/entries/mark` behind Access
+with the same cookie as the page. It does
 not follow redirects: an expired Access session answers a cross-origin redirect, which counts as a
 retryable failure, and the rows stay stored for the page to send after a new sign-in.
 
@@ -69,7 +70,9 @@ a username may hold dots and a token holds none. `Path=/api` keeps the cookie of
 Each contract route reads the cookie before any upstream work. A missing or malformed cookie, a user
 key that is not the owner's, or a token the object does not hold answers `401 sign_in_required`, and
 a key that is not the owner's answers before any object lookup, so a forged key creates no object.
-`GET /api/auth/status` answers `200 { signedIn: false }` instead. Only a cookie that passes this check
+`GET /api/auth/status` answers `200 { signedIn: false }` instead. A valid cookie answers
+`200 { signedIn: true, userId }`, where `userId` is the NewsBlur user id that tags each queued mark.
+Only a cookie that passes this check
 reaches the stored session, and only then does the Worker log in upstream when no session is stored.
 
 A login with a valid cookie replaces that cookie's token, so one browser holds one token. A browser
@@ -82,6 +85,11 @@ SignIn screen.
 checks, revokes the token that the cookie presents, clears the cookie with `Max-Age=0` and answers
 `204`. A request without a cookie also answers `204`. Sign-out ends one browser's access. It leaves
 the NewsBlur session and the feed cache in the object, because the owner's other browsers use them.
+
+The account menu's Sign out action runs this route from the page. It first flushes the mark queue,
+waiting at most 3 seconds, then posts to the route. Only a `204` clears the queue, the IndexedDB
+mark store and the query cache; a failed logout clears nothing and leaves the row as it is. The service worker
+does not clear anything: it drops the rows of another user on its next sync.
 
 ### Session storage
 

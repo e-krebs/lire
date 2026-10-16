@@ -1,8 +1,11 @@
 import { act, screen } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
+import { http, HttpResponse } from "msw";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resetFixtureState } from "client/api/adapters/fixture";
 import { registerPwa } from "client/utils/pwaUpdate";
+import { fixtureBackend } from "test/fixtureBackend";
+import { server } from "test/msw";
 import { renderApp } from "test/renderApp";
 
 // The menu popover stays closed, so its controls count as hidden.
@@ -18,6 +21,9 @@ const ui = {
   },
   get browserSelect() {
     return screen.findByRole("combobox", { name: /^Open external links in/, hidden: true });
+  },
+  get signOutButton() {
+    return screen.findByRole("button", { name: "Sign out", hidden: true });
   },
   get languageSelect() {
     return screen.findByRole("combobox", { name: /^Language/, hidden: true });
@@ -84,5 +90,33 @@ describe("AccountMenu", () => {
     expect(await ui.frenchLanguageSelect).toHaveValue("fr");
     expect(document.documentElement.lang).toBe("fr");
     expect(window.localStorage.getItem("lire.locale")).toBe("fr");
+  });
+
+  describe("when signed in to NewsBlur", () => {
+    beforeEach(() => {
+      vi.stubEnv("VITE_API_MODE", "real");
+      server.use(fixtureBackend);
+    });
+
+    it("signs out from the account row and closes the menu", async () => {
+      // jsdom has no popover API.
+      const hidePopover = vi.fn<() => void>();
+      HTMLElement.prototype.hidePopover = hidePopover;
+      const logout = vi.fn<() => void>();
+      server.use(
+        http.post("*/api/auth/logout", () => {
+          logout();
+          return new HttpResponse(null, { status: 204 });
+        }),
+      );
+      renderApp({ url: "/subscriptions" });
+
+      await userEvent.click(await ui.signOutButton);
+
+      await vi.waitFor(() => {
+        expect(logout).toHaveBeenCalledOnce();
+      });
+      expect(hidePopover).toHaveBeenCalledOnce();
+    });
   });
 });

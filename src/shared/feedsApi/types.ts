@@ -3,7 +3,9 @@ import { z } from "zod";
 // Lire API shapes, shared by the client and the Worker. Objects stay `.loose()` all the way down
 // so a field the Worker adds later doesn't get silently dropped by an older client.
 
-export const AuthStatusSchema = z.object({ signedIn: z.boolean() }).loose();
+export const AuthStatusSchema = z
+  .object({ signedIn: z.boolean(), userId: z.number().optional() })
+  .loose();
 export type AuthStatus = z.infer<typeof AuthStatusSchema>;
 
 export const ProfileSchema = z
