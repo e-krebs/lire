@@ -13,6 +13,25 @@ describe("handle errors", () => {
     expect(await profile(new Response(null, { status: 403 }))).toEqual(SIGN_IN);
   });
 
+  it("maps upstream 429 to rate_limited with retryAfter", async () => {
+    expect(await profile(new Response(null, { status: 429 }))).toMatchObject({
+      status: 429,
+      body: { error: "rate_limited", retryAfter: 60 },
+    });
+  });
+
+  it("answers 400 and calls nothing upstream for a ban sequence", async () => {
+    const upstream = fakeUpstream({});
+    const answer = await send({
+      method: "POST",
+      url: "/api/preferences",
+      body: { "lire.categoryOrder": "<SCRIPT>" },
+      upstream,
+    });
+    expect(answer).toMatchObject({ status: 400, body: { error: "bad_request" } });
+    expect(upstream.calls).toHaveLength(0);
+  });
+
   it("maps other upstream errors to 502", async () => {
     expect(await profile(new Response(null, { status: 500 }))).toEqual(UPSTREAM);
     expect(await profile(new Response("<html>", { status: 200 }))).toEqual(UPSTREAM);
