@@ -34,7 +34,7 @@ test.describe("Login", () => {
     const accepted = await request.get(`${worker.url}/api/auth/status`, {
       headers: { [ACCESS_HEADER]: worker.ownerToken },
     });
-    expect(await accepted.json()).toEqual({ signedIn: true });
+    expect(await accepted.json()).toEqual({ signedIn: false });
   });
 
   test.describe("when using the owner's Access token", () => {
@@ -48,14 +48,25 @@ test.describe("Login", () => {
         maxRedirects: 0,
       });
 
-    const signedIn = async ({ request, worker }: Fixtures): Promise<unknown> =>
+    // The browser keeps lire_session; the spec sends it back by hand.
+    const cookieOf = (response: { headers(): Record<string, string> }) =>
+      response.headers()["set-cookie"]?.split(";")[0];
+
+    const signedIn = async ({
+      request,
+      worker,
+      cookie,
+    }: Fixtures & { cookie?: string }): Promise<unknown> =>
       (
         await request.get(`${worker.url}/api/auth/status`, {
-          headers: headers({ ownerToken: worker.ownerToken }),
+          headers: {
+            ...headers({ ownerToken: worker.ownerToken }),
+            ...(cookie ? { Cookie: cookie } : {}),
+          },
         })
       ).json();
 
-    test("login signs in with the Worker's credentials and redirects home", async ({
+    test("login signs in with the Worker's credentials, sets the cookie and redirects home", async ({
       request,
       worker,
     }) => {
@@ -69,12 +80,17 @@ test.describe("Login", () => {
         password: PASSWORD,
       });
       expect(profile.cookie).toBe(`newsblur_sessionid=${SESSION_ID}`);
-      expect(await signedIn({ request, worker })).toEqual({ signedIn: true });
+      const cookie = cookieOf(response);
+      expect(cookie).toMatch(/^lire_session=owner\./);
+      expect(await signedIn({ request, worker, cookie })).toEqual({ signedIn: true });
     });
 
-    test("a request signs in on its own when no session is stored", async ({ request, worker }) => {
-      expect(await signedIn({ request, worker })).toEqual({ signedIn: true });
-      expect(worker.outbound).toHaveLength(2);
+    test("a request with no cookie answers signedIn false and makes no NewsBlur call", async ({
+      request,
+      worker,
+    }) => {
+      expect(await signedIn({ request, worker })).toEqual({ signedIn: false });
+      expect(worker.outbound).toHaveLength(0);
     });
 
     test.describe("when NewsBlur refuses the Worker's password", () => {
@@ -84,6 +100,7 @@ test.describe("Login", () => {
         const response = await login({ request, worker });
 
         expect(response.status()).toBe(400);
+        expect(response.headers()["set-cookie"]).toBeUndefined();
         expect(worker.outbound).toHaveLength(1);
         expect(await signedIn({ request, worker })).toEqual({ signedIn: false });
       });

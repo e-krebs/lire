@@ -9,7 +9,13 @@ import type { StoredCredential } from "./newsblurAuth";
 export { NewsblurAuth } from "./newsblurAuth";
 
 const LOGIN_PATH = "/api/auth/login";
-const SESSION_COOKIE = "newsblur_sessionid";
+const LOGOUT_PATH = "/api/auth/logout";
+const NEWSBLUR_SESSION_COOKIE = "newsblur_sessionid";
+const LIRE_COOKIE = {
+  name: "lire_session",
+  attributes: "HttpOnly; Secure; SameSite=Lax; Path=/api",
+  maxAge: 180 * 24 * 60 * 60,
+};
 
 const json = ({ body, status = 200 }: { body: unknown; status?: number }): Response =>
   new Response(JSON.stringify(body), {
@@ -17,9 +23,27 @@ const json = ({ body, status = 200 }: { body: unknown; status?: number }): Respo
     headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
   });
 
-// B11 takes the key from the session cookie instead of the owner username.
+// The key is the NewsBlur username, the one the session cookie carries.
 const userObject = ({ env, userKey }: { env: Env; userKey: string }) =>
   env.NEWSBLUR_AUTH.get(env.NEWSBLUR_AUTH.idFromName(`user:${userKey}`));
+
+const lireSetCookie = ({
+  value,
+  maxAge = LIRE_COOKIE.maxAge,
+}: {
+  value: string;
+  maxAge?: number;
+}): string => `${LIRE_COOKIE.name}=${value}; ${LIRE_COOKIE.attributes}; Max-Age=${maxAge}`;
+
+// Splits on the last dot: a NewsBlur username may hold dots, and a base64url token holds none.
+const readLireSession = (request: Request): { userKey: string; token: string } | undefined => {
+  const value = new RegExp(`(?:^|;\\s*)${LIRE_COOKIE.name}=([^;]*)`).exec(
+    request.headers.get("Cookie") ?? "",
+  )?.[1];
+  const dot = value?.lastIndexOf(".") ?? -1;
+  if (value === undefined || dot <= 0 || dot === value.length - 1) return undefined;
+  return { userKey: value.slice(0, dot), token: value.slice(dot + 1) };
+};
 
 const signInFailedPage = (): Response =>
   new Response(
@@ -49,7 +73,7 @@ const ProfileAnswerSchema = z.object({ user_profile: z.object({ user_id: z.numbe
 
 const readSessionId = (response: Response): string | undefined => {
   for (const line of response.headers.getSetCookie()) {
-    const match = new RegExp(`^${SESSION_COOKIE}=([^;]+)`).exec(line);
+    const match = new RegExp(`^${NEWSBLUR_SESSION_COOKIE}=([^;]+)`).exec(line);
     if (match) return match[1];
   }
   return undefined;
@@ -61,7 +85,7 @@ const USER_AGENT = { "User-Agent": "Lire" };
 
 const sessionCookie = (sessionId: string) => ({
   ...USER_AGENT,
-  Cookie: `${SESSION_COOKIE}=${sessionId}`,
+  Cookie: `${NEWSBLUR_SESSION_COOKIE}=${sessionId}`,
 });
 
 const failLogin = (reason: string): StoredCredential | undefined => {
@@ -99,13 +123,22 @@ const logIn = async (env: Env): Promise<StoredCredential | undefined> => {
   }
 };
 
-const handleLogin = async ({ env }: { env: Env }): Promise<Response> => {
+const handleLogin = async ({ request, env }: { request: Request; env: Env }): Promise<Response> => {
   const session = await logIn(env);
   if (!session) return signInFailedPage();
-  await userObject({ env, userKey: env.NEWSBLUR_USERNAME }).setSession(session);
+  const userKey = env.NEWSBLUR_USERNAME;
+  const auth = userObject({ env, userKey });
+  await auth.setSession(session);
+  const previous = readLireSession(request);
+  if (previous?.userKey === userKey) await auth.revokeToken(previous.token);
+  const token = await auth.issueToken();
   return new Response(null, {
     status: 302,
-    headers: { Location: "/", "Cache-Control": "no-store" },
+    headers: {
+      Location: "/",
+      "Cache-Control": "no-store",
+      "Set-Cookie": lireSetCookie({ value: `${userKey}.${token}` }),
+    },
   });
 };
 
@@ -120,6 +153,27 @@ const isSameOrigin = (request: Request): boolean => {
   } catch {
     return false;
   }
+};
+
+const isJson = (request: Request): boolean =>
+  !!request.headers.get("Content-Type")?.startsWith("application/json");
+
+const handleLogout = async ({
+  request,
+  env,
+}: {
+  request: Request;
+  env: Env;
+}): Promise<Response> => {
+  if (!isSameOrigin(request) || !isJson(request))
+    return json({ body: { error: "forbidden" }, status: 403 });
+  const previous = readLireSession(request);
+  if (previous?.userKey === env.NEWSBLUR_USERNAME)
+    await userObject({ env, userKey: previous.userKey }).revokeToken(previous.token);
+  return new Response(null, {
+    status: 204,
+    headers: { "Cache-Control": "no-store", "Set-Cookie": lireSetCookie({ value: "", maxAge: 0 }) },
+  });
 };
 
 const cookieUpstream =
@@ -152,7 +206,7 @@ const serve = async ({ request, env }: { request: Request; env: Env }): Promise<
   const hasBody = request.method === "POST" || request.method === "PATCH";
   if (request.method !== "GET" && !isSameOrigin(request))
     return json({ body: { error: "forbidden" }, status: 403 });
-  if (hasBody && !request.headers.get("Content-Type")?.startsWith("application/json")) {
+  if (hasBody && !isJson(request)) {
     return json({ body: { error: "forbidden" }, status: 403 });
   }
 
@@ -165,15 +219,21 @@ const serve = async ({ request, env }: { request: Request; env: Env }): Promise<
     }
   }
 
-  const auth = userObject({ env, userKey: env.NEWSBLUR_USERNAME });
+  const signedOut = (): Response =>
+    match.route.path === "/api/auth/status"
+      ? json({ body: { signedIn: false } })
+      : json({ body: { error: "sign_in_required" }, status: 401 });
+
+  const lire = readLireSession(request);
+  if (!lire || lire.userKey !== env.NEWSBLUR_USERNAME) return signedOut();
+  const auth = userObject({ env, userKey: lire.userKey });
+  if (!(await auth.hasToken(lire.token))) return signedOut();
+
   let session = await auth.getSession();
   let loggedInNow = false;
   if (!session) {
     session = await logIn(env);
-    if (!session) {
-      if (match.route.path === "/api/auth/status") return json({ body: { signedIn: false } });
-      return json({ body: { error: "sign_in_required" }, status: 401 });
-    }
+    if (!session) return signedOut();
     await auth.setSession(session);
     loggedInNow = true;
   }
@@ -217,7 +277,8 @@ const serve = async ({ request, env }: { request: Request; env: Env }): Promise<
 
 const route = async ({ request, env }: { request: Request; env: Env }): Promise<Response> => {
   const { pathname } = new URL(request.url);
-  if (pathname === LOGIN_PATH && request.method === "GET") return handleLogin({ env });
+  if (pathname === LOGIN_PATH && request.method === "GET") return handleLogin({ request, env });
+  if (pathname === LOGOUT_PATH && request.method === "POST") return handleLogout({ request, env });
   return serve({ request, env });
 };
 

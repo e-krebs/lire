@@ -10,11 +10,19 @@ serves the cached shell for page loads. The routes are the Lire contract in
 Every `/api/` response carries `Cache-Control: no-store`, and the client adapter reads with
 `cache: "no-store"`, so no HTTP cache serves a stale list.
 
+## Session cookie
+
+`GET /api/auth/login` sets `lire_session=<userKey>.<token>`, with `HttpOnly; Secure; SameSite=Lax;
+Path=/api; Max-Age=15552000`. `<userKey>` is the NewsBlur username and `<token>` is opaque. Every
+contract route needs a cookie the Worker holds a token for. Without one, the Worker answers
+`401 sign_in_required`, except `GET /api/auth/status`, which answers `200 { signedIn: false }`.
+
 ## Sign-in routes
 
 | Method | Path | Behavior |
 | --- | --- | --- |
-| GET | `/api/auth/login` | Logs in to NewsBlur with the Worker's credentials, stores the session and redirects to `/`. A failure answers 400 with a page that links back to the login |
+| GET | `/api/auth/login` | Logs in to NewsBlur with the Worker's credentials, stores the session, sets the `lire_session` cookie and redirects to `/`. A failure answers 400 with a page that links back to the login, and sets no cookie |
+| POST | `/api/auth/logout` | Revokes the cookie's token and clears the cookie. Answers 204, with or without a cookie. Non-same-origin or non-JSON requests answer 403 |
 
 ## Contract routes
 
@@ -24,7 +32,7 @@ folder title, an entry id is the story hash. A stream key is `all`, `read`, `fol
 
 | Method | Path | Behavior |
 | --- | --- | --- |
-| GET | `/api/auth/status` | `{ signedIn }`, true when a session is stored or a login succeeds |
+| GET | `/api/auth/status` | `{ signedIn }`, true when the cookie is valid and a session is stored or a login succeeds. Without a valid cookie, `200 { signedIn: false }` |
 | GET | `/api/profile` | `{ username, email? }` |
 | GET | `/api/categories` | `[{ id, label, feedIds }]`, ordered by the `lire.categoryOrder` preference |
 | POST | `/api/categories` | Create a category, body `{ label }`. 409 when a category already has the label |
@@ -79,7 +87,7 @@ Names and roles only.
 | `ACCESS_TEAM_DOMAIN` | Worker var | Access team domain that issues the JWT |
 | `ACCESS_AUD` | Worker var | Expected JWT audience |
 | `ACCESS_ALLOWED_EMAIL` | Worker secret | Owner email pin, set by CI from a GitHub secret |
-| `NEWSBLUR_AUTH` | Worker binding | Durable Object namespace holding the session cookie, the user id and the feed-list cache |
+| `NEWSBLUR_AUTH` | Worker binding | Durable Object namespace holding the NewsBlur session, the hashes of the browser tokens and the feed-list cache |
 | `E2E_COVERAGE` | test | `1` turns on Playwright coverage |
 | `COVERAGE_DIR` | test | Output directory of the Vitest coverage scripts |
 
