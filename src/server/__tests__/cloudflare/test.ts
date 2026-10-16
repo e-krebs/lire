@@ -11,7 +11,6 @@ const WORKERS_ENV = {
   ACCESS_ALLOWED_EMAIL: "owner@example.com",
   NEWSBLUR_USERNAME: "owner",
   NEWSBLUR_PASSWORD: "test-password",
-  NEWSBLUR_NEWSLETTER_ADDRESS: "demo-0000@newsletters.newsblur.com",
 };
 
 interface Entry {

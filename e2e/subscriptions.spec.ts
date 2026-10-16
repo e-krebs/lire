@@ -141,7 +141,7 @@ test.describe("Subscriptions manager", () => {
 
     const panel = pageUi.panel({ phone, title: "Add a newsletter" });
     await expect(panel).toBeVisible();
-    await expect(panel.getByText(/@newsletters\.newsblur\.com/)).toBeVisible();
+    await expect(panel.getByText("ada-reader-demo0000@newsletters.newsblur.com")).toBeVisible();
     await expect(panel.getByRole("button", { name: "Copy" })).toBeVisible();
 
     await pageUi.closeButton({ phone, title: "Add a newsletter" }).click();

@@ -6,6 +6,7 @@ import type { FeedsAnswer, NewsblurFetch, NewsblurRequest } from "shared/bff/ups
 // session fields NewsBlur's json_view adds; a Response goes out as-is.
 
 export const USER_ID = 42;
+export const SHARE_EXT_TOKEN = "tok123";
 
 export interface FakeUpstream {
   fetch: NewsblurFetch;
@@ -66,14 +67,12 @@ export const send = async ({
   body,
   upstream,
   cache = memoryCache(),
-  newsletterAddress = "demo-0000@newsletters.newsblur.com",
 }: {
   method?: string;
   url: string;
   body?: unknown;
   upstream: FakeUpstream;
   cache?: FeedsCache;
-  newsletterAddress?: string;
 }): Promise<BffResponse> => {
   const parsed = new URL(url, "https://lire.test");
   const match = matchRoute({ method, pathname: parsed.pathname });
@@ -84,7 +83,7 @@ export const send = async ({
     query: parsed.searchParams,
     body,
     upstream: upstream.fetch,
-    config: { newsletterAddress, userId: USER_ID },
+    config: { userId: USER_ID },
     cache,
   });
 };
@@ -112,6 +111,7 @@ export const FEEDS_ANSWER = {
     "9": { id: 9, feed_title: "Orphan", feed_address: "https://o.example/feed" },
   },
   folders: [4, { Tech: [1, { Deep: [2] }] }, { News: [2, 3, 7] }, { Empty: [] }, { Tech: [3] }],
+  share_ext_token: SHARE_EXT_TOKEN,
 };
 
 export const story = (overrides: Record<string, unknown> = {}) => ({

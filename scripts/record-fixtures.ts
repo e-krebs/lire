@@ -117,7 +117,7 @@ const profile = UserProfileAnswerSchema.parse(await call({ path: "/social/load_u
 write({ relPath: "profile.json", data: profile });
 
 const feedsAnswer = FeedsAnswerSchema.parse(await call({ path: "/reader/feeds" }));
-write({ relPath: "feeds.json", data: feedsAnswer });
+write({ relPath: "feeds.json", data: { ...feedsAnswer, share_ext_token: "demo0000" } });
 
 const refreshAnswer = RefreshFeedsAnswerSchema.parse(await call({ path: "/reader/refresh_feeds" }));
 write({ relPath: "refresh_feeds.json", data: refreshAnswer });

@@ -69,7 +69,7 @@ const setup = () => {
       query: parsed.searchParams,
       body,
       upstream,
-      config: { newsletterAddress: "demo@newsletters.example.test", userId: FAKE_USER_ID },
+      config: { userId: FAKE_USER_ID },
       cache,
     });
   };
@@ -115,7 +115,7 @@ describe("createFakeNewsblur through handle", () => {
         schema: NewsletterAddressSchema,
         body: (await send({ url: "/api/newsletter-address" })).body,
       }),
-    ).toEqual({ emailAddress: "demo@newsletters.example.test" });
+    ).toEqual({ emailAddress: "ada-reader-demo0000@newsletters.newsblur.com" });
     const search = parse({
       schema: FeedSearchResultsSchema,
       body: (await send({ url: "/api/search/feeds?q=garden" })).body,

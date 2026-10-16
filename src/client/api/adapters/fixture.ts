@@ -90,8 +90,6 @@ const fixtures: FakeNewsblurFixtures =
 
 // ---- Backend ------------------------------------------------------------------------------------
 
-export const DEMO_NEWSLETTER_ADDRESS = "demo-0000@newsletters.newsblur.com";
-
 const toSearchParams = (query: TransportRequest["query"]): URLSearchParams => {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query ?? {})) {
@@ -132,7 +130,7 @@ export const createFixtureBackend = ({ fixtures }: { fixtures: FakeNewsblurFixtu
         query: toSearchParams(query),
         body,
         upstream,
-        config: { newsletterAddress: DEMO_NEWSLETTER_ADDRESS, userId: FAKE_USER_ID },
+        config: { userId: FAKE_USER_ID },
         cache,
       });
     } catch {

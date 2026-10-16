@@ -10,7 +10,7 @@ import type { Category, Counts, Entry, EntryPage, Feed, Preferences } from "shar
 import { PreferencesUpdateSchema } from "shared/feedsApi/types";
 import { server } from "test/msw";
 import { seedCategories, seedCategoryId, seedCategoryKey } from "test/seedCategories";
-import { DEMO_NEWSLETTER_ADDRESS, resetFixtureState } from "../adapters/fixture";
+import { resetFixtureState } from "../adapters/fixture";
 import { ApiError, getFeeds } from "../client";
 import { markQueue } from "../markQueue";
 import { keys } from "../keys";
@@ -43,6 +43,8 @@ import {
   useUpdateFeed,
   useWebFeedStatus,
 } from "../queries";
+
+const DEMO_NEWSLETTER_ADDRESS = "ada-reader-demo0000@newsletters.newsblur.com";
 
 const techKey = seedCategoryKey("Tech");
 

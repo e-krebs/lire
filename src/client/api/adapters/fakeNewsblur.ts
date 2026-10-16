@@ -307,7 +307,8 @@ export const createFakeNewsblur = ({
   const read = ({ path, query, form }: NewsblurRequest): Answer | undefined => {
     const params: Params = { ...query, ...form };
     if (path === "/webfeed/status") return webFeedStatus(one({ params, key: "request_id" }));
-    if (path === "/reader/feeds") return { feeds, folders: tree };
+    if (path === "/reader/feeds")
+      return { share_ext_token: initial.share_ext_token, feeds, folders: tree };
     if (path === "/reader/refresh_feeds") return refreshFeeds();
     if (path === "/reader/read_stories") {
       const list = readLog.flatMap((hash) => stories.get(hash) ?? []);
