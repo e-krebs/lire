@@ -179,19 +179,27 @@ describe("markQueue", () => {
 
   it("lets queued reads go on once the status settles without a user", async () => {
     vi.stubEnv("VITE_API_MODE", "real");
-    const flush = vi.spyOn(markQueue, "flush").mockResolvedValue(undefined);
+    // A fresh module under fake timers: the replay gate's 3 s cap starts at import, so the shared
+    // module may already be past it on a slow runner.
+    vi.spyOn(window, "addEventListener").mockImplementation(() => {});
+    vi.spyOn(document, "addEventListener").mockImplementation(() => {});
+    vi.resetModules();
+    vi.useFakeTimers();
     try {
-      void sendQueuedReads();
-      await settle();
+      const { sendQueuedReads: send, markQueue: freshQueue } = await import("../markQueue");
+      const flush = vi.spyOn(freshQueue, "flush").mockResolvedValue(undefined);
+      void send();
+      await vi.advanceTimersByTimeAsync(2999);
       expect(flush).not.toHaveBeenCalled();
 
-      markQueue.noUser();
+      freshQueue.noUser();
+      await vi.advanceTimersByTimeAsync(0);
 
-      await vi.waitFor(() => {
-        expect(flush).toHaveBeenCalled();
-      });
+      expect(flush).toHaveBeenCalled();
     } finally {
+      vi.useRealTimers();
       vi.restoreAllMocks();
+      vi.resetModules();
     }
   });
 
