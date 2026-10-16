@@ -26,6 +26,9 @@ const setup = (): void => {
 
 const entry = { id: "101:aa", feedId: "101", title: "One", published: 1, unread: true };
 
+const retryAfterOf = (error: unknown): number | undefined =>
+  error instanceof ApiError ? error.retryAfter : undefined;
+
 describe("client (http adapter)", () => {
   it("maps a 401 response to a sign_in_required ApiError", async () => {
     setup();
@@ -49,6 +52,45 @@ describe("client (http adapter)", () => {
     await expect(getProfile()).rejects.toMatchObject(
       new ApiError({ status: 429, code: "rate_limited" }),
     );
+  });
+
+  it("reads retryAfter from a 429 body", async () => {
+    setup();
+    server.use(
+      http.get("/api/profile", () =>
+        HttpResponse.json({ error: "rate_limited", retryAfter: 60 }, { status: 429 }),
+      ),
+    );
+
+    await expect(getProfile()).rejects.toMatchObject({
+      status: 429,
+      code: "rate_limited",
+      retryAfter: 60,
+    });
+  });
+
+  it("leaves retryAfter out of a 429 with no JSON body", async () => {
+    setup();
+    server.use(http.get("/api/profile", () => new HttpResponse(null, { status: 429 })));
+
+    const error = await getProfile().catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({ status: 429, code: "rate_limited" });
+    expect(retryAfterOf(error)).toBeUndefined();
+  });
+
+  it("ignores a retryAfter that is not a positive number", async () => {
+    setup();
+    server.use(
+      http.get("/api/profile", () =>
+        HttpResponse.json({ error: "rate_limited", retryAfter: -5 }, { status: 429 }),
+      ),
+    );
+
+    const error = await getProfile().catch((caught: unknown) => caught);
+
+    expect(retryAfterOf(error)).toBeUndefined();
   });
 
   it("maps any other error status to an http ApiError", async () => {
@@ -208,6 +250,21 @@ describe("client (http adapter)", () => {
 
     server.use(http.get("/api/auth/status", () => new HttpResponse(null, { status: 500 })));
     await expect(getAuthStatus()).resolves.toEqual({ signedIn: false });
+  });
+
+  it("throws a rate_limited ApiError with retryAfter for a 429 auth status", async () => {
+    setup();
+    server.use(
+      http.get("/api/auth/status", () =>
+        HttpResponse.json({ error: "rate_limited", retryAfter: 30 }, { status: 429 }),
+      ),
+    );
+
+    await expect(getAuthStatus()).rejects.toMatchObject({
+      status: 429,
+      code: "rate_limited",
+      retryAfter: 30,
+    });
   });
 
   it("answers signed in without a request in mock mode", async () => {
