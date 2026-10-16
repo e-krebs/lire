@@ -8,7 +8,9 @@ import {
   PreferencesSchema,
 } from "shared/feedsApi/types";
 import type { TransportRequest } from "client/api/transport";
-import { DEMO_NEWSLETTER_ADDRESS, fixtureTransport, resetFixtureState } from "../fixture";
+import { fixtureTransport, resetFixtureState } from "../fixture";
+
+const DEMO_NEWSLETTER_ADDRESS = "ada-reader-demo0000@newsletters.newsblur.com";
 
 const send = async (request: TransportRequest) => {
   const response = await fixtureTransport(request);

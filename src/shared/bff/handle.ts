@@ -66,7 +66,6 @@ import {
 } from "./upstream";
 
 interface BffConfig {
-  newsletterAddress: string;
   // The NewsBlur user id stored at sign-in.
   userId: number;
   geo?: { lat: number; lon: number; timezone: string };
@@ -210,10 +209,13 @@ const mutate = async <T>({ ctx, run }: { ctx: Context; run: () => Promise<T> }):
   }
 };
 
-const loadLibrary = async (ctx: Context): Promise<Library> => {
+const NEWSLETTER_HOST = "newsletters.newsblur.com";
+
+// A cached answer from before the token was cached lacks it, so `needsToken` refetches.
+const loadFeeds = async ({ ctx, needsToken = false }: { ctx: Context; needsToken?: boolean }) => {
   const { value, generation } = await ctx.cache.get();
   const cached = FeedsAnswerSchema.safeParse(value);
-  if (cached.success) return toLibrary(cached.data);
+  if (cached.success && (!needsToken || cached.data.share_ext_token)) return cached.data;
   const answer = await call({
     ctx,
     request: {
@@ -224,7 +226,18 @@ const loadLibrary = async (ctx: Context): Promise<Library> => {
     schema: FeedsAnswerSchema,
   });
   await ctx.cache.set({ value: answer, generation });
-  return toLibrary(answer);
+  return answer;
+};
+
+const loadLibrary = async (ctx: Context): Promise<Library> => toLibrary(await loadFeeds({ ctx }));
+
+const loadUsername = async (ctx: Context): Promise<string> => {
+  const { user_profile } = await call({
+    ctx,
+    request: { method: "GET", path: "/social/load_user_profile" },
+    schema: UserProfileAnswerSchema,
+  });
+  return user_profile.username;
 };
 
 const findCategory = ({ library, id }: { library: Library; id: string }): Category => {
@@ -507,14 +520,7 @@ const HANDLERS: Record<RouteKey, Handler> = {
   // The Worker answers this one itself when it has no session and the login fails; reaching the core means signed in.
   "GET /api/auth/status": ({ ctx }) => ok({ signedIn: true, userId: ctx.config.userId }),
 
-  "GET /api/profile": async ({ ctx }) => {
-    const { user_profile } = await call({
-      ctx,
-      request: { method: "GET", path: "/social/load_user_profile" },
-      schema: UserProfileAnswerSchema,
-    });
-    return ok({ username: user_profile.username });
-  },
+  "GET /api/profile": async ({ ctx }) => ok({ username: await loadUsername(ctx) }),
 
   "GET /api/categories": async ({ ctx }) => {
     const [library, preferences] = await Promise.all([loadLibrary(ctx), readPreferences(ctx)]);
@@ -935,9 +941,11 @@ const HANDLERS: Record<RouteKey, Handler> = {
     return NO_CONTENT;
   },
 
-  "GET /api/newsletter-address": ({ ctx }) => {
-    if (!ctx.config.newsletterAddress) throw notFound();
-    return ok({ emailAddress: ctx.config.newsletterAddress });
+  "GET /api/newsletter-address": async ({ ctx }) => {
+    const username = await loadUsername(ctx);
+    const { share_ext_token: token } = await loadFeeds({ ctx, needsToken: true });
+    if (!username || !token) throw notFound();
+    return ok({ emailAddress: `${username}-${token}@${NEWSLETTER_HOST}` });
   },
 
   "GET /api/sun": ({ ctx, query }) => {

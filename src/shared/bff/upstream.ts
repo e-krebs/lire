@@ -53,6 +53,7 @@ export const FeedsAnswerSchema = z.object({
       .transform((feeds) => Object.fromEntries(feeds.map((feed) => [String(feed.id), feed]))),
   ]),
   folders: z.array(FolderItemSchema),
+  share_ext_token: z.string().optional(),
 });
 export type FeedsAnswer = z.infer<typeof FeedsAnswerSchema>;
 

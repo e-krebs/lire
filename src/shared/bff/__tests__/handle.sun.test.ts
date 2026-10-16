@@ -17,7 +17,7 @@ const sun = async ({ url, geo }: { url: string; geo?: Geo }) => {
     query: parsed.searchParams,
     body: undefined,
     upstream: upstream.fetch,
-    config: { newsletterAddress: "", userId: 1, geo },
+    config: { userId: 1, geo },
     cache: memoryCache(),
   });
   expect(upstream.calls).toEqual([]);

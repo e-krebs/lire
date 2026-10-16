@@ -79,7 +79,6 @@ the front. The account menu's Version tells which build runs.
 | `NEWSBLUR_HOST` | `[vars]` in wrangler.toml | NewsBlur base URL |
 | `NEWSBLUR_USERNAME` | GitHub repo secret, Worker secret | NewsBlur login the Worker uses |
 | `NEWSBLUR_PASSWORD` | GitHub repo secret, Worker secret | Password of that NewsBlur account |
-| `NEWSBLUR_NEWSLETTER_ADDRESS` | GitHub repo secret, Worker secret | The newsletter address the app shows |
 | `LIRE_KEYSTORE_BASE64` | GitHub repo secret | Android signing keystore, base64 |
 | `LIRE_KEYSTORE_PASSWORD` | GitHub repo secret | Password of that keystore and its `lire` key |
 | `LIRE_PLAY_SERVICE_ACCOUNT_JSON` | GitHub repo secret | Google service account key that uploads the AAB to Play |
@@ -90,25 +89,21 @@ The API token carries these scopes:
   Organizations, Identity Providers, and Groups Read.
 - Zone `krebs.tech` only: Workers Routes Edit, DNS Edit, Zone Read.
 
-CI passes `ACCESS_ALLOWED_EMAIL`, `NEWSBLUR_USERNAME`, `NEWSBLUR_PASSWORD` and
-`NEWSBLUR_NEWSLETTER_ADDRESS` to the Worker with `wrangler deploy --secrets-file`, which never
-deletes existing secrets. The `deploy-worker` job fails when `NEWSBLUR_USERNAME` or `NEWSBLUR_PASSWORD` is empty. The newsletter address holds
-NewsBlur's secret token, so anyone who has it can post into the feed list: keep it out of logs and
-commits. `[vars]` come from wrangler.toml on every deploy. A CI deploy fails
+CI passes `ACCESS_ALLOWED_EMAIL`, `NEWSBLUR_USERNAME` and `NEWSBLUR_PASSWORD` to the Worker with
+`wrangler deploy --secrets-file`, which never deletes existing secrets. The `deploy-worker` job
+fails when `NEWSBLUR_USERNAME` or `NEWSBLUR_PASSWORD` is empty. `[vars]` come from wrangler.toml on every deploy. A CI deploy fails
 without the pin; a Worker deployed without it trusts the Access policy alone. Never commit a
 secret value.
 
 ## NewsBlur account
 
-Sign-in needs the NewsBlur account's login and three GitHub secrets before the Worker deploys. The
+Sign-in needs the NewsBlur account's login and two GitHub secrets before the Worker deploys. The
 account must have a password: `/api/login` rejects an account that has none. Until the secrets
 exist, `preflight` fails on the missing username and the Worker job fails on the empty password.
 
 1. Add the GitHub repo secret `NEWSBLUR_USERNAME` with the account's username:
    `gh secret set NEWSBLUR_USERNAME --repo e-krebs/lire`.
 2. Add the GitHub repo secret `NEWSBLUR_PASSWORD` with the account's password.
-3. Add the GitHub repo secret `NEWSBLUR_NEWSLETTER_ADDRESS`. Copy the address
-   (`<username>-<token>@newsletters.newsblur.com`) from the NewsBlur settings.
 
 After a password change, update `NEWSBLUR_PASSWORD` and redeploy the Worker. The recorder reads the
 same two names from `.env.local` (see [Record the fixtures](record-fixtures.md)).
@@ -222,7 +217,7 @@ auth class and the token it stored. The first deploy after the move applies it.
 
 CI deploys the Worker through the `deploy-worker` job. To deploy from a machine instead, set
 `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, write `ACCESS_ALLOWED_EMAIL`,
-`NEWSBLUR_USERNAME`, `NEWSBLUR_PASSWORD` and `NEWSBLUR_NEWSLETTER_ADDRESS` to a JSON file, as one
+`NEWSBLUR_USERNAME` and `NEWSBLUR_PASSWORD` to a JSON file, as one
 object of strings, and run:
 
 ```sh

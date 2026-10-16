@@ -251,7 +251,6 @@ const serve = async ({ request, env }: { request: Request; env: Env }): Promise<
       body,
       upstream: cookieUpstream({ env, sessionId: current.sessionId }),
       config: {
-        newsletterAddress: env.NEWSBLUR_NEWSLETTER_ADDRESS,
         userId: current.userId,
         geo: geoOf(request),
       },

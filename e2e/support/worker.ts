@@ -110,7 +110,6 @@ export const test = base.extend<
         NEWSBLUR_HOST,
         NEWSBLUR_USERNAME: USERNAME,
         NEWSBLUR_PASSWORD: workerPassword,
-        NEWSBLUR_NEWSLETTER_ADDRESS: "newsletters@newsblur.test",
         ACCESS_TEAM_DOMAIN: TEAM_DOMAIN,
         ACCESS_AUD: AUDIENCE,
         ACCESS_ALLOWED_EMAIL: OWNER,
@@ -133,6 +132,9 @@ export const test = base.extend<
           if (endpoint.pathname === "/social/load_user_profile" && request.method === "GET") {
             outbound.push(call);
             return profileEndpoint(call);
+          }
+          if (endpoint.pathname === "/reader/feeds" && request.method === "GET") {
+            return Response.json({ share_ext_token: "demo0000", feeds: [], folders: [] });
           }
         }
         unexpected.push(`${request.method} ${request.url}`);

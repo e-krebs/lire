@@ -8,7 +8,7 @@ const DIST = "dist";
 const FORBIDDEN = [
   /\bNEWSBLUR_PASSWORD\b/,
   // A newsletter address carries NewsBlur's secret token; only the demo address may ship.
-  /(?<!\bdemo-0000)@newsletters\.newsblur\.com\b/,
+  /(?<!\bada-reader-demo0000)@newsletters\.newsblur\.com\b/,
   /sk_test_[A-Za-z0-9]+/,
   /sk_live_[A-Za-z0-9]+/,
 ];

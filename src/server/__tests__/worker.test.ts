@@ -432,6 +432,26 @@ describe("worker", () => {
       expect((await auth().getFeedsCache()).value).toBeUndefined();
     });
 
+    it("derives the newsletter address from the profile and the feeds token", async () => {
+      await setup();
+      await signIn();
+      upstream = (request) => {
+        const path = pathOf(request);
+        if (path === "/reader/feeds")
+          return Response.json({ ...feedsAnswer, share_ext_token: "tok123" });
+        if (path === "/social/load_user_profile") {
+          return Response.json({ ...session, user_profile: { username: "owner" } });
+        }
+        return Response.json({ code: 1 });
+      };
+
+      const response = await authed("/api/newsletter-address");
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        emailAddress: "owner-tok123@newsletters.newsblur.com",
+      });
+    });
+
     it("answers 204 with no body for a same-origin DELETE without a Content-Type", async () => {
       await setup();
       await signIn();

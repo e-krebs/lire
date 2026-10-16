@@ -2,7 +2,14 @@ import { z } from "zod";
 import { describe, expect, it } from "vitest";
 import { encodeCursor } from "../cursor";
 import { FeedsAnswerSchema } from "../upstream";
-import { FEEDS_ANSWER, fakeUpstream, memoryCache, send, story } from "test/bffHarness";
+import {
+  FEEDS_ANSWER,
+  SHARE_EXT_TOKEN,
+  fakeUpstream,
+  memoryCache,
+  send,
+  story,
+} from "test/bffHarness";
 
 const feedsReply = { "GET /reader/feeds": FEEDS_ANSWER };
 const fullPage = (size: number) => Array.from({ length: size }, () => story());
@@ -381,20 +388,53 @@ describe("handle reads", () => {
   });
 
   describe("when the newsletter address is read", () => {
-    it("answers the configured address", async () => {
-      expect(await send({ url: "/api/newsletter-address", upstream: fakeUpstream({}) })).toEqual({
+    const url = "/api/newsletter-address";
+    const profileReply = (username: string) => ({
+      "GET /social/load_user_profile": { user_profile: { username, user_id: 42 } },
+    });
+    const withToken = { "GET /reader/feeds": FEEDS_ANSWER };
+    const withoutToken = {
+      "GET /reader/feeds": { feeds: FEEDS_ANSWER.feeds, folders: FEEDS_ANSWER.folders },
+    };
+    const address = `ada-${SHARE_EXT_TOKEN}@newsletters.newsblur.com`;
+
+    it("derives the address from the username and the feeds token", async () => {
+      const upstream = fakeUpstream({ ...profileReply("ada"), ...withToken });
+      expect(await send({ url, upstream })).toEqual({
         status: 200,
-        body: { emailAddress: "demo-0000@newsletters.newsblur.com" },
+        body: { emailAddress: address },
       });
     });
 
-    it("answers 404 when none is configured", async () => {
-      const response = await send({
-        url: "/api/newsletter-address",
-        upstream: fakeUpstream({}),
-        newsletterAddress: "",
+    it("answers 404 when the fresh feeds answer has no token", async () => {
+      const upstream = fakeUpstream({ ...profileReply("ada"), ...withoutToken });
+      expect((await send({ url, upstream })).status).toBe(404);
+    });
+
+    it("answers 404 when the username is empty", async () => {
+      const upstream = fakeUpstream({ ...profileReply(""), ...withToken });
+      expect((await send({ url, upstream })).status).toBe(404);
+    });
+
+    it("refetches the feeds once when the cached answer has no token", async () => {
+      const upstream = fakeUpstream({ ...profileReply("ada"), ...withToken });
+      const cache = memoryCache(FeedsAnswerSchema.parse(withoutToken["GET /reader/feeds"]));
+      expect(await send({ url, upstream, cache })).toEqual({
+        status: 200,
+        body: { emailAddress: address },
       });
-      expect(response.status).toBe(404);
+      expect(upstream.calls.filter((call) => call.path === "/reader/feeds")).toHaveLength(1);
+      expect(cache.value).toEqual(FeedsAnswerSchema.parse(FEEDS_ANSWER));
+    });
+
+    it("reads the cached feeds without refetching when the token is cached", async () => {
+      const upstream = fakeUpstream(profileReply("ada"));
+      const cache = memoryCache(FeedsAnswerSchema.parse(FEEDS_ANSWER));
+      expect(await send({ url, upstream, cache })).toEqual({
+        status: 200,
+        body: { emailAddress: address },
+      });
+      expect(upstream.calls.map((call) => call.path)).toEqual(["/social/load_user_profile"]);
     });
   });
 });

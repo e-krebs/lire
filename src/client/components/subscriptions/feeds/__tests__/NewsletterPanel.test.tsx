@@ -4,12 +4,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { act } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { DEMO_NEWSLETTER_ADDRESS, resetFixtureState } from "client/api/adapters/fixture";
+import { resetFixtureState } from "client/api/adapters/fixture";
 import { NewsletterPanel } from "client/components/subscriptions/feeds/NewsletterPanel";
 import { fixtureBackend } from "test/fixtureBackend";
 import { server } from "test/msw";
 
 const SETTLED = { timeout: 3000 };
+const DEMO_NEWSLETTER_ADDRESS = "ada-reader-demo0000@newsletters.newsblur.com";
 
 const ui = {
   async findCopy() {
