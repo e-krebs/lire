@@ -86,8 +86,7 @@ export const toFeed = ({
 export const toLibrary = (answer: FeedsAnswer): Library => {
   const subscriptions = new Map<string, Subscription>();
   const categoryFeeds = new Map<string, Set<string>>();
-  for (const [feedId, placements] of collectPlacements(answer.folders)) {
-    if (!(feedId in answer.feeds)) continue;
+  const subscribe = ({ feedId, placements }: { feedId: string; placements: FolderPath[] }) => {
     const categoryIds = categoryIdsOf(placements);
     subscriptions.set(feedId, {
       feed: toFeed({ upstream: answer.feeds[feedId], categoryIds }),
@@ -96,6 +95,14 @@ export const toLibrary = (answer: FeedsAnswer): Library => {
     for (const categoryId of categoryIds) {
       categoryFeeds.set(categoryId, (categoryFeeds.get(categoryId) ?? new Set()).add(feedId));
     }
+  };
+  const placements = collectPlacements(answer.folders);
+  for (const [feedId, feedPlacements] of placements) {
+    if (feedId in answer.feeds) subscribe({ feedId, placements: feedPlacements });
+  }
+  // NewsBlur can list a feed in `feeds` before a folder holds it; show it at the root.
+  for (const feedId of Object.keys(answer.feeds)) {
+    if (!placements.has(feedId)) subscribe({ feedId, placements: [[]] });
   }
 
   const categories: Category[] = [];

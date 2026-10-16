@@ -7,7 +7,7 @@ describe("library", () => {
   describe("when a feed tree becomes the library", () => {
     const library = toLibrary(FeedsAnswerSchema.parse(FEEDS_ANSWER));
 
-    it("lists the feeds present in the tree, with their top-level folders", () => {
+    it("lists the feeds present in the tree, then the unplaced ones at the root", () => {
       expect(library.feeds).toEqual([
         {
           id: "4",
@@ -40,6 +40,13 @@ describe("library", () => {
           categoryIds: ["News", "Tech"],
           isNewsletter: true,
         },
+        {
+          id: "9",
+          title: "Orphan",
+          feedUrl: "https://o.example/feed",
+          categoryIds: [],
+          isNewsletter: false,
+        },
       ]);
     });
 
@@ -54,6 +61,11 @@ describe("library", () => {
     it("keeps every real folder path", () => {
       expect(library.subscriptions.get("2")?.placements).toEqual([["Tech", "Deep"], ["News"]]);
       expect(library.subscriptions.get("4")?.placements).toEqual([[]]);
+      expect(library.subscriptions.get("9")?.placements).toEqual([[]]);
+    });
+
+    it("drops a tree id that has no feed", () => {
+      expect(library.subscriptions.has("7")).toBe(false);
     });
   });
 
