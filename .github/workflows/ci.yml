@@ -379,7 +379,6 @@ jobs:
       ACCESS_ALLOWED_EMAIL: ${{ secrets.ACCESS_ALLOWED_EMAIL }}
       NEWSBLUR_USERNAME: ${{ secrets.NEWSBLUR_USERNAME }}
       NEWSBLUR_PASSWORD: ${{ secrets.NEWSBLUR_PASSWORD }}
-      NEWSBLUR_NEWSLETTER_ADDRESS: ${{ secrets.NEWSBLUR_NEWSLETTER_ADDRESS }}
     steps:
       - name: Require the Access email pin
         run: |
@@ -398,7 +397,7 @@ jobs:
       - name: Write Worker secrets file
         run: |
           # JSON, not dotenv: dotenv cuts a value at its first "#", which truncated the password.
-          jq -n 'env | {ACCESS_ALLOWED_EMAIL, NEWSBLUR_USERNAME, NEWSBLUR_PASSWORD, NEWSBLUR_NEWSLETTER_ADDRESS}' \
+          jq -n 'env | {ACCESS_ALLOWED_EMAIL, NEWSBLUR_USERNAME, NEWSBLUR_PASSWORD}' \
             > "$RUNNER_TEMP/worker-secrets.json"
       - name: Deploy Worker
         run: yarn worker:deploy --secrets-file "$RUNNER_TEMP/worker-secrets.json"

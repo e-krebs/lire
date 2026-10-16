@@ -22,7 +22,7 @@ The layout, one file per upstream call, is:
 | File | Upstream call |
 | --- | --- |
 | `profile.json` | `/social/load_user_profile` |
-| `feeds.json` | `/reader/feeds` |
+| `feeds.json` | `/reader/feeds`, including the `share_ext_token` the newsletter address derives from |
 | `refresh_feeds.json` | `/reader/refresh_feeds`, the unread counts |
 | `stories/<feedId>.json` | `/reader/feed/<feedId>`, a list of stories |
 | `read_stories.json` | `/reader/read_stories` |

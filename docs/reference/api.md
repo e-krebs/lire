@@ -55,7 +55,7 @@ folder title, an entry id is the story hash. A stream key is `all`, `read`, `fol
 | GET | `/api/search/feeds` | `?q`, answers `[{ feedUrl, title, subscribers? }]` |
 | GET | `/api/preferences` | The `lire.*` preferences, as a record of strings |
 | POST | `/api/preferences` | A partial record. `null` deletes a key |
-| GET | `/api/newsletter-address` | `{ emailAddress }`, 404 when `NEWSBLUR_NEWSLETTER_ADDRESS` is empty |
+| GET | `/api/newsletter-address` | `{ emailAddress }`, derived as `<username>-<share token>@newsletters.newsblur.com`. The username comes from the NewsBlur profile, the token from the feed list answer. 404 when either is empty |
 | GET | `/api/sun` | `?tz=<IANA zone>`, answers `{ phase: day\|dusk, nextChangeAt }` from the Cloudflare position when its zone matches `tz`, else the zone's city |
 
 `/api/sun` makes no NewsBlur call. A zone with no city (`UTC`, `Etc/*`, an unknown name) answers 404, and a malformed `tz` answers 400.
@@ -83,7 +83,6 @@ Names and roles only.
 | `NEWSBLUR_USERNAME`, `NEWSBLUR_PASSWORD` | local | Recorder login, listed in [.env.sample](../../.env.sample) |
 | `NEWSBLUR_HOST` | Worker var | Base URL of NewsBlur |
 | `NEWSBLUR_USERNAME`, `NEWSBLUR_PASSWORD` | Worker secret | The login the Worker posts to NewsBlur, set by CI from GitHub secrets |
-| `NEWSBLUR_NEWSLETTER_ADDRESS` | Worker secret | The newsletter address the app shows, set by CI from a GitHub secret |
 | `ACCESS_TEAM_DOMAIN` | Worker var | Access team domain that issues the JWT |
 | `ACCESS_AUD` | Worker var | Expected JWT audience |
 | `ACCESS_ALLOWED_EMAIL` | Worker secret | Owner email pin, set by CI from a GitHub secret |

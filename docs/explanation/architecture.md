@@ -168,7 +168,7 @@ signed-out 403. A feed panel's reanalyze starts a new analysis, and applying a v
 The Durable Object also caches the folder tree (`/reader/feeds`) for five minutes, since most
 reads need it, and drops it on every subscription or folder write. A refresh drops it too
 (`POST /api/feeds/refresh`), because NewsBlur adds a feed by itself when a new newsletter sender
-writes in. NewsBlur can list that feed in `feeds` before it places it in a folder, so the library shows an unplaced feed in the root.
+writes in. The same cached answer carries the share token that the newsletter address derives from. NewsBlur can list that feed in `feeds` before it places it in a folder, so the library shows an unplaced feed in the root.
 
 ## Mock mode is the default
 
