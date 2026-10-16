@@ -67,7 +67,10 @@ The Worker sends `Cookie: newsblur_sessionid=<id>` and `User-Agent: Lire` upstre
 caller, and POST and PATCH need a JSON content type. Creates answer 201 with the resource, PATCH
 answers 200, and deletes, marks and preference writes answer 204. Errors are JSON: `forbidden`,
 `not_found`, `bad_request`, `conflict` (409), `sign_in_required` (401), `premium_required` (403),
-`upstream_error` (502). The response and
+`upstream_error` (502). NewsBlur's limit on the Worker's IP answers `rate_limited`, with
+`retryAfter` in seconds, including a login or profile limit. The Worker rejects `<script` (any case)
+and `../../../` in any path, query or body value with 400 `bad_request`, because NewsBlur bans the
+shared IP on either sequence. The response and
 request types are in [types.ts](../../src/shared/feedsApi/types.ts).
 
 ## Environment

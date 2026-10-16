@@ -50,7 +50,8 @@ that has not updated loses the new rows.
   one id twice. A replay has no caller waiting, so a failure stays silent. It starts only after the page knows the
   user (`setUser`), so a stored row is never sent before its owner is known.
 - **Retryable failures.** A network error, 401, 403, 408, 429 or 5xx keeps the rows stored and
-  resolves the waiters, so the optimistic mark stays. Any other 4xx drops the rows and rejects the
+  resolves the waiters, so the optimistic mark stays. The Worker answers an upstream NewsBlur limit
+  as `429 rate_limited`, so a 429 here is a real signal from the Worker too. Any other 4xx drops the rows and rejects the
   waiters, so the mark rolls back; a bad request would otherwise loop forever. One `isRetryable`
   helper serves the page and the worker.
 - **Fallback.** Mock and demo builds use a memory store, because fixture state resets on reload

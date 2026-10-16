@@ -392,8 +392,8 @@ fault: only the `svh` sizing does.
 Sign-in state has no route of its own. The shell shows `SignIn` when `/api/auth/status` says
 signed out, or when any query fails with `sign_in_required`. The cache-wide check means a session
 the upstream revokes mid-session still lands the reader on the sign-in screen, whichever query
-noticed first. Queries never retry a `401` or a `429`
-([queryClient.ts](../../src/client/api/queryClient.ts#L8-L11)).
+noticed first. Queries never retry a `401`. A `429` retries twice, each after the `retryAfter` the Worker sent
+(60 s when it is missing, capped at 2 min) ([queryClient.ts](../../src/client/api/queryClient.ts#L11-L16)).
 
 ### Empty-state art
 
