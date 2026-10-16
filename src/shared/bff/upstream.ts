@@ -77,7 +77,10 @@ const StorySchema = z.object({
 export type Story = z.infer<typeof StorySchema>;
 
 // `/reader/feed/:id`, `/reader/river_stories` and `/reader/read_stories`.
-export const StoriesAnswerSchema = z.object({ stories: z.array(StorySchema) });
+export const StoriesAnswerSchema = z.object({
+  stories: z.array(StorySchema),
+  has_more: z.boolean().optional(),
+});
 
 // `/rss_feeds/feed_autocomplete?v=2`.
 export const FeedAutocompleteAnswerSchema = z.object({

@@ -158,8 +158,9 @@ export const createFakeNewsblur = ({
   }) => {
     const page = Math.max(1, Number(one({ params, key: "page" })) || 1);
     const size = fixedSize ?? (Number(one({ params, key: "limit" })) || RIVER_PAGE_SIZE);
-    const items = filtered({ list, params }).slice((page - 1) * size, page * size);
-    return { stories: items.map(withState) };
+    const matches = filtered({ list, params });
+    const items = matches.slice((page - 1) * size, page * size);
+    return { stories: items.map(withState), has_more: matches.length > page * size };
   };
 
   const folderEntries = (title: string) => tree.filter(isFolder).filter((item) => title in item);
