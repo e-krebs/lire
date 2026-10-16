@@ -31,7 +31,7 @@ describe("handle reads", () => {
       const cache = memoryCache();
       const response = await send({ url: "/api/feeds", upstream, cache });
       expect(response.status).toBe(200);
-      expect(response.body).toHaveLength(4);
+      expect(response.body).toHaveLength(5);
       expect(upstream.calls).toEqual([
         {
           method: "GET",
@@ -113,8 +113,8 @@ describe("handle reads", () => {
     expect(await send({ url: "/api/counts", upstream })).toEqual({
       status: 200,
       body: {
-        all: 11,
-        feeds: { "1": 6, "2": 4, "3": 0, "4": 1 },
+        all: 61,
+        feeds: { "1": 6, "2": 4, "3": 0, "4": 1, "9": 50 },
         categories: { Tech: 10, News: 4, Empty: 0 },
       },
     });
@@ -239,7 +239,7 @@ describe("handle reads", () => {
           limit: "5",
           read_filter: "all",
           include_hidden: "true",
-          feeds: ["4", "1", "2", "3"],
+          feeds: ["4", "1", "2", "3", "9"],
         },
       });
     });

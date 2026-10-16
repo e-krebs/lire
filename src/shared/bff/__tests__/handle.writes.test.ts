@@ -371,8 +371,8 @@ describe("handle writes", () => {
       expect((await patch("1", { categoryIds: ["Tech"] })).forms).toEqual([]);
     });
 
-    it("answers 404 for a feed outside the tree", async () => {
-      expect((await patch("9", { title: "X" })).response.status).toBe(404);
+    it("answers 404 for a feed in no folder and not in feeds", async () => {
+      expect((await patch("8", { title: "X" })).response.status).toBe(404);
     });
   });
 

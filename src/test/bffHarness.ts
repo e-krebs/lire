@@ -89,7 +89,7 @@ export const send = async ({
   });
 };
 
-// Four feeds in the tree, one orphaned subscription (9) and one tree id with no feed (7).
+// Four feeds in the tree, feed 9 in no folder and one tree id with no feed (7).
 // Feed 2 sits in a nested folder and in News; Tech appears twice at the top level.
 export const FEEDS_ANSWER = {
   feeds: {
