@@ -239,6 +239,23 @@ body {
 .prose-reader img[data-run] {
   width: 100%;
   max-height: none;
+  display: block;
+  margin: 0;
+  border-radius: 0;
+}
+.prose-reader img[data-run-start] {
+  border-radius: 0.375rem 0.375rem 0 0;
+}
+.prose-reader img[data-run-end] {
+  border-radius: 0 0 0.375rem 0.375rem;
+}
+/* The hairline is an inset outline, so the overlap leaves one line instead of two. */
+.prose-reader img[data-run]:not([data-run-start]) {
+  margin-top: -1px;
+}
+/* An inline wrapper around a panel would leave an inline box beside the block. */
+.prose-reader :is(a, span, em, strong, b, i, u, small, mark):has(img[data-run]) {
+  display: block;
 }
 .prose-reader figure {
   margin-inline: 0;

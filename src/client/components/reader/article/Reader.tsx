@@ -10,7 +10,8 @@ import { SourceListKeyContext } from "client/components/reader/article/SourceLis
 import { readingTime } from "client/utils/readingTime";
 import { useT } from "client/i18n/useT";
 import { replaceBrokenImage } from "client/utils/brokenImage";
-import { INLINE_WRAPPERS, captionImageTitles } from "client/utils/imageTitles";
+import { captionImageTitles } from "client/utils/imageTitles";
+import { markImageRuns } from "client/utils/imageRuns";
 import { stripLeadingBreaks } from "client/utils/leadingBreaks";
 import {
   EMBED_ALLOW,
@@ -61,25 +62,16 @@ postPurify.addHook("afterSanitizeAttributes", (node) => {
   node.setAttribute("sandbox", EMBED_SANDBOX);
 });
 
-// CSS `:only-child` and `:has()` ignore text nodes, so only the text tells an image on its own line (or a run of them) from one in a line of text.
-postPurify.addHook("afterSanitizeAttributes", (node) => {
-  if (node.tagName !== "IMG" || node.classList.contains("emoji")) return;
-  let container = node.parentElement;
-  while (container && INLINE_WRAPPERS.has(container.tagName)) container = container.parentElement;
-  if (container === null) return;
-  if (container.textContent.trim() !== "") return;
-  node.setAttribute("data-lone", "");
-  if (container.querySelectorAll("img").length > 1) node.setAttribute("data-run", "");
-});
-
 const sanitizePost = (html: string): string =>
   stripLeadingBreaks({
     html: captionImageTitles({
-      html: embedQuotes({
-        html: postPurify.sanitize(html, {
-          USE_PROFILES: { html: true },
-          FORBID_TAGS: ["script", "style"],
-          ADD_TAGS: ["iframe"],
+      html: markImageRuns({
+        html: embedQuotes({
+          html: postPurify.sanitize(html, {
+            USE_PROFILES: { html: true },
+            FORBID_TAGS: ["script", "style"],
+            ADD_TAGS: ["iframe"],
+          }),
         }),
       }),
     }),
