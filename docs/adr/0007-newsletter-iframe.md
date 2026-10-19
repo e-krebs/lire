@@ -19,6 +19,12 @@ which the previous upstream adds to every email feed body. The reader renders it
 browser's default styles, on a full-width band. Blog posts stay inline with `.prose-reader`, and the
 table overrides are gone.
 
+An email with more `class` attributes than `style` attributes and no `<table>` lost its `<style>`
+block upstream, and its column and rhythm went with it. The frame gives that email a centered 42rem
+column, a 1rem gutter, a 1.55 line height, heading sizes, link colors, and spacing for lists,
+quotes and code, and a status line above the frame says so. Any other email keeps the browser's
+defaults.
+
 The page follows the dark theme only when the email sets no colors of its own. An email that sets a
 color assumes a white page: "Serious gaming" writes `color: #000` inline and sets no background, so
 a black default would hide its text. The frame scans the sanitized HTML for a `style` attribute

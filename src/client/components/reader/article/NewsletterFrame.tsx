@@ -17,6 +17,23 @@ const AUTHORED_COLORS = /\s(?:bgcolor|color)=|\sstyle="[^"]*(?:color|background)
 // instead; an uncolored one follows the scheme natively.
 const hasAuthoredColors = (html: string): boolean => AUTHORED_COLORS.test(html);
 
+// An email styled by classes but with next to no inline style lost its `<style>` upstream, which
+// took its column and rhythm along. A table means the layout is inline, so it is left alone.
+const hasStrippedStyle = (html: string): boolean =>
+  !/<table[\s>]/i.test(html) &&
+  (html.match(/\sclass="/g)?.length ?? 0) > (html.match(/\sstyle="/g)?.length ?? 0);
+
+const STRIPPED_STYLE = [
+  "body { box-sizing: border-box; max-width: 42rem; margin-inline: auto; padding: 1rem; line-height: 1.55; }",
+  "h1, h2, h3 { line-height: 1.25; margin-block: 1.5em 0.5em; }",
+  "h1 { font-size: 1.75em; } h2 { font-size: 1.4em; } h3 { font-size: 1.15em; }",
+  "a { color: light-dark(#0b57d0, #8ab4f8); text-underline-offset: 0.15em; }",
+  "hr { margin-block: 2em; }",
+  "ul, ol { margin-block: 1em; padding-inline-start: 1.5em; } li { margin-block: 0.4em; } li > p { margin-block: 0.4em; }",
+  "blockquote { margin-inline: 0; padding-inline-start: 1em; border-inline-start: 3px solid light-dark(#d0d0d0, #444); }",
+  "code, pre { font-family: ui-monospace, monospace; font-size: 0.9em; background: light-dark(#f2f2f2, #222); border-radius: 0.25rem; } code { padding: 0.1em 0.3em; } pre { padding: 0.75em 1em; overflow-x: auto; } pre code { padding: 0; background: none; }",
+].join(" ");
+
 const AUTHORED_DARK_STYLE =
   "html { background: #fff; } @media (prefers-color-scheme: dark) { html { filter: invert(1) hue-rotate(180deg); } .lire-emoji { display: inline-block; } img, video, svg, .lire-emoji { filter: invert(1) hue-rotate(180deg); } }";
 
@@ -94,10 +111,11 @@ export const NewsletterFrame = ({ html, dir, onDocument }: NewsletterFrameProps)
   }, [onDocument]);
 
   const authored = useMemo(() => hasAuthoredColors(html), [html]);
+  const stripped = useMemo(() => hasStrippedStyle(html), [html]);
   const srcDoc = useMemo(
     () =>
-      `<!doctype html><html dir="${dir}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta name="color-scheme" content="${authored ? "light" : "light dark"}"><style>${FRAME_STYLE}${authored ? ` ${AUTHORED_DARK_STYLE}` : ""}</style></head><body>${html}</body></html>`,
-    [html, dir, authored],
+      `<!doctype html><html dir="${dir}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta name="color-scheme" content="${authored ? "light" : "light dark"}"><style>${FRAME_STYLE}${stripped ? ` ${STRIPPED_STYLE}` : ""}${authored ? ` ${AUTHORED_DARK_STYLE}` : ""}</style></head><body>${html}</body></html>`,
+    [html, dir, authored, stripped],
   );
 
   const authoredRef = useRef(authored);
@@ -217,15 +235,25 @@ export const NewsletterFrame = ({ html, dir, onDocument }: NewsletterFrameProps)
   );
 
   return (
-    <iframe
-      sandbox={SANDBOX}
-      title={t.articles.newsletter}
-      className="newsletter-frame"
-      srcDoc={srcDoc}
-      ref={frameRef}
-      onLoad={(event) => {
-        attach(event.currentTarget);
-      }}
-    />
+    <>
+      {stripped ? (
+        <p
+          role="status"
+          className="mx-4 mb-3 rounded-lg bg-accent-soft px-3 py-2 text-sm text-accent-text sm:mx-6"
+        >
+          {t.articles.newsletterStyleLost}
+        </p>
+      ) : null}
+      <iframe
+        sandbox={SANDBOX}
+        title={t.articles.newsletter}
+        className="newsletter-frame"
+        srcDoc={srcDoc}
+        ref={frameRef}
+        onLoad={(event) => {
+          attach(event.currentTarget);
+        }}
+      />
+    </>
   );
 };
