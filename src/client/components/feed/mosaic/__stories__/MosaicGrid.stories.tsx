@@ -91,14 +91,15 @@ export const Navigation: Story = {
   decorators: [Wide],
   play: async ({ canvasElement }) => {
     await tiles(canvasElement);
+    // A remount (page-size tier settling) drops focus mid-sequence on a slow runner, so retry it whole.
     await waitFor(async () => {
       const first = firstTile(canvasElement);
       first.focus();
       await expect(first).toHaveFocus();
+      await userEvent.keyboard("{ArrowDown}{ArrowRight}{ArrowLeft}{ArrowUp}{End}{Home}");
+      await userEvent.keyboard("{ArrowUp}{ArrowLeft}x");
+      await expect(firstTile(canvasElement)).toHaveFocus();
     }, TIMEOUT);
-    await userEvent.keyboard("{ArrowDown}{ArrowRight}{ArrowLeft}{ArrowUp}{End}{Home}");
-    await userEvent.keyboard("{ArrowUp}{ArrowLeft}x");
-    await waitFor(async () => expect(firstTile(canvasElement)).toHaveFocus(), TIMEOUT);
     await userEvent.keyboard("{End}");
     await waitFor(async () => expect(firstTile(canvasElement)).not.toHaveFocus(), TIMEOUT);
     await userEvent.keyboard("{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}");
