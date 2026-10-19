@@ -1,7 +1,12 @@
+import { useState } from "react";
 import type { Decorator, Meta, StoryObj } from "@storybook/react-vite";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { Reader } from "client/components/reader/article/Reader";
+import { keys } from "client/api/keys";
+import type { Entry } from "shared/feedsApi/types";
 import { withQueryClient, withUrl } from "stories/decorators";
+import { ENTRY } from "stories/fixtures";
 
 const LOADED = { timeout: 10_000 };
 
@@ -284,6 +289,87 @@ export const TikTok: Story = {
     await expect(frame.getAttribute("src")).toBe(
       "https://www.tiktok.com/embed/v2/6718335390845095173",
     );
+  },
+};
+
+const panel = (width: number, height: number, fill: string): string =>
+  `data:image/svg+xml;utf8,${encodeURIComponent(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><rect width="100%" height="100%" fill="${fill}"/></svg>`,
+  )}`;
+
+const STRIP_ID = "103:0a5e1d";
+const STRIP_CONTENT =
+  `<img src="${panel(200, 300, "#f4c542")}" alt="Yellow panel"><br>` +
+  `<a href="https://example.test/"><img src="${panel(400, 250, "#7fb7e6")}" alt="Blue panel"></a><br>` +
+  `<img src="${panel(150, 200, "#e67f7f")}" alt="Red panel" title="Third"><br>` +
+  `<img src="${panel(300, 180, "#8fd18f")}" alt="Green panel"><p>Text after the strip.</p>`;
+
+const withStripEntry: Decorator = function WithStripEntry(Story, { args }) {
+  const [client] = useState(() => {
+    const seeded = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+    });
+    const entry: Entry = { ...ENTRY, id: String(args.entryId), content: STRIP_CONTENT };
+    seeded.setQueryData(keys.entry(entry.id), entry);
+    return seeded;
+  });
+  return (
+    <QueryClientProvider client={client}>
+      <Story />
+    </QueryClientProvider>
+  );
+};
+
+export const ImageStrip: Story = {
+  args: { entryId: STRIP_ID },
+  parameters: { url: `/stream/all/entry/${STRIP_ID}` },
+  decorators: [withStripEntry],
+  play: async ({ canvasElement }) => {
+    const article = await waitFor(() => {
+      const found = canvasElement.querySelector("article.prose-reader");
+      if (!(found instanceof HTMLElement)) throw new Error("no article yet");
+      return found;
+    }, LOADED);
+    const panels = await waitFor(() => {
+      const found = [...article.querySelectorAll<HTMLImageElement>("img[data-run]")];
+      if (found.length !== 4) throw new Error(`${found.length} run panels yet`);
+      return found;
+    }, LOADED);
+    await waitFor(() => {
+      if (!panels.every((img) => img.complete && img.naturalWidth > 0)) {
+        throw new Error("panels not loaded yet");
+      }
+    }, LOADED);
+
+    const style = (img: HTMLImageElement) => getComputedStyle(img);
+    const padding = getComputedStyle(article);
+    const contentWidth =
+      article.clientWidth - parseFloat(padding.paddingLeft) - parseFloat(padding.paddingRight);
+
+    for (const [index, img] of panels.entries()) {
+      await expect(Math.abs(img.getBoundingClientRect().width - contentWidth)).toBeLessThanOrEqual(
+        1,
+      );
+      await expect(style(img).display).toBe("block");
+      if (index > 0) {
+        const previous = panels[index - 1].getBoundingClientRect();
+        await expect(
+          Math.abs(img.getBoundingClientRect().top - (previous.bottom - 1)),
+        ).toBeLessThanOrEqual(1);
+        await expect(style(img).marginTop).toBe("-1px");
+      }
+    }
+
+    const radii = (img: HTMLImageElement) => [
+      style(img).borderTopLeftRadius,
+      style(img).borderTopRightRadius,
+      style(img).borderBottomLeftRadius,
+      style(img).borderBottomRightRadius,
+    ];
+    await expect(radii(panels[0])).toEqual(["6px", "6px", "0px", "0px"]);
+    await expect(radii(panels[1])).toEqual(["0px", "0px", "0px", "0px"]);
+    await expect(radii(panels[2])).toEqual(["0px", "0px", "0px", "0px"]);
+    await expect(radii(panels[3])).toEqual(["0px", "0px", "6px", "6px"]);
   },
 };
 

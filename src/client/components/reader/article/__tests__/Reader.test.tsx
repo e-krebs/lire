@@ -282,6 +282,53 @@ describe("Reader", () => {
         img.getAttribute("src"),
       ),
     ).toEqual(["https://example.test/pair-1.png", "https://example.test/pair-2.png"]);
+    expect(
+      view.container.querySelector("article.prose-reader img[data-run-start]"),
+    ).toHaveAttribute("src", "https://example.test/pair-1.png");
+    expect(view.container.querySelector("article.prose-reader img[data-run-end]")).toHaveAttribute(
+      "src",
+      "https://example.test/pair-2.png",
+    );
+  });
+
+  it("joins a flat run of images into one strip, with no br between its panels", async () => {
+    const entry = await getEntry(UNREAD_ID);
+    const content =
+      '<img src="https://example.test/p1.png"><br>' +
+      '<img src="https://example.test/p2.png"><br>' +
+      '<img src="https://example.test/p3.png"><p>Text</p>';
+    const { view } = setup({ entryId: UNREAD_ID, seedEntry: { ...entry, content } });
+
+    await waitFor(() => {
+      expect(view.container.querySelector("article.prose-reader img[data-run-end]")).not.toBeNull();
+    });
+    const srcs = (selector: string) =>
+      [...view.container.querySelectorAll(`article.prose-reader img${selector}`)].map((img) =>
+        img.getAttribute("src"),
+      );
+    expect(srcs("[data-run]")).toEqual([
+      "https://example.test/p1.png",
+      "https://example.test/p2.png",
+      "https://example.test/p3.png",
+    ]);
+    expect(srcs("[data-run-start]")).toEqual(["https://example.test/p1.png"]);
+    expect(srcs("[data-run-end]")).toEqual(["https://example.test/p3.png"]);
+    expect(view.container.querySelectorAll("article.prose-reader br")).toHaveLength(0);
+  });
+
+  it("prints no caption under a run image's title, but keeps one under a lone image", async () => {
+    const entry = await getEntry(UNREAD_ID);
+    const content =
+      '<img src="https://example.test/r1.png" title="One"><br>' +
+      '<img src="https://example.test/r2.png" title="Two"><br>' +
+      '<p><img src="https://example.test/solo.png" title="Solo"></p>';
+    const { view } = setup({ entryId: UNREAD_ID, seedEntry: { ...entry, content } });
+
+    await waitFor(() => {
+      expect(view.container.querySelector("article.prose-reader .img-title")).not.toBeNull();
+    });
+    const titles = [...view.container.querySelectorAll("article.prose-reader .img-title")];
+    expect(titles.map((title) => title.textContent)).toEqual(["Solo"]);
   });
 
   it("prints a lone image's title below it, even when it repeats the alt, but not in a line of text", async () => {

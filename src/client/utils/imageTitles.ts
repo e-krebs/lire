@@ -12,11 +12,12 @@ export const INLINE_WRAPPERS = new Set([
 
 // A hover tooltip is unreachable on touch, and xkcd's punchline lives there, so it prints below the
 // image. Only a lone image (`data-lone`, set by the reader's sanitizer): in a line of text a block
-// caption would break the line. Runs on sanitized markup, parsed into its own inert document.
+// caption would break the line. A run image prints no caption, because the box would split the strip.
+// Runs on sanitized markup, parsed into its own inert document.
 export const captionImageTitles = ({ html }: { html: string }): string => {
   const doc = new DOMParser().parseFromString(html, "text/html");
   let changed = false;
-  for (const img of doc.querySelectorAll("img[data-lone][title]")) {
+  for (const img of doc.querySelectorAll("img[data-lone]:not([data-run])[title]")) {
     const title = img.getAttribute("title")?.trim() ?? "";
     if (title === "") continue;
     let outer: Element = img;
