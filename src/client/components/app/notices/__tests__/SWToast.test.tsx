@@ -67,6 +67,8 @@ describe("SWToast", () => {
   });
 
   it("flushes the read marks, then applies the update on Reload", async () => {
+    // applyUpdate arms a 3 s reload fallback; real timers would let it fire in a later test file.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     const order: string[] = [];
     vi.spyOn(markQueue, "flush").mockImplementation(async () => {
       await Promise.resolve();
@@ -90,7 +92,7 @@ describe("SWToast", () => {
     render(<SWToast />);
     fire("onNeedRefresh");
 
-    await userEvent.click(ui.button("Reload"));
+    await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).click(ui.button("Reload"));
 
     expect(updateSW).toHaveBeenCalledWith(true);
     expect(order).toEqual(["flush", "update"]);
