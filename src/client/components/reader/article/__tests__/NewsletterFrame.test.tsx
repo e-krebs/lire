@@ -11,6 +11,9 @@ const ui = {
   get frame() {
     return screen.getByTitle<HTMLIFrameElement>("Newsletter");
   },
+  get notice() {
+    return screen.queryByRole("status");
+  },
 };
 
 const setup = () => {
@@ -301,6 +304,43 @@ describe("NewsletterFrame", () => {
       expect(ui.frame.srcdoc).toContain(
         "img, video, svg, .lire-emoji { filter: invert(1) hue-rotate(180deg); }",
       );
+    });
+  });
+
+  describe("when the email lost its style", () => {
+    const renderFrame = (html: string) => render(<NewsletterFrame html={html} dir="ltr" />);
+
+    it("styles an email that uses classes but carries next to no inline style", () => {
+      renderFrame('<p class="a">Hello</p><p class="a">Bye</p><p style="margin: 0">!</p>');
+
+      expect(ui.frame.srcdoc).toContain("max-width: 42rem");
+    });
+
+    it("warns that the email lost its style, and says nothing otherwise", () => {
+      const { unmount } = renderFrame('<p class="a">Hello</p>');
+      expect(ui.notice).toHaveTextContent("lost its original styling");
+
+      unmount();
+      renderFrame("<p>Hello</p>");
+      expect(ui.notice).toBeNull();
+    });
+
+    it("leaves an email with no classes to the browser defaults", () => {
+      renderFrame("<p>Hello</p>");
+
+      expect(ui.frame.srcdoc).not.toContain("max-width: 42rem");
+    });
+
+    it("leaves an email that carries its own inline style", () => {
+      renderFrame('<p class="a" style="margin: 0">Hello</p><p style="margin: 0">Bye</p>');
+
+      expect(ui.frame.srcdoc).not.toContain("max-width: 42rem");
+    });
+
+    it("leaves an email with a layout table", () => {
+      renderFrame('<TABLE class="a"><tr><td class="a">Hello</td></tr></TABLE>');
+
+      expect(ui.frame.srcdoc).not.toContain("max-width: 42rem");
     });
   });
 

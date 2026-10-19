@@ -34,6 +34,8 @@ export const en = {
   articleNotFound: "Article not found.",
   article: "Article",
   newsletter: "Newsletter",
+  newsletterStyleLost:
+    "This newsletter seems to have lost its original styling, so it is shown with a basic layout.",
   markReadAndClose: "Mark as read and close",
   markUnreadAndClose: "Mark as unread and close",
   escapeKey: "Esc",
@@ -70,6 +72,8 @@ export const fr = {
   articleNotFound: "Article introuvable.",
   article: "Article",
   newsletter: "Newsletter",
+  newsletterStyleLost:
+    "Cette newsletter semble avoir perdu sa mise en forme d'origine, elle s'affiche donc avec une mise en page de base.",
   markReadAndClose: "Marquer comme lu et fermer",
   markUnreadAndClose: "Marquer comme non lu et fermer",
   escapeKey: "Échap",
