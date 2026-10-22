@@ -23,8 +23,13 @@ jobs:
       worker: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.worker == 'true' || steps.unknown.outputs.unknown == 'true' }}
       tooling: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.tooling == 'true' || steps.unknown.outputs.unknown == 'true' }}
       infra: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.infra == 'true' || steps.unknown.outputs.unknown == 'true' }}
+      playwright: ${{ steps.playwright.outputs.version }}
     steps:
       - uses: actions/checkout@v7
+      # The browser jobs run in the Playwright image of the locked version.
+      - name: Read Playwright version
+        id: playwright
+        run: echo "version=$(awk '/^"playwright-core@/{f=1;next} f&&/^  version:/{print $2;exit}' yarn.lock)" >> "$GITHUB_OUTPUT"
       - name: Filter changed areas
         id: filter
         if: github.event_name != 'workflow_dispatch'
@@ -212,28 +217,12 @@ jobs:
     if: needs.changes.outputs.app == 'true' || needs.changes.outputs.worker == 'true' || needs.changes.outputs.tooling == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    container:
+      image: mcr.microsoft.com/playwright:v${{ needs.changes.outputs.playwright }}-noble
+      options: --init --ipc=host
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
-      - name: Read Playwright version
-        id: playwright
-        run: echo "version=$(node -p "require('playwright-core/package.json').version")" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache/restore@v6
-        id: playwright-cache
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-chromium-webkit-${{ steps.playwright.outputs.version }}
-      # install-deps always runs: apt packages are not in the browser cache.
-      - run: yarn playwright install-deps chromium webkit
-        timeout-minutes: 5
-      - run: yarn playwright install chromium webkit
-        timeout-minutes: 5
-      # Saved before the tests: a failing or timed-out run must not lose the download.
-      - uses: actions/cache/save@v6
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-chromium-webkit-${{ steps.playwright.outputs.version }}
       - run: yarn test:e2e
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
@@ -247,27 +236,12 @@ jobs:
     if: needs.changes.outputs.storybook == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    container:
+      image: mcr.microsoft.com/playwright:v${{ needs.changes.outputs.playwright }}-noble
+      options: --init --ipc=host
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
-      - name: Read Playwright version
-        id: playwright
-        run: echo "version=$(node -p "require('playwright-core/package.json').version")" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache/restore@v6
-        id: playwright-cache
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-chromium-${{ steps.playwright.outputs.version }}
-      # install-deps always runs: apt packages are not in the browser cache.
-      - run: yarn playwright install-deps chromium
-        timeout-minutes: 5
-      - run: yarn playwright install chromium
-        timeout-minutes: 5
-      - uses: actions/cache/save@v6
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-chromium-${{ steps.playwright.outputs.version }}
       - run: yarn test:storybook
       - run: yarn build:storybook
       - run: yarn check:demo storybook-static
