@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "client/api/client";
 import { createMarkQueue } from "client/api/markQueue";
 import { markStore } from "client/api/markStore";
+import { FAKE_USER_ID } from "client/api/adapters/fakeNewsblur";
 
 const redirected = () => ({
   type: "opaqueredirect",
@@ -120,23 +121,24 @@ describe("httpTransport", () => {
     const { fetchMock, httpTransport } = await setup();
     fetchMock.mockResolvedValue(redirected());
     const queue = createMarkQueue({
-      send: async ({ read, unread, keepalive }) => {
+      send: async ({ userId, read, unread, keepalive }) => {
         const response = await httpTransport({
           method: "POST",
           path: "/api/entries/mark",
-          body: { read, unread },
+          body: { userId, read, unread },
           keepalive,
         });
         if (response.status === 401) throw new ApiError({ status: 401, code: "sign_in_required" });
       },
     });
+    await queue.setUser({ userId: FAKE_USER_ID });
     const added = queue.mark({ entryIds: ["e1", "e2"], read: true });
     await queue.flush({ keepalive: true });
     await added;
     expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({ keepalive: true });
     expect(await markStore.all()).toEqual([
-      { id: "e1", state: "read" },
-      { id: "e2", state: "read" },
+      { id: "e1", state: "read", userId: FAKE_USER_ID },
+      { id: "e2", state: "read", userId: FAKE_USER_ID },
     ]);
   });
 });

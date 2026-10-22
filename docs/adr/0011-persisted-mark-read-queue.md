@@ -109,6 +109,7 @@ fallback. The worker calls `skipWaiting` only on a `SKIP_WAITING` message and ke
 - An old bundle ignores the user tag, so its marks reach the store untagged and the next user adopts
   them. The cookie-switch race between the worker's status lookup and its POST is closed by the
   `userId` in the mark body: the Worker answers 409 `user_mismatch` when it is not the signed-in
-  user, so a batch cannot land on another account. An untagged body is still accepted for marks
-  queued before the field existed.
+  user, so a batch cannot land on another account. The Worker requires the id, so an untagged body
+  answers 400 `bad_request`. Before it sends, the queue gives a persisted untagged row to the
+  current user. A bundle cached from before the field gets that 400, which drops its queued marks.
 - Detail: [architecture](../explanation/architecture.md#pwa).

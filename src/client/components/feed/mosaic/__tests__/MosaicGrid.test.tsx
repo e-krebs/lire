@@ -14,6 +14,7 @@ import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EntryPage } from "shared/feedsApi/types";
 import { resetFixtureState } from "client/api/adapters/fixture";
+import { FAKE_USER_ID } from "client/api/adapters/fakeNewsblur";
 import { markQueue } from "client/api/markQueue";
 import { getStreamEntries } from "client/api/client";
 import { keys } from "client/api/keys";
@@ -178,8 +179,8 @@ const closed = async (card: (entryId: string) => Element | null, entryId: string
 };
 
 describe("MosaicGrid", () => {
-  beforeEach(() => {
-    markQueue.noUser();
+  beforeEach(async () => {
+    await markQueue.setUser({ userId: FAKE_USER_ID });
   });
 
   afterEach(() => {

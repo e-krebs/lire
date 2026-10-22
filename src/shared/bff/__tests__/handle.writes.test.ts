@@ -430,7 +430,7 @@ describe("handle writes", () => {
       const response = await send({
         method: "POST",
         url: "/api/entries/mark",
-        body: { unread: ["3:c", "4:d"], read: ["1:a", "2:b"] },
+        body: { userId: 42, unread: ["3:c", "4:d"], read: ["1:a", "2:b"] },
         upstream,
       });
       expect(response.status).toBe(204);
@@ -446,16 +446,34 @@ describe("handle writes", () => {
       const response = await send({
         method: "POST",
         url: "/api/entries/mark",
-        body: { unread: ["3:c"] },
+        body: { userId: 42, unread: ["3:c"] },
         upstream,
       });
       expect(response.status).toBe(204);
       expect(upstream.calls).toHaveLength(1);
     });
 
-    it.for([{}, { read: [], unread: [] }])("rejects the merged route body %o", async (body) => {
+    it("answers 400 bad_request without an upstream call when userId is missing", async () => {
       const upstream = fakeUpstream({});
-      const response = await send({ method: "POST", url: "/api/entries/mark", body, upstream });
+      const response = await send({
+        method: "POST",
+        url: "/api/entries/mark",
+        body: { read: ["1:a"] },
+        upstream,
+      });
+      expect(response.status).toBe(400);
+      expect(response.body).toMatchObject({ error: "bad_request" });
+      expect(upstream.calls).toHaveLength(0);
+    });
+
+    it("rejects the merged route with empty lists", async () => {
+      const upstream = fakeUpstream({});
+      const response = await send({
+        method: "POST",
+        url: "/api/entries/mark",
+        body: { userId: 42, read: [], unread: [] },
+        upstream,
+      });
       expect(response.status).toBe(400);
       expect(upstream.calls).toHaveLength(0);
     });
@@ -468,7 +486,7 @@ describe("handle writes", () => {
       const response = await send({
         method: "POST",
         url: "/api/entries/mark",
-        body: { read: ["1:a"], unread: ["3:c"] },
+        body: { userId: 42, read: ["1:a"], unread: ["3:c"] },
         upstream,
       });
       expect(response.status).toBe(400);
@@ -485,7 +503,7 @@ describe("handle writes", () => {
       const response = await send({
         method: "POST",
         url: "/api/entries/mark",
-        body: { read: ["1:a"] },
+        body: { userId: 42, read: ["1:a"] },
         upstream,
       });
       expect(response.body).toEqual({ error: "bad_request", message: "Not subscribed. Twice." });
@@ -496,7 +514,7 @@ describe("handle writes", () => {
       const response = await send({
         method: "POST",
         url: "/api/entries/mark",
-        body: { unread: ["1:a"] },
+        body: { userId: 42, unread: ["1:a"] },
         upstream,
       });
       expect(response.body).toEqual({

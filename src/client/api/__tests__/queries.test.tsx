@@ -3,13 +3,14 @@ import { QueryClient, QueryClientProvider, onlineManager, useQuery } from "@tans
 import type { InfiniteData } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { http, HttpResponse } from "msw";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CATEGORY_ORDER_KEY } from "shared/feedsApi/preferences";
 import type { StreamKey } from "shared/feedsApi/streamKey";
 import type { Category, Counts, Entry, EntryPage, Feed, Preferences } from "shared/feedsApi/types";
 import { PreferencesUpdateSchema } from "shared/feedsApi/types";
 import { server } from "test/msw";
 import { seedCategories, seedCategoryId, seedCategoryKey } from "test/seedCategories";
+import { FAKE_USER_ID } from "../adapters/fakeNewsblur";
 import { resetFixtureState } from "../adapters/fixture";
 import { ApiError, getFeeds } from "../client";
 import { markQueue } from "../markQueue";
@@ -118,6 +119,10 @@ const categoryIdsOf = async (feedId: string): Promise<string[] | undefined> =>
   (await getFeeds()).find((feed) => feed.id === feedId)?.categoryIds;
 
 describe("queries", () => {
+  beforeEach(async () => {
+    await markQueue.setUser({ userId: FAKE_USER_ID });
+  });
+
   const counts: Counts = { all: 9, feeds: { "101": 4 }, categories: { Tech: 6 } };
 
   it.each<[StreamKey | undefined, number]>([
@@ -975,7 +980,7 @@ describe("queries", () => {
       await sentNow(unread);
     });
 
-    expect(bodies).toEqual([{ read: ["101:a"], unread: ["101:b"] }]);
+    expect(bodies).toEqual([{ userId: FAKE_USER_ID, read: ["101:a"], unread: ["101:b"] }]);
     expect(await markStore.all()).toEqual([]);
   });
 
@@ -1386,7 +1391,7 @@ describe("queries", () => {
       await sentNow(result.current.mutateAsync({ entryIds: ["101:a"], read: false }));
     });
 
-    expect(storedAtSend).toEqual([{ id: "101:a", state: "unread" }]);
+    expect(storedAtSend).toEqual([{ id: "101:a", state: "unread", userId: FAKE_USER_ID }]);
     expect(await markStore.all()).toEqual([]);
   });
 
@@ -1431,7 +1436,9 @@ describe("queries", () => {
         result.current.mutate({ entryIds: ["101:a"], read: false });
       });
       await vi.waitFor(async () => {
-        expect(await markStore.all()).toEqual([{ id: "101:a", state: "unread" }]);
+        expect(await markStore.all()).toEqual([
+          { id: "101:a", state: "unread", userId: FAKE_USER_ID },
+        ]);
       });
       expect(flattenStream(client.getQueryData(streamKey))[0]?.unread).toBe(true);
       expect(unreads).toEqual([]);
@@ -1443,7 +1450,7 @@ describe("queries", () => {
       await vi.waitFor(() => {
         expect(result.current.isSuccess).toBe(true);
       });
-      expect(unreads).toEqual([{ unread: ["101:a"] }]);
+      expect(unreads).toEqual([{ userId: FAKE_USER_ID, unread: ["101:a"] }]);
       expect(flattenStream(client.getQueryData(streamKey))[0]?.unread).toBe(true);
     } finally {
       onlineManager.setOnline(true);
@@ -1470,7 +1477,7 @@ describe("queries", () => {
     });
 
     expect(flattenStream(client.getQueryData(streamKey))[0]?.unread).toBe(false);
-    expect(await markStore.all()).toEqual([{ id: "101:a", state: "read" }]);
+    expect(await markStore.all()).toEqual([{ id: "101:a", state: "read", userId: FAKE_USER_ID }]);
   });
 
   it("rolls the entry back to unread when the read is dropped", async () => {

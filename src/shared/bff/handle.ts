@@ -892,7 +892,7 @@ const HANDLERS: Record<RouteKey, Handler> = {
   "POST /api/entries/mark": async ({ ctx, body }) => {
     const { read = [], unread = [], userId } = parseInput({ schema: MarkBodySchema, value: body });
     // A 409 keeps the cookie's session: the marks are another user's, not a rejected credential.
-    if (userId !== undefined && userId !== ctx.config.userId) throw userMismatch();
+    if (userId !== ctx.config.userId) throw userMismatch();
     if (read.length > 0) {
       await write({
         ctx,

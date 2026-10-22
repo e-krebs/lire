@@ -211,13 +211,13 @@ export const markEntries = async ({
   read?: string[];
   unread?: string[];
   keepalive?: boolean;
-  userId?: number;
+  userId: number;
 }): Promise<void> => {
   await requestVoid({
     method: "POST",
     path: "/api/entries/mark",
     body: {
-      ...(userId !== undefined && { userId }),
+      userId,
       ...(read.length > 0 && { read }),
       ...(unread.length > 0 && { unread }),
     },
