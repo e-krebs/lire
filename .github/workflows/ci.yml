@@ -218,7 +218,8 @@ jobs:
       - name: Read Playwright version
         id: playwright
         run: echo "version=$(node -p "require('playwright-core/package.json').version")" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@v6
+      - uses: actions/cache/restore@v6
+        id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-chromium-webkit-${{ steps.playwright.outputs.version }}
@@ -227,6 +228,12 @@ jobs:
         timeout-minutes: 5
       - run: yarn playwright install chromium webkit
         timeout-minutes: 5
+      # Saved before the tests: a failing or timed-out run must not lose the download.
+      - uses: actions/cache/save@v6
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-webkit-${{ steps.playwright.outputs.version }}
       - run: yarn test:e2e
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
@@ -246,7 +253,8 @@ jobs:
       - name: Read Playwright version
         id: playwright
         run: echo "version=$(node -p "require('playwright-core/package.json').version")" >> "$GITHUB_OUTPUT"
-      - uses: actions/cache@v6
+      - uses: actions/cache/restore@v6
+        id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-chromium-${{ steps.playwright.outputs.version }}
@@ -255,6 +263,11 @@ jobs:
         timeout-minutes: 5
       - run: yarn playwright install chromium
         timeout-minutes: 5
+      - uses: actions/cache/save@v6
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-${{ steps.playwright.outputs.version }}
       - run: yarn test:storybook
       - run: yarn build:storybook
       - run: yarn check:demo storybook-static
