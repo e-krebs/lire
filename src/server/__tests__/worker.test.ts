@@ -612,6 +612,25 @@ describe("worker", () => {
       expect(await auth().hasSession()).toBe(true);
     });
 
+    it("answers 409 user_mismatch for marks of another user and keeps the session", async () => {
+      await setup();
+      await signIn();
+
+      const response = await authed("/api/entries/mark", {
+        method: "POST",
+        headers: { ...sameOrigin, "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: 7, read: ["1:a"] }),
+      });
+      expect(response.status).toBe(409);
+      expect(await response.json()).toEqual({
+        error: "user_mismatch",
+        message: "The marks belong to another user.",
+      });
+      expect(upstreamCalls.filter((call) => call.method === "POST")).toEqual([]);
+      expect(await auth().hasSession()).toBe(true);
+      expect(await status()).toMatchObject({ signedIn: true });
+    });
+
     it("returns 404 for an unknown /api/ path without calling upstream", async () => {
       await setup();
       await signIn();

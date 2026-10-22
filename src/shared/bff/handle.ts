@@ -125,6 +125,8 @@ const rateLimited = () => new BffError({ status: 429, body: rateLimitedBody() })
 const notFound = () => fail({ status: 404, error: "not_found" });
 const badRequest = (message: string) => fail({ status: 400, error: "bad_request", message });
 const conflict = (message: string) => fail({ status: 409, error: "conflict", message });
+const userMismatch = () =>
+  fail({ status: 409, error: "user_mismatch", message: "The marks belong to another user." });
 const premiumRequired = (message: string) =>
   fail({ status: 403, error: "premium_required", message });
 
@@ -888,7 +890,9 @@ const HANDLERS: Record<RouteKey, Handler> = {
 
   // Reads first, so an entry in both lists ends unread.
   "POST /api/entries/mark": async ({ ctx, body }) => {
-    const { read = [], unread = [] } = parseInput({ schema: MarkBodySchema, value: body });
+    const { read = [], unread = [], userId } = parseInput({ schema: MarkBodySchema, value: body });
+    // A 409 keeps the cookie's session: the marks are another user's, not a rejected credential.
+    if (userId !== undefined && userId !== ctx.config.userId) throw userMismatch();
     if (read.length > 0) {
       await write({
         ctx,

@@ -194,6 +194,21 @@ describe("client (http adapter)", () => {
     expect(seen).toEqual([{ read: ["101:aa"], unread: ["101:bb"] }, { unread: ["101:bb"] }]);
   });
 
+  it("sends the user id the batch was queued for", async () => {
+    setup();
+    const seen: unknown[] = [];
+    server.use(
+      http.post("/api/entries/mark", async ({ request }) => {
+        seen.push(await request.json());
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    await markEntries({ read: ["101:aa"], userId: 7 });
+
+    expect(seen).toEqual([{ userId: 7, read: ["101:aa"] }]);
+  });
+
   it("sends a null preference value to delete the key", async () => {
     setup();
     const seen: unknown[] = [];
@@ -270,7 +285,7 @@ describe("client (http adapter)", () => {
   it("answers signed in without a request in mock mode", async () => {
     vi.stubEnv("VITE_API_MODE", "mock");
 
-    await expect(getAuthStatus()).resolves.toEqual({ signedIn: true, userId: 7 });
+    await expect(getAuthStatus()).resolves.toEqual({ signedIn: true, userId: 1001 });
   });
   it("passes keepalive through to fetch in the http transport", async () => {
     const calls: RequestInit[] = [];

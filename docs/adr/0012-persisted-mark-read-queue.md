@@ -107,6 +107,8 @@ fallback. The worker calls `skipWaiting` only on a `SKIP_WAITING` message and ke
 - The service worker is code to maintain and typecheck (`yarn typecheck:sw`), not generated.
 - A reader on an old tab sees the update only on Reload or when every tab closes.
 - An old bundle ignores the user tag, so its marks reach the store untagged and the next user adopts
-  them. The cookie-switch race between the worker's status lookup and its POST stays open until B4
-  checks the user id on `POST /api/entries/mark` in the Worker.
+  them. The cookie-switch race between the worker's status lookup and its POST is closed by the
+  `userId` in the mark body: the Worker answers 409 `user_mismatch` when it is not the signed-in
+  user, so a batch cannot land on another account. An untagged body is still accepted for marks
+  queued before the field existed.
 - Detail: [architecture](../explanation/architecture.md#pwa).

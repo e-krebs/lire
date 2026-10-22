@@ -15,6 +15,7 @@ interface Batch {
   read: string[];
   unread: string[];
   keepalive: boolean;
+  userId?: number;
 }
 
 const setup = ({ fail = false }: { fail?: boolean } = {}) => {
@@ -899,7 +900,7 @@ describe("markQueue", () => {
       window.dispatchEvent(new Event("online"));
 
       await vi.waitFor(() => {
-        expect(seen).toEqual([{ read: ["101:z"] }]);
+        expect(seen).toEqual([{ userId: 7, read: ["101:z"] }]);
       });
     });
   });
@@ -946,7 +947,7 @@ describe("markQueue", () => {
 
       await queue.setUser({ userId: 7 });
 
-      expect(sent).toEqual([{ read: ["101:a"], unread: ["101:old"], keepalive: false }]);
+      expect(sent).toEqual([{ read: ["101:a"], unread: ["101:old"], keepalive: false, userId: 7 }]);
     });
 
     it("drops the queued and stored marks of the previous user with no request", async () => {
@@ -979,7 +980,7 @@ describe("markQueue", () => {
       await queue.setUser({ userId: 7 });
       await settle();
 
-      expect(sent).toEqual([{ read: ["101:b"], unread: [], keepalive: false }]);
+      expect(sent).toEqual([{ read: ["101:b"], unread: [], keepalive: false, userId: 7 }]);
       expect(await store.all()).toEqual([]);
     });
 
@@ -991,7 +992,34 @@ describe("markQueue", () => {
 
       await queue.setUser({ userId: 7 });
 
+      expect(sent).toEqual([{ read: ["101:a"], unread: [], keepalive: false, userId: 7 }]);
+    });
+
+    it("sends no userId for a batch queued before any user is known", async () => {
+      const { queue, sent } = withStore();
+      queue.noUser();
+
+      void queue.mark({ entryIds: ["101:a"], read: true });
+      await queue.flush();
+
       expect(sent).toEqual([{ read: ["101:a"], unread: [], keepalive: false }]);
+      expect(sent[0]).not.toHaveProperty("userId");
+    });
+
+    it("keeps the user a batch was queued for when the account changes during dispatch", async () => {
+      hold = true;
+      const { queue, sent, release } = withStore();
+      await queue.setUser({ userId: 7 });
+      void queue.mark({ entryIds: ["101:a"], read: true });
+      const flushed = queue.flush();
+      await settle();
+
+      const switched = queue.setUser({ userId: 8 });
+      release();
+      await switched;
+      await flushed;
+
+      expect(sent.map(({ userId }) => userId)).toEqual([7]);
     });
 
     it("empties the queue and the store on clear, and forgets the user", async () => {

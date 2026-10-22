@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { markStore, type MarkRow } from "../markStore";
 import { syncPending } from "../markSync";
 
+type MarkBatch = { read: string[]; unread: string[]; userId: number };
+
 const setup = ({ stored, userId = 7 }: { stored: MarkRow[]; userId?: number }) => {
   const store = {
     all: vi.fn<() => Promise<MarkRow[]>>(async () => {
@@ -12,7 +14,7 @@ const setup = ({ stored, userId = 7 }: { stored: MarkRow[]; userId?: number }) =
       await Promise.resolve();
     }),
   };
-  const post = vi.fn<(marks: { read: string[]; unread: string[] }) => Promise<void>>(async () => {
+  const post = vi.fn<(marks: MarkBatch) => Promise<void>>(async () => {
     await Promise.resolve();
   });
   const currentUserId = vi.fn<() => Promise<number>>(async () => {
@@ -42,7 +44,7 @@ describe("syncPending", () => {
 
     await syncPending({ store, post, currentUserId });
 
-    expect(post).toHaveBeenCalledWith({ read: ["101:a", "101:c"], unread: ["101:b"] });
+    expect(post).toHaveBeenCalledWith({ read: ["101:a", "101:c"], unread: ["101:b"], userId: 7 });
     expect(store.removeUnchanged).toHaveBeenCalledWith(stored);
   });
 
@@ -80,7 +82,7 @@ describe("syncPending", () => {
 
     await syncPending({ store, post, currentUserId });
 
-    expect(post).toHaveBeenCalledWith({ read: ["101:b"], unread: ["101:c"] });
+    expect(post).toHaveBeenCalledWith({ read: ["101:b"], unread: ["101:c"], userId: 7 });
     expect(store.removeUnchanged).toHaveBeenNthCalledWith(1, [stored[0]]);
     expect(store.removeUnchanged).toHaveBeenNthCalledWith(2, [stored[1], stored[2]]);
   });
