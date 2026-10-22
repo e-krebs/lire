@@ -322,10 +322,12 @@ describe("worker", () => {
       "profile error",
       "profile shape",
       "network",
+      "thrown string",
     ])("fails closed on %s", async (failure) => {
       await setup();
       upstream = async (request) => {
         if (failure === "network") throw new Error("offline");
+        if (failure === "thrown string") throw "offline";
         const token = pathOf(request) === "/oauth/token";
         if ((failure === "token error" && token) || (failure === "profile error" && !token))
           return new Response(null, { status: 500 });
@@ -336,6 +338,16 @@ describe("worker", () => {
       };
       expect((await login()).status).toBe(400);
       expect(await auth().hasSession()).toBe(false);
+    });
+
+    it("logs the failed step and status, never the code", async () => {
+      await setup();
+      upstream = () => new Response(null, { status: 502 });
+      const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+      await login();
+      expect(logged).toHaveBeenCalledWith("oauth callback failed", { step: "token", status: 502 });
+      expect(JSON.stringify(logged.mock.calls)).not.toContain("code-1");
+      logged.mockRestore();
     });
 
     it("replaces the browser token on repeated login", async () => {
