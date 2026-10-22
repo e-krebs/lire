@@ -397,6 +397,31 @@ describe("handle writes", () => {
   });
 
   describe("when entries are marked", () => {
+    it("accepts a mark tagged with the signed-in user", async () => {
+      const upstream = fakeUpstream({ "POST /reader/mark_story_hashes_as_read": OK });
+      const response = await send({
+        method: "POST",
+        url: "/api/entries/mark",
+        body: { userId: 42, read: ["1:a"] },
+        upstream,
+      });
+      expect(response.status).toBe(204);
+      expect(upstream.calls).toHaveLength(1);
+    });
+
+    it("answers 409 user_mismatch and writes nothing when the marks belong to another user", async () => {
+      const upstream = fakeUpstream({ "POST /reader/mark_story_hashes_as_read": OK });
+      const response = await send({
+        method: "POST",
+        url: "/api/entries/mark",
+        body: { userId: 7, read: ["1:a"], unread: ["2:b"] },
+        upstream,
+      });
+      expect(response.status).toBe(409);
+      expect(response.body).toMatchObject({ error: "user_mismatch" });
+      expect(upstream.calls).toHaveLength(0);
+    });
+
     it("sends the read call before the unread calls on the merged route", async () => {
       const upstream = fakeUpstream({
         "POST /reader/mark_story_hashes_as_read": OK,

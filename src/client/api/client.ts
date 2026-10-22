@@ -126,7 +126,8 @@ const requestVoid = async (req: TransportRequest): Promise<void> => {
   await performRequest(req);
 };
 
-const MOCK_USER_ID = 7;
+// The fixture BFF answers marks for this user; any other id is rejected as user_mismatch.
+const MOCK_USER_ID = 1001;
 
 const segment = (value: string): string => encodeURIComponent(value);
 
@@ -200,20 +201,23 @@ export const searchFeeds = async (query: string): Promise<FeedSearchResult[]> =>
     await request({ method: "GET", path: "/api/search/feeds", query: { q: query } }),
   );
 
-// An empty list is left out of the body.
+// An empty list is left out of the body. `userId` is the user the batch was queued for.
 export const markEntries = async ({
   read = [],
   unread = [],
   keepalive,
+  userId,
 }: {
   read?: string[];
   unread?: string[];
   keepalive?: boolean;
+  userId?: number;
 }): Promise<void> => {
   await requestVoid({
     method: "POST",
     path: "/api/entries/mark",
     body: {
+      ...(userId !== undefined && { userId }),
       ...(read.length > 0 && { read }),
       ...(unread.length > 0 && { unread }),
     },

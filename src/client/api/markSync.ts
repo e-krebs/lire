@@ -9,7 +9,7 @@ export const syncPending = async ({
   currentUserId,
 }: {
   store: Store;
-  post: (marks: { read: string[]; unread: string[] }) => Promise<void>;
+  post: (marks: { read: string[]; unread: string[]; userId: number }) => Promise<void>;
   currentUserId: () => Promise<number>;
 }): Promise<void> => {
   const rows = await store.all();
@@ -20,6 +20,6 @@ export const syncPending = async ({
   const own = rows.filter((row) => !foreign.includes(row));
   if (own.length === 0) return;
   const idsOf = (state: string) => own.filter((row) => row.state === state).map(({ id }) => id);
-  await post({ read: idsOf("read"), unread: idsOf("unread") });
+  await post({ read: idsOf("read"), unread: idsOf("unread"), userId });
   await store.removeUnchanged(own);
 };

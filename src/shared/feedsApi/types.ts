@@ -198,9 +198,14 @@ export const SunQuerySchema = z
 
 export const DeleteCategoryQuerySchema = z.object({ moveTo: z.string().optional() }).loose();
 
-// Request bodies.
+// Request bodies. `userId` is the user the marks were queued for. It is optional for one release, so
+// marks queued before the deploy still arrive.
 export const MarkBodySchema = z
-  .object({ read: z.array(z.string()).optional(), unread: z.array(z.string()).optional() })
+  .object({
+    read: z.array(z.string()).optional(),
+    unread: z.array(z.string()).optional(),
+    userId: z.number().int().optional(),
+  })
   .loose()
   .refine(({ read = [], unread = [] }) => read.length + unread.length > 0, {
     message: "read or unread must hold at least one id.",

@@ -21,7 +21,12 @@ interface Waiter {
   reject: (error: unknown) => void;
 }
 
-type Send = (batch: { read: string[]; unread: string[]; keepalive: boolean }) => Promise<void>;
+type Send = (batch: {
+  read: string[];
+  unread: string[];
+  keepalive: boolean;
+  userId?: number;
+}) => Promise<void>;
 type Store = Pick<typeof markStore, "add" | "remove" | "all" | "removeUnchanged" | "clear">;
 
 const statusOf = (error: unknown): number | undefined =>
@@ -121,6 +126,8 @@ export function createMarkQueue({ send, store = markStore }: { send: Send; store
     const idsOf = (state: MarkState) =>
       batch.filter(([, mark]) => mark.state === state).map(([id]) => id);
     const waiters = batch.flatMap(([, mark]) => mark.waiters);
+    // Read before the first await: an account change during the send must not relabel this batch.
+    const owner = user;
     const startedIn = generation;
     // A row whose id was marked again holds that newer mark. Read now: `finally` may move those ids
     // to the next batch before the store chain runs.
@@ -129,7 +136,12 @@ export function createMarkQueue({ send, store = markStore }: { send: Send; store
       void inOrder(async () => store.remove(sent)).catch(() => {});
     };
     try {
-      await send({ read: idsOf("read"), unread: idsOf("unread"), keepalive });
+      await send({
+        read: idsOf("read"),
+        unread: idsOf("unread"),
+        keepalive,
+        ...(owner !== undefined && { userId: owner }),
+      });
       if (startedIn !== generation) {
         for (const waiter of waiters) settleOne(waiter);
         return;
@@ -315,7 +327,8 @@ export function createMarkQueue({ send, store = markStore }: { send: Send; store
 }
 
 export const markQueue = createMarkQueue({
-  send: async ({ read, unread, keepalive }) => markEntries({ read, unread, keepalive }),
+  send: async ({ read, unread, keepalive, userId }) =>
+    markEntries({ read, unread, keepalive, userId }),
 });
 
 const REPLAY_WAIT_MS = 3000;

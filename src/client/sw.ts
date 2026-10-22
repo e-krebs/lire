@@ -29,11 +29,20 @@ if (!import.meta.env.DEV) {
 }
 
 // An empty list is left out of the body, as `markEntries` does.
-const post = async ({ read, unread }: { read: string[]; unread: string[] }): Promise<void> => {
+const post = async ({
+  read,
+  unread,
+  userId,
+}: {
+  read: string[];
+  unread: string[];
+  userId: number;
+}): Promise<void> => {
   const response = await fetch("/api/entries/mark", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      userId,
       ...(read.length > 0 && { read }),
       ...(unread.length > 0 && { unread }),
     }),
