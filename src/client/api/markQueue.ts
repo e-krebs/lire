@@ -25,7 +25,7 @@ type Send = (batch: {
   read: string[];
   unread: string[];
   keepalive: boolean;
-  userId?: number;
+  userId: number;
 }) => Promise<void>;
 type Store = Pick<typeof markStore, "add" | "remove" | "all" | "removeUnchanged" | "clear">;
 
@@ -107,27 +107,29 @@ export function createMarkQueue({ send, store = markStore }: { send: Send; store
       dueKeepalive ||= keepalive;
       return;
     }
-    if (queued.size === 0) return;
+    // Ownerless rows stay queued until `setUser` resumes them.
+    if (queued.size === 0 || user === undefined) return;
     due = false;
     dueKeepalive = false;
     const batch = [...queued];
     queued.clear();
     for (const [id, { state }] of batch) inFlight.set(id, state);
-    sending = sendBatch({ batch, keepalive });
+    // Read here, synchronously: an account change during the send must not relabel this batch.
+    sending = sendBatch({ batch, keepalive, userId: user });
   };
 
   const sendBatch = async ({
     batch,
     keepalive,
+    userId,
   }: {
     batch: [string, { state: MarkState; waiters: Waiter[] }][];
     keepalive: boolean;
+    userId: number;
   }): Promise<void> => {
     const idsOf = (state: MarkState) =>
       batch.filter(([, mark]) => mark.state === state).map(([id]) => id);
     const waiters = batch.flatMap(([, mark]) => mark.waiters);
-    // Read before the first await: an account change during the send must not relabel this batch.
-    const owner = user;
     const startedIn = generation;
     // A row whose id was marked again holds that newer mark. Read now: `finally` may move those ids
     // to the next batch before the store chain runs.
@@ -140,7 +142,7 @@ export function createMarkQueue({ send, store = markStore }: { send: Send; store
         read: idsOf("read"),
         unread: idsOf("unread"),
         keepalive,
-        ...(owner !== undefined && { userId: owner }),
+        userId,
       });
       if (startedIn !== generation) {
         for (const waiter of waiters) settleOne(waiter);
@@ -214,7 +216,7 @@ export function createMarkQueue({ send, store = markStore }: { send: Send; store
 
   const flush = async ({ keepalive = false }: { keepalive?: boolean } = {}): Promise<void> => {
     await storeChain;
-    while (sending || queued.size > 0) {
+    while (sending || (user !== undefined && queued.size > 0)) {
       dispatch({ keepalive });
       await sending?.catch(() => {});
     }
@@ -290,6 +292,8 @@ export function createMarkQueue({ send, store = markStore }: { send: Send; store
     }
     try {
       await replay();
+      // Replay skips the rows already queued, so the ones held for want of an owner go out here.
+      dispatch();
     } finally {
       resolveFirstReplay();
     }

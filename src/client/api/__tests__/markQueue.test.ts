@@ -1,6 +1,7 @@
 import { http, HttpResponse } from "msw";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { server } from "test/msw";
+import { FAKE_USER_ID } from "client/api/adapters/fakeNewsblur";
 import { ApiError } from "../client";
 import {
   createMarkQueue,
@@ -18,17 +19,37 @@ interface Batch {
   userId?: number;
 }
 
-const setup = ({ fail = false }: { fail?: boolean } = {}) => {
-  const sent: Batch[] = [];
+// Queues in these tests start signed in as FAKE_USER_ID; `send` sees the batch without its owner.
+const signedInQueue = async ({
+  send,
+  store = fakeStore(),
+}: {
+  send: (batch: Batch) => Promise<void>;
+  store?: Parameters<typeof createMarkQueue>[0]["store"];
+}) => {
   const queue = createMarkQueue({
-    send: async (batch) => {
+    store,
+    send: async ({ read, unread, keepalive }) => send({ read, unread, keepalive }),
+  });
+  await queue.setUser({ userId: FAKE_USER_ID });
+  return queue;
+};
+
+const setup = async ({ fail = false }: { fail?: boolean } = {}) => {
+  const sent: Batch[] = [];
+  const owners: number[] = [];
+  const queue = createMarkQueue({
+    store: fakeStore(),
+    send: async ({ userId, ...batch }) => {
+      owners.push(userId);
       sent.push(batch);
       return fail
         ? Promise.reject(new ApiError({ status: 400, code: "http", message: "boom" }))
         : Promise.resolve();
     },
   });
-  return { queue, sent };
+  await queue.setUser({ userId: FAKE_USER_ID });
+  return { queue, sent, owners };
 };
 
 const fakeStore = (initial: MarkRow[] = []) => {
@@ -114,7 +135,7 @@ describe("markQueue", () => {
   });
 
   it("sends at once when the batch fills", async () => {
-    const { queue, sent } = setup();
+    const { queue, sent } = await setup();
 
     void queue.mark({ entryIds: ids(MARK_BATCH_SIZE - 1), read: true });
     await settle();
@@ -126,7 +147,7 @@ describe("markQueue", () => {
 
   it("sends a partial batch after the delay", async () => {
     vi.useFakeTimers();
-    const { queue, sent } = setup();
+    const { queue, sent } = await setup();
 
     const settled = queue.mark({ entryIds: ["101:a"], read: true });
     await vi.advanceTimersByTimeAsync(MARK_DELAY_MS - 1);
@@ -138,7 +159,7 @@ describe("markQueue", () => {
   });
 
   it("flushes on demand as keepalive, and resolves an empty flush without sending", async () => {
-    const { queue, sent } = setup();
+    const { queue, sent } = await setup();
 
     const settled = queue.mark({ entryIds: ["101:a"], read: true });
     await settle();
@@ -152,7 +173,7 @@ describe("markQueue", () => {
   it("waits for a send already in flight when the batch to flush is empty", async () => {
     let release = () => {};
     let done = false;
-    const queue = createMarkQueue({
+    const queue = await signedInQueue({
       send: async () => {
         await new Promise<void>((resolve) => {
           release = resolve;
@@ -233,7 +254,7 @@ describe("markQueue", () => {
   });
 
   it("cancels opposite marks with no request and settles both waiters", async () => {
-    const { queue, sent } = setup();
+    const { queue, sent } = await setup();
 
     const read = queue.mark({ entryIds: ["101:a"], read: true });
     const unread = queue.mark({ entryIds: ["101:a"], read: false });
@@ -245,7 +266,7 @@ describe("markQueue", () => {
   });
 
   it("settles a call once every id is sent or cancelled out", async () => {
-    const { queue, sent } = setup();
+    const { queue, sent } = await setup();
 
     const reads = queue.mark({ entryIds: ["101:a", "101:b"], read: true });
     await queue.mark({ entryIds: ["101:a"], read: false });
@@ -256,7 +277,7 @@ describe("markQueue", () => {
   });
 
   it("joins a repeated mark to the queued one and sends the id once", async () => {
-    const { queue, sent } = setup();
+    const { queue, sent } = await setup();
 
     const first = queue.mark({ entryIds: ["101:a"], read: true });
     const second = queue.mark({ entryIds: ["101:a"], read: true });
@@ -267,7 +288,7 @@ describe("markQueue", () => {
   });
 
   it("keeps an id in one list only per batch", async () => {
-    const { queue, sent } = setup();
+    const { queue, sent } = await setup();
 
     void queue.mark({ entryIds: ["101:a", "101:b"], read: true });
     void queue.mark({ entryIds: ["101:c"], read: false });
@@ -281,7 +302,7 @@ describe("markQueue", () => {
   it("sends a mark behind the in-flight one after it settles", async () => {
     const releases: (() => void)[] = [];
     const sent: Batch[] = [];
-    const queue = createMarkQueue({
+    const queue = await signedInQueue({
       send: async (batch) => {
         sent.push(batch);
         await new Promise<void>((resolve) => {
@@ -312,7 +333,7 @@ describe("markQueue", () => {
   it("restores the in-flight row when a mark queued behind it is cancelled", async () => {
     const store = fakeStore();
     let release = () => {};
-    const queue = createMarkQueue({
+    const queue = await signedInQueue({
       send: async () => {
         await new Promise<void>((resolve) => {
           release = resolve;
@@ -339,7 +360,7 @@ describe("markQueue", () => {
     const store = fakeStore();
     const sent: Batch[] = [];
     let fail = (_error: unknown) => {};
-    const queue = createMarkQueue({
+    const queue = await signedInQueue({
       send: async (batch) => {
         sent.push(batch);
         if (sent.length === 1) {
@@ -365,7 +386,7 @@ describe("markQueue", () => {
   });
 
   it("rejects every waiter of a failed batch", async () => {
-    const { queue } = setup({ fail: true });
+    const { queue } = await setup({ fail: true });
 
     const first = queue.mark({ entryIds: ["101:a"], read: true });
     const second = queue.mark({ entryIds: ["101:b"], read: false });
@@ -379,7 +400,7 @@ describe("markQueue", () => {
   });
 
   it("drops what waits on reset", async () => {
-    const { queue, sent } = setup();
+    const { queue, sent } = await setup();
 
     const settled = queue.mark({ entryIds: ["101:a"], read: true });
     await settle();
@@ -392,6 +413,7 @@ describe("markQueue", () => {
 
   it("flushes the shared queue upstream on pagehide", async () => {
     vi.stubEnv("VITE_API_MODE", "real");
+    await markQueue.setUser({ userId: FAKE_USER_ID });
     const seen: unknown[] = [];
     server.use(
       http.post("/api/entries/mark", async ({ request }) => {
@@ -405,13 +427,13 @@ describe("markQueue", () => {
     window.dispatchEvent(new Event("pagehide"));
     await settled;
 
-    expect(seen).toEqual([{ read: ["101:a"] }]);
+    expect(seen).toEqual([{ userId: FAKE_USER_ID, read: ["101:a"] }]);
   });
 
   it("sends the next batch as keepalive when a keepalive flush finds a request in flight", async () => {
     const releases: (() => void)[] = [];
     const sent: Batch[] = [];
-    const queue = createMarkQueue({
+    const queue = await signedInQueue({
       send: async (batch) => {
         sent.push(batch);
         await new Promise<void>((resolve) => {
@@ -435,11 +457,11 @@ describe("markQueue", () => {
   });
 
   describe("when an id is marked again around a request", () => {
-    const held = () => {
+    const held = async () => {
       const store = fakeStore();
       const sent: Batch[] = [];
       const releases: ((error?: Error) => void)[] = [];
-      const queue = createMarkQueue({
+      const queue = await signedInQueue({
         send: async (batch) => {
           sent.push(batch);
           await new Promise<void>((resolve, reject) => {
@@ -455,7 +477,7 @@ describe("markQueue", () => {
     };
 
     it("keeps the row of an id re-marked while its batch was in flight", async () => {
-      const { queue, store, releases } = held();
+      const { queue, store, releases } = await held();
 
       void queue.mark({ entryIds: ["101:a"], read: true });
       void queue.flush();
@@ -471,7 +493,7 @@ describe("markQueue", () => {
     });
 
     it("restores the row of a failed send when a mark queued after it is cancelled", async () => {
-      const { queue, store, releases } = held();
+      const { queue, store, releases } = await held();
 
       void queue.mark({ entryIds: ["101:a"], read: true });
       const failed = queue.flush();
@@ -486,7 +508,7 @@ describe("markQueue", () => {
     });
 
     it("sends the opposite of a mark queued behind the same mark in flight", async () => {
-      const { queue, store, sent, releases } = held();
+      const { queue, store, sent, releases } = await held();
 
       void queue.mark({ entryIds: ["101:a"], read: true });
       void queue.flush();
@@ -505,7 +527,7 @@ describe("markQueue", () => {
     });
 
     it("sends the opposite of a replayed mark still waiting for a request in flight", async () => {
-      const { queue, store, sent, releases } = held();
+      const { queue, store, sent, releases } = await held();
       store.stored.set("101:a", "read");
 
       void queue.mark({ entryIds: ["101:b"], read: true });
@@ -525,24 +547,31 @@ describe("markQueue", () => {
   });
 
   describe("when a store is injected", () => {
-    const withStore = ({ initial = [], error }: { initial?: MarkRow[]; error?: unknown } = {}) => {
+    const withStore = async ({
+      initial = [],
+      error,
+      signedIn = true,
+    }: { initial?: MarkRow[]; error?: unknown; signedIn?: boolean } = {}) => {
       const store = fakeStore(initial);
       const sent: Batch[] = [];
+      const owners: number[] = [];
       const queue = createMarkQueue({
-        send: async (batch) => {
+        send: async ({ userId, ...batch }) => {
           await Promise.resolve();
+          owners.push(userId);
           sent.push(batch);
           if (error) throw error;
         },
         store,
       });
-      return { queue, store, sent };
+      if (signedIn) await queue.setUser({ userId: FAKE_USER_ID });
+      return { queue, store, sent, owners };
     };
 
     const row = (id: string, state: MarkState = "read"): MarkRow => ({ id, state });
 
     it("persists the marks before the flush and removes them once sent", async () => {
-      const { queue, store, sent } = withStore();
+      const { queue, store, sent } = await withStore();
 
       const settled = queue.mark({ entryIds: ["101:a"], read: true });
       void queue.mark({ entryIds: ["101:b"], read: false });
@@ -559,7 +588,7 @@ describe("markQueue", () => {
     });
 
     it("adds even when the store fails", async () => {
-      const { queue, store, sent } = withStore();
+      const { queue, store, sent } = await withStore();
       store.add.mockReturnValueOnce(Promise.reject(new Error("quota")));
 
       const settled = queue.mark({ entryIds: ["101:a"], read: true });
@@ -571,7 +600,7 @@ describe("markQueue", () => {
     });
 
     it("keeps the marks and resolves the waiter on a retryable failure", async () => {
-      const { queue, store } = withStore({
+      const { queue, store } = await withStore({
         error: new ApiError({ status: 503, code: "http" }),
       });
 
@@ -587,7 +616,7 @@ describe("markQueue", () => {
       const store = fakeStore();
       const sent: Batch[] = [];
       let offline = true;
-      const queue = createMarkQueue({
+      const queue = await signedInQueue({
         send: async (batch) => {
           await Promise.resolve();
           sent.push(batch);
@@ -610,7 +639,7 @@ describe("markQueue", () => {
     });
 
     it("treats a network error as retryable", async () => {
-      const { queue, store } = withStore({ error: new TypeError("Failed to fetch") });
+      const { queue, store } = await withStore({ error: new TypeError("Failed to fetch") });
 
       const settled = queue.mark({ entryIds: ["101:a"], read: true });
       await settle();
@@ -621,7 +650,7 @@ describe("markQueue", () => {
     });
 
     it("removes the marks and rejects the waiter on a non-retryable failure", async () => {
-      const { queue, store } = withStore({
+      const { queue, store } = await withStore({
         error: new ApiError({ status: 400, code: "http" }),
       });
 
@@ -637,7 +666,7 @@ describe("markQueue", () => {
     });
 
     it("removes a cancelled mark from the store", async () => {
-      const { queue, store } = withStore();
+      const { queue, store } = await withStore();
 
       void queue.mark({ entryIds: ["101:a", "101:b"], read: true });
       void queue.mark({ entryIds: ["101:a"], read: false });
@@ -647,7 +676,7 @@ describe("markQueue", () => {
     });
 
     it("does not replay an id whose cancel has not finished removing it", async () => {
-      const { queue, store, sent } = withStore();
+      const { queue, store, sent } = await withStore();
       let release = () => {};
       store.remove.mockImplementationOnce(async (removed) => {
         await new Promise<void>((resolve) => {
@@ -667,11 +696,12 @@ describe("markQueue", () => {
     });
 
     it("replays the stored marks of both kinds", async () => {
-      const { queue, store, sent } = withStore({
+      const { queue, store, sent } = await withStore({
         initial: [row("101:a"), row("101:b", "unread")],
+        signedIn: false,
       });
 
-      await queue.replay();
+      await queue.setUser({ userId: FAKE_USER_ID });
 
       expect(sent).toEqual([{ read: ["101:a"], unread: ["101:b"], keepalive: false }]);
       expect(store.stored.size).toBe(0);
@@ -680,7 +710,7 @@ describe("markQueue", () => {
     it("does not send an id twice when replays overlap", async () => {
       const store = fakeStore([row("101:a")]);
       const sent: Batch[] = [];
-      const queue = createMarkQueue({
+      const queue = await signedInQueue({
         send: async (batch) => {
           sent.push(batch);
           await new Promise((resolve) => setTimeout(resolve, 5));
@@ -696,7 +726,7 @@ describe("markQueue", () => {
     });
 
     it("sends nothing on replay when the store is empty", async () => {
-      const { queue, sent } = withStore();
+      const { queue, sent } = await withStore();
 
       await queue.replay();
 
@@ -704,7 +734,7 @@ describe("markQueue", () => {
     });
 
     it("raises nothing when a replayed send fails", async () => {
-      const { queue, store } = withStore({
+      const { queue, store } = await withStore({
         initial: [row("101:a")],
         error: new ApiError({ status: 400, code: "http" }),
       });
@@ -720,7 +750,7 @@ describe("markQueue", () => {
     });
 
     it("settles the waiter when the store cannot remove the marks after a send", async () => {
-      const { queue, store } = withStore();
+      const { queue, store } = await withStore();
       store.remove.mockRejectedValue(new Error("quota"));
 
       const settled = queue.mark({ entryIds: ["101:a"], read: true });
@@ -731,7 +761,9 @@ describe("markQueue", () => {
     });
 
     it("still rejects the waiter when the store cannot remove the marks of a failed send", async () => {
-      const { queue, store } = withStore({ error: new ApiError({ status: 400, code: "http" }) });
+      const { queue, store } = await withStore({
+        error: new ApiError({ status: 400, code: "http" }),
+      });
       store.remove.mockRejectedValue(new Error("quota"));
 
       const outcome = queue.mark({ entryIds: ["101:a"], read: true }).then(
@@ -745,7 +777,7 @@ describe("markQueue", () => {
     });
 
     it("cancels even when the store cannot remove the marks", async () => {
-      const { queue, store, sent } = withStore();
+      const { queue, store, sent } = await withStore();
       store.remove.mockRejectedValue(new Error("quota"));
 
       const read = queue.mark({ entryIds: ["101:a"], read: true });
@@ -757,7 +789,7 @@ describe("markQueue", () => {
     });
 
     it("sends nothing on replay when the store cannot be read", async () => {
-      const { queue, store, sent } = withStore();
+      const { queue, store, sent } = await withStore();
       store.all.mockRejectedValue(new Error("blocked"));
 
       await queue.replay();
@@ -766,7 +798,7 @@ describe("markQueue", () => {
     });
 
     it("leaves marks whose store write is in flight to their own batch on replay", async () => {
-      const { queue, store, sent } = withStore();
+      const { queue, store, sent } = await withStore();
 
       const settled = queue.mark({ entryIds: ["101:a"], read: true });
       store.all.mockResolvedValueOnce([row("101:a")]);
@@ -780,7 +812,7 @@ describe("markQueue", () => {
     it("registers the sync tag after a retryable failure on a hidden page, not on mark", async () => {
       const register = stubSync();
       stubVisibility("hidden");
-      const { queue } = withStore({ error: new ApiError({ status: 503, code: "http" }) });
+      const { queue } = await withStore({ error: new ApiError({ status: 503, code: "http" }) });
 
       const settled = queue.mark({ entryIds: ["101:a"], read: false });
       await settle();
@@ -795,7 +827,7 @@ describe("markQueue", () => {
     it("does not register the sync tag after a retryable failure on a visible page", async () => {
       const register = stubSync();
       stubVisibility("visible");
-      const { queue } = withStore({ error: new ApiError({ status: 503, code: "http" }) });
+      const { queue } = await withStore({ error: new ApiError({ status: 503, code: "http" }) });
 
       const settled = queue.mark({ entryIds: ["101:a"], read: true });
       await settle();
@@ -807,7 +839,10 @@ describe("markQueue", () => {
     });
 
     it("keeps a mark made while a replay reads the store", async () => {
-      const { queue, store, sent } = withStore({ initial: [row("101:a"), row("101:b")] });
+      const { queue, store, sent } = await withStore({
+        initial: [row("101:a"), row("101:b")],
+        signedIn: false,
+      });
       const read = store.all.getMockImplementation();
       store.all.mockImplementationOnce(async () => {
         const result = (await read?.()) ?? [];
@@ -815,13 +850,17 @@ describe("markQueue", () => {
         return result;
       });
 
-      await queue.replay();
+      await queue.setUser({ userId: FAKE_USER_ID });
 
       expect(sent).toEqual([{ read: ["101:b"], unread: ["101:a"], keepalive: false }]);
     });
   });
 
   describe("when the page leaves or reconnects", () => {
+    beforeEach(async () => {
+      await markQueue.setUser({ userId: FAKE_USER_ID });
+    });
+
     it("flushes with keepalive and registers the sync tag when the page hides", async () => {
       const register = stubSync();
       const fetchStub = vi.fn<typeof fetch>(async () => {
@@ -984,6 +1023,16 @@ describe("markQueue", () => {
       expect(await store.all()).toEqual([]);
     });
 
+    it("adopts a legacy untagged row as the current user and sends it with that id", async () => {
+      const { queue, sent } = withStore({
+        initial: [{ id: "101:legacy", state: "read" }],
+      });
+
+      await queue.setUser({ userId: 7 });
+
+      expect(sent).toEqual([{ read: ["101:legacy"], unread: [], keepalive: false, userId: 7 }]);
+    });
+
     it("sends the stored rows only once a user is set", async () => {
       const { queue, sent } = withStore({ initial: [{ id: "101:a", state: "read" }] });
       await settle();
@@ -995,15 +1044,17 @@ describe("markQueue", () => {
       expect(sent).toEqual([{ read: ["101:a"], unread: [], keepalive: false, userId: 7 }]);
     });
 
-    it("sends no userId for a batch queued before any user is known", async () => {
+    it("holds a batch queued before any user is known until the user is set", async () => {
       const { queue, sent } = withStore();
       queue.noUser();
 
       void queue.mark({ entryIds: ["101:a"], read: true });
       await queue.flush();
+      expect(sent).toEqual([]);
 
-      expect(sent).toEqual([{ read: ["101:a"], unread: [], keepalive: false }]);
-      expect(sent[0]).not.toHaveProperty("userId");
+      await queue.setUser({ userId: 7 });
+
+      expect(sent).toEqual([{ read: ["101:a"], unread: [], keepalive: false, userId: 7 }]);
     });
 
     it("keeps the user a batch was queued for when the account changes during dispatch", async () => {

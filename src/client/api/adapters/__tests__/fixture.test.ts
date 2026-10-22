@@ -9,6 +9,7 @@ import {
 } from "shared/feedsApi/types";
 import type { TransportRequest } from "client/api/transport";
 import { fixtureTransport, resetFixtureState } from "../fixture";
+import { FAKE_USER_ID } from "../fakeNewsblur";
 
 const DEMO_NEWSLETTER_ADDRESS = "ada-reader-demo0000@newsletters.newsblur.com";
 
@@ -79,7 +80,7 @@ describe("fixtureTransport", () => {
     const marked = await send({
       method: "POST",
       path: "/api/entries/mark",
-      body: { read: ["101:0dcd64"] },
+      body: { userId: FAKE_USER_ID, read: ["101:0dcd64"] },
     });
 
     expect(marked.status).toBe(204);
@@ -126,7 +127,11 @@ describe("fixtureTransport", () => {
   });
 
   it("answers a bad body with 400", async () => {
-    const answer = await send({ method: "POST", path: "/api/entries/mark", body: {} });
+    const answer = await send({
+      method: "POST",
+      path: "/api/entries/mark",
+      body: { userId: FAKE_USER_ID },
+    });
 
     expect(answer.status).toBe(400);
   });

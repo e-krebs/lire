@@ -9,11 +9,12 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { EntrySchema, type Entry } from "shared/feedsApi/types";
 import { keys } from "client/api/keys";
 import { markQueue } from "client/api/markQueue";
 import { getEntry } from "client/api/client";
+import { FAKE_USER_ID } from "client/api/adapters/fakeNewsblur";
 import { fixtureTransport, resetFixtureState } from "client/api/adapters/fixture";
 import { Reader } from "../Reader";
 
@@ -143,6 +144,10 @@ const hero = (view: RenderResult) =>
   [...view.container.querySelectorAll("img")].filter((img) => !img.closest("article"));
 
 describe("Reader", () => {
+  beforeEach(async () => {
+    await markQueue.setUser({ userId: FAKE_USER_ID });
+  });
+
   it("renders the masthead, the title link and the author", async () => {
     const { view } = setup({ entryId: UNREAD_ID });
 

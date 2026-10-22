@@ -174,8 +174,8 @@ describe("client (http adapter)", () => {
       }),
     );
 
-    await expect(markEntries({ read: ["101:aa"] })).resolves.toBeUndefined();
-    expect(seen).toEqual([{ read: ["101:aa"] }]);
+    await expect(markEntries({ read: ["101:aa"], userId: 7 })).resolves.toBeUndefined();
+    expect(seen).toEqual([{ userId: 7, read: ["101:aa"] }]);
   });
 
   it("posts the reads and the unreads in one body, and leaves an empty list out", async () => {
@@ -188,10 +188,13 @@ describe("client (http adapter)", () => {
       }),
     );
 
-    await markEntries({ read: ["101:aa"], unread: ["101:bb"] });
-    await markEntries({ unread: ["101:bb"], read: [] });
+    await markEntries({ read: ["101:aa"], unread: ["101:bb"], userId: 7 });
+    await markEntries({ unread: ["101:bb"], read: [], userId: 7 });
 
-    expect(seen).toEqual([{ read: ["101:aa"], unread: ["101:bb"] }, { unread: ["101:bb"] }]);
+    expect(seen).toEqual([
+      { userId: 7, read: ["101:aa"], unread: ["101:bb"] },
+      { userId: 7, unread: ["101:bb"] },
+    ]);
   });
 
   it("sends the user id the batch was queued for", async () => {
