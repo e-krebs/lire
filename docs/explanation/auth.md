@@ -54,7 +54,8 @@ flow:
    for that user, and sets the `lire_session` cookie. It answers `302` to `/`.
 
 A failure at any step answers `400` with a short page that links back to `/api/auth/login`. The page
-sets no `lire_session` cookie and clears the `state` cookie. The PWA service worker does not answer
+sets no `lire_session` cookie and clears the `state` cookie. The Worker logs the failed step and an
+upstream status or error name (`wrangler tail` shows it), never a code or a token. The PWA service worker does not answer
 `/api/` navigations (see [architecture.md](architecture.md#pwa)), so these routes always reach the Worker.
 
 The worker's background sync of marks fetches `/api/auth/status` for the user id, then posts to

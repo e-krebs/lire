@@ -119,15 +119,21 @@ const handleCallback = async ({
     "Cache-Control": "no-store",
     "Set-Cookie": `${STATE_COOKIE}=; ${STATE_ATTRIBUTES}; Max-Age=0`,
   });
-  const failure = () => {
+  const failure = ({ step, status }: { step: string; status?: number | string }) => {
+    console.error("oauth callback failed", { step, status });
     const response = signInFailedPage();
     response.headers.set("Set-Cookie", headers.get("Set-Cookie")!);
     return response;
   };
   if (!state || state !== cookie || !(await stateObject({ env, state }).consumeState()))
-    return failure();
+    return failure({
+      step: "state",
+      status: !state ? "no-state" : state !== cookie ? "cookie" : "consume",
+    });
   const code = params.get("code");
-  if (!code || params.has("error")) return failure();
+  if (!code || params.has("error"))
+    return failure({ step: "authorize", status: params.get("error") ?? "no-code" });
+  let step = "token";
   try {
     const response = await fetch(new URL("/oauth/token", env.NEWSBLUR_HOST), {
       method: "POST",
@@ -140,13 +146,17 @@ const handleCallback = async ({
         redirect_uri: callbackUri(request),
       }),
     });
-    if (!response.ok) return failure();
+    if (!response.ok) return failure({ step, status: response.status });
+    step = "token-parse";
     const tokens = OAuthTokenSchema.parse(await response.json());
+    step = "profile";
     const profileResponse = await fetch(new URL("/social/load_user_profile", env.NEWSBLUR_HOST), {
       headers: { ...USER_AGENT, Authorization: `Bearer ${tokens.access_token}` },
     });
-    if (!profileResponse.ok) return failure();
+    if (!profileResponse.ok) return failure({ step, status: profileResponse.status });
+    step = "profile-parse";
     const { user_profile: profile } = ProfileAnswerSchema.parse(await profileResponse.json());
+    step = "sign-in";
     const userKey = String(profile.user_id);
     const auth = userObject({ env, userKey });
     const previous = readLireSession(request);
@@ -164,8 +174,8 @@ const handleCallback = async ({
     headers.set("Location", "/");
     headers.append("Set-Cookie", lireSetCookie({ value: `${userKey}.${token}` }));
     return new Response(null, { status: 302, headers });
-  } catch {
-    return failure();
+  } catch (error) {
+    return failure({ step, status: error instanceof Error ? error.name : "unknown" });
   }
 };
 
