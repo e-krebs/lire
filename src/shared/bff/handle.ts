@@ -456,15 +456,14 @@ const fetchStories = async ({
       ),
     );
     return answers.flatMap(({ stories }) => stories);
+  } else if (stream.kind === "all") {
+    // Upstream returns every active subscription when `feeds` is absent.
+    request = post({ path: "/reader/river_stories", form: { ...common, ...limit, ...filters } });
   } else {
-    const library = await loadLibrary(ctx);
-    const feedIds =
-      stream.kind === "all"
-        ? library.feeds.map((feed) => feed.id)
-        : findCategory({ library, id: stream.label }).feedIds;
-    // `river_stories` with no feeds falls back to other parameters, never to every feed.
+    const feedIds = findCategory({ library: await loadLibrary(ctx), id: stream.label }).feedIds;
+    // An empty `feeds` on a folder would widen to every feed, so an empty folder answers here.
     if (feedIds.length === 0) return [];
-    // A POST, because `all` with every feed id can overflow a GET URL.
+    // A POST, because a folder's feed ids can overflow a GET URL.
     request = post({
       path: "/reader/river_stories",
       form: { ...common, ...limit, ...filters, feeds: feedIds },

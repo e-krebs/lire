@@ -24,9 +24,11 @@ NewsBlur.
   fixtures.
 - **Ids.** A feed id is the numeric NewsBlur feed id as a string, a folder id is its title and an
   entry id is the `story_hash`. All three are stable and opaque to the client.
-- **Streams.** `all`, `read`, `folder:<title>` and `feed:<id>`. The core expands `all` and folders
-  into `feeds[]` for `/reader/river_stories`. Rivers go as form-encoded POSTs, and `count` maps to
-  `limit`, because `all` with every feed id can overflow a GET URL.
+- **Streams.** `all`, `read`, `folder:<title>` and `feed:<id>`. The core sends `all` to
+  `/reader/river_stories` with no `feeds[]`, since upstream then returns every active subscription,
+  and expands a folder into `feeds[]`, answering `[]` without a call when it is empty. Rivers go as
+  form-encoded POSTs, and `count` maps to `limit`, because a folder's feed ids can overflow a GET
+  URL.
 - **Paging.** The token is base64url JSON `{page}`, plus the query for search, because NewsBlur
   pages by number.
 - **Unread counts.** The count is `ps + nt + ng`, and rivers send `include_hidden=true`, so a list
