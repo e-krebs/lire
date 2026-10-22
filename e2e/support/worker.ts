@@ -6,7 +6,7 @@ import { promisify } from "node:util";
 import { exportJWK, generateKeyPair, SignJWT, type CryptoKey, type JWK } from "jose";
 // Miniflare's own classes: outboundService speaks its undici Request and Response.
 import { Miniflare, Response, type Request } from "miniflare";
-import { expect, test as base } from "e2e/fixtures";
+import { expect, test as base } from "@playwright/test";
 
 // Reserved .test names: every outbound fetch lands in outboundService, and nothing reaches a real
 // Access team or NewsBlur.
@@ -14,9 +14,9 @@ const TEAM_DOMAIN = "access.test";
 const NEWSBLUR_HOST = "https://newsblur.test";
 const AUDIENCE = "lire-e2e";
 export const OWNER = "owner@example.com";
-export const USERNAME = "owner";
-export const PASSWORD = "e2e-password";
-export const SESSION_ID = "session-e2e";
+const USERNAME = "owner";
+export const CLIENT_SECRET = "e2e-secret";
+export const ACCESS_TOKEN = "access-e2e";
 const USER_ID = 42;
 const KID = "e2e-key";
 
@@ -40,22 +40,28 @@ export const signAccessToken = async ({
     .sign(key);
 
 // Bodies are read eagerly, before the worker's request is gone.
-type OutboundCall = { url: string; body: string; cookie: string | null };
-
-const loginEndpoint = (call: OutboundCall): Response => {
-  const form = new URLSearchParams(call.body);
-  if (form.get("username") !== USERNAME || form.get("password") !== PASSWORD) {
-    return Response.json({ authenticated: false, code: -1, errors: { __all__: ["Wrong"] } });
-  }
-  return Response.json(
-    { authenticated: true, code: 1, errors: {} },
-    { headers: { "Set-Cookie": `newsblur_sessionid=${SESSION_ID}; Path=/; HttpOnly` } },
-  );
+type OutboundCall = {
+  url: string;
+  body: string;
+  cookie: string | null;
+  authorization: string | null;
 };
 
+const tokenEndpoint = (call: OutboundCall): Response => {
+  const form = new URLSearchParams(call.body);
+  if (
+    form.get("client_id") !== "e2e-client" ||
+    form.get("client_secret") !== CLIENT_SECRET ||
+    form.get("code") !== "e2e-code"
+  ) {
+    return Response.json({ error: "invalid_grant" }, { status: 400 });
+  }
+  return Response.json({ access_token: ACCESS_TOKEN, refresh_token: "refresh-e2e" });
+};
 const profileEndpoint = (call: OutboundCall): Response => {
-  if (call.cookie !== `newsblur_sessionid=${SESSION_ID}`) return Response.json({}, { status: 403 });
-  return Response.json({ code: 1, user_profile: { user_id: USER_ID } });
+  if (call.authorization !== `Bearer ${ACCESS_TOKEN}` || call.cookie !== null)
+    return Response.json({}, { status: 401 });
+  return Response.json({ code: 1, user_profile: { user_id: USER_ID, username: USERNAME } });
 };
 
 type WorkerServer = {
@@ -66,11 +72,11 @@ type WorkerServer = {
 };
 
 export const test = base.extend<
-  { worker: WorkerServer; workerPassword: string },
+  { worker: WorkerServer; workerClientSecret: string },
   { bundle: string; keys: Keys }
 >({
-  // The password the Worker holds, so a test can make it differ from the NewsBlur account's.
-  workerPassword: [PASSWORD, { option: true }],
+  // A test can make the Worker client secret differ from the upstream registration.
+  workerClientSecret: [CLIENT_SECRET, { option: true }],
   // Wrangler's own bundler, as the deploy uses; --dry-run stops before any upload.
   bundle: [
     // oxlint-disable-next-line no-empty-pattern -- Playwright reads fixture deps from the pattern
@@ -93,7 +99,7 @@ export const test = base.extend<
     { scope: "worker" },
   ],
   // One Miniflare per test, so each starts signed out with in-memory storage.
-  worker: async ({ bundle, keys, workerPassword }, use) => {
+  worker: async ({ bundle, keys, workerClientSecret }, use) => {
     const outbound: OutboundCall[] = [];
     const unexpected: string[] = [];
     const mf = new Miniflare({
@@ -108,8 +114,8 @@ export const test = base.extend<
       durableObjects: { NEWSBLUR_AUTH: { className: "NewsblurAuth", useSQLite: true } },
       bindings: {
         NEWSBLUR_HOST,
-        NEWSBLUR_USERNAME: USERNAME,
-        NEWSBLUR_PASSWORD: workerPassword,
+        NEWSBLUR_OAUTH_CLIENT_ID: "e2e-client",
+        NEWSBLUR_OAUTH_CLIENT_SECRET: workerClientSecret,
         ACCESS_TEAM_DOMAIN: TEAM_DOMAIN,
         ACCESS_AUD: AUDIENCE,
         ACCESS_ALLOWED_EMAIL: OWNER,
@@ -124,10 +130,11 @@ export const test = base.extend<
             url: request.url,
             body: await request.clone().text(),
             cookie: request.headers.get("Cookie"),
+            authorization: request.headers.get("Authorization"),
           };
-          if (endpoint.pathname === "/api/login" && request.method === "POST") {
+          if (endpoint.pathname === "/oauth/token" && request.method === "POST") {
             outbound.push(call);
-            return loginEndpoint(call);
+            return tokenEndpoint(call);
           }
           if (endpoint.pathname === "/social/load_user_profile" && request.method === "GET") {
             outbound.push(call);

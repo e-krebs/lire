@@ -7,6 +7,7 @@ const DIST = "dist";
 // "__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED", which a generic word match would flag.
 const FORBIDDEN = [
   /\bNEWSBLUR_PASSWORD\b/,
+  /\bNEWSBLUR_OAUTH_CLIENT_SECRET\b/,
   // A newsletter address carries NewsBlur's secret token; only the demo address may ship.
   /(?<!\bada-reader-demo0000)@newsletters\.newsblur\.com\b/,
   /sk_test_[A-Za-z0-9]+/,

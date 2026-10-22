@@ -102,10 +102,10 @@ export default defineConfig({
       use: { ...desktop, baseURL: pwaServer.url },
     },
     {
-      // Each test starts its own worker in Miniflare, see e2e/support/worker.ts.
+      // Each test runs the OAuth Worker with a fake upstream in Miniflare.
       name: "login",
       testMatch: /login\.spec\.ts/,
-      use: desktop,
+      use: { baseURL: undefined },
     },
   ],
   webServer: [

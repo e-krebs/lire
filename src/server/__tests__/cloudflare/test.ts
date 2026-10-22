@@ -9,8 +9,8 @@ const WORKERS_ENV = {
   ACCESS_TEAM_DOMAIN: "test-team.cloudflareaccess.com",
   ACCESS_AUD: "test-aud",
   ACCESS_ALLOWED_EMAIL: "owner@example.com",
-  NEWSBLUR_USERNAME: "owner",
-  NEWSBLUR_PASSWORD: "test-password",
+  NEWSBLUR_OAUTH_CLIENT_ID: "test-client",
+  NEWSBLUR_OAUTH_CLIENT_SECRET: "test-secret",
 };
 
 interface Entry {
