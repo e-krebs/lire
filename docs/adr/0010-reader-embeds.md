@@ -1,4 +1,4 @@
-# 0011. Embed videos and posts in blog posts as iframes
+# 0010. Embed videos and posts in blog posts as iframes
 
 ## Status
 

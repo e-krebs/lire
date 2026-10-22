@@ -22,7 +22,7 @@ clientsClaim();
 if (!import.meta.env.DEV) {
   registerRoute(
     new NavigationRoute(createHandlerBoundToURL("/index.html"), {
-      // The Worker serves /api/auth/login as HTML, and Access sets its cookie on /cdn-cgi/ pages: the SPA shell must shadow neither.
+      // OAuth login and callback responses must reach the Worker; Access sets its cookie on /cdn-cgi/ pages too.
       denylist: [/^\/api\//, /^\/cdn-cgi\//],
     }),
   );

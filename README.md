@@ -9,10 +9,10 @@ The app runs in mock mode by default, against recorded or synthetic NewsBlur fix
 unread counts, streams with paging, an article reader, mark read and mark-all-read, subscription
 add, move and unsubscribe, and web feeds made from a page (variant picking, reanalyze). Three layout tiers (phone, tablet, desktop) and a PWA shell. The UI is in
 English and French, following the browser unless the account menu picks one. The Worker exists:
-Cloudflare Access with an owner email pin guards it, a Worker-side NewsBlur login signs the owner in,
-and the session cookie, kept in a Durable Object, authenticates the upstream calls.
+Cloudflare Access with an owner email pin guards it, a NewsBlur OAuth sign-in runs in the Worker,
+and the NewsBlur grant, kept per user in a Durable Object, authenticates the upstream calls.
 
-Setting up a deployment needs a NewsBlur account with a password and three GitHub secrets; see
+Setting up a deployment needs a NewsBlur OAuth client (its id and secret) and the other GitHub secrets; see
 [docs/how-to/deploy.md](docs/how-to/deploy.md#newsblur-account). Recording your own fixtures needs
 `NEWSBLUR_USERNAME` and `NEWSBLUR_PASSWORD` in `.env.local`.
 

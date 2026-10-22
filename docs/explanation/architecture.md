@@ -18,10 +18,10 @@ Browser (lire.krebs.tech)
 │ PWA service worker           │      │   contract: shared/feedsApi         │
 └──────────────────────────────┘      │   translation: shared/bff           │
                                       │   NewsblurAuth Durable Object       │
-                                      │   (session cookie, feed-list cache)│
+                                      │   (NewsBlur grant, feed-list cache)│
                                       └──────────────────┬──────────────────┘
                                                          │ NEWSBLUR_HOST
-                                                         │ session cookie
+                                                         │ Bearer access token
                                                          ▼
                                                      newsblur.com
 
@@ -56,7 +56,7 @@ permalink. Facebook covers posts and videos; `fb.watch` short links stay plain l
 short link cannot resolve client side. Every frame loads when the post renders. The X frame grows to its tweet: it posts its height, and the reader accepts that only from `platform.twitter.com` and from its own frame. The helpers are in
 [embeds.ts](../../src/client/utils/embeds.ts). Every other frame is dropped, no third-party script
 runs in the app's origin, and a newsletter never gets frames. The allowlist and the privacy cost
-are in [ADR 0011](../adr/0011-reader-embeds.md).
+are in [ADR 0010](../adr/0010-reader-embeds.md).
 
 The unread filter and the sort order are per device, not per account, and never in the URL. They
 live in `localStorage` under `lire.view` ([viewPrefs.ts](../../src/client/utils/viewPrefs.ts)),
@@ -118,7 +118,7 @@ signs the build Play delivers. How the app ships is in
 [deploy.md](../how-to/deploy.md#android-app).
 
 Sign-in in the TWA stays on one origin. The link to `/api/auth/login` is same-origin, and the
-Worker logs in to NewsBlur server side before it redirects home. The flow is in [auth.md](auth.md).
+Worker redirects to NewsBlur to sign in, and the callback redirects home. The flow is in [auth.md](auth.md).
 
 That module sits on a transport seam ([transport.ts](../../src/client/api/transport.ts)). The
 HTTP transport ([adapters/http.ts](../../src/client/api/adapters/http.ts)) is a same-origin
@@ -148,7 +148,7 @@ and an entry is a `story_hash`. The reasons and the rules the core enforces (cou
 user check, the `code < 1` failure) are in [ADR 0009](../adr/0009-newsblur-bff.md).
 
 The core lives in `shared/` because it is pure and takes its `fetch` as an argument. The Worker
-passes a `fetch` that adds the session cookie and calls `NEWSBLUR_HOST`; mock mode passes the fake
+passes a `fetch` that adds the Bearer access token and calls `NEWSBLUR_HOST`; mock mode passes the fake
 NewsBlur. A new route is a contract entry plus a handler. The contract bounds what a compromised
 or buggy client can do with the owner's session: it cannot reach any other NewsBlur endpoint. The
 Worker answers with its own JSON, never with upstream headers.
@@ -240,8 +240,8 @@ fixtures, which the gate checks rather than assumes.
 [vite.config.ts](../../vite.config.ts) builds the service worker through `vite-plugin-pwa` in
 `injectManifest` mode from [sw.ts](../../src/client/sw.ts). The worker precaches the built assets
 and falls back to `index.html` for navigation. The fallback denylists `/api/`, because the Worker
-serves `/api/auth/login` as an HTML page: if the service worker answered that navigation with the
-SPA shell, the login would never run. It also denylists `/cdn-cgi/`: Access returns from its login
+redirects through `/api/auth/login` and `/api/auth/callback`: if the service worker answered that navigation with the
+SPA shell, the sign-in would never run. It also denylists `/cdn-cgi/`: Access returns from its login
 to `/cdn-cgi/access/authorized`, which sets the session cookie, and the SPA shell would swallow it. In dev the manifest is nearly empty, so the fallback route is
 skipped there.
 
@@ -254,7 +254,7 @@ through the `online` replay and at start. The worker then replays both stored li
 and the Android app. Elsewhere the page flushes on hide and replays stored ids at the next start
 and when the browser goes online. The real build runs all of this; the mock build keeps the ids in
 memory and registers no sync. Both marks queue as `{ id, state, userId }` rows and wait 10 seconds; a mark that is the opposite of a
-queued one cancels it, so a quick toggle sends nothing. One request carries `{ read, unread }`. [0012](../adr/0012-persisted-mark-read-queue.md) records why.
+queued one cancels it, so a quick toggle sends nothing. One request carries `{ read, unread }`. [0011](../adr/0011-persisted-mark-read-queue.md) records why.
 
 The first list fetch of a session waits for the start replay (`whenReplayed` in
 [markQueue.ts](../../src/client/api/markQueue.ts)), so marks an earlier session left stored

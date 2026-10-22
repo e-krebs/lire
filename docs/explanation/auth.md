@@ -2,7 +2,7 @@
 
 Two layers of auth guard the Worker. Cloudflare Access decides who may reach the Worker at all. A
 NewsBlur OAuth grant, obtained by the reader signing in to NewsBlur, decides what the Worker may do
-upstream. A `lire_session` cookie, set by the sign-in,
+upstream ([ADR 0012](../adr/0012-newsblur-oauth.md)). A `lire_session` cookie, set by the sign-in,
 names the browser that may call the Worker's `/api` routes.
 
 ## Layer 1: Cloudflare Access and the owner pin

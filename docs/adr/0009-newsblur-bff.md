@@ -46,7 +46,7 @@ NewsBlur.
   started before a write skip its cache set.
 - **Mark read.** The client batches: it flushes at 5 hashes or 10 seconds, and on `pagehide` or
   when the page is hidden, with `keepalive`. Pending ids are stored and sent again after a failed
-  send or at the next start, see [0012](0012-persisted-mark-read-queue.md). The optimistic cache
+  send or at the next start, see [0011](0011-persisted-mark-read-queue.md). The optimistic cache
   update stays instant.
 
 ## Consequences
@@ -58,5 +58,5 @@ NewsBlur.
 - A new route is a contract entry plus a handler, reviewed like any code change.
 - Mock mode and the Worker run the same core, so a fixture exercises the real translation.
 - The Worker adds one hop and a translation layer to maintain, and tracks NewsBlur behavior changes.
-- Sign-in is covered by [0010](0010-newsblur-session-cookie.md).
+- Sign-in is covered by [0012](0012-newsblur-oauth.md).
 - Detail: [architecture](../explanation/architecture.md).

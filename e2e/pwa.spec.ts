@@ -16,6 +16,8 @@ test.describe("the service worker", () => {
     // shows the denylist at work.
     const login = await page.goto("/api/auth/login");
     expect(login?.fromServiceWorker()).toBe(false);
+    const callback = await page.goto("/api/auth/callback");
+    expect(callback?.fromServiceWorker()).toBe(false);
     const shell = await page.goto("/");
     expect(shell?.fromServiceWorker()).toBe(true);
 

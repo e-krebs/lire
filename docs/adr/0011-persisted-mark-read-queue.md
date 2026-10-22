@@ -1,4 +1,4 @@
-# 0012. Persist read marks, send them from the service worker, and prompt for updates
+# 0011. Persist read marks, send them from the service worker, and prompt for updates
 
 ## Status
 
