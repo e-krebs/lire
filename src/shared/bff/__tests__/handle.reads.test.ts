@@ -234,21 +234,22 @@ describe("handle reads", () => {
       });
     });
 
-    it("posts every feed in the tree for all", async () => {
-      const upstream = fakeUpstream({ ...feedsReply, "POST /reader/river_stories": stories });
+    it("posts the all stream with no feeds and no feed list read", async () => {
+      const upstream = fakeUpstream({ "POST /reader/river_stories": stories });
       await send({ url: "/api/streams/all/entries?count=5", upstream });
-      expect(upstream.calls[1]).toEqual({
-        method: "POST",
-        path: "/reader/river_stories",
-        form: {
-          page: "1",
-          order: "newest",
-          limit: "5",
-          read_filter: "all",
-          include_hidden: "true",
-          feeds: ["4", "1", "2", "3", "9"],
+      expect(upstream.calls).toEqual([
+        {
+          method: "POST",
+          path: "/reader/river_stories",
+          form: {
+            page: "1",
+            order: "newest",
+            limit: "5",
+            read_filter: "all",
+            include_hidden: "true",
+          },
         },
-      });
+      ]);
     });
 
     it("posts a folder's feeds, nested ones included", async () => {

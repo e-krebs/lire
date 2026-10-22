@@ -323,7 +323,8 @@ export const createFakeNewsblur = ({
       if (hashes.length > 0) {
         return { stories: hashes.flatMap((hash) => stories.get(hash) ?? []).map(withState) };
       }
-      return paged({ list: many({ params, key: "feeds" }).flatMap(feedStories), params });
+      const ids = many({ params, key: "feeds" });
+      return paged({ list: (ids.length > 0 ? ids : Object.keys(feeds)).flatMap(feedStories), params });
     }
     if (path === "/rss_feeds/feed_autocomplete") {
       const term = one({ params, key: "term" }).toLowerCase();
