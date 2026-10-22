@@ -47,7 +47,7 @@ accepts a manual run only from `main`.
 The `cloudflare-gate` job checks that `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` exist and
 skips every Cloudflare job cleanly when they do not. The `preflight` job then runs
 `yarn check:access` and `yarn provision:pages`, and every deploy job needs it. `preflight` also
-fails while the `NEWSBLUR_USERNAME` secret is not set. The SPA, demo and
+fails while the `NEWSBLUR_OAUTH_CLIENT_ID` secret is not set. The SPA, demo and
 Worker jobs need both `verify` and `e2e` green; the Storybook job needs the `storybook` job. A job
 skipped by the change filter does not block a deploy, but a failed one does. The `check-live` job
 runs last, once the deploys that ran finish, and runs `yarn check:live`. The `docs-links` job runs
@@ -77,8 +77,8 @@ the front. The account menu's Version tells which build runs.
 | `ACCESS_TEAM_DOMAIN` | `[vars]` in [wrangler.toml](../../wrangler.toml) | Access team domain |
 | `ACCESS_AUD` | `[vars]` in wrangler.toml | Access application audience |
 | `NEWSBLUR_HOST` | `[vars]` in wrangler.toml | NewsBlur base URL |
-| `NEWSBLUR_USERNAME` | GitHub repo secret, Worker secret | NewsBlur login the Worker uses |
-| `NEWSBLUR_PASSWORD` | GitHub repo secret, Worker secret | Password of that NewsBlur account |
+| `NEWSBLUR_OAUTH_CLIENT_ID` | GitHub repo secret, Worker secret | NewsBlur OAuth client id the Worker signs users in with |
+| `NEWSBLUR_OAUTH_CLIENT_SECRET` | GitHub repo secret, Worker secret | Secret of that OAuth client |
 | `LIRE_KEYSTORE_BASE64` | GitHub repo secret | Android signing keystore, base64 |
 | `LIRE_KEYSTORE_PASSWORD` | GitHub repo secret | Password of that keystore and its `lire` key |
 | `LIRE_PLAY_SERVICE_ACCOUNT_JSON` | GitHub repo secret | Google service account key that uploads the AAB to Play |
@@ -89,24 +89,24 @@ The API token carries these scopes:
   Organizations, Identity Providers, and Groups Read.
 - Zone `krebs.tech` only: Workers Routes Edit, DNS Edit, Zone Read.
 
-CI passes `ACCESS_ALLOWED_EMAIL`, `NEWSBLUR_USERNAME` and `NEWSBLUR_PASSWORD` to the Worker with
+CI passes `ACCESS_ALLOWED_EMAIL`, `NEWSBLUR_OAUTH_CLIENT_ID` and `NEWSBLUR_OAUTH_CLIENT_SECRET` to the Worker with
 `wrangler deploy --secrets-file`, which never deletes existing secrets. The `deploy-worker` job
-fails when `NEWSBLUR_USERNAME` or `NEWSBLUR_PASSWORD` is empty. `[vars]` come from wrangler.toml on every deploy. A CI deploy fails
+fails when `NEWSBLUR_OAUTH_CLIENT_ID` or `NEWSBLUR_OAUTH_CLIENT_SECRET` is empty. `[vars]` come from wrangler.toml on every deploy. A CI deploy fails
 without the pin; a Worker deployed without it trusts the Access policy alone. Never commit a
 secret value.
 
 ## NewsBlur account
 
-Sign-in needs the NewsBlur account's login and two GitHub secrets before the Worker deploys. The
-account must have a password: `/api/login` rejects an account that has none. Until the secrets
-exist, `preflight` fails on the missing username and the Worker job fails on the empty password.
+Sign-in needs a NewsBlur OAuth client, its id and its secret, as two GitHub secrets before the Worker
+deploys. NewsBlur issues the client to the owner of the Lire deployment.
 
-1. Add the GitHub repo secret `NEWSBLUR_USERNAME` with the account's username:
-   `gh secret set NEWSBLUR_USERNAME --repo e-krebs/lire`.
-2. Add the GitHub repo secret `NEWSBLUR_PASSWORD` with the account's password.
+1. Add the GitHub repo secret `NEWSBLUR_OAUTH_CLIENT_ID` with the client id:
+   `gh secret set NEWSBLUR_OAUTH_CLIENT_ID --repo e-krebs/lire`.
+2. Add the GitHub repo secret `NEWSBLUR_OAUTH_CLIENT_SECRET` with the client secret.
 
-After a password change, update `NEWSBLUR_PASSWORD` and redeploy the Worker. The recorder reads the
-same two names from `.env.local` (see [Record the fixtures](record-fixtures.md)).
+After a secret changes, update it and redeploy the Worker. `NEWSBLUR_USERNAME` and `NEWSBLUR_PASSWORD`
+are not Worker secrets: the recorder reads them from `.env.local` on your machine, and the Worker never
+reads them (see [Record the fixtures](record-fixtures.md)).
 
 ## Cloudflare Access
 
@@ -217,14 +217,14 @@ auth class and the token it stored. The first deploy after the move applies it.
 
 CI deploys the Worker through the `deploy-worker` job. To deploy from a machine instead, set
 `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`, write `ACCESS_ALLOWED_EMAIL`,
-`NEWSBLUR_USERNAME` and `NEWSBLUR_PASSWORD` to a JSON file, as one
+`NEWSBLUR_OAUTH_CLIENT_ID` and `NEWSBLUR_OAUTH_CLIENT_SECRET` to a JSON file, as one
 object of strings, and run:
 
 ```sh
 yarn worker:deploy --secrets-file <file>
 ```
 
-Use JSON, not a `.env` file. The `.env` format cuts a value at its first `#`, so a password
+Use JSON, not a `.env` file. The `.env` format cuts a value at its first `#`, so a secret
 with a `#` reaches the Worker truncated.
 
 The first visit after this deploy shows the SignIn screen, because no browser holds the
@@ -277,12 +277,13 @@ It returns `200` with no Access redirect.
 
 ## Re-auth
 
-When the Worker cannot log in to NewsBlur, the SPA shows the sign-in screen and
-`/api/auth/status` returns `{"signedIn":false}`. The usual cause is a changed password: update the
-`NEWSBLUR_PASSWORD` secret and redeploy the Worker (see [NewsBlur account](#newsblur-account)).
+When the Worker cannot reach NewsBlur for the reader, the SPA shows the sign-in screen and
+`/api/auth/status` returns `{"signedIn":false}`. A rejected grant that the refresh cannot renew signs the
+reader out, so signing in again is the usual fix. If sign-in fails for everyone, the client secret is
+the usual cause: update `NEWSBLUR_OAUTH_CLIENT_SECRET` and redeploy the Worker.
 
 1. Open `https://lire.krebs.tech/api/auth/login` and pass Access.
-2. The Worker logs in and redirects to `/`. A `400` page means the login failed. Run `yarn wrangler tail` and open the login again: the Worker logs the failed step as `NewsBlur login failed: <reason>`, never the credentials.
+2. NewsBlur asks for a login, then the Worker redirects to `/`. A `400` page means the sign-in failed.
 3. Confirm `https://lire.krebs.tech/api/auth/status` returns `{"signedIn":true}`.
 
 ## Local Worker limits

@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { DurableObject } from "cloudflare:workers";
 import type { FeedsAnswer } from "shared/bff/upstream";
 import type { Env } from "./env";
@@ -9,13 +10,26 @@ const FEEDS_CACHE_TTL_MS = 5 * 60_000;
 const TOKENS_KEY = "tokens";
 const TOKEN_TTL_MS = 180 * 24 * 60 * 60_000;
 const MAX_TOKENS = 20;
+const STATE_TTL_MS = 600_000;
+
+export const OAuthTokenSchema = z.object({
+  access_token: z.string().min(1),
+  refresh_token: z.string().min(1),
+});
+
+const InvalidGrantSchema = z.object({ error: z.literal("invalid_grant") });
 
 export interface StoredCredential {
-  kind: "cookie";
-  sessionId: string;
-  // The NewsBlur user the session signed in as, checked against every read answer.
+  kind: "token";
+  accessToken: string;
+  refreshToken: string;
   userId: number;
+  username: string;
+  revision: string;
 }
+
+// undefined means the grant is gone: NewsBlur answered invalid_grant, or the session was cleared.
+type RefreshResult = StoredCredential | "rate_limited" | "transient" | undefined;
 
 type StoredFeedsCache = { value: FeedsAnswer; expiresAt: number };
 
@@ -35,6 +49,96 @@ const newToken = (): string => {
 };
 
 export class NewsblurAuth extends DurableObject<Env> {
+  private refreshing?: Promise<RefreshResult>;
+
+  async createState(): Promise<void> {
+    const expires = Date.now() + STATE_TTL_MS;
+    this.ctx.storage.kv.put("state", expires);
+    await this.ctx.storage.setAlarm(expires);
+  }
+
+  async consumeState(): Promise<boolean> {
+    const expires = this.ctx.storage.kv.get<number>("state");
+    await this.ctx.storage.deleteAlarm();
+    await this.ctx.storage.deleteAll();
+    return expires !== undefined && expires > Date.now();
+  }
+
+  async alarm(): Promise<void> {
+    await this.ctx.storage.deleteAll();
+  }
+
+  async signIn({
+    credential,
+    previousToken,
+  }: {
+    credential: StoredCredential;
+    previousToken?: string;
+  }): Promise<string> {
+    const token = newToken();
+    const hash = await sha256Hex(token);
+    const previousHash = previousToken === undefined ? undefined : await sha256Hex(previousToken);
+    this.ctx.storage.transactionSync(() => {
+      this.setSession(credential);
+      const now = Date.now();
+      this.ctx.storage.kv.put(
+        TOKENS_KEY,
+        [
+          ...this.liveTokens(now).filter((stored) => stored.hash !== previousHash),
+          { hash, expiresAt: now + TOKEN_TTL_MS },
+        ].slice(-MAX_TOKENS),
+      );
+    });
+    return token;
+  }
+
+  async refreshSession({ revision }: { revision: string }): Promise<RefreshResult> {
+    const current = this.getSession();
+    if (!current || current.revision !== revision) return current;
+    if (this.refreshing) return this.refreshing;
+    this.refreshing = this.refreshCredential(current);
+    try {
+      return await this.refreshing;
+    } finally {
+      this.refreshing = undefined;
+    }
+  }
+
+  private async refreshCredential(current: StoredCredential): Promise<RefreshResult> {
+    try {
+      const response = await fetch(new URL("/oauth/token", this.env.NEWSBLUR_HOST), {
+        method: "POST",
+        headers: { "User-Agent": "Lire" },
+        body: new URLSearchParams({
+          grant_type: "refresh_token",
+          refresh_token: current.refreshToken,
+          client_id: this.env.NEWSBLUR_OAUTH_CLIENT_ID,
+          client_secret: this.env.NEWSBLUR_OAUTH_CLIENT_SECRET,
+        }),
+      });
+      if (this.getSession()?.revision !== current.revision) return this.getSession();
+      if (response.status === 429) return "rate_limited";
+      if (!response.ok) {
+        const rejected = response.status === 400 || response.status === 401;
+        return rejected && InvalidGrantSchema.safeParse(await response.json()).success
+          ? undefined
+          : "transient";
+      }
+      const tokens = OAuthTokenSchema.parse(await response.json());
+      if (this.getSession()?.revision !== current.revision) return this.getSession();
+      const fresh: StoredCredential = {
+        ...current,
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        revision: crypto.randomUUID(),
+      };
+      this.setSession(fresh);
+      return fresh;
+    } catch {
+      return "transient";
+    }
+  }
+
   hasSession(): boolean {
     return this.getSession() !== undefined;
   }
@@ -49,9 +153,10 @@ export class NewsblurAuth extends DurableObject<Env> {
     this.clearFeedsCache();
   }
 
-  // `onlySessionId` keeps a newer session that another request stored while this one failed.
-  clearSession({ onlySessionId }: { onlySessionId?: string } = {}): void {
-    if (onlySessionId !== undefined && this.getSession()?.sessionId !== onlySessionId) return;
+  // A failed request must not clear a newer credential, and waits out a refresh that may replace it.
+  async clearSession({ onlyRevision }: { onlyRevision?: string } = {}): Promise<void> {
+    if (this.refreshing) await this.refreshing;
+    if (onlyRevision !== undefined && this.getSession()?.revision !== onlyRevision) return;
     this.ctx.storage.kv.delete(SESSION_KEY);
     this.clearFeedsCache();
   }

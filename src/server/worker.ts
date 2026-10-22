@@ -4,13 +4,15 @@ import { encodeParams, type NewsblurFetch } from "shared/bff/upstream";
 import { matchRoute } from "shared/feedsApi/routes";
 import { AccessError, verifyAccess } from "./access";
 import type { Env } from "./env";
-import type { StoredCredential } from "./newsblurAuth";
+import { OAuthTokenSchema, type StoredCredential } from "./newsblurAuth";
 
 export { NewsblurAuth } from "./newsblurAuth";
 
 const LOGIN_PATH = "/api/auth/login";
 const LOGOUT_PATH = "/api/auth/logout";
-const NEWSBLUR_SESSION_COOKIE = "newsblur_sessionid";
+const CALLBACK_PATH = "/api/auth/callback";
+const STATE_COOKIE = "lire_oauth_state";
+const STATE_ATTRIBUTES = "HttpOnly; Secure; SameSite=Lax; Path=/api/auth";
 const LIRE_COOKIE = {
   name: "lire_session",
   attributes: "HttpOnly; Secure; SameSite=Lax; Path=/api",
@@ -23,9 +25,9 @@ const json = ({ body, status = 200 }: { body: unknown; status?: number }): Respo
     headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
   });
 
-// The key is the NewsBlur username, the one the session cookie carries.
+// A new namespace invalidates legacy cookies, including numeric usernames.
 const userObject = ({ env, userKey }: { env: Env; userKey: string }) =>
-  env.NEWSBLUR_AUTH.get(env.NEWSBLUR_AUTH.idFromName(`user:${userKey}`));
+  env.NEWSBLUR_AUTH.get(env.NEWSBLUR_AUTH.idFromName(`user-id:${userKey}`));
 
 const lireSetCookie = ({
   value,
@@ -35,13 +37,18 @@ const lireSetCookie = ({
   maxAge?: number;
 }): string => `${LIRE_COOKIE.name}=${value}; ${LIRE_COOKIE.attributes}; Max-Age=${maxAge}`;
 
-// Splits on the last dot: a NewsBlur username may hold dots, and a base64url token holds none.
 const readLireSession = (request: Request): { userKey: string; token: string } | undefined => {
   const value = new RegExp(`(?:^|;\\s*)${LIRE_COOKIE.name}=([^;]*)`).exec(
     request.headers.get("Cookie") ?? "",
   )?.[1];
   const dot = value?.lastIndexOf(".") ?? -1;
-  if (value === undefined || dot <= 0 || dot === value.length - 1) return undefined;
+  if (
+    value === undefined ||
+    dot <= 0 ||
+    dot === value.length - 1 ||
+    !/^[1-9]\d*$/.test(value.slice(0, dot))
+  )
+    return undefined;
   return { userKey: value.slice(0, dot), token: value.slice(dot + 1) };
 };
 
@@ -68,92 +75,98 @@ const signInFailedPage = (): Response =>
     },
   );
 
-const LoginAnswerSchema = z.object({ authenticated: z.boolean() });
-const ProfileAnswerSchema = z.object({ user_profile: z.object({ user_id: z.number() }) });
-
-const readSessionId = (response: Response): string | undefined => {
-  for (const line of response.headers.getSetCookie()) {
-    const match = new RegExp(`^${NEWSBLUR_SESSION_COOKIE}=([^;]+)`).exec(line);
-    if (match) return match[1];
-  }
-  return undefined;
-};
-
-// NewsBlur answers 403 "User agent banned: missing" to a request with no User-Agent, which is what a
-// Worker sends by default.
-const USER_AGENT = { "User-Agent": "Lire" };
-
-const sessionCookie = (sessionId: string) => ({
-  ...USER_AGENT,
-  Cookie: `${NEWSBLUR_SESSION_COOKIE}=${sessionId}`,
+const ProfileAnswerSchema = z.object({
+  user_profile: z.object({ user_id: z.number().int().positive(), username: z.string().min(1) }),
 });
-
-// Kept apart from a failed login, which signs the user out. A rate-limited login keeps the session.
-const RATE_LIMITED = "rate_limited";
-type LoginResult = StoredCredential | typeof RATE_LIMITED | undefined;
-
-const failLogin = (reason: string): StoredCredential | undefined => {
-  console.warn(`NewsBlur login failed: ${reason}`);
-  return undefined;
-};
-
-const rateLimitLogin = (reason: string): typeof RATE_LIMITED => {
-  console.warn(`NewsBlur login rate limited: ${reason}`);
-  return RATE_LIMITED;
-};
-
-const logIn = async (env: Env): Promise<LoginResult> => {
-  try {
-    const loginResponse = await fetch(`${env.NEWSBLUR_HOST}/api/login`, {
-      method: "POST",
-      headers: USER_AGENT,
-      body: new URLSearchParams({
-        username: env.NEWSBLUR_USERNAME,
-        password: env.NEWSBLUR_PASSWORD,
-      }),
-    });
-    if (loginResponse.status === 429) return rateLimitLogin("login");
-    if (!loginResponse.ok) return failLogin(`login answered ${loginResponse.status}`);
-    const login = LoginAnswerSchema.safeParse(await loginResponse.json());
-    const sessionId = readSessionId(loginResponse);
-    if (!login.success) return failLogin("login answer has an unexpected shape");
-    if (!login.data.authenticated) return failLogin("credentials refused");
-    if (!sessionId) return failLogin("no session cookie in the login answer");
-
-    // The user id pins every later read answer to this account.
-    const profileResponse = await fetch(`${env.NEWSBLUR_HOST}/social/load_user_profile`, {
-      headers: sessionCookie(sessionId),
-    });
-    if (profileResponse.status === 429) return rateLimitLogin("profile");
-    if (!profileResponse.ok) return failLogin(`profile answered ${profileResponse.status}`);
-    const profile = ProfileAnswerSchema.safeParse(await profileResponse.json());
-    if (!profile.success) return failLogin("profile answer has an unexpected shape");
-    return { kind: "cookie", sessionId, userId: profile.data.user_profile.user_id };
-  } catch (error) {
-    return failLogin(String(error));
-  }
-};
-
-const rateLimited = (): Response => json({ body: rateLimitedBody(), status: 429 });
+const USER_AGENT = { "User-Agent": "Lire" };
+const callbackUri = (request: Request): string => new URL(CALLBACK_PATH, request.url).href;
+const stateObject = ({ env, state }: { env: Env; state: string }) =>
+  env.NEWSBLUR_AUTH.get(env.NEWSBLUR_AUTH.idFromName(`oauth:${state}`));
 
 const handleLogin = async ({ request, env }: { request: Request; env: Env }): Promise<Response> => {
-  const session = await logIn(env);
-  if (session === RATE_LIMITED) return rateLimited();
-  if (!session) return signInFailedPage();
-  const userKey = env.NEWSBLUR_USERNAME;
-  const auth = userObject({ env, userKey });
-  await auth.setSession(session);
-  const previous = readLireSession(request);
-  if (previous?.userKey === userKey) await auth.revokeToken(previous.token);
-  const token = await auth.issueToken();
+  const state = crypto.randomUUID();
+  await stateObject({ env, state }).createState();
+  const url = new URL("/oauth/authorize", env.NEWSBLUR_HOST);
+  url.search = new URLSearchParams({
+    response_type: "code",
+    client_id: env.NEWSBLUR_OAUTH_CLIENT_ID,
+    redirect_uri: callbackUri(request),
+    state,
+  }).toString();
   return new Response(null, {
     status: 302,
     headers: {
-      Location: "/",
+      Location: url.href,
       "Cache-Control": "no-store",
-      "Set-Cookie": lireSetCookie({ value: `${userKey}.${token}` }),
+      "Set-Cookie": `${STATE_COOKIE}=${state}; ${STATE_ATTRIBUTES}; Max-Age=600`,
     },
   });
+};
+
+const handleCallback = async ({
+  request,
+  env,
+}: {
+  request: Request;
+  env: Env;
+}): Promise<Response> => {
+  const params = new URL(request.url).searchParams;
+  const state = params.get("state");
+  const cookie = /(?:^|;\s*)lire_oauth_state=([^;]*)/.exec(
+    request.headers.get("Cookie") ?? "",
+  )?.[1];
+  const headers = new Headers({
+    "Cache-Control": "no-store",
+    "Set-Cookie": `${STATE_COOKIE}=; ${STATE_ATTRIBUTES}; Max-Age=0`,
+  });
+  const failure = () => {
+    const response = signInFailedPage();
+    response.headers.set("Set-Cookie", headers.get("Set-Cookie")!);
+    return response;
+  };
+  if (!state || state !== cookie || !(await stateObject({ env, state }).consumeState()))
+    return failure();
+  const code = params.get("code");
+  if (!code || params.has("error")) return failure();
+  try {
+    const response = await fetch(new URL("/oauth/token", env.NEWSBLUR_HOST), {
+      method: "POST",
+      headers: USER_AGENT,
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        client_id: env.NEWSBLUR_OAUTH_CLIENT_ID,
+        client_secret: env.NEWSBLUR_OAUTH_CLIENT_SECRET,
+        redirect_uri: callbackUri(request),
+      }),
+    });
+    if (!response.ok) return failure();
+    const tokens = OAuthTokenSchema.parse(await response.json());
+    const profileResponse = await fetch(new URL("/social/load_user_profile", env.NEWSBLUR_HOST), {
+      headers: { ...USER_AGENT, Authorization: `Bearer ${tokens.access_token}` },
+    });
+    if (!profileResponse.ok) return failure();
+    const { user_profile: profile } = ProfileAnswerSchema.parse(await profileResponse.json());
+    const userKey = String(profile.user_id);
+    const auth = userObject({ env, userKey });
+    const previous = readLireSession(request);
+    const token = await auth.signIn({
+      credential: {
+        kind: "token",
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        userId: profile.user_id,
+        username: profile.username,
+        revision: crypto.randomUUID(),
+      },
+      previousToken: previous?.userKey === userKey ? previous.token : undefined,
+    });
+    headers.set("Location", "/");
+    headers.append("Set-Cookie", lireSetCookie({ value: `${userKey}.${token}` }));
+    return new Response(null, { status: 302, headers });
+  } catch {
+    return failure();
+  }
 };
 
 const isSameOrigin = (request: Request): boolean => {
@@ -182,20 +195,19 @@ const handleLogout = async ({
   if (!isSameOrigin(request) || !isJson(request))
     return json({ body: { error: "forbidden" }, status: 403 });
   const previous = readLireSession(request);
-  if (previous?.userKey === env.NEWSBLUR_USERNAME)
-    await userObject({ env, userKey: previous.userKey }).revokeToken(previous.token);
+  if (previous) await userObject({ env, userKey: previous.userKey }).revokeToken(previous.token);
   return new Response(null, {
     status: 204,
     headers: { "Cache-Control": "no-store", "Set-Cookie": lireSetCookie({ value: "", maxAge: 0 }) },
   });
 };
 
-const cookieUpstream =
-  ({ env, sessionId }: { env: Env; sessionId: string }): NewsblurFetch =>
+const tokenUpstream =
+  ({ env, accessToken }: { env: Env; accessToken: string }): NewsblurFetch =>
   async ({ method, path, query, form }) => {
     const url = new URL(path, env.NEWSBLUR_HOST);
     if (query) url.search = encodeParams(query).toString();
-    const headers = sessionCookie(sessionId);
+    const headers = { ...USER_AGENT, Authorization: `Bearer ${accessToken}` };
     return fetch(
       url,
       form ? { method: "POST", headers, body: encodeParams(form) } : { method, headers },
@@ -239,20 +251,12 @@ const serve = async ({ request, env }: { request: Request; env: Env }): Promise<
       : json({ body: { error: "sign_in_required" }, status: 401 });
 
   const lire = readLireSession(request);
-  if (!lire || lire.userKey !== env.NEWSBLUR_USERNAME) return signedOut();
+  if (!lire) return signedOut();
   const auth = userObject({ env, userKey: lire.userKey });
   if (!(await auth.hasToken(lire.token))) return signedOut();
 
-  let session = await auth.getSession();
-  let loggedInNow = false;
-  if (!session) {
-    const login = await logIn(env);
-    if (login === RATE_LIMITED) return rateLimited();
-    if (!login) return signedOut();
-    await auth.setSession(login);
-    session = login;
-    loggedInNow = true;
-  }
+  const session = await auth.getSession();
+  if (!session) return signedOut();
 
   const cache: FeedsCache = {
     get: async () => auth.getFeedsCache(),
@@ -265,7 +269,7 @@ const serve = async ({ request, env }: { request: Request; env: Env }): Promise<
       params: match.params,
       query: url.searchParams,
       body,
-      upstream: cookieUpstream({ env, sessionId: current.sessionId }),
+      upstream: tokenUpstream({ env, accessToken: current.accessToken }),
       config: {
         userId: current.userId,
         geo: geoOf(request),
@@ -273,19 +277,18 @@ const serve = async ({ request, env }: { request: Request; env: Env }): Promise<
       cache,
     });
   let result = await run(session);
-  // NewsBlur rejected the session, or answered as another user: log in once more, then give up.
-  // Only a GET retries, because a write may have partly landed before the rejection.
   let used = session;
-  if (result.status === 401 && !loggedInNow && request.method === "GET") {
-    const fresh = await logIn(env);
-    if (fresh === RATE_LIMITED) return rateLimited();
+  // A write may have partly landed before the rejection.
+  if (result.status === 401 && request.method === "GET") {
+    const fresh = await auth.refreshSession({ revision: session.revision });
+    if (fresh === "rate_limited") return json({ body: rateLimitedBody(), status: 429 });
+    if (fresh === "transient") return json({ body: { error: "upstream_error" }, status: 502 });
     if (fresh) {
-      await auth.setSession(fresh);
       used = fresh;
       result = await run(fresh);
     }
   }
-  if (result.status === 401) await auth.clearSession({ onlySessionId: used.sessionId });
+  if (result.status === 401) await auth.clearSession({ onlyRevision: used.revision });
   if (result.body === null)
     return new Response(null, { status: result.status, headers: { "Cache-Control": "no-store" } });
   return json({ body: result.body, status: result.status });
@@ -294,6 +297,8 @@ const serve = async ({ request, env }: { request: Request; env: Env }): Promise<
 const route = async ({ request, env }: { request: Request; env: Env }): Promise<Response> => {
   const { pathname } = new URL(request.url);
   if (pathname === LOGIN_PATH && request.method === "GET") return handleLogin({ request, env });
+  if (pathname === CALLBACK_PATH && request.method === "GET")
+    return handleCallback({ request, env });
   if (pathname === LOGOUT_PATH && request.method === "POST") return handleLogout({ request, env });
   return serve({ request, env });
 };

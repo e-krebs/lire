@@ -2,11 +2,10 @@ import { generateKeyPair } from "jose";
 import {
   expect,
   OWNER,
-  PASSWORD,
-  SESSION_ID,
+  CLIENT_SECRET,
+  ACCESS_TOKEN,
   signAccessToken,
   test,
-  USERNAME,
 } from "./support/worker";
 
 const ACCESS_HEADER = "Cf-Access-Jwt-Assertion";
@@ -42,15 +41,31 @@ test.describe("Login", () => {
 
     const headers = ({ ownerToken }: { ownerToken: string }) => ({ [ACCESS_HEADER]: ownerToken });
 
-    const login = async ({ request, worker }: Fixtures) =>
-      request.get(`${worker.url}/api/auth/login`, {
+    const login = async ({ request, worker }: Fixtures) => {
+      const start = await request.get(`${worker.url}/api/auth/login`, {
         headers: headers({ ownerToken: worker.ownerToken }),
         maxRedirects: 0,
       });
+      expect(start.status()).toBe(302);
+      const authorize = new URL(start.headers().location);
+      expect(authorize.pathname).toBe("/oauth/authorize");
+      const state = authorize.searchParams.get("state")!;
+      return request.get(`${worker.url}/api/auth/callback?code=e2e-code&state=${state}`, {
+        headers: {
+          ...headers({ ownerToken: worker.ownerToken }),
+          Cookie: start.headers()["set-cookie"].split(";")[0],
+        },
+        maxRedirects: 0,
+      });
+    };
 
     // The browser keeps lire_session; the spec sends it back by hand.
     const cookieOf = (response: { headers(): Record<string, string> }) =>
-      response.headers()["set-cookie"]?.split(";")[0];
+      response
+        .headers()
+        ["set-cookie"]?.split("\n")
+        .find((line) => line.startsWith("lire_session="))
+        ?.split(";")[0];
 
     const signedIn = async ({
       request,
@@ -66,22 +81,23 @@ test.describe("Login", () => {
         })
       ).json();
 
-    test("login signs in with the Worker's credentials, sets the cookie and redirects home", async ({
-      request,
-      worker,
-    }) => {
+    test("OAuth callback sets a user id cookie and redirects home", async ({ request, worker }) => {
       const response = await login({ request, worker });
 
       expect(response.status()).toBe(302);
       expect(response.headers().location).toBe("/");
       const [loginCall, profile] = worker.outbound;
       expect(Object.fromEntries(new URLSearchParams(loginCall.body))).toEqual({
-        username: USERNAME,
-        password: PASSWORD,
+        grant_type: "authorization_code",
+        code: "e2e-code",
+        client_id: "e2e-client",
+        client_secret: CLIENT_SECRET,
+        redirect_uri: `${worker.url}/api/auth/callback`,
       });
-      expect(profile.cookie).toBe(`newsblur_sessionid=${SESSION_ID}`);
+      expect(profile.cookie).toBeNull();
+      expect(profile.authorization).toBe(`Bearer ${ACCESS_TOKEN}`);
       const cookie = cookieOf(response);
-      expect(cookie).toMatch(/^lire_session=owner\./);
+      expect(cookie).toMatch(/^lire_session=42\./);
       expect(await signedIn({ request, worker, cookie })).toEqual({ signedIn: true, userId: 42 });
     });
 
@@ -93,14 +109,14 @@ test.describe("Login", () => {
       expect(worker.outbound).toHaveLength(0);
     });
 
-    test.describe("when NewsBlur refuses the Worker's password", () => {
-      test.use({ workerPassword: "wrong-password" });
+    test.describe("when NewsBlur refuses the OAuth client secret", () => {
+      test.use({ workerClientSecret: "wrong-secret" });
 
       test("login fails and the owner stays signed out", async ({ request, worker }) => {
         const response = await login({ request, worker });
 
         expect(response.status()).toBe(400);
-        expect(response.headers()["set-cookie"]).toBeUndefined();
+        expect(response.headers()["set-cookie"]).toContain("Max-Age=0");
         expect(worker.outbound).toHaveLength(1);
         expect(await signedIn({ request, worker })).toEqual({ signedIn: false });
       });

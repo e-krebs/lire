@@ -12,8 +12,8 @@ Every `/api/` response carries `Cache-Control: no-store`, and the client adapter
 
 ## Session cookie
 
-`GET /api/auth/login` sets `lire_session=<userKey>.<token>`, with `HttpOnly; Secure; SameSite=Lax;
-Path=/api; Max-Age=15552000`. `<userKey>` is the NewsBlur username and `<token>` is opaque. Every
+`GET /api/auth/callback` sets `lire_session=<userId>.<token>`, with `HttpOnly; Secure; SameSite=Lax;
+Path=/api; Max-Age=15552000`. `<userId>` is the NewsBlur user id and `<token>` is opaque. Every
 contract route needs a cookie the Worker holds a token for. Without one, the Worker answers
 `401 sign_in_required`, except `GET /api/auth/status`, which answers `200 { signedIn: false }`.
 
@@ -21,7 +21,8 @@ contract route needs a cookie the Worker holds a token for. Without one, the Wor
 
 | Method | Path | Behavior |
 | --- | --- | --- |
-| GET | `/api/auth/login` | Logs in to NewsBlur with the Worker's credentials, stores the session, sets the `lire_session` cookie and redirects to `/`. A failure answers 400 with a page that links back to the login, and sets no cookie |
+| GET | `/api/auth/login` | Starts the NewsBlur OAuth sign-in. Stores a single-use `state` for 10 minutes, sets it in the `lire_oauth_state` cookie and redirects to NewsBlur's authorize page |
+| GET | `/api/auth/callback` | Finishes the sign-in. Checks the `state` against the cookie and consumes it, exchanges the code for tokens, stores them for the reader's user id, sets the `lire_session` cookie and redirects to `/`. Any failure answers 400 with a page that links back to the login, and sets no `lire_session` cookie |
 | POST | `/api/auth/logout` | Revokes the cookie's token and clears the cookie. Answers 204, with or without a cookie. Non-same-origin or non-JSON requests answer 403 |
 
 ## Contract routes
@@ -32,7 +33,7 @@ folder title, an entry id is the story hash. A stream key is `all`, `read`, `fol
 
 | Method | Path | Behavior |
 | --- | --- | --- |
-| GET | `/api/auth/status` | `{ signedIn, userId }`, `signedIn` true when the cookie is valid and a session is stored or a login succeeds; `userId` is the NewsBlur user id then. Without a valid cookie, `200 { signedIn: false }` |
+| GET | `/api/auth/status` | `{ signedIn, userId }`, `signedIn` true when the cookie is valid and a grant is stored; `userId` is the NewsBlur user id then. Without a valid cookie, `200 { signedIn: false }` |
 | GET | `/api/profile` | `{ username, email? }` |
 | GET | `/api/categories` | `[{ id, label, feedIds }]`, ordered by the `lire.categoryOrder` preference |
 | POST | `/api/categories` | Create a category, body `{ label }`. 409 when a category already has the label |
@@ -63,7 +64,7 @@ folder title, an entry id is the story hash. A stream key is `all`, `read`, `fol
 Preference keys are `lire.categoryOrder` and `lire.directOpen.<feedId>`
 ([preferences.ts](../../src/shared/feedsApi/preferences.ts)). The Worker rejects other keys with 400.
 
-The Worker sends `Cookie: newsblur_sessionid=<id>` and `User-Agent: Lire` upstream. NewsBlur bans a request with no user agent. Non-GET requests need a same-origin
+The Worker sends `Authorization: Bearer <access token>` and `User-Agent: Lire` upstream. NewsBlur bans a request with no user agent. Non-GET requests need a same-origin
 caller, and POST and PATCH need a JSON content type. Creates answer 201 with the resource, PATCH
 answers 200, and deletes, marks and preference writes answer 204. Errors are JSON: `forbidden`,
 `not_found`, `bad_request`, `conflict` (409), `user_mismatch` (409), `sign_in_required` (401), `premium_required` (403),
@@ -85,11 +86,11 @@ Names and roles only.
 | `VITE_DEMO` | build | `true` makes the demo build |
 | `NEWSBLUR_USERNAME`, `NEWSBLUR_PASSWORD` | local | Recorder login, listed in [.env.sample](../../.env.sample) |
 | `NEWSBLUR_HOST` | Worker var | Base URL of NewsBlur |
-| `NEWSBLUR_USERNAME`, `NEWSBLUR_PASSWORD` | Worker secret | The login the Worker posts to NewsBlur, set by CI from GitHub secrets |
+| `NEWSBLUR_OAUTH_CLIENT_ID`, `NEWSBLUR_OAUTH_CLIENT_SECRET` | Worker secret | The NewsBlur OAuth client the Worker signs users in with, set by CI from GitHub secrets |
 | `ACCESS_TEAM_DOMAIN` | Worker var | Access team domain that issues the JWT |
 | `ACCESS_AUD` | Worker var | Expected JWT audience |
 | `ACCESS_ALLOWED_EMAIL` | Worker secret | Owner email pin, set by CI from a GitHub secret |
-| `NEWSBLUR_AUTH` | Worker binding | Durable Object namespace holding the NewsBlur session, the hashes of the browser tokens and the feed-list cache |
+| `NEWSBLUR_AUTH` | Worker binding | Durable Object namespace holding each user's NewsBlur grant, the hashes of the browser tokens and the feed-list cache |
 | `E2E_COVERAGE` | test | `1` turns on Playwright coverage |
 | `COVERAGE_DIR` | test | Output directory of the Vitest coverage scripts |
 
