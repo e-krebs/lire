@@ -165,9 +165,9 @@ Every job that installs dependencies uses the shared [setup action](../../.githu
 which restores the Yarn cache. The `e2e` and `storybook` jobs run in the official Playwright
 container image, which ships the browsers and their system libraries. The runner then installs
 nothing with apt and downloads no browser, because a slow install once held the `e2e` job for 14
-minutes and a hung `install-deps` timed out other runs. The image tag names the Playwright version,
-so it must match `playwright-core` in `yarn.lock`: a mismatch fails the job with a missing browser
-executable. Every job sets `timeout-minutes`, about three times its normal duration, so a hung
+minutes and a hung `install-deps` timed out other runs. The `changes` job reads the
+`playwright-core` version from `yarn.lock`, and the image tag follows it, so a Playwright bump needs
+no workflow edit. A release that reaches npm before its image fails the job on the image pull. Every job sets `timeout-minutes`, about three times its normal duration, so a hung
 step fails in minutes. Playwright's `globalTimeout` ends a stuck run before the job limit, so the
 report still uploads. Every Cloudflare job is skipped when the gate finds no secrets. [ADR 0006](../adr/0006-ci-owns-cloudflare-setup.md)
 records why CI owns this setup.

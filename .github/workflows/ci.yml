@@ -23,8 +23,13 @@ jobs:
       worker: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.worker == 'true' || steps.unknown.outputs.unknown == 'true' }}
       tooling: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.tooling == 'true' || steps.unknown.outputs.unknown == 'true' }}
       infra: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.infra == 'true' || steps.unknown.outputs.unknown == 'true' }}
+      playwright: ${{ steps.playwright.outputs.version }}
     steps:
       - uses: actions/checkout@v7
+      # The browser jobs run in the Playwright image of the locked version.
+      - name: Read Playwright version
+        id: playwright
+        run: echo "version=$(awk '/^"playwright-core@/{f=1;next} f&&/^  version:/{print $2;exit}' yarn.lock)" >> "$GITHUB_OUTPUT"
       - name: Filter changed areas
         id: filter
         if: github.event_name != 'workflow_dispatch'
@@ -212,9 +217,8 @@ jobs:
     if: needs.changes.outputs.app == 'true' || needs.changes.outputs.worker == 'true' || needs.changes.outputs.tooling == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    # Browsers and their apt deps are baked in. Keep the tag in step with playwright-core in yarn.lock.
     container:
-      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      image: mcr.microsoft.com/playwright:v${{ needs.changes.outputs.playwright }}-noble
       options: --init --ipc=host
     steps:
       - uses: actions/checkout@v7
@@ -233,7 +237,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     container:
-      image: mcr.microsoft.com/playwright:v1.64.1-noble
+      image: mcr.microsoft.com/playwright:v${{ needs.changes.outputs.playwright }}-noble
       options: --init --ipc=host
     steps:
       - uses: actions/checkout@v7
