@@ -31,6 +31,9 @@ const ui = {
   get frenchLanguageSelect() {
     return screen.findByRole("combobox", { name: /^Langue/, hidden: true });
   },
+  get newsblurUsername() {
+    return screen.findByText("ada-reader");
+  },
 };
 
 describe("AccountMenu", () => {
@@ -117,6 +120,13 @@ describe("AccountMenu", () => {
         expect(logout).toHaveBeenCalledOnce();
       });
       expect(hidePopover).toHaveBeenCalledOnce();
+    });
+
+    it("shows the NewsBlur username in the account menu", async () => {
+      renderApp({ url: "/subscriptions" });
+      await userEvent.click(await ui.accountButton);
+
+      expect(await ui.newsblurUsername).toBeInTheDocument();
     });
   });
 });

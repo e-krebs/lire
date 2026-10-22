@@ -44,7 +44,7 @@ export const httpTransport: Transport = async ({ method, path, query, body, keep
       : {}),
   });
   if (response.type === "opaqueredirect") {
-    // Access's login host sends no CORS header: use the login route, which the worker lets through.
+    // Access's login host sends no CORS header: restart sign-in through the Worker route.
     // The page is leaving, so parallel requests must not react.
     if (navigating || goToAccessLogin()) {
       navigating = true;

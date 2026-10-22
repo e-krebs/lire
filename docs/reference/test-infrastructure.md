@@ -35,8 +35,8 @@ worker starts, so the time tests do not depend on the host timezone. The locale 
 The `server` project runs in Node. It aliases two Cloudflare modules to a local shim in
 [src/server/__tests__/cloudflare](../../src/server/__tests__/cloudflare). `cloudflare:workers` gives the `NewsblurAuth` Durable Object an
 in-memory key-value store. `cloudflare:test` exports `env`, `SELF` and `runInDurableObject`, the same surface the tests
-used from the Workers pool. `env` holds fixed test values, including `ACCESS_ALLOWED_EMAIL`, `NEWSBLUR_USERNAME`,
-and `NEWSBLUR_PASSWORD`, and a `NEWSBLUR_AUTH` namespace whose stubs clone arguments and
+used from the Workers pool. `env` holds fixed test values, including `ACCESS_ALLOWED_EMAIL`, `NEWSBLUR_OAUTH_CLIENT_ID`,
+and `NEWSBLUR_OAUTH_CLIENT_SECRET`, and a `NEWSBLUR_AUTH` namespace whose stubs clone arguments and
 results as an RPC call does. `SELF.fetch` calls the Worker's `fetch` and keeps `cf` on the request. The tests do not run
 in workerd, so [the end-to-end suite](../../e2e) is the only check of the real runtime. The Worker tests stub `fetch`
 for the NewsBlur calls. Tests are in [src/server/__tests__](../../src/server/__tests__).

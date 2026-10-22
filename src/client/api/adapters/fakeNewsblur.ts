@@ -10,6 +10,7 @@ import {
   type UpstreamFeed,
 } from "shared/bff/upstream";
 
+// Equals the mock-mode user in client.ts: a mark's userId must match the session's, or the Worker answers 409.
 export const FAKE_USER_ID = 1001;
 
 const FEED_PAGE_SIZE = 6;
