@@ -305,6 +305,65 @@ describe("NewsletterFrame", () => {
         "img, video, svg, .lire-emoji { filter: invert(1) hue-rotate(180deg); }",
       );
     });
+
+    const LES_JOURS =
+      '<table style="mso-hide:all; display:none;"><tr><td>Preheader</td></tr></table><center><table id="bodyTable" width="100%" style="background: scroll #BA200C url(\'x.png\') top left repeat"><tr><td>Scrountch</td></tr></table></center>';
+
+    it("keeps the colors of an email with its own page background", () => {
+      renderFrame(LES_JOURS);
+
+      expect(ui.frame.srcdoc).toContain('<meta name="color-scheme" content="light">');
+      expect(ui.frame.srcdoc).not.toContain("invert(");
+    });
+
+    it("reads a page background set by bgcolor", () => {
+      renderFrame('<table bgcolor="#BA200C"><tr><td>Hello</td></tr></table>');
+
+      expect(ui.frame.srcdoc).not.toContain("invert(");
+    });
+
+    it("lets the inline color win over a conflicting bgcolor", () => {
+      renderFrame(
+        '<table bgcolor="#BA200C" style="background-color: #FFFFFF"><tr><td>Hello</td></tr></table>',
+      );
+
+      expect(ui.frame.srcdoc).toContain("invert(1)");
+    });
+
+    it("does not fall back to bgcolor under an inline named color", () => {
+      renderFrame(
+        '<table bgcolor="#BA200C" style="background-color:white"><tr><td>Hello</td></tr></table>',
+      );
+
+      expect(ui.frame.srcdoc).toContain("invert(1)");
+    });
+
+    it("does not read a url fragment as a color", () => {
+      renderFrame(
+        '<table style="background: url(https://example.test/#abc123) no-repeat"><tr><td>Hello</td></tr></table>',
+      );
+
+      expect(ui.frame.srcdoc).toContain("invert(1)");
+    });
+
+    it.each([["#FFFFFF"], ["#fafafa"], ["rgba(0,0,0,0)"], ["rgba(186,32,12,0.5)"]])(
+      "still inverts a page background of %s",
+      (color) => {
+        renderFrame(`<table style="background-color: ${color}"><tr><td>Hello</td></tr></table>`);
+
+        expect(ui.frame.srcdoc).toContain("invert(1)");
+      },
+    );
+
+    it("does not wrap the emoji of an email with its own page background", () => {
+      const html = LES_JOURS.replace("Scrountch", "Scrountch 👋");
+      renderFrame(html);
+      const doc = ui.frame.contentDocument!;
+      doc.body.innerHTML = html;
+      fireEvent.load(ui.frame);
+
+      expect(doc.querySelectorAll(".lire-emoji")).toHaveLength(0);
+    });
   });
 
   describe("when the email lost its style", () => {

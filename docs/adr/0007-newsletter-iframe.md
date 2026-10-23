@@ -30,15 +30,19 @@ color assumes a white page: "Serious gaming" writes `color: #000` inline and set
 a black default would hide its text. The frame scans the sanitized HTML for a `style` attribute
 naming `color` or `background`, and for a `bgcolor` or `color` attribute, which covers
 `<font color>`. With none, the frame's `color-scheme` meta is `light dark` and its default page is
-`light-dark(#fff, #000)` with the opposite text color. With any, the meta stays `light` and the
-page is white, and in the dark scheme an invert filter (`invert(1) hue-rotate(180deg)`) turns it
+`light-dark(#fff, #000)` with the opposite text color. With any and no page background of its own,
+the meta stays `light` and the page is white, and in the dark scheme an invert filter (`invert(1) hue-rotate(180deg)`) turns it
 dark, while `img`, `video` and `svg` get the same filter again to restore their colors after the
 invert. Emoji in the text are wrapped in a span by the parent once the document is parsed, and that
 span gets the same filter, so its color survives; the pass runs only for a colored email. CSS
 background images stay inverted, and so does an emoji inside SVG text, which the pass skips. The band behind the frame follows the
 scheme too. The filter keeps the senders' colors and the white-page assumption intact through the
 invert. The second pass restores photos only approximately, because the hue rotate clips saturated
-colors. A false match only inverts an email that would have worked natively.
+colors. A false match only inverts an email that would have worked natively. An email with a page background
+of its own, a non-white and opaque one, keeps its colors in the dark scheme with no invert. The
+page is read from the root table: the first top-level visible table, which skips a hidden preheader
+table, else the first element. Its inline `background-color` or `background` wins over `bgcolor`,
+and a color counts when its alpha is 1 and its relative luminance is under 0.9.
 
 The sandbox is exactly `allow-same-origin allow-popups allow-popups-to-escape-sandbox`, never
 `allow-scripts`. The parent reads the iframe document, so no script runs in the frame while the
@@ -55,8 +59,11 @@ CSS `zoom`, unlike `transform`, changes layout size, so the height measure stays
 
 ## Consequences
 
-- Emails with colors of their own keep their layout in the dark theme through an invert filter.
-  Uncolored emails follow it natively.
+- Emails with colors of their own on a white page keep their layout in the dark theme through an
+  invert filter. Uncolored emails follow it natively, and an email with its own non-white page keeps
+  its colors.
+- A bright email with its own page in a dark UI stays bright, and the luminance test can misfire: a
+  page just above the ceiling reads as white and is inverted, and a translucent page reads as none.
 - Brand colors shift by the hue rotate, and a logo image keeps its own colors.
 - A dark logo on a transparent background, in an uncolored email, can fade into the dark page.
 - Height, key forwarding and the broken-image placeholder depend on `allow-same-origin`.
