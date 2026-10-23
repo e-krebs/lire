@@ -24,20 +24,11 @@ const ui = (page: Page) => ({
   get signInText() {
     return page.getByText("Sign in with NewsBlur to read your subscriptions.");
   },
-  get signInLink() {
+  get signInLinks() {
     return page.getByRole("link", { name: "Sign in with NewsBlur", exact: true });
   },
-  get accountButton() {
-    return page.getByRole("button", { name: "Account and app info" });
-  },
-  get creditsHeading() {
-    return page.getByRole("heading", { level: 1, name: "Credits" });
-  },
-  get backToSignInLink() {
-    return page.getByRole("link", { name: "Back to sign in" });
-  },
-  get androidAppLink() {
-    return page.getByRole("link", { name: "Get the Android app", exact: true });
+  get signInLink() {
+    return page.getByRole("link", { name: "Sign in with NewsBlur", exact: true }).first();
   },
   get entriesRegion() {
     return page.getByRole("region", { name: "Entries" });
@@ -47,6 +38,27 @@ const ui = (page: Page) => ({
   },
   get entriesAlert() {
     return this.entriesRegion.getByRole("alert");
+  },
+  get accountButton() {
+    return page.getByRole("button", { name: "Account and app info" });
+  },
+  get creditsLink() {
+    return page.getByRole("link", { name: "Credits", exact: true });
+  },
+  get creditsHeading() {
+    return page.getByRole("heading", { level: 1, name: "Credits" });
+  },
+  get backToSignInLink() {
+    return page.getByRole("link", { name: "Back to sign in" });
+  },
+  get playBadge() {
+    return page.getByRole("link", { name: "Get it on Google Play", exact: true });
+  },
+  get androidAppLink() {
+    return page.getByRole("link", { name: "Get the Android app", exact: true });
+  },
+  get swipeStage() {
+    return page.locator(".landing-stage--swipe");
   },
 });
 
@@ -91,29 +103,47 @@ test.describe("app-level states", () => {
     await page.goto("/");
 
     await expect(pageUi.signInText).toBeVisible();
+    await expect(pageUi.signInLinks).toHaveCount(2);
     await expect(pageUi.signInLink).toHaveAttribute("href", "/api/auth/login");
   });
 
-  test("the signed-out shell has no top bar, and Credits returns to the sign-in screen", async ({
-    page,
-  }) => {
+  test("the signed-out landing has no top bar, and Credits returns to it", async ({ page }) => {
     const pageUi = ui(page);
     await mockSignedOut(page);
+    await page.goto("/");
 
-    await page.goto("/credits");
-
-    await expect(pageUi.creditsHeading).toBeVisible();
+    await expect(pageUi.signInLink).toBeVisible();
     await expect(pageUi.accountButton).toHaveCount(0);
+
+    await pageUi.creditsLink.click();
+    await expect(page).toHaveURL(/\/credits$/);
+    await expect(pageUi.creditsHeading).toBeVisible();
     await pageUi.backToSignInLink.click();
     await expect(pageUi.signInLink).toBeVisible();
+  });
+
+  test("the landing has no Play badge on desktop", async ({ page }) => {
+    const pageUi = ui(page);
+    await mockSignedOut(page);
+    await page.goto("/");
+
+    await expect(pageUi.signInLink).toBeVisible();
+    await expect(pageUi.playBadge).toHaveCount(0);
   });
 
   test.describe("when on Android", () => {
     test.use({ userAgent: ANDROID_USER_AGENT });
 
-    test("shows the Android app link on Credits, but not under ?source=twa", async ({ page }) => {
+    test("shows the Play badge and the Android app link, but not under ?source=twa", async ({
+      page,
+    }) => {
       const pageUi = ui(page);
       await mockSignedOut(page);
+      await page.goto("/");
+
+      await expect(pageUi.playBadge).toHaveAttribute("href", PLAY_STORE_URL);
+      await expect(pageUi.playBadge).toHaveAttribute("target", "_blank");
+      await expect(pageUi.playBadge).toHaveAttribute("rel", "noopener noreferrer");
 
       await page.goto("/credits");
       await expect(pageUi.androidAppLink).toHaveAttribute("href", PLAY_STORE_URL);
@@ -123,6 +153,22 @@ test.describe("app-level states", () => {
       await page.goto("/credits?source=twa");
       await expect(pageUi.creditsHeading).toBeVisible();
       await expect(pageUi.androidAppLink).toHaveCount(0);
+
+      await page.goto("/?source=twa");
+      await expect(pageUi.signInLink).toBeVisible();
+      await expect(pageUi.playBadge).toHaveCount(0);
+    });
+  });
+
+  test.describe("when reduced motion is requested", () => {
+    test.use({ reducedMotion: "reduce" });
+
+    test("the landing demos do not animate", async ({ page }) => {
+      await mockSignedOut(page);
+      await page.goto("/");
+
+      await expect(ui(page).signInLink).toBeVisible();
+      await expect(ui(page).swipeStage).toHaveCSS("animation-name", "none");
     });
   });
 

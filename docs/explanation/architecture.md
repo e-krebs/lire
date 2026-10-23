@@ -121,13 +121,14 @@ signs the build Play delivers. How the app ships is in
 The account menu's Install Lire row shows only once the browser offers the prompt, and never in an
 installed app: a standalone or minimal-ui window, an iOS home-screen app, or the Android app
 (`isTWA()`), where the Android app link shows instead in Android Chrome. Fullscreen does not count,
-so a fullscreen desktop tab still gets the install controls.
+so a fullscreen desktop tab still gets the install controls. The landing's install line is a button
+under the same guard.
 
 The Play listing is offered only in an Android browser outside the app. `isAndroidBrowser()` in
 [androidApp.ts](../../src/client/utils/androidApp.ts) is true when the user agent says Android and
-`isTWA()` is false. The Android app link on the Credits page and in the account menu calls it, and
-nothing re-detects the platform. Inside the TWA the link is hidden. The same module holds
-`PLAY_STORE_URL`, the listing link.
+`isTWA()` is false. The landing's Play badge, the Android app link in the account menu and the one on
+the Credits page all call it, and none re-detects the platform. Inside the TWA all three are hidden.
+The same module holds `PLAY_STORE_URL`, the listing link they share.
 
 Sign-in in the TWA stays on one origin. The link to `/api/auth/login` is same-origin, and the
 Worker redirects to NewsBlur to sign in, and the callback redirects home. The flow is in [auth.md](auth.md).
@@ -140,7 +141,7 @@ over a fake NewsBlur ([adapters/fakeNewsblur.ts](../../src/client/api/adapters/f
 which replays JSON files. The
 client maps a `401` to a `sign_in_required` error, and `useSignedOut`
 ([useSignedOut.ts](../../src/client/hooks/useSignedOut.ts)) watches the whole query cache for it, so a
-sign-in failure on any query swaps the shell to the sign-in screen.
+sign-in failure on any query swaps the shell to the signed-out landing.
 
 ### Worker
 
@@ -202,7 +203,7 @@ recorded, is in [../reference/fixtures.md](../reference/fixtures.md).
 ## The demo build
 
 `yarn build:demo` is a mock build over the seed fixtures with `VITE_DEMO=true`. The root route
-then renders `DemoBanner` and never shows the sign-in screen: `useSignedOut` answers "signed in"
+then renders `DemoBanner` and never shows the signed-out landing: `useSignedOut` answers "signed in"
 whenever `VITE_DEMO` is `true` ([useSignedOut.ts](../../src/client/hooks/useSignedOut.ts)). The result is a public showcase on
 `demo.lire.krebs.tech`, outside Access. Since it is public, it carries no recorded profile value;
 the demo gate enforces it on a machine that holds the recording.
@@ -251,8 +252,8 @@ fixtures, which the gate checks rather than assumes.
 
 [vite.config.ts](../../vite.config.ts) builds the service worker through `vite-plugin-pwa` in
 `injectManifest` mode from [sw.ts](../../src/client/sw.ts). The worker precaches the built assets
-and falls back to `index.html` for navigation. The NewsBlur logo is imported from
-`src/client/assets/`, so the worker precaches it with the rest of the build. The fallback denylists `/api/`, because the Worker
+and falls back to `index.html` for navigation. The NewsBlur logo and the two Google Play badges are
+imported from `src/client/assets/`, so the worker precaches them with the rest of the build. The fallback denylists `/api/`, because the Worker
 redirects through `/api/auth/login` and `/api/auth/callback`: if the service worker answered that navigation with the
 SPA shell, the sign-in would never run. It also denylists `/cdn-cgi/`: Access returns from its login
 to `/cdn-cgi/access/authorized`, which sets the session cookie, and the SPA shell would swallow it. In dev the manifest is nearly empty, so the fallback route is
@@ -355,8 +356,12 @@ for a new worker every hour and whenever the tab becomes visible, because an ins
 reloads on its own.
 
 The browser's install prompt is kept from the moment it fires, because it can fire before the
-account menu mounts. [installPrompt.ts](../../src/client/utils/installPrompt.ts) listens from
-`main.tsx` and clears the kept event on `appinstalled` or once the prompt is answered.
+landing mounts. [installPrompt.ts](../../src/client/utils/installPrompt.ts) listens from `main.tsx`
+and clears the kept event on `appinstalled` or once the prompt is answered. Where the browser offers
+it, the landing's install line is a button that shows it. Elsewhere the line stays plain text. Once
+offered, the line stays a button: after the prompt is spent it is disabled, not swapped out, so the
+text does not move. After `appinstalled` in the same tab, the line becomes plain text in the same
+box, with no button.
 
 The build bakes the short git commit into `VITE_APP_VERSION`
 ([vite.config.ts](../../vite.config.ts)). The Credits page shows it at the foot as `Lire <version>`,
@@ -409,12 +414,13 @@ fault: only the `svh` sizing does.
 
 Sign-in state has no route of its own. `useSignedOut` is the one answer the root route and the routes
 share: signed out when `/api/auth/status` says so, or when any query fails with `sign_in_required`.
-While signed out, the root route renders `SignIn` in place of the outlet. The one exception is
-`/credits`, which the root route lets through, so the Credits page is reachable without a grant. The
-app shell drops the top bar while signed out (`AppShell` takes a `bare` prop), since the collections
-and the account menu have nothing to show. `/` still redirects to the stream, which the root route
-turns into the sign-in screen. The cache-wide check means a session the upstream revokes mid-session
-still lands the reader on the sign-in screen, whichever query noticed first. Queries never retry a `401`. A `429` retries twice, each after the `retryAfter` the Worker sent
+While signed out, the root route renders `SignIn` in place of the outlet, and `SignIn` is the
+landing. The one exception is `/credits`, which the root route lets through, so the Credits page is
+reachable without a grant. The app shell drops the top bar while signed out (`AppShell` takes a
+`bare` prop), since the collections and the account menu have nothing to show. `/` still redirects to
+the stream, which the root route turns into the landing. The cache-wide check means a session
+the upstream revokes mid-session still lands the reader on the landing, whichever query
+noticed first. Queries never retry a `401`. A `429` retries twice, each after the `retryAfter` the Worker sent
 (60 s when it is missing, capped at 2 min) ([queryClient.ts](../../src/client/api/queryClient.ts#L11-L16)).
 
 ### Empty-state art

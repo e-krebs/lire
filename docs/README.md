@@ -28,7 +28,8 @@ these docs live in the `diataxis-docs` skill (`.claude/skills/diataxis-docs/SKIL
 - [reference/test-infrastructure.md](reference/test-infrastructure.md) - the test machinery: projects,
   MSW, the Playwright tiers.
 - [reference/testing.md](reference/testing.md) - the style test files follow.
-- [reference/third-party-assets.md](reference/third-party-assets.md) - the terms of the NewsBlur logo.
+- [reference/third-party-assets.md](reference/third-party-assets.md) - the terms of the NewsBlur logo
+  and the Google Play badges.
 
 ## Explanation: understanding
 

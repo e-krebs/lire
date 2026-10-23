@@ -50,10 +50,12 @@ text after it. The Credits page does this with `lireDescription`, `mitLicence` a
 A lint rule rejects raw text in JSX ([tooling.md](../explanation/tooling.md#custom-lint-plugins)).
 Formatters take the active locale, cached per locale.
 
-## Shared classes
+## Shared classes and motion
 
 - The back link class is `backButtonClassName` in `components/primitives/controls/`. The top bar's
   back button and `BackLink` both use it. A new back link renders `BackLink`, not a copy of the class.
+- Motion sits inside `@media (prefers-reduced-motion: no-preference)` or behind Tailwind's
+  `motion-safe:`, so a reader who asked for less sees none. The landing demos follow this.
 
 ## Conditional styles
 
@@ -80,7 +82,7 @@ the YouTube, Vimeo, X, Bluesky, Instagram, Threads and TikTok frame sources.
 A lint rule checks the hook
 file names. An external store and the hook that reads it live together in `utils`, as in `viewPrefs.ts` and `pwaUpdate.ts`
 (`usePwaUpdate`, which drives `SWToast`), and `installPrompt.ts` (`useInstallPrompt`, which
-drives the account menu's Install Lire row).
+drives the install line on the landing and the account menu's Install Lire row).
 
 ## Stories
 

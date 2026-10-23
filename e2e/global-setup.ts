@@ -25,7 +25,7 @@ const warmRealMode = async ({ browser, baseURL }: { browser: Browser; baseURL: s
     route.fulfill({ json: { signedIn: false } }),
   );
   await page.goto("/stream/all");
-  await page.getByRole("link", { name: "Sign in with NewsBlur", exact: true }).waitFor();
+  await page.getByRole("link", { name: "Sign in with NewsBlur", exact: true }).first().waitFor();
   await page.waitForLoadState("networkidle");
 };
 
