@@ -59,7 +59,7 @@ const isTWALaunch = (): boolean =>
   new URLSearchParams(window.location.search).get("source") === "twa" ||
   document.referrer.startsWith(`android-app://${TWA_PACKAGE}`);
 
-const isTWA = (): boolean => {
+export const isTWA = (): boolean => {
   try {
     if (isTWALaunch()) {
       window.sessionStorage.setItem(TWA_SESSION_KEY, "true");

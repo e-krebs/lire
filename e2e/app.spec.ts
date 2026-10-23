@@ -76,6 +76,21 @@ const ui = (page: Page) => ({
   categoryButton(name: string) {
     return page.getByRole("button", { name, exact: true });
   },
+  get creditsHeading() {
+    return page.getByRole("heading", { level: 1, name: "Credits" });
+  },
+  get cardHeadings() {
+    return page.locator("section h2");
+  },
+  get creditsVersion() {
+    return page.getByText(/^Lire \S+$/);
+  },
+  get signInWithNewsblurLink() {
+    return page.getByRole("link", { name: "Sign in with NewsBlur" });
+  },
+  get backToSignInLink() {
+    return page.getByRole("link", { name: "Back to sign in" });
+  },
 });
 
 const SHOTS_DIR = "/tmp/lire-shots";
@@ -270,6 +285,17 @@ test.describe("the app", () => {
       await expect(pageUi.freshnessStatus("Updated just now")).toBeVisible();
       await expect(tiles.first()).toBeVisible();
     });
+  });
+
+  test("shows Credits at /credits, with the three cards", async ({ page }) => {
+    const pageUi = ui(page);
+    await page.goto("/credits");
+
+    await expect(pageUi.creditsHeading).toBeVisible();
+    await expect(pageUi.cardHeadings).toHaveText(["NewsBlur", "Lire", "Open-source libraries"]);
+    await expect(pageUi.creditsVersion).toBeVisible();
+    await expect(pageUi.signInWithNewsblurLink).toHaveCount(0);
+    await expect(pageUi.backToSignInLink).toHaveCount(0);
   });
 
   test("shows a tooltip on hover and hides it on Escape", async ({ page }, testInfo) => {

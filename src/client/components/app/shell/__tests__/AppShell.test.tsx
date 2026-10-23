@@ -18,13 +18,19 @@ const ui = {
   },
 };
 
-const setup = ({ overlayOpen }: { overlayOpen: boolean }) => {
+const setup = ({
+  overlayOpen = false,
+  bare = false,
+}: {
+  overlayOpen?: boolean;
+  bare?: boolean;
+}) => {
   vi.stubEnv("VITE_API_MODE", "mock");
   resetFixtureState();
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const rootRoute = createRootRoute({
     component: () => (
-      <AppShell>
+      <AppShell bare={bare}>
         <OpenOverlay open={overlayOpen} />
       </AppShell>
     ),
@@ -61,6 +67,15 @@ describe("AppShell", () => {
 
       expect(await ui.skipLink(view)).not.toHaveAttribute("inert");
       expect(view.container.querySelector("main")).not.toHaveAttribute("inert");
+    });
+  });
+
+  describe("when bare", () => {
+    it("omits the top bar and keeps the skip link", async () => {
+      const view = setup({ bare: true });
+
+      expect(await ui.skipLink(view)).toBeInTheDocument();
+      expect(view.container.querySelector("header")).not.toBeInTheDocument();
     });
   });
 });

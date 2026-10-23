@@ -67,6 +67,15 @@ export const withUrl: Decorator = function WithUrl(Story, { parameters }) {
   return <RouterProvider router={router} />;
 };
 
+// navigator.userAgent is a getter on the prototype, so it is redefined on the instance.
+export const withUserAgent: Decorator = function WithUserAgent(Story, { parameters }) {
+  Object.defineProperty(window.navigator, "userAgent", {
+    value: String(parameters.userAgent ?? ""),
+    configurable: true,
+  });
+  return <Story />;
+};
+
 export type Tier = "phone" | "desktop";
 
 // useTier reads matchMedia during render, so patching it here is enough; other queries pass through.

@@ -6,23 +6,27 @@ import { useOverlayOpen } from "client/hooks/useOverlay";
 
 interface AppShellProps {
   children: ReactNode;
+  // Signed out there is no top bar: one row, and `main` scrolls on its own.
+  bare?: boolean;
 }
 
 // One layout for every tier: a sticky top bar with collection pills, the content below — or,
 // under `bar-bottom:`, the rows swap and the bar takes row 2 (from inside TopBar), leaving the
 // DOM order header → main. No sidebar, no bottom nav. `Panes` splits the content into mosaic
 // and reader at `lg`.
-export const AppShell = ({ children }: AppShellProps) => {
+export const AppShell = ({ children, bare = false }: AppShellProps) => {
   // A menu or the desktop Navigator is open: the content behind it neither hovers nor clicks.
   const overlayOpen = useOverlayOpen();
   const { shell } = useT();
+  // Without the bar, `auto` would size `main` to its content and stop it from scrolling.
+  const rowsClassName = bare
+    ? "grid-rows-[minmax(0,1fr)]"
+    : "grid-rows-[auto_minmax(0,1fr)] bar-bottom:grid-rows-[minmax(0,1fr)_auto]";
+  const mainClassName = bare
+    ? "min-h-0 min-w-0 overflow-y-auto pt-safe pr-safe pb-safe pl-safe"
+    : "min-h-0 min-w-0 pr-safe pl-safe bar-bottom:row-start-1";
   return (
-    <div
-      className={`
-      grid h-full grid-cols-[minmax(0,1fr)] grid-rows-[auto_minmax(0,1fr)] bg-canvas text-ink
-      bar-bottom:grid-rows-[minmax(0,1fr)_auto]
-    `}
-    >
+    <div className={`grid h-full grid-cols-[minmax(0,1fr)] ${rowsClassName} bg-canvas text-ink`}>
       <a
         href="#main"
         inert={overlayOpen || undefined}
@@ -36,13 +40,8 @@ export const AppShell = ({ children }: AppShellProps) => {
       >
         {shell.skipToContent}
       </a>
-      <TopBar />
-      <main
-        id="main"
-        tabIndex={-1}
-        inert={overlayOpen || undefined}
-        className="min-h-0 min-w-0 pr-safe pl-safe bar-bottom:row-start-1"
-      >
+      {!bare && <TopBar />}
+      <main id="main" tabIndex={-1} inert={overlayOpen || undefined} className={mainClassName}>
         {children}
       </main>
       <TooltipLayer />

@@ -44,8 +44,16 @@ area (`common`, `shell`, `subscriptions`, `navigation`, `articles`), and a compo
 - French uses a neutral register: infinitives and noun labels, with `vous` only where a pronoun is
   needed. It writes the typographic apostrophe `'` and the single ellipsis character `…`.
 
+A sentence with a link in it is split into keys: the text before the link, the link's text and the
+text after it. The Credits page does this with `lireDescription`, `mitLicence` and `lireLicenseAfter`.
+
 A lint rule rejects raw text in JSX ([tooling.md](../explanation/tooling.md#custom-lint-plugins)).
 Formatters take the active locale, cached per locale.
+
+## Shared classes
+
+- The back link class is `backButtonClassName` in `components/primitives/controls/`. The top bar's
+  back button and `BackLink` both use it. A new back link renders `BackLink`, not a copy of the class.
 
 ## Conditional styles
 

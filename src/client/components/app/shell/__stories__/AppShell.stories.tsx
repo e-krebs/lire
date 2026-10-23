@@ -19,6 +19,15 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
+// Signed out: no top bar and no account menu, the content scrolls inside `main`.
+export const Bare: Story = {
+  render: () => (
+    <AppShell bare>
+      <p className="p-6 text-sm text-muted">Content</p>
+    </AppShell>
+  ),
+};
+
 // The menu under the cog shows the signed-in user name, so the page reads as an account.
 export const AccountMenuOpen: Story = {
   play: async ({ canvasElement }) => {

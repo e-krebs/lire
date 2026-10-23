@@ -20,6 +20,18 @@ const ui = {
   get demoBanner() {
     return screen.findByText("Demo with sample data. Reset restores it.");
   },
+  get accountButton() {
+    return screen.queryByRole("button", { name: "Account and app info" });
+  },
+  get topBar() {
+    return screen.queryByRole("banner");
+  },
+  get creditsHeading() {
+    return screen.findByRole("heading", { level: 1, name: "Credits" });
+  },
+  get backToSignInLink() {
+    return screen.queryByRole("link", { name: "Back to sign in" });
+  },
 };
 
 // Read by the afterEach, which waits out the requests this client still has in flight.
@@ -92,6 +104,58 @@ describe("root route", () => {
     });
   });
 
+  it("hides the top bar and the account menu on the sign-in screen", async () => {
+    setup({ signedOut: true });
+
+    await waitFor(() => {
+      expect(ui.signInLink).toBeInTheDocument();
+    });
+    expect(ui.accountButton).not.toBeInTheDocument();
+    expect(ui.topBar).not.toBeInTheDocument();
+  });
+
+  describe("when the url is /credits", () => {
+    it("shows the credits page without the top bar when signed out", async () => {
+      setup({ url: "/credits", signedOut: true });
+
+      expect(await ui.creditsHeading).toBeInTheDocument();
+      await waitFor(() => {
+        expect(ui.backToSignInLink).toHaveAttribute("href", "/");
+      });
+      expect(ui.topBar).not.toBeInTheDocument();
+      expect(ui.signInLink).not.toBeInTheDocument();
+    });
+
+    it("shows the top bar and no back link when signed in", async () => {
+      setup({ url: "/credits" });
+
+      expect(await ui.creditsHeading).toBeInTheDocument();
+      expect(ui.topBar).toBeInTheDocument();
+      expect(ui.backToSignInLink).not.toBeInTheDocument();
+    });
+
+    it("switches to the signed-out page when a query needs a sign-in", async () => {
+      const { queryClient: client } = setup({ url: "/credits" });
+      expect(await ui.creditsHeading).toBeInTheDocument();
+      expect(ui.topBar).toBeInTheDocument();
+
+      act(() => {
+        client
+          .getQueryCache()
+          .build(client, { queryKey: ["probe"] })
+          .setState({
+            status: "error",
+            error: new ApiError({ status: 401, code: "sign_in_required" }),
+          });
+      });
+
+      await waitFor(() => {
+        expect(ui.backToSignInLink).toBeInTheDocument();
+      });
+      expect(ui.topBar).not.toBeInTheDocument();
+    });
+  });
+
   it("shows the sign-in screen once any query needs a sign-in", async () => {
     const { queryClient: client } = setup();
     await ui.loadingArticles;
@@ -151,6 +215,13 @@ describe("root route", () => {
       expect(await ui.demoBanner).toBeInTheDocument();
 
       expect(ui.signInLink).not.toBeInTheDocument();
+    });
+
+    it("keeps the top bar in the demo even when the auth status says signed out", async () => {
+      setup({ signedOut: true, demo: true });
+      expect(await ui.demoBanner).toBeInTheDocument();
+
+      expect(ui.topBar).toBeInTheDocument();
     });
   });
 });

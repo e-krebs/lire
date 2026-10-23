@@ -70,7 +70,7 @@ project.
 ## Gates in scripts/
 
 Node scripts guard what lint and types cannot see. Each one exits non-zero on a hit. CI runs the
-build, export coverage and access gates in its `verify`, `preflight` and `check-live` jobs, the
+build, credits, export coverage and access gates in its `verify`, `preflight` and `check-live` jobs, the
 link gate in its own `docs-links` job and the story gate in the `storybook` job
 ([ci.yml](../../.github/workflows/ci.yml)).
 
@@ -151,10 +151,22 @@ nothing fails. The order has to be a literal in `preview.tsx`, because Storybook
 imported one, which is why the script parses the file instead of importing it. A group with no
 story stays out of the list, as `Feedback` does until it gets one.
 
+### check-credits
+
+[check-credits-libraries.ts](../../scripts/check-credits-libraries.ts) (`yarn check:credits`) rebuilds
+the Libraries card from the runtime `dependencies` in `package.json`. It reads each package's licence
+and homepage from `node_modules`, groups the families (`@tanstack/*`, `@dnd-kit/*`, React) so the card
+stays short, and compares the result with the generated
+[libraries.ts](../../src/client/components/app/credits/libraries.ts). It fails when that file is stale
+or a package has no string `license`. The grouping and the licence check are in
+[buildLibraries.ts](../../src/shared/credits/buildLibraries.ts), which has its own tests. After a
+dependency change, run `yarn credits:libraries` to regenerate the file. Never edit `libraries.ts` by
+hand. CI runs it in the `verify` job.
+
 ## Where CI runs what
 
 The `docs-links` job runs the link gate on every run. The `verify` job runs `yarn dedupe --check`, lint, both knip passes, the format
-check, the five typecheck projects, both coverage runs and the export coverage gate. Then it
+check, the five typecheck projects, the credits gate, both coverage runs and the export coverage gate. Then it
 builds three times, default, real and demo, and runs the secret gate after each and the demo
 gate after the demo build. The `e2e` and `storybook` jobs run the browser tests, and the
 `storybook` job also runs the demo gate on `storybook-static` and the story order gate. The

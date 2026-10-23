@@ -26,6 +26,7 @@ Linux machine.
 | Storybook stories | `yarn test:storybook` |
 | Every export is covered | `yarn check:export-coverage` |
 | Story titles match folders and the order list | `yarn check:stories` |
+| Libraries card matches `package.json` | `yarn check:credits` |
 
 `yarn test:storybook` needs the Playwright Chromium install above.
 

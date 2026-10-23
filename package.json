@@ -26,6 +26,8 @@
     "check:secrets": "node scripts/check-dist-secrets.ts",
     "check:demo": "node scripts/check-demo-brand.ts",
     "check:stories": "node scripts/check-story-order.ts",
+    "check:credits": "node scripts/check-credits-libraries.ts",
+    "credits:libraries": "node scripts/check-credits-libraries.ts --write",
     "check:links": "node scripts/check-links.ts",
     "check:access": "node scripts/check-access.ts",
     "check:live": "node scripts/check-live.ts",

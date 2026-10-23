@@ -31,6 +31,15 @@ the Worker trusts the Access policy alone; a CI deploy fails without it. Access 
 who reaches the Worker until the owner-only policy is lifted; the OAuth sign-in itself accepts any
 NewsBlur account.
 
+## Signed out
+
+"Signed out" means the browser holds no NewsBlur grant: `/api/auth/status` answers
+`signedIn: false`, or a query gets `sign_in_required`. It does not mean the visitor is outside
+Access. Until Access is removed from the public hosts, the sign-in screen and `/credits` sit behind
+Cloudflare Access like every other page of `lire.krebs.tech`, so a visitor first sees the Access
+login and then the sign-in screen. [check-access.ts](../../scripts/check-access.ts) fails on any path
+override on the Access application's destinations, so `/credits` has no bypass.
+
 ## Layer 2: the NewsBlur OAuth grant
 
 ### The sign-in
