@@ -65,7 +65,7 @@ uploads.
 After a deploy, an open app shows a toast that a new version is ready. Reload applies it, after
 the app sends any read marks still waiting (for up to 2 seconds); Later keeps the current version until the next visit or
 until every tab closes. An installed app checks for the new version every hour and when it comes to
-the front. The account menu's Version tells which build runs.
+the front. The Version on the Credits page tells which build runs.
 
 ## Secrets and variables
 

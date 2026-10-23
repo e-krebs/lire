@@ -72,10 +72,10 @@ export const isTWA = (): boolean => {
 };
 
 // navigator.standalone is iOS only, and missing from the DOM types.
-const isInstalled = (): boolean =>
-  ["standalone", "fullscreen", "minimal-ui"].some(
-    (mode) => window.matchMedia(`(display-mode: ${mode})`).matches,
-  ) ||
+export const isInstalled = ({
+  displayModes = ["standalone", "fullscreen", "minimal-ui"],
+}: { displayModes?: string[] } = {}): boolean =>
+  displayModes.some((mode) => window.matchMedia(`(display-mode: ${mode})`).matches) ||
   ("standalone" in navigator && navigator.standalone === true);
 
 type Platform = { browsers: Browser[]; defaultBrowser: BrowserId; fallsBack: boolean };

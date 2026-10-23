@@ -6,12 +6,14 @@ import { registerSW } from "virtual:pwa-register";
 import { router } from "./router";
 import { queryClient } from "./api/queryClient";
 import { installExternalLinks } from "./utils/externalLinks";
+import { listenForInstallPrompt } from "./utils/installPrompt";
 import { registerPwa } from "./utils/pwaUpdate";
 import { installViewportNudge } from "./utils/viewportNudge";
 import "./styles.css";
 
 registerPwa({ register: registerSW });
 installExternalLinks();
+listenForInstallPrompt();
 installViewportNudge();
 
 // Every color token flips in the same frame as the OS scheme, so any running transition would
