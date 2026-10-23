@@ -54,6 +54,7 @@ afterEach(async () => {
   setLocalePreference("system");
   document.documentElement.lang = "en";
   window.localStorage.clear();
+  window.sessionStorage.clear();
 });
 
 afterAll(() => {
