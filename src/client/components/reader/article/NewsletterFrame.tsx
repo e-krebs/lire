@@ -17,6 +17,64 @@ const AUTHORED_COLORS = /\s(?:bgcolor|color)=|\sstyle="[^"]*(?:color|background)
 // instead; an uncolored one follows the scheme natively.
 const hasAuthoredColors = (html: string): boolean => AUTHORED_COLORS.test(html);
 
+// Above this relative luminance a page is white enough that the invert reads as intended.
+const PAGE_LUMINANCE_CEILING = 0.9;
+
+type Color = { rgb: [number, number, number]; alpha: number };
+
+const parseColor = (value: string): Color | null => {
+  const hex = /#([\da-f]{3}|[\da-f]{6})\b/i.exec(value);
+  if (hex) {
+    const digits =
+      hex[1].length === 3
+        ? hex[1]
+            .split("")
+            .map((d) => d + d)
+            .join("")
+        : hex[1];
+    const n = parseInt(digits, 16);
+    return { rgb: [n >> 16, (n >> 8) & 255, n & 255], alpha: 1 };
+  }
+  const fn = /rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)(?:[\s,/]+([\d.]+))?\s*\)/i.exec(value);
+  if (!fn) return null;
+  return {
+    rgb: [Number(fn[1]), Number(fn[2]), Number(fn[3])],
+    alpha: fn[4] ? Number(fn[4]) : 1,
+  };
+};
+
+const linear = (channel: number): number => {
+  const c = channel / 255;
+  return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+};
+
+const luminance = ({ rgb: [r, g, b] }: Color): number =>
+  0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+
+const declared = ({ style, property }: { style: string; property: string }): string | undefined =>
+  new RegExp(`(?:^|;)\\s*${property}\\s*:\\s*([^;]+)`, "i").exec(style)?.[1];
+
+// The email's own page is its root table, which sits under a hidden preheader table in some
+// newsletters. Inline CSS overrides `bgcolor`, so it is read first, and a named color that
+// parseColor cannot read still overrides it.
+const hasOwnPageBackground = (html: string): boolean => {
+  const body = new DOMParser().parseFromString(html, "text/html").body;
+  const root =
+    [...body.querySelectorAll("table")].find(
+      (table) =>
+        !table.parentElement?.closest("table") &&
+        !/display:\s*none/i.test(table.getAttribute("style") ?? ""),
+    ) ?? body.firstElementChild;
+  if (!root) return false;
+  const style = root.getAttribute("style") ?? "";
+  const declaredBackground = [
+    declared({ style, property: "background-color" }),
+    declared({ style, property: "background" })?.replace(/url\([^)]*\)/gi, ""),
+  ].find((value) => value !== undefined);
+  const page = parseColor(declaredBackground ?? root.getAttribute("bgcolor") ?? "");
+  return !!page && page.alpha === 1 && luminance(page) < PAGE_LUMINANCE_CEILING;
+};
+
 // An email styled by classes but with next to no inline style lost its `<style>` upstream, which
 // took its column and rhythm along. A table means the layout is inline, so it is left alone.
 const hasStrippedStyle = (html: string): boolean =>
@@ -111,17 +169,19 @@ export const NewsletterFrame = ({ html, dir, onDocument }: NewsletterFrameProps)
   }, [onDocument]);
 
   const authored = useMemo(() => hasAuthoredColors(html), [html]);
+  const ownBackground = useMemo(() => hasOwnPageBackground(html), [html]);
+  const inverted = authored && !ownBackground;
   const stripped = useMemo(() => hasStrippedStyle(html), [html]);
   const srcDoc = useMemo(
     () =>
-      `<!doctype html><html dir="${dir}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta name="color-scheme" content="${authored ? "light" : "light dark"}"><style>${FRAME_STYLE}${stripped ? ` ${STRIPPED_STYLE}` : ""}${authored ? ` ${AUTHORED_DARK_STYLE}` : ""}</style></head><body>${html}</body></html>`,
-    [html, dir, authored, stripped],
+      `<!doctype html><html dir="${dir}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><meta name="color-scheme" content="${authored ? "light" : "light dark"}"><style>${FRAME_STYLE}${stripped ? ` ${STRIPPED_STYLE}` : ""}${inverted ? ` ${AUTHORED_DARK_STYLE}` : ""}</style></head><body>${html}</body></html>`,
+    [html, dir, authored, inverted, stripped],
   );
 
-  const authoredRef = useRef(authored);
+  const invertedRef = useRef(inverted);
   useEffect(() => {
-    authoredRef.current = authored;
-  }, [authored]);
+    invertedRef.current = inverted;
+  }, [inverted]);
 
   const attach = useCallback((frame: HTMLIFrameElement) => {
     const doc = frame.contentDocument;
@@ -130,7 +190,7 @@ export const NewsletterFrame = ({ html, dir, onDocument }: NewsletterFrameProps)
     if (!doc || !win || setupRef.current?.doc === doc) return;
     setupRef.current?.teardown();
     const root = doc.documentElement;
-    if (authoredRef.current) wrapEmoji(doc);
+    if (invertedRef.current) wrapEmoji(doc);
 
     // `scrollHeight` never drops below the frame's own height, so the frame could not shrink. The
     // horizontal scrollbar is added so it never covers the last line.
