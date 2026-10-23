@@ -1,4 +1,4 @@
-import { expect, test as base, type Page } from "./fixtures";
+import { ANDROID_USER_AGENT, expect, PLAY_STORE_URL, test as base, type Page } from "./fixtures";
 
 // Vite has no /api proxy, so an unmocked request would get index.html with a 200: the catch-all
 // answers 404 instead, and the test fails on any request it did not mock. A `**/api/**` glob would
@@ -27,6 +27,18 @@ const ui = (page: Page) => ({
   get signInLink() {
     return page.getByRole("link", { name: "Sign in with NewsBlur", exact: true });
   },
+  get accountButton() {
+    return page.getByRole("button", { name: "Account and app info" });
+  },
+  get creditsHeading() {
+    return page.getByRole("heading", { level: 1, name: "Credits" });
+  },
+  get backToSignInLink() {
+    return page.getByRole("link", { name: "Back to sign in" });
+  },
+  get androidAppLink() {
+    return page.getByRole("link", { name: "Get the Android app", exact: true });
+  },
   get entriesRegion() {
     return page.getByRole("region", { name: "Entries" });
   },
@@ -37,6 +49,13 @@ const ui = (page: Page) => ({
     return this.entriesRegion.getByRole("alert");
   },
 });
+
+const mockSignedOut = async (page: Page) => {
+  await page.route(isApi, async (route) => route.fulfill({ status: 401, json: {} }));
+  await page.route("**/api/auth/status", async (route) =>
+    route.fulfill({ json: { signedIn: false } }),
+  );
+};
 
 // An empty signed-in account, every read answering 429 when `limited()` returns true.
 const mockSignedIn = async ({ page, limited }: { page: Page; limited: () => boolean }) => {
@@ -67,15 +86,44 @@ const mockSignedIn = async ({ page, limited }: { page: Page; limited: () => bool
 test.describe("app-level states", () => {
   test("shows the sign-in screen when signed out", async ({ page }) => {
     const pageUi = ui(page);
-    await page.route(isApi, async (route) => route.fulfill({ status: 401, json: {} }));
-    await page.route("**/api/auth/status", async (route) =>
-      route.fulfill({ json: { signedIn: false } }),
-    );
+    await mockSignedOut(page);
 
     await page.goto("/");
 
     await expect(pageUi.signInText).toBeVisible();
     await expect(pageUi.signInLink).toHaveAttribute("href", "/api/auth/login");
+  });
+
+  test("the signed-out shell has no top bar, and Credits returns to the sign-in screen", async ({
+    page,
+  }) => {
+    const pageUi = ui(page);
+    await mockSignedOut(page);
+
+    await page.goto("/credits");
+
+    await expect(pageUi.creditsHeading).toBeVisible();
+    await expect(pageUi.accountButton).toHaveCount(0);
+    await pageUi.backToSignInLink.click();
+    await expect(pageUi.signInLink).toBeVisible();
+  });
+
+  test.describe("when on Android", () => {
+    test.use({ userAgent: ANDROID_USER_AGENT });
+
+    test("shows the Android app link on Credits, but not under ?source=twa", async ({ page }) => {
+      const pageUi = ui(page);
+      await mockSignedOut(page);
+
+      await page.goto("/credits");
+      await expect(pageUi.androidAppLink).toHaveAttribute("href", PLAY_STORE_URL);
+      await expect(pageUi.androidAppLink).toHaveAttribute("target", "_blank");
+      await expect(pageUi.androidAppLink).toHaveAttribute("rel", "noopener noreferrer");
+
+      await page.goto("/credits?source=twa");
+      await expect(pageUi.creditsHeading).toBeVisible();
+      await expect(pageUi.androidAppLink).toHaveCount(0);
+    });
   });
 
   test("a 429 keeps the reader signed in", async ({ page }) => {

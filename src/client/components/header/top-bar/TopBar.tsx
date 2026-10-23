@@ -12,6 +12,7 @@ import {
 import { parseStreamKey, toStreamKey } from "shared/feedsApi/streamKey";
 import { useCategories, useFeeds, useMatchCount } from "client/api/queries";
 import { AccountMenu } from "client/components/app/account/AccountMenu";
+import { backButtonClassName } from "client/components/primitives/controls/backButtonClassName";
 import { Icon } from "client/components/primitives/icons/icons";
 import { LocationBar } from "client/components/header/location/LocationBar";
 import { Navigator } from "client/components/browse-menu/menu/Navigator";
@@ -175,12 +176,7 @@ export const TopBar = () => {
               onClick={goBack}
               inert={anyOverlay}
               aria-label={shell.goBack}
-              className={`
-                -ml-1 inline-flex h-10 min-w-0 items-center gap-1.5 rounded-full pr-3.5 pl-2.5
-                text-sm font-medium text-muted
-                hover:bg-surface-2
-                focus-visible:outline-2 focus-visible:outline-accent
-              `}
+              className={backButtonClassName}
             >
               <Icon name="back" className="size-5 flex-none" />
               <span className="truncate">{shell.back}</span>

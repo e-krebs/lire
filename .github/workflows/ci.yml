@@ -194,6 +194,7 @@ jobs:
       - run: yarn typecheck:worker
       - run: yarn typecheck:e2e
       - run: yarn typecheck:node
+      - run: yarn check:credits
       - run: yarn test:coverage
       - run: yarn test:worker:coverage
       - run: yarn check:export-coverage

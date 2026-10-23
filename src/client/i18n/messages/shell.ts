@@ -38,6 +38,24 @@ export const en = {
   later: "Later",
   offlineReady: "Lire now opens offline.",
   dismiss: "Dismiss",
+  getAndroidApp: "Get the Android app",
+  credits: "Credits",
+  creditsBackToSignIn: "Back to sign in",
+  newsblurSource:
+    "NewsBlur is the source of the data Lire shows: your feeds, stories and read state.",
+  newsblurHosts:
+    "NewsBlur hosts your feeds, and you manage them in Lire: add, remove and organize subscriptions from Lire itself. Lire is an independent reader, not affiliated with NewsBlur. NewsBlur is open source under the ",
+  mitLicence: "MIT licence",
+  newsblurLicenseAfter: ".",
+  visitNewsblur: "Visit NewsBlur",
+  newsblurName: "NewsBlur",
+  lireName: "Lire",
+  lireDescription:
+    "Lire is a calm reader for your NewsBlur feeds. It is free and open source, released under the ",
+  lireLicenseAfter: ".",
+  github: "GitHub",
+  openSourceLibraries: "Open-source libraries",
+  creditsVersion: ({ version }: { version: string }) => `Lire ${version}`,
 } as const;
 
 export const fr = {
@@ -79,4 +97,22 @@ export const fr = {
   later: "Plus tard",
   offlineReady: "Lire s'ouvre maintenant hors ligne.",
   dismiss: "Fermer",
+  getAndroidApp: "Obtenir l'appli Android",
+  credits: "Crédits",
+  creditsBackToSignIn: "Retour à la connexion",
+  newsblurSource:
+    "NewsBlur est la source des données affichées par Lire : vos flux, vos articles et votre état de lecture.",
+  newsblurHosts:
+    "NewsBlur héberge vos flux, et vous les gérez dans Lire : ajoutez, supprimez et organisez vos abonnements depuis Lire. Lire est un lecteur indépendant, sans lien avec NewsBlur. NewsBlur est un logiciel libre sous licence ",
+  mitLicence: "licence MIT",
+  newsblurLicenseAfter: ".",
+  visitNewsblur: "Visiter NewsBlur",
+  newsblurName: "NewsBlur",
+  lireName: "Lire",
+  lireDescription:
+    "Lire est un lecteur paisible pour vos flux NewsBlur. Il est gratuit et libre, publié sous licence ",
+  lireLicenseAfter: ".",
+  github: "GitHub",
+  openSourceLibraries: "Bibliothèques open source",
+  creditsVersion: ({ version }: { version: string }) => `Lire ${version}`,
 } satisfies Messages<typeof en>;

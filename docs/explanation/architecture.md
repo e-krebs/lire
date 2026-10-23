@@ -34,7 +34,8 @@ over a fake NewsBlur fed by fixtures, and never calls /api.
 ### SPA
 
 The client is React with TanStack Router (file routes under
-[src/client/routes/](../../src/client/routes/)), TanStack Query for server state, Tailwind for
+[src/client/routes/](../../src/client/routes/); `/credits` is the one route that renders while
+signed out, see [One sign-in switch](#one-sign-in-switch)), TanStack Query for server state, Tailwind for
 styles, and Zod to parse every response against the schemas in
 [src/shared/feedsApi/](../../src/shared/feedsApi/). Vite builds it; the stack and versions are in
 [package.json](../../package.json). The app has no server-side rendering: Pages serves the built
@@ -117,6 +118,11 @@ lists two keys: the upload key, which signs the APK on GitHub, and the Play app 
 signs the build Play delivers. How the app ships is in
 [deploy.md](../how-to/deploy.md#android-app).
 
+The Play listing is offered only in an Android browser outside the app. `isAndroidBrowser()` in
+[androidApp.ts](../../src/client/utils/androidApp.ts) is true when the user agent says Android and
+`isTWA()` is false. The Android app link on the Credits page calls it, and nothing re-detects the platform. Inside the
+TWA the link is hidden. The same module holds `PLAY_STORE_URL`, the listing link.
+
 Sign-in in the TWA stays on one origin. The link to `/api/auth/login` is same-origin, and the
 Worker redirects to NewsBlur to sign in, and the callback redirects home. The flow is in [auth.md](auth.md).
 
@@ -126,8 +132,8 @@ HTTP transport ([adapters/http.ts](../../src/client/api/adapters/http.ts)) is a 
 ([adapters/fixture.ts](../../src/client/api/adapters/fixture.ts)) runs the Worker's translation core
 over a fake NewsBlur ([adapters/fakeNewsblur.ts](../../src/client/api/adapters/fakeNewsblur.ts)),
 which replays JSON files. The
-client maps a `401` to a `sign_in_required` error, and the root route
-([\_\_root.tsx](../../src/client/routes/__root.tsx)) watches the whole query cache for it, so a
+client maps a `401` to a `sign_in_required` error, and `useSignedOut`
+([useSignedOut.ts](../../src/client/hooks/useSignedOut.ts)) watches the whole query cache for it, so a
 sign-in failure on any query swaps the shell to the sign-in screen.
 
 ### Worker
@@ -190,8 +196,8 @@ recorded, is in [../reference/fixtures.md](../reference/fixtures.md).
 ## The demo build
 
 `yarn build:demo` is a mock build over the seed fixtures with `VITE_DEMO=true`. The root route
-then renders `DemoBanner` and never shows the sign-in screen
-([\_\_root.tsx](../../src/client/routes/__root.tsx#L32-L34)). The result is a public showcase on
+then renders `DemoBanner` and never shows the sign-in screen: `useSignedOut` answers "signed in"
+whenever `VITE_DEMO` is `true` ([useSignedOut.ts](../../src/client/hooks/useSignedOut.ts)). The result is a public showcase on
 `demo.lire.krebs.tech`, outside Access. Since it is public, it carries no recorded profile value;
 the demo gate enforces it on a machine that holds the recording.
 
@@ -210,7 +216,7 @@ Nothing a visitor does reaches an account.
 | Build command and env | [`build:demo`](../../package.json): `VITE_API_MODE=mock`, `VITE_DEMO=true`, `VITE_FIXTURES=seed` | [`deploy:spa`](../../package.json): `VITE_API_MODE=real` only |
 | Data source | Seed fixtures ([fixture.ts](../../src/client/api/adapters/fixture.ts)) | The owner's live account, through the Worker |
 | Network | No `/api` calls ([client.ts](../../src/client/api/client.ts#L43)) | Same-origin `/api`, served by the Worker |
-| Auth | None ([\_\_root.tsx](../../src/client/routes/__root.tsx#L34)) | Cloudflare Access with the owner pin ([auth.md](auth.md)) |
+| Auth | None ([useSignedOut.ts](../../src/client/hooks/useSignedOut.ts)) | Cloudflare Access with the owner pin ([auth.md](auth.md)) |
 | Host and visibility | `demo.lire.krebs.tech`, public | `lire.krebs.tech`, private |
 | Pages project | `lire-demo` | `lire` |
 | Build gates | Recorded profile and secrets ([check-demo-brand.ts](../../scripts/check-demo-brand.ts)) | Secrets |
@@ -239,7 +245,8 @@ fixtures, which the gate checks rather than assumes.
 
 [vite.config.ts](../../vite.config.ts) builds the service worker through `vite-plugin-pwa` in
 `injectManifest` mode from [sw.ts](../../src/client/sw.ts). The worker precaches the built assets
-and falls back to `index.html` for navigation. The fallback denylists `/api/`, because the Worker
+and falls back to `index.html` for navigation. The NewsBlur logo is imported from
+`src/client/assets/`, so the worker precaches it with the rest of the build. The fallback denylists `/api/`, because the Worker
 redirects through `/api/auth/login` and `/api/auth/callback`: if the service worker answered that navigation with the
 SPA shell, the sign-in would never run. It also denylists `/cdn-cgi/`: Access returns from its login
 to `/cdn-cgi/access/authorized`, which sets the session cookie, and the SPA shell would swallow it. In dev the manifest is nearly empty, so the fallback route is
@@ -342,8 +349,9 @@ for a new worker every hour and whenever the tab becomes visible, because an ins
 reloads on its own.
 
 The build bakes the short git commit into `VITE_APP_VERSION`
-([vite.config.ts](../../vite.config.ts)), and the account menu shows it as Version. After a deploy, it
-tells the reader whether the installed app runs the new service worker.
+([vite.config.ts](../../vite.config.ts)). The Credits page shows it at the foot as `Lire <version>`,
+and the account menu shows it as Version. After a deploy, it tells the reader whether the installed app runs
+the new service worker.
 
 ## Design & UX
 
@@ -389,10 +397,14 @@ fault: only the `svh` sizing does.
 
 ### One sign-in switch
 
-Sign-in state has no route of its own. The shell shows `SignIn` when `/api/auth/status` says
-signed out, or when any query fails with `sign_in_required`. The cache-wide check means a session
-the upstream revokes mid-session still lands the reader on the sign-in screen, whichever query
-noticed first. Queries never retry a `401`. A `429` retries twice, each after the `retryAfter` the Worker sent
+Sign-in state has no route of its own. `useSignedOut` is the one answer the root route and the routes
+share: signed out when `/api/auth/status` says so, or when any query fails with `sign_in_required`.
+While signed out, the root route renders `SignIn` in place of the outlet. The one exception is
+`/credits`, which the root route lets through, so the Credits page is reachable without a grant. The
+app shell drops the top bar while signed out (`AppShell` takes a `bare` prop), since the collections
+and the account menu have nothing to show. `/` still redirects to the stream, which the root route
+turns into the sign-in screen. The cache-wide check means a session the upstream revokes mid-session
+still lands the reader on the sign-in screen, whichever query noticed first. Queries never retry a `401`. A `429` retries twice, each after the `retryAfter` the Worker sent
 (60 s when it is missing, capped at 2 min) ([queryClient.ts](../../src/client/api/queryClient.ts#L11-L16)).
 
 ### Empty-state art

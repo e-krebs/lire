@@ -31,3 +31,7 @@ export const test = base.extend<{ jsCoverage: void }>({
     { auto: true },
   ],
 });
+
+export const ANDROID_USER_AGENT =
+  "Mozilla/5.0 (Linux; Android 14; Pixel 9 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36";
+export const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=tech.krebs.lire";

@@ -52,8 +52,8 @@ Worker jobs need both `verify` and `e2e` green; the Storybook job needs the `sto
 skipped by the change filter does not block a deploy, but a failed one does. The `check-live` job
 runs last, once the deploys that ran finish, and runs `yarn check:live`. The `docs-links` job runs
 the docs link gate on every run, because docs link to code paths and a rename breaks them. `verify`
-runs lockfile dedupe, lint, knip, format, every typecheck, both coverage runs, the export-coverage
-check, and the three build-and-secret gates. The `storybook` job runs the browser tests, the demo
+runs lockfile dedupe, lint, knip, format, every typecheck, the credits gate, both coverage runs, the
+export-coverage check, and the three build-and-secret gates. The `storybook` job runs the browser tests, the demo
 gate on `storybook-static` and `yarn check:stories`. It skips when only docs, Android or other ignored
 files changed. `e2e` also skips then, and runs on `app`, `worker` and `tooling` changes. See
 [Run the tests](run-the-tests.md).
