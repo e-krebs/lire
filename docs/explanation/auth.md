@@ -35,9 +35,9 @@ NewsBlur account.
 
 "Signed out" means the browser holds no NewsBlur grant: `/api/auth/status` answers
 `signedIn: false`, or a query gets `sign_in_required`. It does not mean the visitor is outside
-Access. Until Access is removed from the public hosts, the sign-in screen and `/credits` sit behind
+Access. Until Access is removed from the public hosts, the landing and `/credits` sit behind
 Cloudflare Access like every other page of `lire.krebs.tech`, so a visitor first sees the Access
-login and then the sign-in screen. [check-access.ts](../../scripts/check-access.ts) fails on any path
+login and then the landing. [check-access.ts](../../scripts/check-access.ts) fails on any path
 override on the Access application's destinations, so `/credits` has no bypass.
 
 ## Layer 2: the NewsBlur OAuth grant
@@ -96,7 +96,7 @@ NewsBlur user id that tags each queued mark. A mark body whose `userId` is not t
 answers `409 user_mismatch`.
 
 A sign-in with a valid cookie for the same user replaces that cookie's token, so one browser holds one
-token. A browser with no cookie shows the SignIn screen.
+token. A browser with no cookie shows the signed-out landing (`SignIn`).
 
 ### Sign-out
 

@@ -11,8 +11,8 @@ import { server } from "test/msw";
 import { renderApp } from "test/renderApp";
 
 const ui = {
-  get signInLink() {
-    return screen.queryByRole("link", { name: "Sign in with NewsBlur" });
+  get signInLinks() {
+    return screen.queryAllByRole("link", { name: "Sign in with NewsBlur" });
   },
   get loadingArticles() {
     return screen.findByRole("status", { name: "Loading articles" });
@@ -100,7 +100,8 @@ describe("root route", () => {
     setup({ signedOut: true });
 
     await waitFor(() => {
-      expect(ui.signInLink).toHaveAttribute("href", "/api/auth/login");
+      expect(ui.signInLinks).toHaveLength(2);
+      for (const link of ui.signInLinks) expect(link).toHaveAttribute("href", "/api/auth/login");
     });
   });
 
@@ -108,7 +109,7 @@ describe("root route", () => {
     setup({ signedOut: true });
 
     await waitFor(() => {
-      expect(ui.signInLink).toBeInTheDocument();
+      expect(ui.signInLinks.length).toBeGreaterThan(0);
     });
     expect(ui.accountButton).not.toBeInTheDocument();
     expect(ui.topBar).not.toBeInTheDocument();
@@ -123,7 +124,7 @@ describe("root route", () => {
         expect(ui.backToSignInLink).toHaveAttribute("href", "/");
       });
       expect(ui.topBar).not.toBeInTheDocument();
-      expect(ui.signInLink).not.toBeInTheDocument();
+      expect(ui.signInLinks).toHaveLength(0);
     });
 
     it("shows the top bar and no back link when signed in", async () => {
@@ -171,7 +172,7 @@ describe("root route", () => {
     });
 
     await waitFor(() => {
-      expect(ui.signInLink).toBeInTheDocument();
+      expect(ui.signInLinks.length).toBeGreaterThan(0);
     });
   });
 
@@ -206,7 +207,7 @@ describe("root route", () => {
     setup();
 
     expect(await ui.loadingArticles).toBeInTheDocument();
-    expect(ui.signInLink).not.toBeInTheDocument();
+    expect(ui.signInLinks).toHaveLength(0);
   });
 
   describe("when in the demo", () => {
@@ -214,7 +215,7 @@ describe("root route", () => {
       setup({ signedOut: true, demo: true });
       expect(await ui.demoBanner).toBeInTheDocument();
 
-      expect(ui.signInLink).not.toBeInTheDocument();
+      expect(ui.signInLinks).toHaveLength(0);
     });
 
     it("keeps the top bar in the demo even when the auth status says signed out", async () => {
