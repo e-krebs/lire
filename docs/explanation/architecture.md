@@ -118,10 +118,16 @@ lists two keys: the upload key, which signs the APK on GitHub, and the Play app 
 signs the build Play delivers. How the app ships is in
 [deploy.md](../how-to/deploy.md#android-app).
 
+The account menu's Install Lire row shows only once the browser offers the prompt, and never in an
+installed app: a standalone or minimal-ui window, an iOS home-screen app, or the Android app
+(`isTWA()`), where the Android app link shows instead in Android Chrome. Fullscreen does not count,
+so a fullscreen desktop tab still gets the install controls.
+
 The Play listing is offered only in an Android browser outside the app. `isAndroidBrowser()` in
 [androidApp.ts](../../src/client/utils/androidApp.ts) is true when the user agent says Android and
-`isTWA()` is false. The Android app link on the Credits page calls it, and nothing re-detects the platform. Inside the
-TWA the link is hidden. The same module holds `PLAY_STORE_URL`, the listing link.
+`isTWA()` is false. The Android app link on the Credits page and in the account menu calls it, and
+nothing re-detects the platform. Inside the TWA the link is hidden. The same module holds
+`PLAY_STORE_URL`, the listing link.
 
 Sign-in in the TWA stays on one origin. The link to `/api/auth/login` is same-origin, and the
 Worker redirects to NewsBlur to sign in, and the callback redirects home. The flow is in [auth.md](auth.md).
@@ -348,9 +354,13 @@ too. The animation aims at fixed offsets, so a change to the bar's size or paddi
 for a new worker every hour and whenever the tab becomes visible, because an installed app rarely
 reloads on its own.
 
+The browser's install prompt is kept from the moment it fires, because it can fire before the
+account menu mounts. [installPrompt.ts](../../src/client/utils/installPrompt.ts) listens from
+`main.tsx` and clears the kept event on `appinstalled` or once the prompt is answered.
+
 The build bakes the short git commit into `VITE_APP_VERSION`
 ([vite.config.ts](../../vite.config.ts)). The Credits page shows it at the foot as `Lire <version>`,
-and the account menu shows it as Version. After a deploy, it tells the reader whether the installed app runs
+and the account menu does not. After a deploy, it tells the reader whether the installed app runs
 the new service worker.
 
 ## Design & UX

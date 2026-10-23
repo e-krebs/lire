@@ -21,6 +21,7 @@ export const ICON_NAMES = [
   "website",
   "newsletter",
   "plus",
+  "install",
 ] as const;
 
 type IconName = (typeof ICON_NAMES)[number];

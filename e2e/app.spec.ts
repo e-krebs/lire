@@ -1,5 +1,5 @@
 import { mkdirSync } from "node:fs";
-import { expect, test, type Page } from "./fixtures";
+import { ANDROID_USER_AGENT, expect, PLAY_STORE_URL, test, type Page } from "./fixtures";
 import seedFeeds from "fixtures/seed/feeds.json" with { type: "json" };
 
 // images.example.test never resolves, and each card shrinks to text height once its lookup fails,
@@ -75,6 +75,12 @@ const ui = (page: Page) => ({
   },
   categoryButton(name: string) {
     return page.getByRole("button", { name, exact: true });
+  },
+  get accountMenuTrigger() {
+    return page.getByRole("button", { name: "Account and app info" });
+  },
+  get accountMenu() {
+    return page.getByRole("group", { name: "Account and app info" });
   },
   get creditsHeading() {
     return page.getByRole("heading", { level: 1, name: "Credits" });
@@ -287,15 +293,44 @@ test.describe("the app", () => {
     });
   });
 
-  test("shows Credits at /credits, with the three cards", async ({ page }) => {
+  test("opens Credits from the account menu, with no Version row", async ({ page }) => {
     const pageUi = ui(page);
-    await page.goto("/credits");
+    await page.goto("/");
 
+    await pageUi.accountMenuTrigger.click();
+    await expect(pageUi.accountMenu.getByText(/version/i)).toHaveCount(0);
+    await expect(
+      pageUi.accountMenu.getByRole("link", { name: "Get the Android app", exact: true }),
+    ).toHaveCount(0);
+    await pageUi.accountMenu.getByRole("link", { name: "Credits", exact: true }).click();
+
+    await expect(page).toHaveURL(/\/credits$/);
     await expect(pageUi.creditsHeading).toBeVisible();
     await expect(pageUi.cardHeadings).toHaveText(["NewsBlur", "Lire", "Open-source libraries"]);
     await expect(pageUi.creditsVersion).toBeVisible();
     await expect(pageUi.signInWithNewsblurLink).toHaveCount(0);
     await expect(pageUi.backToSignInLink).toHaveCount(0);
+  });
+
+  test.describe("when on Android", () => {
+    test.use({ userAgent: ANDROID_USER_AGENT });
+
+    test("lists the Android app beside Credits, but not under ?source=twa", async ({ page }) => {
+      const pageUi = ui(page);
+      const androidLink = () =>
+        pageUi.accountMenu.getByRole("link", { name: "Get the Android app", exact: true });
+      await page.goto("/");
+
+      await pageUi.accountMenuTrigger.click();
+      await expect(androidLink()).toHaveAttribute("href", PLAY_STORE_URL);
+      await expect(androidLink()).toHaveAttribute("target", "_blank");
+      await expect(androidLink()).toHaveAttribute("rel", "noopener noreferrer");
+
+      await page.goto("/?source=twa");
+      await pageUi.accountMenuTrigger.click();
+      await expect(pageUi.accountMenu).toBeVisible();
+      await expect(androidLink()).toHaveCount(0);
+    });
   });
 
   test("shows a tooltip on hover and hides it on Escape", async ({ page }, testInfo) => {

@@ -1,13 +1,15 @@
 import { useEffect, useId, useRef, useState } from "react";
-import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { isMockMode } from "client/api/client";
-import { useAuthStatus, useProfile } from "client/api/queries";
+import { useProfile } from "client/api/queries";
 import { signOut } from "client/api/signOut";
+import { AndroidAppLink } from "client/components/app/android/AndroidAppLink";
 import { useBarPosition } from "client/hooks/useBarPosition";
 import { setBarPosition } from "client/hooks/utils/barPosition";
 import { Icon } from "client/components/primitives/icons/icons";
 import { Switch } from "client/components/primitives/controls/Switch";
+import { isAndroidBrowser } from "client/utils/androidApp";
+import { isInstalledApp, useInstallPrompt } from "client/utils/installPrompt";
 import { swallowNextClick } from "client/utils/swallowNextClick";
 import { tip } from "client/utils/tooltip";
 import { useOverlay } from "client/hooks/useOverlay";
@@ -33,6 +35,19 @@ const rowClassName = `
   flex min-h-9 items-center justify-between gap-3 px-3 text-sm
 `;
 
+// appearance-none drops the native caret; the end padding leaves room for SelectChevron.
+const selectClassName = `
+  h-8 min-w-0 appearance-none rounded-lg border border-hairline bg-surface ps-2 pe-7 text-ink
+  focus-visible:outline-2 focus-visible:outline-accent
+`;
+
+const SelectChevron = () => (
+  <Icon
+    name="chevron"
+    className="pointer-events-none absolute inset-e-2 top-1/2 size-4 -translate-y-1/2 rotate-90 text-muted"
+  />
+);
+
 // Only an installed iOS app or the Android TWA has a browser to pick, so elsewhere the row is absent.
 const ExternalBrowserSelect = () => {
   const { shell } = useT();
@@ -46,25 +61,25 @@ const ExternalBrowserSelect = () => {
   return (
     <label className={rowClassName}>
       <span className="flex-none text-muted">{shell.openExternalLinksIn}</span>
-      <select
-        value={browser ?? "none"}
-        onChange={(event) => {
-          const next = options.find(({ id }) => id === event.target.value)?.id;
-          if (next === undefined) return;
-          setPreferredBrowser(next);
-          setBrowser(next);
-        }}
-        className={`
-          h-8 min-w-0 rounded-lg border border-hairline bg-surface px-2 text-ink
-          focus-visible:outline-2 focus-visible:outline-accent
-        `}
-      >
-        {options.map(({ id, label }) => (
-          <option key={id} value={id}>
-            {label}
-          </option>
-        ))}
-      </select>
+      <span className="relative flex min-w-0">
+        <select
+          value={browser ?? "none"}
+          onChange={(event) => {
+            const next = options.find(({ id }) => id === event.target.value)?.id;
+            if (next === undefined) return;
+            setPreferredBrowser(next);
+            setBrowser(next);
+          }}
+          className={selectClassName}
+        >
+          {options.map(({ id, label }) => (
+            <option key={id} value={id}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <SelectChevron />
+      </span>
     </label>
   );
 };
@@ -80,34 +95,27 @@ const LanguageSelect = () => {
   return (
     <label className={rowClassName}>
       <span className="flex-none text-muted">{shell.language}</span>
-      <select
-        value={preference}
-        onChange={(event) => {
-          const next = options.find(({ id }) => id === event.target.value)?.id;
-          if (next === undefined) return;
-          setLocalePreference(next);
-        }}
-        className={`
-          h-8 min-w-0 rounded-lg border border-hairline bg-surface px-2 text-ink
-          focus-visible:outline-2 focus-visible:outline-accent
-        `}
-      >
-        {options.map(({ id, label }) => (
-          <option key={id} value={id}>
-            {label}
-          </option>
-        ))}
-      </select>
+      <span className="relative flex min-w-0">
+        <select
+          value={preference}
+          onChange={(event) => {
+            const next = options.find(({ id }) => id === event.target.value)?.id;
+            if (next === undefined) return;
+            setLocalePreference(next);
+          }}
+          className={selectClassName}
+        >
+          {options.map(({ id, label }) => (
+            <option key={id} value={id}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <SelectChevron />
+      </span>
     </label>
   );
 };
-
-const Row = ({ label, children }: { label: string; children: ReactNode }) => (
-  <div className={rowClassName}>
-    <span className="flex-none text-muted">{label}</span>
-    <span className="min-w-0 truncate text-right text-ink">{children}</span>
-  </div>
-);
 
 // Everything the old settings page held, in a native `popover="auto"` panel under the cog: light
 // dismiss and the top layer come for free, and CSS anchor positioning keeps it on the trigger.
@@ -117,11 +125,13 @@ export const AccountMenu = () => {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
   const profile = useProfile();
-  const authStatus = useAuthStatus();
   const barPosition = useBarPosition();
   const mock = isMockMode();
   const { updateReady, updateDeferred } = usePwaUpdate();
+  const { canInstall, install } = useInstallPrompt();
   const { shell } = useT();
+  // The Android app link is the install route in Android Chrome, so the install row yields to it.
+  const showInstall = canInstall && !isInstalledApp() && !isAndroidBrowser();
   useOverlay({ id: "account-menu", isOpen: open });
 
   const close = (): void => {
@@ -176,22 +186,35 @@ export const AccountMenu = () => {
           account-menu w-72 rounded-2xl border border-hairline bg-surface p-2 text-ink shadow-lg
         `}
       >
-        <div className="px-3 py-1.5">
-          <p
-            data-tip={profile.data?.username}
-            data-tip-overflow=""
-            className="truncate text-sm font-semibold text-ink"
-          >
-            {profile.data?.username ?? "—"}
-          </p>
-          <p
-            data-tip={profile.data?.email}
-            data-tip-overflow=""
-            className="truncate text-xs text-faint"
-          >
-            {profile.data?.email ?? "—"}
-          </p>
-        </div>
+        {import.meta.env.VITE_DEMO !== "true" && (
+          <div className={rowClassName}>
+            <p
+              data-tip={profile.data?.email}
+              data-tip-overflow=""
+              className="min-w-0 flex-1 truncate font-semibold text-ink"
+            >
+              {profile.data?.username ?? "—"}
+            </p>
+            {mock ? (
+              <span className="flex-none text-muted">{shell.mockData}</span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  close();
+                  // A failed sign-out keeps the session, so the row keeps showing it.
+                  void signOut().catch(() => {});
+                }}
+                className={`
+                  flex-none text-accent-text underline underline-offset-2
+                  focus-visible:outline-2 focus-visible:outline-accent
+                `}
+              >
+                {shell.signOut}
+              </button>
+            )}
+          </div>
+        )}
 
         {updateReady ? (
           <button
@@ -211,41 +234,6 @@ export const AccountMenu = () => {
           </button>
         ) : null}
 
-        {import.meta.env.VITE_DEMO !== "true" && (
-          <Row label={shell.account}>
-            {mock ? (
-              shell.mockData
-            ) : authStatus.data?.signedIn ? (
-              <span className="flex min-w-0 items-center gap-3">
-                {shell.signedIn}
-                <button
-                  type="button"
-                  onClick={() => {
-                    close();
-                    // A failed sign-out keeps the session, so the row keeps showing it.
-                    void signOut().catch(() => {});
-                  }}
-                  className={`
-                    text-accent-text underline underline-offset-2
-                    focus-visible:outline-2 focus-visible:outline-accent
-                  `}
-                >
-                  {shell.signOut}
-                </button>
-              </span>
-            ) : (
-              <a
-                href="/api/auth/login"
-                className={`
-                  text-accent-text underline underline-offset-2
-                  focus-visible:outline-2 focus-visible:outline-accent
-                `}
-              >
-                {shell.signIn}
-              </a>
-            )}
-          </Row>
-        )}
         {/* Per device, not per account: the choice lives in localStorage. */}
         <Switch
           checked={barPosition === "bottom"}
@@ -261,19 +249,48 @@ export const AccountMenu = () => {
 
         <hr className="my-2 border-hairline" />
 
-        <Row label={shell.version}>{import.meta.env.VITE_APP_VERSION ?? "dev"}</Row>
-
-        <Link
-          to="/subscriptions"
-          onClick={close}
-          className={`
-            flex h-10 items-center rounded-xl px-3 text-sm font-medium text-ink
-            hover:bg-surface-2
-            focus-visible:outline-2 focus-visible:outline-accent
-          `}
-        >
-          {shell.manageSubscriptions}
-        </Link>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <Link
+            to="/subscriptions"
+            onClick={close}
+            className={`
+              flex h-10 items-center rounded-xl px-3 text-sm font-medium text-ink
+              hover:bg-surface-2
+              focus-visible:outline-2 focus-visible:outline-accent
+            `}
+          >
+            {shell.manageSubscriptions}
+          </Link>
+          <Link
+            to="/credits"
+            onClick={close}
+            className={`
+              flex h-10 items-center rounded-xl px-3 text-sm font-medium text-ink
+              hover:bg-surface-2
+              focus-visible:outline-2 focus-visible:outline-accent
+            `}
+          >
+            {shell.credits}
+          </Link>
+          {showInstall ? (
+            <button
+              type="button"
+              onClick={() => {
+                void install();
+                close();
+              }}
+              className={`
+                flex h-10 w-full items-center gap-1.5 rounded-xl px-3 text-sm font-medium text-ink
+                hover:bg-surface-2
+                focus-visible:outline-2 focus-visible:outline-accent
+              `}
+            >
+              <Icon name="install" className="size-4.5 shrink-0" />
+              {shell.installLire}
+            </button>
+          ) : null}
+          <AndroidAppLink className="h-10 px-3 text-sm font-medium" />
+        </div>
       </div>
     </>
   );

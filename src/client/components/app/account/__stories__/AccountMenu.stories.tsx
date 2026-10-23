@@ -3,8 +3,14 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useArgs } from "storybook/preview-api";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { AccountMenu } from "client/components/app/account/AccountMenu";
+import { listenForInstallPrompt } from "client/utils/installPrompt";
 import { deferUpdate, registerPwa } from "client/utils/pwaUpdate";
-import { withQueryClient, withRouteMatch } from "stories/decorators";
+import { withQueryClient, withRouteMatch, withUserAgent } from "stories/decorators";
+
+const ANDROID_UA =
+  "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Mobile Safari/537.36";
+const DESKTOP_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15";
 
 interface Args {
   open: boolean;
@@ -12,11 +18,13 @@ interface Args {
 
 const meta: Meta<Args> = {
   title: "App/Account/AccountMenu",
-  decorators: [withRouteMatch, withQueryClient],
+  decorators: [withRouteMatch, withQueryClient, withUserAgent],
+  parameters: { userAgent: DESKTOP_UA },
   args: { open: false },
-  // Registering starts from a clean update state, so no story inherits the last one's.
+  // Registering and clearing start from a clean state, so no story inherits the last one's.
   beforeEach: () => {
     registerPwa({ register: () => async () => {} });
+    window.dispatchEvent(new Event("appinstalled"));
   },
   render: function Render({ open }) {
     const [, updateArgs, resetArgs] = useArgs<Args>();
@@ -64,6 +72,20 @@ export const Default: Story = {
   },
 };
 
+// The Android link sits in the menu, so the story opens it.
+export const AndroidBrowser: Story = {
+  args: { open: false },
+  parameters: { userAgent: ANDROID_UA },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button", { name: "Account and app info" }));
+    const link = await canvas.findByRole("link", { name: "Get the Android app" });
+    await waitFor(async () => {
+      await expect(link).toBeVisible();
+    });
+  },
+};
+
 const waitingUpdate = ({ deferred }: { deferred: boolean }) => {
   registerPwa({
     register: ({ onNeedRefresh }) => {
@@ -87,6 +109,20 @@ export const UpdateDeferred: Story = {
   args: { open: false },
   beforeEach: () => {
     waitingUpdate({ deferred: true });
+  },
+};
+
+// The browser offered the prompt, so the menu lists Install Lire above the Android slot.
+export const InstallAvailable: Story = {
+  args: { open: false },
+  beforeEach: () => {
+    listenForInstallPrompt();
+    window.dispatchEvent(
+      Object.assign(new Event("beforeinstallprompt", { cancelable: true }), {
+        prompt: async () => {},
+        userChoice: Promise.resolve({ outcome: "dismissed" }),
+      }),
+    );
   },
 };
 
