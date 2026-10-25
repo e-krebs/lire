@@ -46,6 +46,7 @@ export const en = {
   mitLicence: "MIT licence",
   newsblurLicenseAfter: ".",
   visitNewsblur: "Visit NewsBlur",
+  createNewsblurAccount: "Create a NewsBlur account",
   newsblurName: "NewsBlur",
   lireName: "Lire",
   lireDescription:
@@ -58,7 +59,7 @@ export const en = {
   howItWorks: "How it works",
   stepsAria: "How it works, in three steps",
   step1Title: "Your feeds live in NewsBlur",
-  step1Body: "NewsBlur hosts your subscriptions and stories.",
+  step1Body: "Create a NewsBlur account, then come back and sign in.",
   step2Title: "You read and manage them in Lire",
   step2Body: "Add, remove and organize your feeds from Lire's own interface.",
   step3Title: "Your read state syncs back",
@@ -123,6 +124,7 @@ export const fr = {
   mitLicence: "licence MIT",
   newsblurLicenseAfter: ".",
   visitNewsblur: "Visiter NewsBlur",
+  createNewsblurAccount: "Créer un compte NewsBlur",
   newsblurName: "NewsBlur",
   lireName: "Lire",
   lireDescription:
@@ -135,7 +137,7 @@ export const fr = {
   howItWorks: "Comment ça marche",
   stepsAria: "Comment ça marche, en trois étapes",
   step1Title: "Vos flux vivent dans NewsBlur",
-  step1Body: "NewsBlur héberge vos abonnements et vos articles.",
+  step1Body: "Créez un compte NewsBlur, puis revenez vous connecter.",
   step2Title: "Vous les lisez et gérez dans Lire",
   step2Body: "Ajoutez, supprimez et organisez vos flux depuis l'interface de Lire.",
   step3Title: "Votre lecture se synchronise",
