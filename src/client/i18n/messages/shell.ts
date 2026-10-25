@@ -12,6 +12,8 @@ export const en = {
   signInFailed: "NewsBlur sign-in failed, try again.",
   signInDenied: "You declined access on NewsBlur, so Lire can't read your subscriptions yet.",
   signInExpired: "This sign-in took too long and expired. Start it again.",
+  signInEnded: "Your session ended. Sign in again to read your subscriptions.",
+  checkingSession: "Checking your session…",
   tryAgain: "Try again",
   signInToRead: "Sign in with NewsBlur to read your subscriptions.",
   barAtBottom: "Bar at the bottom",
@@ -90,6 +92,8 @@ export const fr = {
   signInDenied:
     "Vous avez refusé l'accès sur NewsBlur, Lire ne peut pas encore lire vos abonnements.",
   signInExpired: "Cette connexion a pris trop de temps et a expiré. Recommencez.",
+  signInEnded: "Votre session a pris fin. Reconnectez-vous pour lire vos abonnements.",
+  checkingSession: "Vérification de votre session…",
   tryAgain: "Réessayer",
   signInToRead: "Connectez-vous avec NewsBlur pour lire vos abonnements.",
   barAtBottom: "Barre en bas",

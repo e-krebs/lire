@@ -1,5 +1,5 @@
 import { act, cleanup, screen, waitFor } from "@testing-library/react";
-import type { QueryClient } from "@tanstack/react-query";
+import { onlineManager, type QueryClient } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { resetFixtureState } from "client/api/adapters/fixture";
@@ -32,10 +32,23 @@ const ui = {
   get backToSignInLink() {
     return screen.queryByRole("link", { name: "Back to sign in" });
   },
+  get splash() {
+    return screen.queryByText("Checking your session…");
+  },
+  get splashLabel() {
+    return screen.findByText("Checking your session…");
+  },
+  get loadingStatus() {
+    return screen.queryByRole("status", { name: "Loading articles" });
+  },
+  get alert() {
+    return screen.queryByRole("alert");
+  },
 };
 
 // Read by the afterEach, which waits out the requests this client still has in flight.
 let queryClient: QueryClient | undefined;
+let releasePendingStatus: (() => void) | undefined;
 
 class NoIntersectionObserver {
   observe(): void {}
@@ -47,11 +60,35 @@ const setup = ({
   signedOut = false,
   demo = false,
   userId,
-}: { url?: string; signedOut?: boolean; demo?: boolean; userId?: number } = {}) => {
+  pendingStatus = false,
+  statusUnavailable = false,
+}: {
+  url?: string;
+  signedOut?: boolean;
+  demo?: boolean;
+  userId?: number;
+  pendingStatus?: boolean;
+  statusUnavailable?: boolean;
+} = {}) => {
   vi.stubEnv("VITE_API_MODE", "real");
   if (demo) vi.stubEnv("VITE_DEMO", "true");
   vi.stubGlobal("IntersectionObserver", NoIntersectionObserver);
   server.use(fixtureBackend);
+  if (pendingStatus) {
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    releasePendingStatus = release;
+    server.use(
+      http.get("/api/auth/status", async () => {
+        await pending;
+        return HttpResponse.json({ signedIn: false });
+      }),
+    );
+  }
+  if (statusUnavailable)
+    server.use(http.get("/api/auth/status", () => new HttpResponse(null, { status: 503 })));
   // fixtureBackend answers the auth status as signed in, so a signed-out case overrides it.
   if (signedOut)
     server.use(http.get("/api/auth/status", () => HttpResponse.json({ signedIn: false })));
@@ -69,6 +106,8 @@ describe("root route", () => {
   // observers on a setTimeout(0), so one task passes before the count is read again. The timeout
   // outlasts the 3s a list fetch can wait for the first mark replay.
   afterEach(async () => {
+    releasePendingStatus?.();
+    releasePendingStatus = undefined;
     cleanup();
     const client = queryClient;
     queryClient = undefined;
@@ -101,8 +140,54 @@ describe("root route", () => {
 
     await waitFor(() => {
       expect(ui.signInLinks).toHaveLength(2);
+      expect(ui.alert).not.toBeInTheDocument();
       for (const link of ui.signInLinks) expect(link).toHaveAttribute("href", "/api/auth/login");
     });
+  });
+
+  it("shows a bare splash until auth status resolves", async () => {
+    setup({ pendingStatus: true });
+
+    expect(await ui.splashLabel).toBeInTheDocument();
+    expect(ui.signInLinks).toHaveLength(0);
+    expect(ui.topBar).not.toBeInTheDocument();
+    expect(ui.loadingStatus).not.toBeInTheDocument();
+
+    releasePendingStatus?.();
+    releasePendingStatus = undefined;
+    await waitFor(() => {
+      expect(ui.signInLinks).toHaveLength(2);
+    });
+  });
+
+  it("does not hold the splash while auth status is paused offline", async () => {
+    onlineManager.setOnline(false);
+    try {
+      const { queryClient: client } = setup({ pendingStatus: true });
+
+      await waitFor(() => {
+        expect(client.getQueryState(keys.authStatus)?.fetchStatus).toBe("paused");
+      });
+      expect(ui.splash).not.toBeInTheDocument();
+    } finally {
+      onlineManager.setOnline(true);
+    }
+  });
+
+  it("keeps credits available while auth status is pending", async () => {
+    setup({ url: "/credits", pendingStatus: true });
+
+    expect(await ui.creditsHeading).toBeInTheDocument();
+    expect(ui.splash).not.toBeInTheDocument();
+  });
+
+  it("ends the splash after an auth status server error", async () => {
+    setup({ statusUnavailable: true });
+
+    await waitFor(() => {
+      expect(ui.signInLinks).toHaveLength(2);
+    });
+    expect(ui.splash).not.toBeInTheDocument();
   });
 
   it("hides the top bar and the account menu on the sign-in screen", async () => {
@@ -171,9 +256,24 @@ describe("root route", () => {
         });
     });
 
-    await waitFor(() => {
-      expect(ui.signInLinks.length).toBeGreaterThan(0);
+    await waitFor(() => expect(ui.alert).toHaveTextContent("Your session ended."));
+  });
+
+  it("explains when a previously signed-in session ends", async () => {
+    const { queryClient: client } = setup({ userId: 42 });
+    await ui.loadingArticles;
+
+    act(() => {
+      client
+        .getQueryCache()
+        .build(client, { queryKey: ["probe"] })
+        .setState({
+          status: "error",
+          error: new ApiError({ status: 401, code: "sign_in_required" }),
+        });
     });
+
+    await waitFor(() => expect(ui.alert).toHaveTextContent("Your session ended."));
   });
 
   it("tells the mark queue the signed-in user from the auth status", async () => {

@@ -45,3 +45,7 @@ export const CallbackDenied: Story = {
 export const CallbackExpired: Story = {
   args: { failure: "expired" },
 };
+
+export const SessionEnded: Story = {
+  args: { failure: "ended" },
+};
