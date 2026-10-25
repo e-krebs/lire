@@ -1,4 +1,5 @@
 import { ANDROID_USER_AGENT, expect, PLAY_STORE_URL, test as base, type Page } from "./fixtures";
+import { mockStandalone } from "./support/standalone";
 
 // Vite has no /api proxy, so an unmocked request would get index.html with a 200: the catch-all
 // answers 404 instead, and the test fails on any request it did not mock. A `**/api/**` glob would
@@ -33,6 +34,9 @@ const ui = (page: Page) => ({
   get entriesRegion() {
     return page.getByRole("region", { name: "Entries" });
   },
+  get splash() {
+    return page.getByRole("status", { name: "Checking your session…" });
+  },
   get refreshButton() {
     return this.entriesRegion.getByRole("button", { name: "Refresh" });
   },
@@ -59,6 +63,38 @@ const ui = (page: Page) => ({
   },
   get swipeStage() {
     return page.locator(".landing-stage--swipe");
+  },
+  get steps() {
+    return page.getByRole("list", { name: "How it works, in three steps" });
+  },
+  get deviceFiguresHeading() {
+    return page.getByRole("heading", { name: "Works across devices" });
+  },
+  get fluidDemosHeading() {
+    return page.getByRole("heading", { name: "Fluid, responsive and smooth" });
+  },
+  get installButton() {
+    return page.getByRole("button", {
+      name: "Install Lire from your browser and it opens like any other app.",
+    });
+  },
+  get main() {
+    return page.locator("main");
+  },
+  get banner() {
+    return page.getByRole("banner");
+  },
+  get viewportMeta() {
+    return page.locator('meta[name="viewport"]');
+  },
+  get welcomeTitle() {
+    return page.getByText("Welcome to Lire.");
+  },
+  get addFeedLink() {
+    return page.getByRole("link", { name: "Add a first feed" });
+  },
+  get newsletterLink() {
+    return page.getByRole("link", { name: "Get your newsletter address" });
   },
   get alert() {
     return page.getByRole("alert");
@@ -101,7 +137,86 @@ const mockSignedIn = async ({ page, limited }: { page: Page; limited: () => bool
   );
 };
 
+// The install button renders only once the browser offers a prompt, so the offer is fired by hand.
+const offerInstall = async (page: Page) =>
+  page.evaluate(() => {
+    const event = Object.assign(new Event("beforeinstallprompt", { cancelable: true }), {
+      prompt: async () => {},
+      userChoice: Promise.resolve({ outcome: "dismissed" }),
+    });
+    window.dispatchEvent(event);
+  });
+
 test.describe("app-level states", () => {
+  test("renders the signed-out landing at every tier without horizontal overflow", async ({
+    page,
+  }) => {
+    const pageUi = ui(page);
+    const viewports = [
+      { width: 412, height: 923 },
+      { width: 820, height: 1180 },
+      { width: 1440, height: 900 },
+    ];
+    await mockSignedOut(page);
+
+    for (const viewport of viewports) {
+      await page.setViewportSize(viewport);
+      await page.goto("/");
+
+      await expect(pageUi.signInLink).toBeVisible();
+      await expect(pageUi.steps).toBeVisible();
+      await expect(pageUi.deviceFiguresHeading).toBeVisible();
+      await expect(pageUi.fluidDemosHeading).toBeVisible();
+      await expect(pageUi.swipeStage).toBeVisible();
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+      ).toBe(true);
+    }
+  });
+
+  test("shows the empty-account pointers when signed in without feeds", async ({ page }) => {
+    const pageUi = ui(page);
+    await mockSignedIn({ page, limited: () => false });
+    await page.goto("/");
+
+    await expect(pageUi.welcomeTitle).toBeVisible();
+    await expect(pageUi.addFeedLink).toHaveAttribute("href", "/subscriptions?add=true");
+    await expect(pageUi.newsletterLink).toHaveAttribute("href", "/subscriptions?newsletter=true");
+    await expect(pageUi.entriesRegion).toBeVisible();
+  });
+
+  test("shows only the splash while auth status is pending", async ({ page }) => {
+    const pageUi = ui(page);
+    let releaseStatus: (() => void) | undefined;
+    await page.route("**/api/auth/status", async (route) => {
+      await new Promise<void>((resolve) => {
+        releaseStatus = resolve;
+      });
+      await route.fulfill({ json: { signedIn: false } });
+    });
+    await page.goto("/");
+
+    await expect(pageUi.splash).toBeVisible();
+    await expect(pageUi.signInText).toHaveCount(0);
+    await expect(pageUi.steps).toHaveCount(0);
+    await expect(pageUi.entriesRegion).toHaveCount(0);
+
+    releaseStatus?.();
+    await expect(pageUi.signInLink).toBeVisible();
+  });
+
+  test("hides install prompts in standalone mode", async ({ page }) => {
+    const pageUi = ui(page);
+    await mockStandalone(page);
+    await mockSignedOut(page);
+    await page.goto("/");
+
+    await expect(pageUi.signInLink).toBeVisible();
+    await offerInstall(page);
+    await expect(pageUi.installButton).toHaveCount(0);
+    await expect(pageUi.playBadge).toHaveCount(0);
+  });
+
   test.describe("when sign-in fails", () => {
     const viewports = [
       { width: 412, height: 923 },
@@ -194,6 +309,11 @@ test.describe("app-level states", () => {
       await page.goto("/?source=twa");
       await expect(pageUi.signInLink).toBeVisible();
       await expect(pageUi.playBadge).toHaveCount(0);
+      await offerInstall(page);
+      await expect(pageUi.installButton).toHaveCount(0);
+      await expect(pageUi.banner).toHaveCount(0);
+      await expect(pageUi.main).toHaveClass(/pt-safe.*pr-safe.*pb-safe.*pl-safe/);
+      await expect(pageUi.viewportMeta).toHaveAttribute("content", /viewport-fit=cover/);
     });
   });
 

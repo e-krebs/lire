@@ -73,7 +73,12 @@ block. [locale.spec.ts](../../e2e/locale.spec.ts) switches the language and chec
 | [global-setup.ts](../../e2e/global-setup.ts) | Loads every route once per server, and clears stale coverage |
 | [global-teardown.ts](../../e2e/global-teardown.ts) | Writes the e2e coverage report |
 | [fixtures.ts](../../e2e/fixtures.ts) | Extended `test` that collects JS coverage on `desktop`; holds the report options |
+| [support/standalone.ts](../../e2e/support/standalone.ts) | Stubs standalone display mode and `navigator.standalone` before page scripts run |
 | [support/worker.ts](../../e2e/support/worker.ts) | Bundles the Worker with `wrangler deploy --dry-run`, runs it in Miniflare, signs Access JWTs, and answers outbound fetches from a fake NewsBlur at `https://newsblur.test` |
+
+`states.spec.ts` runs in the `states` project against the real-mode Vite server. It covers the
+signed-out landing at phone, tablet and desktop widths, TWA and standalone display behavior,
+empty-account pointers, and the pending-auth splash.
 
 ## Coverage
 
