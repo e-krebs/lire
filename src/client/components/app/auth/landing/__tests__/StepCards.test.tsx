@@ -4,7 +4,7 @@ import { StepCards } from "client/components/app/auth/landing/StepCards";
 
 const ui = {
   get newsblurLink() {
-    return screen.getByRole("link", { name: "Visit NewsBlur" });
+    return screen.getByRole("link", { name: "Create a NewsBlur account" });
   },
   get steps() {
     return screen.getByRole("list", { name: "How it works, in three steps" });
@@ -14,6 +14,9 @@ const ui = {
   },
   get hiddenItems() {
     return this.steps.querySelectorAll('li[aria-hidden="true"]');
+  },
+  get signInHint() {
+    return screen.getByText("Create a NewsBlur account, then come back and sign in.");
   },
   get decorativeLogo() {
     return document.querySelector('img[alt=""]');
@@ -38,9 +41,15 @@ describe("StepCards", () => {
   it("links to NewsBlur in a new tab", () => {
     render(<StepCards />);
 
-    expect(ui.newsblurLink).toHaveAttribute("href", "https://newsblur.com");
+    expect(ui.newsblurLink).toHaveAttribute("href", "https://newsblur.com/account/signup");
     expect(ui.newsblurLink).toHaveAttribute("target", "_blank");
     expect(ui.newsblurLink).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("asks visitors to come back and sign in after creating an account", () => {
+    render(<StepCards />);
+
+    expect(ui.signInHint).toBeInTheDocument();
   });
 
   it("hides the decorative logo and arrows from assistive tech", () => {

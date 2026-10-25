@@ -80,6 +80,7 @@ export default defineConfig({
           name: "storybook",
           // Parallel pages starve each other on a loaded machine and stories time out.
           maxWorkers: 2,
+          sequence: { groupOrder: 1 },
           browser: {
             enabled: true,
             headless: true,
