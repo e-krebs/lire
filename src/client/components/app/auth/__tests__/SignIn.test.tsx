@@ -135,6 +135,7 @@ describe("SignIn", () => {
     ["failed", "NewsBlur sign-in failed, try again."],
     ["denied", "You declined access on NewsBlur, so Lire can't read your subscriptions yet."],
     ["expired", "This sign-in took too long and expired. Start it again."],
+    ["ended", "Your session ended. Sign in again to read your subscriptions."],
   ] as const)("shows the %s failure with Try again and Credits only", async (failure, message) => {
     await renderSignIn({ failure });
 

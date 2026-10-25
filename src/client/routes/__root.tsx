@@ -8,13 +8,21 @@ import { markQueue } from "client/api/markQueue";
 import { useAuthStatus } from "client/api/queries";
 import { useSignedOut } from "client/hooks/useSignedOut";
 import { useSigninFailure } from "client/hooks/useSigninFailure";
+import { useT } from "client/i18n/useT";
 
 const RootComponent = () => {
   const authStatus = useAuthStatus();
   const signedOut = useSignedOut();
-  const signinFailure = useSigninFailure();
   const pathname = useLocation({ select: (location) => location.pathname });
   const userId = authStatus.data?.userId;
+  const signinFailure = useSigninFailure({ userId });
+  const { shell } = useT();
+  // A paused request waits for connectivity, so it must not hold the splash until then.
+  const splash =
+    import.meta.env.VITE_DEMO !== "true" &&
+    pathname !== "/credits" &&
+    authStatus.isPending &&
+    authStatus.fetchStatus !== "paused";
   const unknownUser = authStatus.isError || (authStatus.data !== undefined && userId === undefined);
   const { dataUpdatedAt } = authStatus;
 
@@ -25,11 +33,23 @@ const RootComponent = () => {
   }, [userId, unknownUser, dataUpdatedAt]);
 
   return (
-    <AppShell bare={signedOut}>
+    <AppShell bare={splash || signedOut}>
       <div className="flex h-full min-h-0 flex-col">
         <div className="flex-none">{import.meta.env.VITE_DEMO === "true" && <DemoBanner />}</div>
         <div className="min-h-0 flex-1">
-          {signedOut && pathname !== "/credits" ? <SignIn failure={signinFailure} /> : <Outlet />}
+          {splash ? (
+            <div
+              aria-label={shell.checkingSession}
+              className="flex h-full items-center justify-center text-sm text-muted"
+              role="status"
+            >
+              {shell.checkingSession}
+            </div>
+          ) : signedOut && pathname !== "/credits" ? (
+            <SignIn failure={signinFailure} />
+          ) : (
+            <Outlet />
+          )}
         </div>
       </div>
       <SWToast />

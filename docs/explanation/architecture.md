@@ -414,14 +414,21 @@ fault: only the `svh` sizing does.
 
 Sign-in state has no route of its own. `useSignedOut` is the one answer the root route and the routes
 share: signed out when `/api/auth/status` says so, or when any query fails with `sign_in_required`.
+In real mode, the root route waits for the first auth status before rendering a page. It shows a
+neutral splash with no top bar while that request is pending. `/credits` remains available during
+the check, and demo mode skips it. A network or server error ends the splash and keeps the existing
+route behavior.
+
 While signed out, the root route renders `SignIn` in place of the outlet, and `SignIn` is the
 landing. The one exception is `/credits`, which the root route lets through, so the Credits page is
 reachable without a grant. The app shell drops the top bar while signed out (`AppShell` takes a
 `bare` prop), since the collections and the account menu have nothing to show. `/` still redirects to
 the stream, which the root route turns into the landing. The cache-wide check means a session
-the upstream revokes mid-session still lands the reader on the landing, whichever query
-noticed first. Queries never retry a `401`. A `429` retries twice, each after the `retryAfter` the Worker sent
-(60 s when it is missing, capped at 2 min) ([queryClient.ts](../../src/client/api/queryClient.ts#L11-L16)).
+the upstream revokes mid-session still lands the reader on the landing, whichever query noticed
+first. When the browser has seen a signed-in user id, that landing explains that the session ended.
+A fresh visit without a signed-in status stays on the plain landing. Queries never retry a `401`. A
+`429` retries twice, each after the `retryAfter` the Worker sent (60 s when it is missing, capped at
+2 min) ([queryClient.ts](../../src/client/api/queryClient.ts#L11-L16)).
 
 ### Empty-state art
 

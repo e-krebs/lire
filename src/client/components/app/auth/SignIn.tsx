@@ -3,19 +3,19 @@ import { AndroidBadge } from "client/components/app/auth/landing/AndroidBadge";
 import { DeviceFigures } from "client/components/app/auth/landing/DeviceFigures";
 import { FluidDemos } from "client/components/app/auth/landing/FluidDemos";
 import { StepCards } from "client/components/app/auth/landing/StepCards";
+import type { SigninFailure } from "client/hooks/useSigninFailure";
 import { useT } from "client/i18n/useT";
 
-type SignInFailure = "failed" | "denied" | "expired";
-
-const FAILURE_EMOJI: Record<SignInFailure, string> = {
+const FAILURE_EMOJI: Record<SigninFailure, string> = {
   failed: "⚠️",
   denied: "🚫",
   expired: "⏳",
+  ended: "🔒",
 };
 
 export interface SignInProps {
-  /** Why the last sign-in did not finish. Absent on the plain sign-in page. */
-  failure?: SignInFailure;
+  /** Why sign-in is needed or the last attempt failed. */
+  failure?: SigninFailure;
 }
 
 export const SignIn = ({ failure }: SignInProps) => {
@@ -25,6 +25,7 @@ export const SignIn = ({ failure }: SignInProps) => {
         failed: shell.signInFailed,
         denied: shell.signInDenied,
         expired: shell.signInExpired,
+        ended: shell.signInEnded,
       }[failure]
     : null;
   return (

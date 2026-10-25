@@ -1,5 +1,6 @@
 import { createElement, Fragment } from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   createMemoryHistory,
   createRootRoute,
@@ -9,23 +10,27 @@ import {
   RouterProvider,
 } from "@tanstack/react-router";
 import { describe, expect, it } from "vitest";
+import { ApiError } from "client/api/client";
 import { useSigninFailure } from "../useSigninFailure";
 
 const ui = {
   get failure() {
     return screen.findByTestId("failure");
   },
+  get failureNow() {
+    return screen.getByTestId("failure");
+  },
 };
 
-const SigninFailure = () => {
-  const failure = useSigninFailure();
+const SigninFailure = ({ userId }: { userId?: number }) => {
+  const failure = useSigninFailure({ userId });
   return createElement("span", { "data-testid": "failure" }, failure ?? "none");
 };
 
-const renderAt = (url: string) => {
+const renderAt = (url: string, props: { userId?: number } = {}) => {
   const rootRoute = createRootRoute({
     component: () =>
-      createElement(Fragment, null, createElement(SigninFailure), createElement(Outlet)),
+      createElement(Fragment, null, createElement(SigninFailure, props), createElement(Outlet)),
   });
   const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: "/" });
   const routeTree = rootRoute.addChildren([indexRoute]);
@@ -33,8 +38,21 @@ const renderAt = (url: string) => {
     routeTree,
     history: createMemoryHistory({ initialEntries: [url] }),
   });
-  render(createElement(RouterProvider, { router }));
-  return { router };
+  const client = new QueryClient();
+  render(createElement(QueryClientProvider, { client }, createElement(RouterProvider, { router })));
+  return { router, client };
+};
+
+const failQueryWithSignInRequired = (client: QueryClient) => {
+  act(() => {
+    client
+      .getQueryCache()
+      .build(client, { queryKey: ["probe"] })
+      .setState({
+        status: "error",
+        error: new ApiError({ status: 401, code: "sign_in_required" }),
+      });
+  });
 };
 
 describe("useSigninFailure", () => {
@@ -57,5 +75,22 @@ describe("useSigninFailure", () => {
     await waitFor(() => {
       expect(router.state.location.search).toEqual({});
     });
+  });
+
+  it("returns ended when a seen session's query needs a sign-in", async () => {
+    const { client } = renderAt("/", { userId: 42 });
+    expect(await ui.failure).toHaveTextContent("none");
+
+    failQueryWithSignInRequired(client);
+
+    await waitFor(() => expect(ui.failureNow).toHaveTextContent("ended"));
+  });
+
+  it("does not call a fresh visit ended", async () => {
+    const { client } = renderAt("/");
+
+    failQueryWithSignInRequired(client);
+
+    expect(await ui.failure).toHaveTextContent("none");
   });
 });

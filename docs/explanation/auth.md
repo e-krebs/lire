@@ -70,6 +70,10 @@ The Worker logs the failed step and an upstream status or error name (`wrangler 
 never a code or a token. The PWA service worker does not answer `/api/` navigations (see
 [architecture.md](architecture.md#pwa)), so these routes always reach the Worker.
 
+A later `sign_in_required` after the page has seen a signed-in user id shows a session-ended message
+on the landing. The client keeps this cause in memory, so it never appears in the URL. A fresh visit
+without a signed-in status shows the plain landing.
+
 The worker's background sync of marks fetches `/api/auth/status` for the user id, then posts to
 `/api/entries/mark` behind Access with the same cookie as the page. It does not follow redirects: an
 expired Access session answers a cross-origin redirect, which counts as a retryable failure, and the
@@ -100,7 +104,9 @@ answers `409 user_mismatch`.
 
 A sign-in with a valid cookie for the same user replaces that cookie's token, so one browser holds one
 token. A browser with no cookie shows the signed-out landing (`SignIn`), and a failed sign-in shows it with
-the cause from [the sign-in](#the-sign-in).
+the cause from [the sign-in](#the-sign-in). If the page has already seen a signed-in user id before
+a later `sign_in_required`, the landing says that the session ended. That cause stays in client
+state and never appears in the URL. A fresh visit without a signed-in status shows the plain landing.
 
 ### Sign-out
 
@@ -147,7 +153,9 @@ just stored.
 
 NewsBlur's read views do not always answer `401` on a bad token: they answer `200` with the data of a
 fallback user. So `handle` also checks every read answer against the user id stored at sign-in, and a
-mismatch is treated as a rejected session.
+mismatch is treated as a rejected session. When that rejection clears the grant, the next
+`sign_in_required` sends a page that has seen the user id to the session-ended landing. The page does
+not show that message on a fresh visit with no signed-in status.
 
 ## CSRF checks
 
