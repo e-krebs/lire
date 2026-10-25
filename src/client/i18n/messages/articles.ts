@@ -25,6 +25,11 @@ export const en = {
   loadingMoreArticles: "Loading more articles",
   searchingFor: ({ query }: { query: string }) => `Searching for “${query}”`,
   nothingToRead: "Nothing to read here.",
+  welcomeTitle: "Welcome to Lire.",
+  welcomeBody:
+    "Add a feed, or send newsletters to your own address, and articles will show up here.",
+  addFirstFeed: "Add a first feed",
+  newsletterAddress: "Get your newsletter address",
   showDayScene: "Show the day scene",
   showDuskScene: "Show the dusk scene",
   noArticlesMatch: ({ query }: { query: string }) => `No articles match “${query}”.`,
@@ -63,6 +68,11 @@ export const fr = {
   loadingMoreArticles: "Chargement d'autres articles",
   searchingFor: ({ query }) => `Recherche de « ${query} »`,
   nothingToRead: "Rien à lire ici.",
+  welcomeTitle: "Bienvenue dans Lire.",
+  welcomeBody:
+    "Ajoutez un flux, ou envoyez vos newsletters à votre propre adresse : les articles apparaîtront ici.",
+  addFirstFeed: "Ajouter un premier flux",
+  newsletterAddress: "Obtenir votre adresse de newsletter",
   showDayScene: "Afficher la scène de jour",
   showDuskScene: "Afficher la scène du soir",
   noArticlesMatch: ({ query }) => `Aucun article ne correspond à « ${query} ».`,

@@ -3,7 +3,13 @@ import type { ComponentProps, CSSProperties, KeyboardEvent, ReactNode } from "re
 import { Link } from "@tanstack/react-router";
 import type { StreamKey } from "shared/feedsApi/streamKey";
 import type { Entry } from "shared/feedsApi/types";
-import { flattenStream, useMark, useRefreshAllLists, useRefreshEntries } from "client/api/queries";
+import {
+  flattenStream,
+  useFeeds,
+  useMark,
+  useRefreshAllLists,
+  useRefreshEntries,
+} from "client/api/queries";
 import type { useStream } from "client/api/queries";
 import { MosaicTile } from "client/components/feed/mosaic/MosaicTile";
 import { useRegisterSourceListKey } from "client/components/reader/article/SourceListKeyContext";
@@ -65,6 +71,7 @@ export const MosaicBody = ({
   const entries = flattenStream(result.data);
   const { hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage } = result;
   const refreshEntries = useRefreshEntries();
+  const feeds = useFeeds();
   useRegisterSourceListKey(queryKey);
   // Any element inside the pane, for the scroll to the top; the grid's frame is gone in the
   // skeleton and the empty state.
@@ -298,6 +305,9 @@ export const MosaicBody = ({
     );
   }
 
+  // Loading or failed feeds count as not-empty: the plain empty view stays up until they settle.
+  const noSubscriptions = searchQuery === undefined && feeds.isSuccess && feeds.data.length === 0;
+
   if (shown.length === 0) {
     // `min-h-full` so a short empty view still leaves a finger room to pull from the bottom.
     return (
@@ -309,11 +319,26 @@ export const MosaicBody = ({
       >
         <div className="flex flex-col items-center gap-4 px-4 pt-12 pb-8 text-center text-sm text-faint">
           <MosaicEmptyArt refreshedAt={result.dataUpdatedAt} />
-          <p>
-            {searchQuery === undefined
-              ? t.articles.nothingToRead
-              : t.articles.noArticlesMatch({ query: searchQuery })}
-          </p>
+          {noSubscriptions ? (
+            <>
+              <p className="text-base text-muted">{t.articles.welcomeTitle}</p>
+              <p>{t.articles.welcomeBody}</p>
+              <div className="flex flex-wrap justify-center gap-3">
+                <Link to="/subscriptions" search={{ add: true }} className={actionClassName}>
+                  {t.articles.addFirstFeed}
+                </Link>
+                <Link to="/subscriptions" search={{ newsletter: true }} className={actionClassName}>
+                  {t.articles.newsletterAddress}
+                </Link>
+              </div>
+            </>
+          ) : (
+            <p>
+              {searchQuery === undefined
+                ? t.articles.nothingToRead
+                : t.articles.noArticlesMatch({ query: searchQuery })}
+            </p>
+          )}
           <div className="flex flex-wrap justify-center gap-3">
             {searchQuery === undefined ? null : (
               <Link
@@ -325,15 +350,17 @@ export const MosaicBody = ({
               </Link>
             )}
             {/* Everything there is: the all-articles stream, read entries included, no search. */}
-            <Link
-              to="/stream/$streamKey"
-              params={{ streamKey: "all" }}
-              search={(prev) => ({ ...prev, unread: false, q: undefined })}
-              className={actionClassName}
-            >
-              <Icon name="everything" className="size-4" />
-              {t.articles.showAllArticles}
-            </Link>
+            {noSubscriptions ? null : (
+              <Link
+                to="/stream/$streamKey"
+                params={{ streamKey: "all" }}
+                search={(prev) => ({ ...prev, unread: false, q: undefined })}
+                className={actionClassName}
+              >
+                <Icon name="everything" className="size-4" />
+                {t.articles.showAllArticles}
+              </Link>
+            )}
           </div>
         </div>
       </PullFrame>

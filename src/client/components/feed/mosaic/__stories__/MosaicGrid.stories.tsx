@@ -1,5 +1,8 @@
+import { useState } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Decorator, Meta, StoryObj } from "@storybook/react-vite";
 import { expect, fireEvent, userEvent, waitFor, within } from "storybook/test";
+import { keys } from "client/api/keys";
 import { MosaicGrid } from "client/components/feed/mosaic/MosaicGrid";
 import { withQueryClient, withRouteMatch } from "stories/decorators";
 import { swipe } from "client/components/feed/mosaic/__stories__/swipe";
@@ -163,6 +166,34 @@ export const Empty: Story = {
     // The refresh swaps the empty state for the skeleton, so the link is only there again after it.
     await waitFor(async () => expect(pane.querySelector("[data-refreshing]")).toBeNull(), TIMEOUT);
     await userEvent.click(await within(canvasElement).findByRole("link", { name: /show all/i }));
+  },
+};
+
+// The feeds answer is seeded as empty, so the view needs no request for it.
+const WithoutSubscriptions: Decorator = function WithoutSubscriptions(Story) {
+  const [client] = useState(() => {
+    const seeded = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
+    });
+    seeded.setQueryData(keys.feeds, []);
+    return seeded;
+  });
+  return (
+    <QueryClientProvider client={client}>
+      <Story />
+    </QueryClientProvider>
+  );
+};
+
+export const NoSubscriptions: Story = {
+  args: { streamKey: "feed:999" },
+  decorators: [WithoutSubscriptions],
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await canvas.findByText("Welcome to Lire.", {}, TIMEOUT);
+    await expect(canvas.getByRole("link", { name: "Add a first feed" })).toBeVisible();
+    await expect(canvas.getByRole("link", { name: "Get your newsletter address" })).toBeVisible();
+    await expect(canvas.queryByRole("link", { name: /show all/i })).toBeNull();
   },
 };
 
