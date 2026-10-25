@@ -60,6 +60,12 @@ const ui = (page: Page) => ({
   get swipeStage() {
     return page.locator(".landing-stage--swipe");
   },
+  get alert() {
+    return page.getByRole("alert");
+  },
+  get tryAgainLink() {
+    return page.getByRole("link", { name: "Try again" });
+  },
 });
 
 const mockSignedOut = async (page: Page) => {
@@ -96,6 +102,37 @@ const mockSignedIn = async ({ page, limited }: { page: Page; limited: () => bool
 };
 
 test.describe("app-level states", () => {
+  test.describe("when sign-in fails", () => {
+    const viewports = [
+      { width: 412, height: 923 },
+      { width: 820, height: 1180 },
+      { width: 1024, height: 768 },
+    ];
+    const failures = [
+      { cause: "failed", message: "NewsBlur sign-in failed, try again." },
+      {
+        cause: "denied",
+        message: "You declined access on NewsBlur, so Lire can't read your subscriptions yet.",
+      },
+      { cause: "expired", message: "This sign-in took too long and expired. Start it again." },
+    ] as const;
+
+    for (const { cause, message } of failures) {
+      test(`shows the ${cause} message at every tier`, async ({ page }) => {
+        const pageUi = ui(page);
+        await mockSignedOut(page);
+
+        for (const viewport of viewports) {
+          await page.setViewportSize(viewport);
+          await page.goto(`/?signin=${cause}`);
+
+          await expect(pageUi.alert).toHaveText(message);
+          await expect(pageUi.tryAgainLink).toHaveAttribute("href", "/api/auth/login");
+        }
+      });
+    }
+  });
+
   test("shows the sign-in screen when signed out", async ({ page }) => {
     const pageUi = ui(page);
     await mockSignedOut(page);

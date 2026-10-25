@@ -62,10 +62,13 @@ flow:
 5. It stores the access token, the refresh token, the user id and the username in the Durable Object
    for that user, and sets the `lire_session` cookie. It answers `302` to `/`.
 
-A failure at any step answers `400` with a short page that links back to `/api/auth/login`. The page
-sets no `lire_session` cookie and clears the `state` cookie. The Worker logs the failed step and an
-upstream status or error name (`wrangler tail` shows it), never a code or a token. The PWA service worker does not answer
-`/api/` navigations (see [architecture.md](architecture.md#pwa)), so these routes always reach the Worker.
+A failure at any step answers `302` to `/?signin=<cause>`. The cause is `denied` when the reader refused
+on NewsBlur, `expired` when the `state` is missing, mismatched, expired or replayed, and `failed` for
+anything else. The client reads the parameter once, shows the matching `SignIn` variant and removes
+the parameter from the URL. The failure sets no `lire_session` cookie and clears the `state` cookie.
+The Worker logs the failed step and an upstream status or error name (`wrangler tail` shows it),
+never a code or a token. The PWA service worker does not answer `/api/` navigations (see
+[architecture.md](architecture.md#pwa)), so these routes always reach the Worker.
 
 The worker's background sync of marks fetches `/api/auth/status` for the user id, then posts to
 `/api/entries/mark` behind Access with the same cookie as the page. It does not follow redirects: an
@@ -77,8 +80,8 @@ the Access host, which sends no CORS header. `httpTransport` fetches with `redir
 navigates to `/api/auth/login` on `opaqueredirect`, so Access runs its login. It does not reload,
 because the service worker serves the cached shell for page loads and a reload never reaches
 Access; `/api/` paths bypass the worker. A `sessionStorage` guard allows one navigation per minute.
-Unsent read marks survive in IndexedDB. When the guard blocks, the reader sees the `SignIn` screen,
-and its link runs Access again.
+Unsent read marks survive in IndexedDB. When the guard blocks, the reader sees the `SignIn` screen
+without a failure cause, and its link runs Access again.
 
 ### The session cookie
 
@@ -96,7 +99,8 @@ NewsBlur user id that tags each queued mark. A mark body whose `userId` is not t
 answers `409 user_mismatch`.
 
 A sign-in with a valid cookie for the same user replaces that cookie's token, so one browser holds one
-token. A browser with no cookie shows the signed-out landing (`SignIn`).
+token. A browser with no cookie shows the signed-out landing (`SignIn`), and a failed sign-in shows it with
+the cause from [the sign-in](#the-sign-in).
 
 ### Sign-out
 

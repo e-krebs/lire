@@ -22,7 +22,7 @@ contract route needs a cookie the Worker holds a token for. Without one, the Wor
 | Method | Path | Behavior |
 | --- | --- | --- |
 | GET | `/api/auth/login` | Starts the NewsBlur OAuth sign-in. Stores a single-use `state` for 10 minutes, sets it in the `lire_oauth_state` cookie and redirects to NewsBlur's authorize page |
-| GET | `/api/auth/callback` | Finishes the sign-in. Checks the `state` against the cookie and consumes it, exchanges the code for tokens, stores them for the reader's user id, sets the `lire_session` cookie and redirects to `/`. Any failure answers 400 with a page that links back to the login, and sets no `lire_session` cookie |
+| GET | `/api/auth/callback` | Finishes the sign-in. Checks the `state` against the cookie and consumes it, exchanges the code for tokens, stores them for the reader's user id, sets the `lire_session` cookie and redirects to `/`. Any failure answers 302 to `/?signin=<cause>` (`denied`, `expired` or `failed`), and sets no `lire_session` cookie |
 | POST | `/api/auth/logout` | Revokes the cookie's token and clears the cookie. Answers 204, with or without a cookie. Non-same-origin or non-JSON requests answer 403 |
 
 ## Contract routes
