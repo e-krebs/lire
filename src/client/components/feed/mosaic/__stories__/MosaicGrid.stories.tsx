@@ -165,7 +165,9 @@ export const Empty: Story = {
     fire({ target: pane, type: "touchend" });
     // The refresh swaps the empty state for the skeleton, so the link is only there again after it.
     await waitFor(async () => expect(pane.querySelector("[data-refreshing]")).toBeNull(), TIMEOUT);
-    await userEvent.click(await within(canvasElement).findByRole("link", { name: /show all/i }));
+    await userEvent.click(
+      await within(canvasElement).findByRole("link", { name: /show all/i }, TIMEOUT),
+    );
   },
 };
 
