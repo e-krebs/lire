@@ -103,6 +103,15 @@ const login = async () => {
       ?.split(";")[0] ?? lireCookie;
   return response;
 };
+const expectCallbackFailure = (response: Response, cause: string) => {
+  expect(response.status).toBe(302);
+  expect(response.headers.get("Location")).toBe(`/?signin=${cause}`);
+  expect(response.headers.get("Cache-Control")).toBe("no-store");
+  expect(response.headers.getSetCookie()[0]).toContain("Max-Age=0");
+  expect(response.headers.getSetCookie().some((cookie) => cookie.startsWith("lire_session="))).toBe(
+    false,
+  );
+};
 const signInUpstream =
   ({
     userId = USER_ID,
@@ -290,29 +299,29 @@ describe("worker", () => {
               ? "lire_oauth_state=other"
               : start.cookie,
       });
-      expect(response.status).toBe(400);
-      expect(response.headers.get("Set-Cookie")).toContain("Max-Age=0");
+      expectCallbackFailure(response, "expired");
       expect(upstreamCalls).toHaveLength(0);
     });
 
-    it.each(["", "&code=x&error=access_denied"])(
-      "rejects a missing code or denied grant (%s)",
-      async (suffix) => {
-        await setup();
-        const start = await stateStart();
-        const response = await send(
-          `/api/auth/callback?state=${start.state}${suffix}`,
-          {},
-          start.cookie,
-        );
-        expect(response.status).toBe(400);
-        expect(upstreamCalls).toHaveLength(0);
-      },
-    );
+    it.each([
+      { suffix: "", cause: "failed" },
+      { suffix: "&code=x&error=access_denied", cause: "denied" },
+    ])("redirects an authorization failure to signin=$cause", async ({ suffix, cause }) => {
+      await setup();
+      const start = await stateStart();
+      const response = await send(
+        `/api/auth/callback?state=${start.state}${suffix}`,
+        {},
+        start.cookie,
+      );
+      expectCallbackFailure(response, cause);
+      expect(upstreamCalls).toHaveLength(0);
+    });
 
     it("rejects a callback with no state parameter", async () => {
       await setup();
-      expect((await anonymous("/api/auth/callback?code=x")).status).toBe(400);
+      expectCallbackFailure(await anonymous("/api/auth/callback?code=x"), "expired");
+      expect(upstreamCalls).toHaveLength(0);
     });
 
     it.each([
@@ -336,7 +345,7 @@ describe("worker", () => {
         if (failure === "token json" && token) return new Response("bad json");
         return signInUpstream()(request);
       };
-      expect((await login()).status).toBe(400);
+      expectCallbackFailure(await login(), "failed");
       expect(await auth().hasSession()).toBe(false);
     });
 
@@ -344,7 +353,7 @@ describe("worker", () => {
       await setup();
       upstream = () => new Response(null, { status: 502 });
       const logged = vi.spyOn(console, "error").mockImplementation(() => {});
-      await login();
+      expectCallbackFailure(await login(), "failed");
       expect(logged).toHaveBeenCalledWith("oauth callback failed", { step: "token", status: 502 });
       expect(JSON.stringify(logged.mock.calls)).not.toContain("code-1");
       logged.mockRestore();
@@ -409,7 +418,7 @@ describe("worker", () => {
           put(key, value);
         });
         try {
-          expect((await login()).status).toBe(400);
+          expectCallbackFailure(await login(), "failed");
           expect(await auth().hasSession()).toBe(false);
           expect(await storedTokenCount()).toBe(1);
         } finally {

@@ -52,29 +52,6 @@ const readLireSession = (request: Request): { userKey: string; token: string } |
   return { userKey: value.slice(0, dot), token: value.slice(dot + 1) };
 };
 
-const signInFailedPage = (): Response =>
-  new Response(
-    `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sign-in failed</title>
-<style>
-  :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
-  body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 16px; box-sizing: border-box; }
-</style>
-</head>
-<body>
-<p role="alert">Sign-in to NewsBlur failed. <a href="${LOGIN_PATH}">Try again</a>.</p>
-</body>
-</html>`,
-    {
-      status: 400,
-      headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
-    },
-  );
-
 const ProfileAnswerSchema = z.object({
   user_profile: z.object({ user_id: z.number().int().positive(), username: z.string().min(1) }),
 });
@@ -119,20 +96,32 @@ const handleCallback = async ({
     "Cache-Control": "no-store",
     "Set-Cookie": `${STATE_COOKIE}=; ${STATE_ATTRIBUTES}; Max-Age=0`,
   });
-  const failure = ({ step, status }: { step: string; status?: number | string }) => {
+  const failure = ({
+    step,
+    status,
+    cause = "failed",
+  }: {
+    step: string;
+    status?: number | string;
+    cause?: "denied" | "expired" | "failed";
+  }) => {
     console.error("oauth callback failed", { step, status });
-    const response = signInFailedPage();
-    response.headers.set("Set-Cookie", headers.get("Set-Cookie")!);
-    return response;
+    headers.set("Location", `/?signin=${cause}`);
+    return new Response(null, { status: 302, headers });
   };
   if (!state || state !== cookie || !(await stateObject({ env, state }).consumeState()))
     return failure({
       step: "state",
       status: !state ? "no-state" : state !== cookie ? "cookie" : "consume",
+      cause: "expired",
     });
   const code = params.get("code");
   if (!code || params.has("error"))
-    return failure({ step: "authorize", status: params.get("error") ?? "no-code" });
+    return failure({
+      step: "authorize",
+      status: params.get("error") ?? "no-code",
+      cause: params.get("error") === "access_denied" ? "denied" : "failed",
+    });
   let step = "token";
   try {
     const response = await fetch(new URL("/oauth/token", env.NEWSBLUR_HOST), {

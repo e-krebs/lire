@@ -115,8 +115,10 @@ test.describe("Login", () => {
       test("login fails and the owner stays signed out", async ({ request, worker }) => {
         const response = await login({ request, worker });
 
-        expect(response.status()).toBe(400);
+        expect(response.status()).toBe(302);
+        expect(response.headers().location).toBe("/?signin=failed");
         expect(response.headers()["set-cookie"]).toContain("Max-Age=0");
+        expect(response.headers()["set-cookie"]).not.toContain("lire_session=");
         expect(worker.outbound).toHaveLength(1);
         expect(await signedIn({ request, worker })).toEqual({ signedIn: false });
       });

@@ -7,10 +7,12 @@ import { SWToast } from "client/components/app/notices/SWToast";
 import { markQueue } from "client/api/markQueue";
 import { useAuthStatus } from "client/api/queries";
 import { useSignedOut } from "client/hooks/useSignedOut";
+import { useSigninFailure } from "client/hooks/useSigninFailure";
 
 const RootComponent = () => {
   const authStatus = useAuthStatus();
   const signedOut = useSignedOut();
+  const signinFailure = useSigninFailure();
   const pathname = useLocation({ select: (location) => location.pathname });
   const userId = authStatus.data?.userId;
   const unknownUser = authStatus.isError || (authStatus.data !== undefined && userId === undefined);
@@ -27,7 +29,7 @@ const RootComponent = () => {
       <div className="flex h-full min-h-0 flex-col">
         <div className="flex-none">{import.meta.env.VITE_DEMO === "true" && <DemoBanner />}</div>
         <div className="min-h-0 flex-1">
-          {signedOut && pathname !== "/credits" ? <SignIn /> : <Outlet />}
+          {signedOut && pathname !== "/credits" ? <SignIn failure={signinFailure} /> : <Outlet />}
         </div>
       </div>
       <SWToast />
@@ -36,5 +38,8 @@ const RootComponent = () => {
 };
 
 export const Route = createRootRoute({
+  validateSearch: (search: Record<string, unknown>): { signin?: unknown } => ({
+    signin: search.signin,
+  }),
   component: RootComponent,
 });
