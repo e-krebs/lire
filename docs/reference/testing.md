@@ -209,6 +209,12 @@ const ui = (page: Page) => ({
 })
 ```
 
+The `states` Playwright project runs `states.spec.ts` against the real-mode dev server with
+service workers blocked. The spec covers the signed-out landing at phone, tablet and desktop
+widths, TWA and standalone display behavior, empty-account pointers, and the pending-auth splash.
+`e2e/support/standalone.ts` sets standalone display mode before page scripts run because
+Playwright cannot emulate it directly.
+
 ## Locale
 
 Tests run in English: the setup file resets the locale preference to `system` after every test, and
