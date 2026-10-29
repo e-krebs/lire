@@ -25,7 +25,7 @@ exception takes an `oxlint-disable-next-line` with the reason.
 ## UI strings
 
 Every user-facing string lives in the catalog under `src/client/i18n/messages/`, one file per UI
-area (`common`, `shell`, `subscriptions`, `navigation`, `articles`), and a component reads it with
+area (`common`, `shell`, `subscriptions`, `navigation`, `articles`, `onboarding`), and a component reads it with
 `const t = useT()`.
 
 - Add the key to the area file's `en` and `fr` together. `en` is the source of truth and `fr`
@@ -82,7 +82,7 @@ the YouTube, Vimeo, X, Bluesky, Instagram, Threads and TikTok frame sources.
 A lint rule checks the hook
 file names. An external store and the hook that reads it live together in `utils`, as in `viewPrefs.ts` and `pwaUpdate.ts`
 (`usePwaUpdate`, which drives `SWToast`), and `installPrompt.ts` (`useInstallPrompt`, which
-drives the install line on the landing and the account menu's Install Lire row).
+drives the install line on the landing, the account menu's Install Lire row and the checklist's install row).
 
 ## Stories
 

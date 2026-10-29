@@ -18,7 +18,8 @@ Browser (lire.krebs.tech)
 │ PWA service worker           │      │   contract: shared/feedsApi         │
 └──────────────────────────────┘      │   translation: shared/bff           │
                                       │   NewsblurAuth Durable Object       │
-                                      │   (NewsBlur grant, feed-list cache)│
+                                      │   (NewsBlur grant, feed cache,      │
+                                      │   onboarding state)                 │
                                       └──────────────────┬──────────────────┘
                                                          │ NEWSBLUR_HOST
                                                          │ Bearer access token
@@ -67,15 +68,18 @@ The stream route replaces a `feed:<id>` key with `all` once the feeds list has l
 holds that feed, so Back, a deep link or a stale tab after an unsubscribe never lands on a dead
 stream. Unsubscribing also drops that feed's cached streams and searches.
 
-The mosaic places every card absolutely from a known height, so a card never waits on a measuring
-pass. A card with an image keeps a fixed 3:2 shape. A card without one is as high as its content:
-[textHeight.ts](../../src/client/utils/textHeight.ts) counts the title's lines (one to three) with
-canvas `measureText` and adds the fixed padding and gaps, and `layoutMasonry` takes either an
-`aspect` or a `heightAt(columnWidth)` per item. The feed name on a card and in the reader header
-links to that feed's stream, and is plain text when that stream is already open. The link on a card
-is out of the tab order, because the grid keeps one tab stop. A feed that opens on its site
-(`lire.directOpen.<feedId>`) is never a newsletter: the switch is hidden for one and a stored flag
-is ignored.
+The mosaic places every entry card absolutely from a known height, so an entry card never waits on a
+measuring pass. A card with an image keeps a fixed 3:2 shape. A card without one is as high as its
+content: [textHeight.ts](../../src/client/utils/textHeight.ts) counts the title's lines (one to
+three) with canvas `measureText` and adds the fixed padding and gaps, and `layoutMasonry` takes
+either an `aspect` or a `heightAt(columnWidth)` per item. The onboarding card is the one measured
+item: it enters as `{ height, navigable: false }`, with the height that
+[useElementHeight.ts](../../src/client/hooks/useElementHeight.ts) reads from its element, and it
+stays out of the arrow walk. With no grid (loading, error, empty) it sits above the state in the
+aside. The feed name on a card and in the reader header links to that feed's stream, and is plain
+text when that stream is already open. The link on a card is out of the tab order, because the grid
+keeps one tab stop. A feed that opens on its site (`lire.directOpen.<feedId>`) is never a
+newsletter: the switch is hidden for one and a stored flag is ignored.
 
 The UI speaks English and French, through a small in-house module in
 [src/client/i18n/](../../src/client/i18n/) instead of a library
@@ -123,6 +127,28 @@ installed app: a standalone or minimal-ui window, an iOS home-screen app, or the
 (`isTWA()`), where the Android app link shows instead in Android Chrome. Fullscreen does not count,
 so a fullscreen desktop tab still gets the install controls. The landing's install line is a button
 under the same guard.
+
+The checklist card's install row follows the same prompt, but it stays once offered, so clicking it
+does not remove it. Its Install button shows only while the browser can still show the prompt. After
+a dismissed or spent prompt the row keeps its place with a hint to use the browser menu, and it is
+ticked on its own when the app is installed. It is absent in a browser that never offers the prompt.
+The card's See how action opens a native `<dialog>` that lays out the real tile and masonry, fed with
+three local entries. Nothing in it queries or links: `MosaicTileCard` in
+[MosaicTile.tsx](../../src/client/components/feed/mosaic/MosaicTile.tsx) takes its feed title and
+direct-open flag as props, so it renders without the feed and preference queries and without routes.
+The tile's check button, M or a touch swipe marks an entry read, and the card leaves the grid through
+the same leave and relayout as the real Mosaic grid; a click on the card body does nothing, since the
+real card opens the story. That state lives in the dialog. Once every card has left, Reset takes their
+place and restores them. The dialog closes on Escape, its top-right X, or a click on the backdrop.
+Nothing it shows touches the reader's stories. Below `sm` the dialog fills the screen, and its
+Previous and Next footer stays at the bottom, below the scrolling tab content, with safe-area
+padding. Two tabs, centred, split it: Mosaic holds the sample grid and the ways to mark a card
+(swipe, check button, M), and Reader shows the real `ReaderHeader` with its Mark as read and close
+buttons, and the real `PullAction` pull-up indicator, both fed with local sample data and inert.
+Previous and Next step between the tabs. Both tabs list the same three ways, touch, mouse and keyboard, in that
+order, and the tabs reset to Mosaic on every opening. The swipe example is the real card held mid-swipe by a
+synthetic drag, as the `MosaicTile` story shows it, with no loop. `ReaderHeader` takes its feed
+name as a prop, so the dialog fetches nothing.
 
 The Play listing is offered only in an Android browser outside the app. `isAndroidBrowser()` in
 [androidApp.ts](../../src/client/utils/androidApp.ts) is true when the user agent says Android and
@@ -183,6 +209,9 @@ reads need it, and drops it on every subscription or folder write. A refresh dro
 (`POST /api/feeds/refresh`), because NewsBlur adds a feed by itself when a new newsletter sender
 writes in. The same cached answer carries the share token that the newsletter address derives from. NewsBlur can list that feed in `feeds` before it places it in a folder, so the library shows an unplaced feed in the root.
 
+The same object also holds the onboarding checklist state (`GET` and `PATCH /api/onboarding`). NewsBlur
+has no place for it, and it is not a read cache, so the folder-tree drops leave it alone.
+
 ## Mock mode is the default
 
 [client.ts](../../src/client/api/client.ts#L43) treats every value of `VITE_API_MODE` other than
@@ -213,8 +242,8 @@ Play listing links to. The real host sits behind Access, so Play could not read 
 Change the page when the app starts to handle a new kind of data.
 
 The showcase is not read-only. The fixture transport applies writes (mark as read, subscription
-and category edits, preferences) to in-memory state, and nothing in the demo build blocks them.
-A reload restores the seed, including pending read marks, which a mock build keeps in memory only. The preferences bucket persists in `localStorage`; the
+and category edits, preferences, the onboarding checklist) to in-memory state, and nothing in the demo build blocks them.
+A reload restores the seed, including pending read marks, which a mock build keeps in memory only. The preferences bucket and the onboarding state persist in `localStorage`; the
 banner's Reset button clears both ([DemoBanner.tsx](../../src/client/components/app/demo/DemoBanner.tsx)).
 Nothing a visitor does reaches an account.
 

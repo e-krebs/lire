@@ -7,7 +7,7 @@ backed by a Cloudflare Worker that serves a Lire API over NewsBlur, behind Cloud
 
 The app runs in mock mode by default, against recorded or synthetic NewsBlur fixtures: categories,
 unread counts, streams with paging, an article reader, mark read and mark-all-read, subscription
-add, move and unsubscribe, and web feeds made from a page (variant picking, reanalyze). Three layout tiers (phone, tablet, desktop) and a PWA shell. The UI is in
+add, move and unsubscribe, web feeds made from a page (variant picking, reanalyze), and a checklist card for a new account. Three layout tiers (phone, tablet, desktop) and a PWA shell. The UI is in
 English and French, following the browser unless the account menu picks one. A signed-out landing
 explains the app, and a Credits page lists the licences of its code and assets. The Worker exists:
 Cloudflare Access with an owner email pin guards it, a NewsBlur OAuth sign-in runs in the Worker,
