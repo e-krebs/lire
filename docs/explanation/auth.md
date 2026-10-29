@@ -118,7 +118,8 @@ the NewsBlur grant and the feed cache in the object, because the reader's other 
 The account menu's Sign out action runs this route from the page. It first flushes the mark queue,
 waiting at most 3 seconds, then posts to the route. Only a `204` clears the queue, the IndexedDB
 mark store and the query cache; a failed logout clears nothing and leaves the row as it is. The service worker
-does not clear anything: it drops the rows of another user on its next sync.
+does not clear anything: it drops the rows of another user on its next sync. The onboarding state
+stays in the object through sign-out, as the grant and the cache do.
 
 ### Session storage
 
@@ -131,6 +132,10 @@ each upstream call and never forwards it, or the cookie, to the client.
 
 The same object holds the cache of the folder tree (see
 [architecture.md](architecture.md#worker)). Storing or clearing the grant drops the cache.
+
+The same object holds the reader's onboarding checklist state under the `onboarding` key: the ticked
+steps, and whether the card is collapsed or dismissed. It is product state, not a credential. Clearing
+the grant leaves it alone, so the progress survives sign-out and a rejected grant.
 
 The same object holds the browser tokens under one key. It stores the SHA-256 hash of each token,
 with an expiry 180 days out, and never the token, so a read of the storage yields no usable cookie.

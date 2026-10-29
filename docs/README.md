@@ -65,3 +65,5 @@ Architecture decision records sit outside the four quadrants as their own genre 
 - [adr/0011-persisted-mark-read-queue.md](adr/0011-persisted-mark-read-queue.md) - Persist read
   marks, send them from the service worker, prompt for updates
 - [adr/0012-newsblur-oauth.md](adr/0012-newsblur-oauth.md) - Sign in to NewsBlur with OAuth, per user
+- [adr/0013-onboarding-state-in-durable-object.md](adr/0013-onboarding-state-in-durable-object.md) - Keep
+  the onboarding checklist state in the user's Durable Object
