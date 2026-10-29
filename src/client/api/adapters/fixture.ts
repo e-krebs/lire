@@ -2,9 +2,15 @@ import { z } from "zod";
 import { handle, type BffResponse, type FeedsCache } from "shared/bff/handle";
 import type { FeedsAnswer } from "shared/bff/upstream";
 import { matchRoute } from "shared/feedsApi/routes";
-import { PreferencesSchema, type Preferences } from "shared/feedsApi/types";
+import {
+  OnboardingStateSchema,
+  PreferencesSchema,
+  type OnboardingState,
+  type Preferences,
+} from "shared/feedsApi/types";
 import {
   createFakeNewsblur,
+  createFakeOnboardingStore,
   FAKE_USER_ID,
   type FakeNewsblurFixtures,
 } from "client/api/adapters/fakeNewsblur";
@@ -120,6 +126,10 @@ const createMemoryCache = (): FeedsCache => {
 export const createFixtureBackend = ({ fixtures }: { fixtures: FakeNewsblurFixtures }) => {
   const upstream = createFakeNewsblur({ fixtures });
   const cache = createMemoryCache();
+  const onboarding = createFakeOnboardingStore({
+    initial: storedOnboarding() ?? { done: {}, collapsed: false, dismissed: false },
+    save: saveOnboarding,
+  });
   return async ({ method, path, query, body }: TransportRequest): Promise<BffResponse> => {
     const match = matchRoute({ method, pathname: path });
     if (!match) return { status: 404, body: { error: "not_found" } };
@@ -132,6 +142,7 @@ export const createFixtureBackend = ({ fixtures }: { fixtures: FakeNewsblurFixtu
         upstream,
         config: { userId: FAKE_USER_ID },
         cache,
+        onboarding,
       });
     } catch {
       return { status: 500, body: { error: "internal_error" } };
@@ -142,6 +153,25 @@ export const createFixtureBackend = ({ fixtures }: { fixtures: FakeNewsblurFixtu
 // The preferences are the one fixture mutation that outlives a reload: they stand in for the
 // account, and the flags they hold ("Opens on its site") were set by hand.
 const PREFERENCES_STORAGE_KEY = "lire.fixture.preferences.v2";
+const ONBOARDING_STORAGE_KEY = "lire.fixture.onboarding";
+
+const storedOnboarding = (): OnboardingState | undefined => {
+  try {
+    const stored = window.localStorage.getItem(ONBOARDING_STORAGE_KEY);
+    if (stored !== null) return OnboardingStateSchema.parse(JSON.parse(stored));
+  } catch {
+    // Blocked storage or a hand-edited value: fall through to the fixture.
+  }
+  return undefined;
+};
+
+const saveOnboarding = (state: OnboardingState): void => {
+  try {
+    window.localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // A private window or a full quota: the state still holds for this session.
+  }
+};
 
 const storedPreferences = (): Preferences | undefined => {
   try {
@@ -179,6 +209,7 @@ let backend = createFixtureBackend({ fixtures: withStoredPreferences(fixtures) }
 export const resetFixtureState = (): void => {
   try {
     window.localStorage.removeItem(PREFERENCES_STORAGE_KEY);
+    window.localStorage.removeItem(ONBOARDING_STORAGE_KEY);
   } catch {
     // Nothing stored, nothing to forget.
   }

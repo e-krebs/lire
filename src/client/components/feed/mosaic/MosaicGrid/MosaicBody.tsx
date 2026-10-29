@@ -18,8 +18,9 @@ import { PullIndicator } from "client/components/feed/status/PullIndicator";
 import { Icon } from "client/components/primitives/icons/icons";
 import { useT } from "client/i18n/useT";
 import { layoutMasonry, neighbourOf, tileAspect } from "client/utils/masonry";
-import type { Direction, MasonryLayout } from "client/utils/masonry";
+import type { Direction, MasonryItem, MasonryLayout } from "client/utils/masonry";
 import { textCardHeight } from "client/utils/textHeight";
+import { useElementHeight } from "client/hooks/useElementHeight";
 import { useElementWidth } from "client/hooks/useElementWidth";
 import { usePullToRefresh } from "client/hooks/usePullToRefresh";
 import type { PullState } from "client/hooks/usePullToRefresh";
@@ -39,6 +40,9 @@ const LEAVE_MS = 200;
 // the leave plays on a list the eye can see.
 const READER_SETTLE_MS = 300;
 
+// The leading card's layout id; entry ids never collide with it.
+const LEADING_ID = "leading";
+
 const ARROWS: Partial<Record<string, Direction>> = {
   ArrowUp: "up",
   ArrowDown: "down",
@@ -57,6 +61,8 @@ interface MosaicBodyProps {
   queryKey: readonly unknown[];
   readerOpen: boolean;
   searchQuery?: string;
+  // First tile of the grid; outside the grid (loading, error, empty) it sits above the state.
+  leading?: ReactNode;
 }
 
 export const MosaicBody = ({
@@ -66,6 +72,7 @@ export const MosaicBody = ({
   queryKey,
   readerOpen,
   searchQuery,
+  leading,
 }: MosaicBodyProps) => {
   const t = useT();
   const entries = flattenStream(result.data);
@@ -148,6 +155,7 @@ export const MosaicBody = ({
   // has to follow it.
   const [sentinel, setSentinel] = useState<HTMLDivElement | null>(null);
   const { attach, element: frame, width } = useElementWidth();
+  const { attach: attachLeading, height: leadingHeight } = useElementHeight();
   const mark = useMark();
   // A card marked read in an unread-only view goes through two states: `leaving`, fading out in
   // the slot it had, since the layout no longer places it; then `gone`, out of the layout for good.
@@ -248,15 +256,31 @@ export const MosaicBody = ({
     searchQuery === undefined
       ? t.articles.loadingArticles
       : t.articles.searchingFor({ query: searchQuery });
-  if (result.isPending) return <MosaicSkeleton label={loadingLabel} wholeList />;
+  const aside = leading ? (
+    <div className="px-3 pt-3">
+      <div className="mx-auto max-w-120">{leading}</div>
+    </div>
+  ) : null;
+
+  if (result.isPending) {
+    return (
+      <>
+        {aside}
+        <MosaicSkeleton label={loadingLabel} wholeList />
+      </>
+    );
+  }
   if (result.isError) {
     return (
-      <div role="alert" className="flex flex-col items-start gap-2 p-4 text-sm text-danger">
-        <p>{result.error.message}</p>
-        <button type="button" className={actionClassName} onClick={() => void result.refetch()}>
-          {t.common.retry}
-        </button>
-      </div>
+      <>
+        {aside}
+        <div role="alert" className="flex flex-col items-start gap-2 p-4 text-sm text-danger">
+          <p>{result.error.message}</p>
+          <button type="button" className={actionClassName} onClick={() => void result.refetch()}>
+            {t.common.retry}
+          </button>
+        </div>
+      </>
     );
   }
 
@@ -291,6 +315,7 @@ export const MosaicBody = ({
         freshness={freshness}
         className="relative min-h-full"
       >
+        {aside}
         <MosaicSkeleton label={loadingLabel} wholeList />
       </PullFrame>
     );
@@ -300,6 +325,7 @@ export const MosaicBody = ({
     return (
       <div ref={setHost}>
         <MosaicFreshness {...freshness} />
+        {aside}
         <MosaicSkeleton label={t.articles.loadingMoreArticles} wholeList />
       </div>
     );
@@ -317,6 +343,7 @@ export const MosaicBody = ({
         freshness={freshness}
         className="relative min-h-full"
       >
+        {aside}
         <div className="flex flex-col items-center gap-4 px-4 pt-12 pb-8 text-center text-sm text-faint">
           <MosaicEmptyArt refreshedAt={result.dataUpdatedAt} />
           {noSubscriptions ? (
@@ -367,25 +394,32 @@ export const MosaicBody = ({
     );
   }
 
+  const leadingItems: MasonryItem[] = leading
+    ? [{ id: LEADING_ID, height: leadingHeight, navigable: false }]
+    : [];
   const layout: MasonryLayout | undefined =
     width === undefined
       ? undefined
       : layoutMasonry({
           containerWidth: width,
-          items: placed.map((entry) =>
-            entry.imageUrl && !brokenImages.has(entry.imageUrl)
-              ? { id: entry.id, aspect: tileAspect(entry) }
-              : {
-                  id: entry.id,
-                  heightAt: (columnWidth: number) =>
-                    textCardHeight({
-                      title: entry.title,
-                      untitled: t.articles.untitled,
-                      width: columnWidth,
-                    }),
-                },
-          ),
+          items: [
+            ...leadingItems,
+            ...placed.map((entry): MasonryItem =>
+              entry.imageUrl && !brokenImages.has(entry.imageUrl)
+                ? { id: entry.id, aspect: tileAspect(entry) }
+                : {
+                    id: entry.id,
+                    heightAt: (columnWidth: number) =>
+                      textCardHeight({
+                        title: entry.title,
+                        untitled: t.articles.untitled,
+                        width: columnWidth,
+                      }),
+                  },
+            ),
+          ],
         });
+  const leadingSlot = layout?.positions.get(LEADING_ID);
 
   // Roving tabindex: one card is tabbable, the first until the user focuses another.
   const tabbableId = placed.some((entry) => entry.id === activeId) ? activeId : placed.at(0)?.id;
@@ -398,7 +432,7 @@ export const MosaicBody = ({
     cardElement(id)?.querySelector("a")?.focus();
   };
 
-  const handleTileKeyDown = (id: string) => (event: KeyboardEvent<HTMLAnchorElement>) => {
+  const handleTileKeyDown = (id: string) => (event: KeyboardEvent<HTMLElement>) => {
     if (!layout) return;
     const direction = ARROWS[event.key];
     let target: string | undefined;
@@ -478,6 +512,18 @@ export const MosaicBody = ({
           className="relative motion-safe:data-eased:transition-[height] motion-safe:data-eased:duration-350 motion-safe:data-eased:ease-[cubic-bezier(0.2,0.7,0.3,1)]"
           style={{ height: layout?.height ?? 0 }}
         >
+          {leading && leadingSlot ? (
+            <div
+              ref={attachLeading}
+              className="absolute top-0 left-0"
+              style={{
+                translate: `${leadingSlot.x}px ${leadingSlot.y}px`,
+                width: leadingSlot.width,
+              }}
+            >
+              {leading}
+            </div>
+          ) : null}
           {layout === undefined
             ? null
             : shown.map((entry) => {

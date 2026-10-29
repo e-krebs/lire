@@ -3,13 +3,13 @@ import type { KeyboardEvent } from "react";
 interface TabItem<Id extends string> {
   id: Id;
   label: string;
-  count: number;
+  count?: number;
 }
 
 interface TabsProps<Id extends string> {
   /** Accessible name of the tab list. */
   label: string;
-  /** Tabs to list, each with the count shown beside its label. */
+  /** Tabs to list, each with the count shown beside its label when it has one. */
   tabs: readonly TabItem<Id>[];
   /** Id of the active tab. */
   selected: Id;
@@ -66,7 +66,7 @@ export const Tabs = <Id extends string>({ label, tabs, selected, onSelect }: Tab
           onKeyDown={handleKeyDown}
           className={tabClassName}
         >
-          {`${tab.label} · ${tab.count}`}
+          {tab.count === undefined ? tab.label : `${tab.label} · ${tab.count}`}
         </button>
       ))}
     </div>

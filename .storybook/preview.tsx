@@ -36,7 +36,7 @@ const preview: Preview = {
           "Primitives",
           ["Controls", "Icons", "Overlays"],
           "App",
-          ["Account", "Android", "Auth", "Credits", "Demo", "Notices", "Shell"],
+          ["Account", "Android", "Auth", "Credits", "Demo", "Notices", "Onboarding", "Shell"],
           "Header",
           ["Top bar", "Location", "Views"],
           "Browse menu",

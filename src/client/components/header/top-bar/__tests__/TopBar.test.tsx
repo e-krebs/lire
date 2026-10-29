@@ -404,6 +404,19 @@ describe("TopBar", () => {
     expect(field).toHaveFocus();
   });
 
+  it("opens the Navigator and focuses its field when the onboarding card asks", async () => {
+    setup({ path: TECH_PATH });
+    const home = await ui.homeLink;
+    const field = await ui.searchField;
+
+    act(() => {
+      window.dispatchEvent(new Event("lire:open-navigator"));
+    });
+
+    expect(inert(home)).toBe(true);
+    expect(field).toHaveFocus();
+  });
+
   it("clears the typed text and drops the article search from the route", async () => {
     const view = setup({ path: `${TECH_PATH}?q=rust` });
     const user = userEvent.setup();

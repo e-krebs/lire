@@ -8,6 +8,7 @@ export const keys = {
   feeds: ["feeds"] as const,
   counts: ["counts"] as const,
   preferences: ["preferences"] as const,
+  onboarding: ["onboarding"] as const,
   newsletterAddress: ["newsletterAddress"] as const,
   sun: (tz: string) => ["sun", tz] as const,
   stream: ({

@@ -94,6 +94,20 @@ describe("useInstallPrompt", () => {
     expect(result.current.canInstall).toBe(false);
   });
 
+  it("keeps the offer after the prompt is spent, until the app is installed", async () => {
+    const { result } = renderHook(() => useInstallPrompt());
+    fireBeforeInstall({ outcome: "dismissed" });
+    await act(async () => {
+      await result.current.install();
+    });
+    expect(result.current.offered).toBe(true);
+    act(() => {
+      window.dispatchEvent(new Event("appinstalled"));
+    });
+    expect(result.current.offered).toBe(false);
+    expect(result.current.installed).toBe(true);
+  });
+
   it("does nothing when called without a kept event", async () => {
     const { result } = renderHook(() => useInstallPrompt());
     await act(async () => {

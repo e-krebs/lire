@@ -61,6 +61,15 @@ const ui = {
   queryEmptyState(view: RenderResult) {
     return view.queryByText("Nothing to read here.");
   },
+  leadingCard(view: RenderResult) {
+    return view.getByTestId("leading");
+  },
+  links(view: RenderResult) {
+    return view.getAllByRole("link");
+  },
+  firstEntry(view: RenderResult) {
+    return view.container.querySelector<HTMLElement>("[data-entry-id]");
+  },
 };
 
 const newQueryClient = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -77,12 +86,14 @@ const setup = ({
   query,
   pane = false,
   readerOpen = false,
+  leading,
 }: {
   client: QueryClient;
   observer?: unknown;
   query?: string;
   pane?: boolean;
   readerOpen?: boolean;
+  leading?: ReactNode;
 }) => {
   vi.stubGlobal("IntersectionObserver", observer);
   const rootRoute = createRootRoute();
@@ -98,6 +109,7 @@ const setup = ({
           ranked="newest"
           query={query}
           readerOpen={readerOpen}
+          leading={leading}
         />
       );
     },
@@ -825,6 +837,68 @@ describe("MosaicGrid", () => {
       fireEvent.keyDown(document.activeElement ?? first, { key: "ArrowUp" });
       fireEvent.keyDown(document.activeElement ?? first, { key: "ArrowLeft" });
       expect(fireEvent.keyDown(first, { key: "x" })).toBe(true);
+    });
+  });
+
+  describe("when a leading card is passed in", () => {
+    const card = <p data-testid="leading">Checklist</p>;
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+    });
+
+    it("places it as the first tile, above the entries, at its measured height", async () => {
+      vi.stubEnv("VITE_API_MODE", "mock");
+      resetFixtureState();
+      vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(120);
+      const { view } = setup({ client: newQueryClient(), leading: card });
+      await ui.unreadToggles(view);
+      const leading = ui.leadingCard(view);
+      const slot = leading.parentElement;
+      const tile = ui.firstEntry(view);
+      expect(slot?.style.translate).toBe("0px 0px");
+      expect(slot?.style.width).toBe(tile?.style.width);
+      expect(leading.compareDocumentPosition(ui.links(view)[0])).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+    });
+
+    it("steps over the card with the arrow keys", async () => {
+      vi.stubEnv("VITE_API_MODE", "mock");
+      resetFixtureState();
+      vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(120);
+      const { view } = setup({ client: newQueryClient(), leading: card });
+      await ui.unreadToggles(view);
+      const first = ui.links(view)[0];
+      act(() => {
+        first.focus();
+      });
+      fireEvent.keyDown(first, { key: "ArrowUp" });
+      expect(first).toHaveFocus();
+      fireEvent.keyDown(first, { key: "ArrowLeft" });
+      expect(document.activeElement).not.toBe(first);
+      expect(ui.leadingCard(view).contains(document.activeElement)).toBe(false);
+      expect(document.activeElement?.closest("[data-entry-id]")).not.toBeNull();
+    });
+
+    it("shows above the skeleton while the first page loads", async () => {
+      vi.stubEnv("VITE_API_MODE", "mock");
+      resetFixtureState();
+      const { view } = setup({ client: newQueryClient(), leading: card });
+      await ui.findSkeleton(view);
+      expect(ui.leadingCard(view)).toBeInTheDocument();
+    });
+
+    it("keeps the card when a search matches nothing", async () => {
+      vi.stubEnv("VITE_API_MODE", "mock");
+      resetFixtureState();
+      const { view } = setup({
+        client: newQueryClient(),
+        query: "zzzzzzzz",
+        leading: card,
+      });
+      await ui.noMatch(view);
+      expect(ui.leadingCard(view)).toBeInTheDocument();
     });
   });
 

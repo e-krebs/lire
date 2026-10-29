@@ -8,6 +8,7 @@ import {
   FeedSearchResultsSchema,
   FeedsSchema,
   NewsletterAddressSchema,
+  OnboardingStateSchema,
   PreferencesSchema,
   ProfileSchema,
   SunPhaseSchema,
@@ -24,6 +25,8 @@ import type {
   Feed,
   FeedSearchResult,
   NewsletterAddress,
+  OnboardingPatch,
+  OnboardingState,
   Preferences,
   PreferencesUpdate,
   Profile,
@@ -354,6 +357,14 @@ export const getPreferences = async (): Promise<Preferences> =>
 export const updatePreferences = async (patch: PreferencesUpdate): Promise<void> => {
   await requestVoid({ method: "POST", path: "/api/preferences", body: patch });
 };
+
+export const getOnboarding = async (): Promise<OnboardingState> =>
+  OnboardingStateSchema.parse(await request({ method: "GET", path: "/api/onboarding" }));
+
+export const patchOnboarding = async (patch: OnboardingPatch): Promise<OnboardingState> =>
+  OnboardingStateSchema.parse(
+    await request({ method: "PATCH", path: "/api/onboarding", body: patch }),
+  );
 
 export const getNewsletterAddress = async (): Promise<NewsletterAddress> =>
   NewsletterAddressSchema.parse(await request({ method: "GET", path: "/api/newsletter-address" }));

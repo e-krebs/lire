@@ -15,6 +15,7 @@ const reset = async (): Promise<void> => {
   const { resetFixtureState } = await import("client/api/adapters/fixture");
   resetFixtureState();
   forget(DIRECT_OPEN_STORAGE_KEY);
+  forget("lire.fixture.onboarding");
   forget(BAR_POSITION_STORAGE_KEY);
   forget(READER_WIDTH_STORAGE_KEY);
   window.location.assign("/");

@@ -14,6 +14,8 @@ import {
   createSourceListKeyStore,
 } from "client/components/reader/article/SourceListKeyContext";
 import { useFeeds } from "client/api/queries";
+import { OnboardingCard } from "client/components/app/onboarding/OnboardingCard";
+import { useOnboardingCard } from "client/hooks/useOnboardingCard";
 import { useViewPrefs } from "client/utils/viewPrefs";
 
 export interface StreamSearch {
@@ -40,6 +42,7 @@ function StreamLayout() {
   const childMatches = useChildMatches();
   const navigate = useNavigate();
   const feeds = useFeeds();
+  const onboarding = useOnboardingCard();
   const [sourceListKey] = useState(createSourceListKeyStore);
 
   const stream = parseStreamKey(streamKey);
@@ -64,6 +67,20 @@ function StreamLayout() {
   const ranked = readStream ? "newest" : prefs.ranked;
   const readerOpen = childMatches.length > 0;
 
+  const checklist =
+    onboarding.state && !onboarding.state.dismissed ? (
+      <OnboardingCard
+        steps={onboarding.steps}
+        collapsed={onboarding.state.collapsed}
+        onToggleCollapse={onboarding.toggleCollapse}
+        onToggleStep={onboarding.toggleStep}
+        onAction={onboarding.onAction}
+        dismissing={onboarding.dismissing}
+        onDismissStart={onboarding.onDismissStart}
+        onDismiss={onboarding.onDismiss}
+      />
+    ) : undefined;
+
   return (
     <SourceListKeyContext.Provider value={sourceListKey}>
       <Panes
@@ -74,6 +91,7 @@ function StreamLayout() {
             ranked={ranked}
             query={search.q}
             readerOpen={readerOpen}
+            leading={checklist}
           />
         }
         reader={readerOpen ? <Outlet /> : null}

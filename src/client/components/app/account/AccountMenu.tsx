@@ -5,6 +5,7 @@ import { useProfile } from "client/api/queries";
 import { signOut } from "client/api/signOut";
 import { AndroidAppLink } from "client/components/app/android/AndroidAppLink";
 import { useBarPosition } from "client/hooks/useBarPosition";
+import { useOnboardingCard } from "client/hooks/useOnboardingCard";
 import { setBarPosition } from "client/hooks/utils/barPosition";
 import { Icon } from "client/components/primitives/icons/icons";
 import { Switch } from "client/components/primitives/controls/Switch";
@@ -97,6 +98,7 @@ const LanguageSelect = () => {
       <span className="flex-none text-muted">{shell.language}</span>
       <span className="relative flex min-w-0">
         <select
+          data-account-menu-language=""
           value={preference}
           onChange={(event) => {
             const next = options.find(({ id }) => id === event.target.value)?.id;
@@ -126,13 +128,31 @@ export const AccountMenu = () => {
   const [open, setOpen] = useState(false);
   const profile = useProfile();
   const barPosition = useBarPosition();
+  const onboarding = useOnboardingCard();
   const mock = isMockMode();
   const { updateReady, updateDeferred } = usePwaUpdate();
   const { canInstall, install } = useInstallPrompt();
-  const { shell } = useT();
+  const { shell, onboarding: onboardingCopy } = useT();
   // The Android app link is the install route in Android Chrome, so the install row yields to it.
   const showInstall = canInstall && !isInstalledApp() && !isAndroidBrowser();
   useOverlay({ id: "account-menu", isOpen: open });
+
+  useEffect(() => {
+    const focusLanguageSelect = (): void => {
+      // Through the trigger, as a click opens it: a bare showPopover() has no invoker, so the
+      // anchor is unset and the panel lands at the top left.
+      if (!popoverRef.current?.matches(":popover-open")) triggerRef.current?.click();
+      requestAnimationFrame(() => {
+        popoverRef.current
+          ?.querySelector<HTMLSelectElement>("[data-account-menu-language]")
+          ?.focus();
+      });
+    };
+    window.addEventListener("lire:focus-language-select", focusLanguageSelect);
+    return () => {
+      window.removeEventListener("lire:focus-language-select", focusLanguageSelect);
+    };
+  }, []);
 
   const close = (): void => {
     popoverRef.current?.hidePopover();
@@ -159,6 +179,7 @@ export const AccountMenu = () => {
     <>
       <button
         ref={triggerRef}
+        id="account-menu-trigger"
         type="button"
         popoverTarget={id}
         aria-expanded={open}
@@ -244,6 +265,22 @@ export const AccountMenu = () => {
         >
           {shell.barAtBottom}
         </Switch>
+        {onboarding.state?.dismissed && !onboarding.completed ? (
+          <button
+            type="button"
+            onClick={() => {
+              onboarding.setDismissed(false);
+              close();
+            }}
+            className={`
+              flex h-10 w-full items-center rounded-xl px-3 text-sm font-medium text-ink
+              hover:bg-surface-2
+              focus-visible:outline-2 focus-visible:outline-accent
+            `}
+          >
+            {onboardingCopy.menu.show}
+          </button>
+        ) : null}
         <ExternalBrowserSelect />
         <LanguageSelect />
 

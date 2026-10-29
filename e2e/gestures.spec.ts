@@ -29,6 +29,12 @@ const ui = (page: Page) => ({
   get pullIndicator() {
     return page.locator(".pull-indicator");
   },
+  get checklist() {
+    return page.getByRole("region", { name: "Get started with Lire" });
+  },
+  get dismissChecklist() {
+    return page.getByRole("button", { name: "Dismiss the checklist" });
+  },
   // Not scoped to entriesRegion: while the pull is refreshing, this status sits elsewhere in the
   // page than the entries freshness row does. `.and()` on an exact getByText finds nothing here,
   // unlike the entries freshness row, so this keeps the original hasText regex, an
@@ -115,6 +121,13 @@ test.describe("gestures", () => {
 
     await expect(pageUi.tiles.first()).toBeVisible();
     await expect(pageUi.freshnessStatus("Updated just now")).toBeVisible();
+    // The checklist card is the grid's first tile and would push the result tiles below the phone's fold.
+    await pageUi.dismissChecklist.click();
+    await expect(pageUi.checklist).toBeHidden();
+    // The tiles slide up into the card's space; measure only once that transition has played.
+    await page.evaluate(async () =>
+      Promise.all(document.getAnimations().map(async (animation) => animation.finished)),
+    );
 
     const box = await pageUi.tiles.first().boundingBox();
     expect(box).not.toBeNull();

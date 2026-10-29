@@ -9,9 +9,39 @@ import {
   type Story,
   type UpstreamFeed,
 } from "shared/bff/upstream";
+import type { OnboardingStore } from "shared/bff/handle";
+import {
+  OnboardingStepIdSchema,
+  type OnboardingPatch,
+  type OnboardingState,
+} from "shared/feedsApi/types";
 
 // Equals the mock-mode user in client.ts: a mark's userId must match the session's, or the Worker answers 409.
 export const FAKE_USER_ID = 1001;
+
+export const createFakeOnboardingStore = ({
+  initial,
+  save,
+}: {
+  initial: OnboardingState;
+  save: (state: OnboardingState) => void;
+}): OnboardingStore => {
+  const state: OnboardingState = { ...initial, done: { ...initial.done } };
+  return {
+    get: async () => Promise.resolve(structuredClone(state)),
+    patch: async (patch: OnboardingPatch) => {
+      for (const step of OnboardingStepIdSchema.options) {
+        const value = patch.done?.[step];
+        if (value === true) state.done[step] = true;
+        else if (value === false) delete state.done[step];
+      }
+      if (patch.collapsed !== undefined) state.collapsed = patch.collapsed;
+      if (patch.dismissed !== undefined) state.dismissed = patch.dismissed;
+      save(state);
+      return Promise.resolve(structuredClone(state));
+    },
+  };
+};
 
 const FEED_PAGE_SIZE = 6;
 const RIVER_PAGE_SIZE = 12;

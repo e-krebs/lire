@@ -12,9 +12,11 @@ const TEXT_ASPECT = 16 / 9; // card without an image: a compact masthead
 const SINGLE_COLUMN_MIN_ASPECT = 4 / 3;
 
 // A text card's height follows its wrapped title, so it is sized from the column width the layout picks.
+// A fixed item is measured by the caller and never a stop for the arrow walk.
 export type MasonryItem =
   | { id: string; aspect: number }
-  | { id: string; heightAt: (columnWidth: number) => number };
+  | { id: string; heightAt: (columnWidth: number) => number }
+  | { id: string; height: number; navigable: false };
 
 interface MasonryPosition {
   x: number;
@@ -30,6 +32,7 @@ export interface MasonryLayout {
   width: number;
   height: number;
   positions: Map<string, MasonryPosition>;
+  // Navigable ids only, top to bottom: the arrow walk never lands on a fixed item.
   columnItems: string[][];
 }
 
@@ -37,6 +40,22 @@ export type Direction = "up" | "down" | "left" | "right";
 
 export const tileAspect = (entry: Pick<Entry, "imageUrl">): number =>
   entry.imageUrl ? IMAGE_ASPECT : TEXT_ASPECT;
+
+const heightOf = ({
+  item,
+  columnWidth,
+  fitting,
+}: {
+  item: MasonryItem;
+  columnWidth: number;
+  fitting: number;
+}): number => {
+  if ("height" in item) return item.height;
+  if ("heightAt" in item) return Math.round(item.heightAt(columnWidth));
+  return Math.round(
+    columnWidth / (fitting === 1 ? Math.max(item.aspect, SINGLE_COLUMN_MIN_ASPECT) : item.aspect),
+  );
+};
 
 export const layoutMasonry = ({
   containerWidth,
@@ -71,13 +90,7 @@ export const layoutMasonry = ({
     for (let i = 1; i < columns; i += 1) {
       if (columnHeights[i] < columnHeights[column]) column = i;
     }
-    const height =
-      "heightAt" in item
-        ? Math.round(item.heightAt(columnWidth))
-        : Math.round(
-            columnWidth /
-              (fitting === 1 ? Math.max(item.aspect, SINGLE_COLUMN_MIN_ASPECT) : item.aspect),
-          );
+    const height = heightOf({ item, columnWidth, fitting });
     positions.set(item.id, {
       x: offsetX + column * (columnWidth + gap),
       y: columnHeights[column],
@@ -85,7 +98,7 @@ export const layoutMasonry = ({
       height,
       column,
     });
-    columnItems[column].push(item.id);
+    if (!("navigable" in item)) columnItems[column].push(item.id);
     columnHeights[column] += height + gap;
   }
 

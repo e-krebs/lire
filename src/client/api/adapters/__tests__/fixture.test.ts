@@ -5,6 +5,7 @@ import {
   EntryPageSchema,
   FeedsSchema,
   NewsletterAddressSchema,
+  OnboardingStateSchema,
   PreferencesSchema,
 } from "shared/feedsApi/types";
 import type { TransportRequest } from "client/api/transport";
@@ -118,6 +119,25 @@ describe("fixtureTransport", () => {
     expect(stored).toMatchObject({ "lire.directOpen.101": "visit" });
     expect(stored).not.toHaveProperty("lire.directOpen.106");
     expect(PreferencesSchema.parse(await get("/api/preferences"))).toEqual(stored);
+  });
+
+  it("stores onboarding patches and reads them back", async () => {
+    const patch = await send({
+      method: "PATCH",
+      path: "/api/onboarding",
+      body: { done: { addFeed: true }, collapsed: true },
+    });
+    expect(patch.status).toBe(200);
+
+    const stored = OnboardingStateSchema.parse(
+      JSON.parse(window.localStorage.getItem("lire.fixture.onboarding") ?? "{}"),
+    );
+    expect(stored).toEqual({ done: { addFeed: true }, collapsed: true, dismissed: false });
+    expect(OnboardingStateSchema.parse(await get("/api/onboarding"))).toEqual(stored);
+
+    resetFixtureState();
+    expect(window.localStorage.getItem("lire.fixture.onboarding")).toBeNull();
+    expect(await get("/api/onboarding")).toEqual({ done: {}, collapsed: false, dismissed: false });
   });
 
   it("answers the demo newsletter address", async () => {

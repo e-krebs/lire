@@ -6,8 +6,16 @@ import { http, HttpResponse } from "msw";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CATEGORY_ORDER_KEY } from "shared/feedsApi/preferences";
 import type { StreamKey } from "shared/feedsApi/streamKey";
-import type { Category, Counts, Entry, EntryPage, Feed, Preferences } from "shared/feedsApi/types";
-import { PreferencesUpdateSchema } from "shared/feedsApi/types";
+import type {
+  Category,
+  Counts,
+  Entry,
+  EntryPage,
+  Feed,
+  OnboardingState,
+  Preferences,
+} from "shared/feedsApi/types";
+import { OnboardingPatchSchema, PreferencesUpdateSchema } from "shared/feedsApi/types";
 import { server } from "test/msw";
 import { seedCategories, seedCategoryId, seedCategoryKey } from "test/seedCategories";
 import { FAKE_USER_ID } from "../adapters/fakeNewsblur";
@@ -32,6 +40,7 @@ import {
   useMark,
   useMatchCount,
   useNewsletterAddress,
+  useOnboarding,
   usePreferences,
   useRefreshAllLists,
   useRefreshEntries,
@@ -42,6 +51,7 @@ import {
   useUnsubscribe,
   useStream,
   useUpdateFeed,
+  useUpdateOnboarding,
   useWebFeedStatus,
 } from "../queries";
 
@@ -751,6 +761,101 @@ describe("queries", () => {
     });
 
     expect(client.getQueryState(keys.preferences)?.isInvalidated).toBe(true);
+  });
+
+  it("updates onboarding optimistically and keeps the server state", async () => {
+    const { client, wrapper } = setup();
+    const previous: OnboardingState = {
+      done: { addFeed: true },
+      collapsed: false,
+      dismissed: false,
+    };
+    client.setQueryData(keys.onboarding, previous);
+    vi.stubEnv("VITE_API_MODE", "real");
+    const response = held();
+    server.use(
+      http.patch("/api/onboarding", async () => {
+        await response.wait;
+        return HttpResponse.json({
+          done: { newsletter: true },
+          collapsed: true,
+          dismissed: false,
+        });
+      }),
+    );
+    const { result } = renderHook(
+      () => ({ onboarding: useOnboarding(), update: useUpdateOnboarding() }),
+      { wrapper },
+    );
+
+    act(() => {
+      result.current.update.mutate({ done: { addFeed: false, newsletter: true }, collapsed: true });
+    });
+    await waitFor(() => {
+      expect(client.getQueryData(keys.onboarding)).toEqual({
+        done: { newsletter: true },
+        collapsed: true,
+        dismissed: false,
+      });
+    });
+    response.release();
+    await waitFor(() => {
+      expect(result.current.update.isSuccess).toBe(true);
+    });
+    expect(result.current.onboarding.data).toEqual({
+      done: { newsletter: true },
+      collapsed: true,
+      dismissed: false,
+    });
+  });
+
+  it("keeps overlapping onboarding writes from regressing the cache when responses arrive out of order", async () => {
+    const { client, wrapper } = setup();
+    vi.stubEnv("VITE_API_MODE", "real");
+    client.setQueryData<OnboardingState>(keys.onboarding, {
+      done: {},
+      collapsed: false,
+      dismissed: false,
+    });
+    const serverState: OnboardingState = {
+      done: { addFeed: true, newsletter: true },
+      collapsed: true,
+      dismissed: false,
+    };
+    const afterFirst: OnboardingState = {
+      done: { addFeed: true },
+      collapsed: false,
+      dismissed: false,
+    };
+    const first = held();
+    const second = held();
+    server.use(
+      http.patch("/api/onboarding", async ({ request }) => {
+        const body = OnboardingPatchSchema.parse(await request.json());
+        if (body.collapsed === undefined) {
+          await first.wait;
+          return HttpResponse.json(afterFirst);
+        }
+        await second.wait;
+        return HttpResponse.json(serverState);
+      }),
+      http.get("/api/onboarding", () => HttpResponse.json(serverState)),
+    );
+    const { result } = renderHook(() => useUpdateOnboarding(), { wrapper });
+
+    act(() => {
+      result.current.mutate({ done: { addFeed: true } });
+      result.current.mutate({ done: { newsletter: true }, collapsed: true });
+    });
+    second.release();
+    await waitFor(() => {
+      expect(client.isMutating({ mutationKey: keys.onboarding })).toBe(1);
+    });
+    first.release();
+
+    await waitFor(() => {
+      expect(client.getQueryData(keys.onboarding)).toEqual(serverState);
+    });
   });
 
   it("shows a new category label at once, then moves its id everywhere before the refetch lands", async () => {

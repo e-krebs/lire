@@ -52,7 +52,7 @@ const setup = ({
     { id: "101", title: "Example Feed", categoryIds: [], isNewsletter: false },
   ]);
   const onToggleRead = vi.fn<() => void>();
-  const onKeyDown = vi.fn<(event: KeyboardEvent<HTMLAnchorElement>) => void>();
+  const onKeyDown = vi.fn<(event: KeyboardEvent<HTMLElement>) => void>();
   // The tile sits on the root route, so it stays mounted when its own link navigates away, as a
   // card in the results grid does on desktop.
   const rootRoute = createRootRoute({

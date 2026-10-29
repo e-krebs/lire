@@ -11,12 +11,14 @@ import {
   getCategories,
   getEntry,
   getNewsletterAddress,
+  getOnboarding,
   getProfile,
   getStreamEntries,
   getWebFeedStatus,
   markEntries,
   reanalyzeWebFeed,
   searchEntries,
+  patchOnboarding,
   updatePreferences,
 } from "../client";
 
@@ -225,6 +227,34 @@ describe("client (http adapter)", () => {
     await updatePreferences({ "lire.directOpen.101": null });
 
     expect(seen).toEqual([{ "lire.directOpen.101": null }]);
+  });
+
+  it("reads and patches onboarding state", async () => {
+    setup();
+    const seen: unknown[] = [];
+    server.use(
+      http.get("/api/onboarding", () =>
+        HttpResponse.json({ done: { addFeed: true }, collapsed: false, dismissed: false }),
+      ),
+      http.patch("/api/onboarding", async ({ request }) => {
+        seen.push(await request.json());
+        return HttpResponse.json({ done: { addFeed: true }, collapsed: true, dismissed: false });
+      }),
+    );
+
+    await expect(getOnboarding()).resolves.toEqual({
+      done: { addFeed: true },
+      collapsed: false,
+      dismissed: false,
+    });
+    await expect(
+      patchOnboarding({ collapsed: true, done: { newsletter: false } }),
+    ).resolves.toEqual({
+      done: { addFeed: true },
+      collapsed: true,
+      dismissed: false,
+    });
+    expect(seen).toEqual([{ collapsed: true, done: { newsletter: false } }]);
   });
 
   it("deletes a category by its encoded id, with the move target in the query", async () => {

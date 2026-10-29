@@ -36,7 +36,7 @@ interface MosaicTileProps {
   /** Card takes focus, so the grid tracks the active card. */
   onFocus: () => void;
   /** Key pressed on the card, for the grid's keyboard navigation. */
-  onKeyDown: (event: KeyboardEvent<HTMLAnchorElement>) => void;
+  onKeyDown: (event: KeyboardEvent<HTMLElement>) => void;
   /** Read state toggled from the card. */
   onToggleRead: () => void;
   /** The image failed to load and the card now renders as text, so the grid must resize its slot. */
@@ -47,6 +47,13 @@ interface MosaicTileProps {
   leavesWhenRead?: boolean;
   /** Read and out of the layout: the card fades out of the slot it had, then the grid drops it. */
   leaving?: boolean;
+}
+
+interface MosaicTileCardProps extends Omit<MosaicTileProps, "streamKey"> {
+  /** Absent in the preview: no route, so a click marks the card read instead of opening it. */
+  streamKey?: StreamKey;
+  originTitle: string;
+  directOpen: boolean;
 }
 
 // Past this the pointer is swiping, not tapping; past 40% of the card it commits.
@@ -141,8 +148,8 @@ const feedLinkClassName = `
 
 interface MastheadProps {
   feedId: string;
-  /** The open stream: its own feed name stays plain text. */
-  streamKey: StreamKey;
+  /** The open stream: its own feed name stays plain text. Absent in the preview, which has no routes. */
+  streamKey: StreamKey | undefined;
   originTitle: string;
   title: string;
   original: string | undefined;
@@ -174,7 +181,7 @@ const Masthead = ({
         group-not-data-has-image/tile:mt-auto
       `}
       >
-        {feedKey === streamKey ? (
+        {streamKey === undefined || feedKey === streamKey ? (
           <span data-tip={originTitle} data-tip-overflow="" className="tile-feed min-w-0 truncate">
             {originTitle}
           </span>
@@ -236,7 +243,8 @@ const Masthead = ({
   );
 };
 
-export const MosaicTile = ({
+// Hook-free, so the preview can render it without a query.
+export const MosaicTileCard = ({
   streamKey,
   entry,
   muteRead = true,
@@ -249,7 +257,9 @@ export const MosaicTile = ({
   swipeable = false,
   leavesWhenRead = false,
   leaving = false,
-}: MosaicTileProps) => {
+  originTitle,
+  directOpen,
+}: MosaicTileCardProps) => {
   const image = useImageFallback({ url: entry.imageUrl });
   const t = useT();
   const hasImage = image.src !== undefined;
@@ -258,10 +268,7 @@ export const MosaicTile = ({
   }, [hasImage, entry.imageUrl, onImageBroken]);
   const isRead = muteRead && !entry.unread;
   const title = entry.title ? decodeEntities(entry.title) : t.articles.untitled;
-  const originTitle = useOriginTitle({ feedId: entry.feedId });
   const original = entry.url;
-  // A newsletter has no page of its own, so the flag has nothing to open: the card stays a route.
-  const directOpen = useDirectOpen(entry.feedId) && original !== undefined;
   // The custom property feeds every colour in styles.css; typed as an intersection, since
   // React's CSSProperties has no index for `--*` keys.
   const hueStyle: CSSProperties & { "--hue": string } = {
@@ -362,7 +369,7 @@ export const MosaicTile = ({
   };
 
   // The click that ends a swipe must not follow the link it landed on.
-  const swallowSwipe = (event: MouseEvent<HTMLAnchorElement>): boolean => {
+  const swallowSwipe = (event: MouseEvent<HTMLElement>): boolean => {
     if (!drag.current.dragging) return false;
     drag.current.dragging = false;
     event.preventDefault();
@@ -390,7 +397,7 @@ export const MosaicTile = ({
     if (entry.unread) onToggleRead();
   };
 
-  const handleKeyDown = (event: KeyboardEvent<HTMLAnchorElement>) => {
+  const handleKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     // Shift stays allowed: it is what produces "M".
     if (event.key.toLowerCase() === "m" && !event.altKey && !event.ctrlKey && !event.metaKey) {
       event.preventDefault();
@@ -416,7 +423,8 @@ export const MosaicTile = ({
   return (
     <div
       ref={wrapperRef}
-      data-entry-id={entry.id}
+      data-entry-id={streamKey === undefined ? undefined : entry.id}
+      data-preview={streamKey === undefined ? "" : undefined}
       data-read={isRead || undefined}
       data-has-image={hasImage || undefined}
       data-direct-open={directOpen ? "" : undefined}
@@ -457,7 +465,9 @@ export const MosaicTile = ({
         className={moverClassName}
       >
         {/* The visible title moved out of the card, so its accessible name is spelled out. */}
-        {directOpen ? (
+        {streamKey === undefined ? (
+          <button type="button" aria-label={title} {...cardProps} />
+        ) : directOpen ? (
           <a
             href={original}
             target="_blank"
@@ -539,4 +549,11 @@ export const MosaicTile = ({
       </div>
     </div>
   );
+};
+
+export const MosaicTile = (props: MosaicTileProps) => {
+  const originTitle = useOriginTitle({ feedId: props.entry.feedId });
+  // A newsletter has no page of its own, so the flag has nothing to open: the card stays a route.
+  const directOpen = useDirectOpen(props.entry.feedId) && props.entry.url !== undefined;
+  return <MosaicTileCard {...props} originTitle={originTitle} directOpen={directOpen} />;
 };
