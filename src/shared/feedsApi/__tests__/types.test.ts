@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   EntrySchema,
+  OnboardingPatchSchema,
+  OnboardingStateSchema,
   PreferencesUpdateSchema,
   SearchEntriesQuerySchema,
   StreamEntriesQuerySchema,
@@ -45,6 +47,16 @@ describe("feedsApi types", () => {
 
   it("takes a null preference as a delete", () => {
     expect(PreferencesUpdateSchema.parse({ a: "1", b: null })).toEqual({ a: "1", b: null });
+  });
+
+  it("accepts stored onboarding state and tick or untick patches", () => {
+    expect(
+      OnboardingStateSchema.parse({ done: { language: true }, collapsed: false, dismissed: true }),
+    ).toEqual({ done: { language: true }, collapsed: false, dismissed: true });
+    expect(OnboardingPatchSchema.parse({ done: { addFeed: true, folders: false } })).toEqual({
+      done: { addFeed: true, folders: false },
+    });
+    expect(OnboardingPatchSchema.safeParse({ done: { install: true } }).success).toBe(false);
   });
 
   it("namespaces Lire's preference keys", () => {

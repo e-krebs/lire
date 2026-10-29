@@ -15,6 +15,13 @@ const feedsReply = { "GET /reader/feeds": FEEDS_ANSWER };
 const fullPage = (size: number) => Array.from({ length: size }, () => story());
 
 describe("handle reads", () => {
+  it("reads default onboarding state", async () => {
+    expect(await send({ url: "/api/onboarding", upstream: fakeUpstream({}) })).toEqual({
+      status: 200,
+      body: { done: {}, collapsed: false, dismissed: false },
+    });
+  });
+
   it("answers the auth status as signed in", async () => {
     expect(await send({ url: "/api/auth/status", upstream: fakeUpstream({}) })).toEqual({
       status: 200,

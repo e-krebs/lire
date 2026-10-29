@@ -6,6 +6,30 @@ const OK = { code: 1 };
 const cached = () => memoryCache(FeedsAnswerSchema.parse(FEEDS_ANSWER));
 
 describe("handle writes", () => {
+  it("merges a valid onboarding patch", async () => {
+    expect(
+      await send({
+        method: "PATCH",
+        url: "/api/onboarding",
+        body: { done: { addFeed: true }, collapsed: true },
+        upstream: fakeUpstream({}),
+      }),
+    ).toEqual({
+      status: 200,
+      body: { done: { addFeed: true }, collapsed: true, dismissed: false },
+    });
+  });
+
+  it("rejects an onboarding patch with an unknown step", async () => {
+    const response = await send({
+      method: "PATCH",
+      url: "/api/onboarding",
+      body: { done: { install: true } },
+      upstream: fakeUpstream({}),
+    });
+    expect(response.status).toBe(400);
+  });
+
   describe("when the client refreshes the feed list", () => {
     it("drops the cache and calls nothing upstream", async () => {
       const upstream = fakeUpstream({});

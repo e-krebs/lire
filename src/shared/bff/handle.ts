@@ -9,6 +9,8 @@ import {
   CreateWebFeedBodySchema,
   DeleteCategoryQuerySchema,
   MarkBodySchema,
+  OnboardingPatchSchema,
+  OnboardingStepIdSchema,
   PreferencesUpdateSchema,
   SearchEntriesQuerySchema,
   SearchFeedsQuerySchema,
@@ -25,6 +27,8 @@ import {
   type EntryPage,
   type Feed,
   type FeedSearchResult,
+  type OnboardingPatch,
+  type OnboardingState,
   type Preferences,
   type WebFeedAnalysis,
   type WebFeedReanalysis,
@@ -81,6 +85,11 @@ export interface FeedsCache {
   clear: () => Promise<void>;
 }
 
+export interface OnboardingStore {
+  get: () => Promise<OnboardingState>;
+  patch: (patch: OnboardingPatch) => Promise<OnboardingState>;
+}
+
 export interface BffResponse {
   status: number;
   body: unknown;
@@ -94,12 +103,14 @@ export interface HandleRequest {
   upstream: NewsblurFetch;
   config: BffConfig;
   cache: FeedsCache;
+  onboarding?: OnboardingStore;
 }
 
 interface Context {
   upstream: NewsblurFetch;
   config: BffConfig;
   cache: FeedsCache;
+  onboarding: OnboardingStore;
 }
 
 class BffError extends Error {
@@ -943,6 +954,13 @@ const HANDLERS: Record<RouteKey, Handler> = {
 
   "GET /api/preferences": async ({ ctx }) => ok(await readPreferences(ctx)),
 
+  "GET /api/onboarding": async ({ ctx }) => ok(await ctx.onboarding.get()),
+
+  "PATCH /api/onboarding": async ({ ctx, body }) => {
+    const patch = parseInput({ schema: OnboardingPatchSchema, value: body });
+    return ok(await ctx.onboarding.patch(patch));
+  },
+
   "POST /api/preferences": async ({ ctx, body }) => {
     const update = parseInput({ schema: PreferencesUpdateSchema, value: body });
     const keys = Object.keys(update);
@@ -995,13 +1013,31 @@ export const handle = async ({
   upstream,
   config,
   cache,
+  onboarding,
 }: HandleRequest): Promise<BffResponse> => {
   // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- every Route builds a RouteKey
   const handler = HANDLERS[`${route.method} ${route.path}` as RouteKey];
   const input = { params, query: Object.fromEntries(query), body };
   try {
     if (hasBanPayload(input)) throw badRequest("Request holds a character sequence NewsBlur bans.");
-    return await handler({ ctx: { upstream, config, cache }, ...input });
+    const localState: OnboardingState = { done: {}, collapsed: false, dismissed: false };
+    const localOnboarding: OnboardingStore = onboarding ?? {
+      get: async () => Promise.resolve(localState),
+      patch: async (patch) => {
+        for (const step of OnboardingStepIdSchema.options) {
+          const value = patch.done?.[step];
+          if (value === true) localState.done[step] = true;
+          else if (value === false) delete localState.done[step];
+        }
+        if (patch.collapsed !== undefined) localState.collapsed = patch.collapsed;
+        if (patch.dismissed !== undefined) localState.dismissed = patch.dismissed;
+        return Promise.resolve(localState);
+      },
+    };
+    return await handler({
+      ctx: { upstream, config, cache, onboarding: localOnboarding },
+      ...input,
+    });
   } catch (error) {
     if (error instanceof BffError) return error.response;
     throw error;

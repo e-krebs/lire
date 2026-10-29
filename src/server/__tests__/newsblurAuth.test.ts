@@ -1,3 +1,4 @@
+// oxlint-disable typescript/await-thenable -- auth() is a Durable Object stub, whose RPC calls answer promises at runtime
 import { env, runInDurableObject } from "cloudflare:test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { NewsblurAuth } from "../newsblurAuth";
@@ -103,6 +104,22 @@ describe("NewsblurAuth tokens", () => {
     username: "owner",
     revision: "old-revision",
   } as const;
+
+  it("keeps onboarding state when the session is cleared", async () => {
+    await auth().patchOnboarding({ done: { folders: true }, collapsed: true });
+    await auth().setSession(credential);
+    await auth().clearSession();
+    expect(await auth().getOnboarding()).toEqual({
+      done: { folders: true },
+      collapsed: true,
+      dismissed: false,
+    });
+    expect(await auth().patchOnboarding({})).toEqual({
+      done: { folders: true },
+      collapsed: true,
+      dismissed: false,
+    });
+  });
 
   describe("when a login state is issued", () => {
     it("consumes a state once and drops its storage and alarm", async () => {

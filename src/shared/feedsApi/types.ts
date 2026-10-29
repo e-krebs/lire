@@ -162,6 +162,35 @@ export type Preferences = z.infer<typeof PreferencesSchema>;
 export const PreferencesUpdateSchema = z.record(z.string(), z.string().nullable());
 export type PreferencesUpdate = z.infer<typeof PreferencesUpdateSchema>;
 
+export const OnboardingStepIdSchema = z.enum([
+  "language",
+  "addFeed",
+  "newsletter",
+  "folders",
+  "categories",
+  "markAsRead",
+  "originalSite",
+]);
+export type OnboardingStepId = z.infer<typeof OnboardingStepIdSchema>;
+
+export const OnboardingStateSchema = z
+  .object({
+    done: z.partialRecord(OnboardingStepIdSchema, z.literal(true)),
+    collapsed: z.boolean(),
+    dismissed: z.boolean(),
+  })
+  .loose();
+export type OnboardingState = z.infer<typeof OnboardingStateSchema>;
+
+export const OnboardingPatchSchema = z
+  .object({
+    done: z.partialRecord(OnboardingStepIdSchema, z.boolean()).optional(),
+    collapsed: z.boolean().optional(),
+    dismissed: z.boolean().optional(),
+  })
+  .loose();
+export type OnboardingPatch = z.infer<typeof OnboardingPatchSchema>;
+
 // Query strings. Every field is optional; the Worker picks the defaults.
 const countParam = z.coerce.number().int().positive().max(50).optional();
 const unreadOnlyParam = z.stringbool().optional();

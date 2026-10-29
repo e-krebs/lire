@@ -1,3 +1,4 @@
+// oxlint-disable typescript/await-thenable -- auth() is a Durable Object stub, whose RPC calls answer promises at runtime
 import { env, runInDurableObject, SELF } from "cloudflare:test";
 import { exportJWK, generateKeyPair, SignJWT, type CryptoKey, type JWK } from "jose";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -155,6 +156,7 @@ const setup = async () => {
   keysReady ??= generateKeys();
   await keysReady;
   await auth().clearSession();
+  await runInDurableObject(auth(), (_instance, state) => state.storage.kv.delete("onboarding"));
   await runInDurableObject(auth(), (_instance, state) => state.storage.kv.delete("tokens"));
   lireCookie = `lire_session=${String(USER_ID)}.${await auth().issueToken()}`;
   upstreamCalls.length = 0;
@@ -446,6 +448,7 @@ describe("worker", () => {
 
   describe("when serving a contract route", () => {
     const sameOrigin = { Origin: ORIGIN };
+    const sameOriginJson = { Origin: ORIGIN, "Content-Type": "application/json" };
 
     it("answers 401 sign_in_required when no credential is stored", async () => {
       await setup();
@@ -614,6 +617,7 @@ describe("worker", () => {
     it("clears the credential when NewsBlur rejects it and the refresh grant is invalid", async () => {
       await setup();
       await signIn();
+      await auth().patchOnboarding({ done: { newsletter: true }, dismissed: true });
       upstream = (request) =>
         pathOf(request) === "/oauth/token"
           ? Response.json({ error: "invalid_grant" }, { status: 400 })
@@ -623,6 +627,11 @@ describe("worker", () => {
       expect(response.status).toBe(401);
       expect(await response.json()).toMatchObject({ error: "sign_in_required" });
       expect(await auth().hasSession()).toBe(false);
+      expect(await auth().getOnboarding()).toEqual({
+        done: { newsletter: true },
+        collapsed: false,
+        dismissed: true,
+      });
       expect(await status()).toEqual({ signedIn: false });
     });
 
@@ -791,6 +800,74 @@ describe("worker", () => {
       });
       expect(response.status).toBe(204);
       expect(new URLSearchParams(upstreamCalls[0].body).get("lire.categoryOrder")).toBe('"[]"');
+    });
+
+    it("reads default onboarding state and merges ticks atomically", async () => {
+      await setup();
+      await signIn();
+      expect(await (await authed("/api/onboarding")).json()).toEqual({
+        done: {},
+        collapsed: false,
+        dismissed: false,
+      });
+      const patches = [{ done: { addFeed: true } }, { done: { language: true }, collapsed: true }];
+      const responses = await Promise.all(
+        patches.map(async (patch) =>
+          authed("/api/onboarding", {
+            method: "PATCH",
+            headers: sameOriginJson,
+            body: JSON.stringify(patch),
+          }),
+        ),
+      );
+      for (const response of responses) expect(response.status).toBe(200);
+      expect(await (await authed("/api/onboarding")).json()).toEqual({
+        done: { addFeed: true, language: true },
+        collapsed: true,
+        dismissed: false,
+      });
+      const untick = await authed("/api/onboarding", {
+        method: "PATCH",
+        headers: sameOriginJson,
+        body: JSON.stringify({ done: { addFeed: false }, dismissed: true }),
+      });
+      expect(await untick.json()).toEqual({
+        done: { language: true },
+        collapsed: true,
+        dismissed: true,
+      });
+      expect(upstreamCalls).toHaveLength(0);
+    });
+
+    it("rejects onboarding patches that fail CSRF, auth, or JSON checks", async () => {
+      await setup();
+      await signIn();
+      const crossOrigin = await authed("/api/onboarding", {
+        method: "PATCH",
+        headers: { Origin: "https://evil.example", "Content-Type": "application/json" },
+        body: JSON.stringify({ collapsed: true }),
+      });
+      expect(crossOrigin.status).toBe(403);
+      const malformed = await authed("/api/onboarding", {
+        method: "PATCH",
+        headers: sameOriginJson,
+        body: "{",
+      });
+      expect(malformed.status).toBe(400);
+      const unauthenticated = await anonymous("/api/onboarding");
+      expect(unauthenticated.status).toBe(401);
+      expect(upstreamCalls).toHaveLength(0);
+    });
+
+    it("returns 400 for an onboarding patch with invalid state", async () => {
+      await setup();
+      await signIn();
+      const response = await authed("/api/onboarding", {
+        method: "PATCH",
+        headers: sameOriginJson,
+        body: JSON.stringify({ done: { install: true } }),
+      });
+      expect(response.status).toBe(400);
     });
 
     it.each([
