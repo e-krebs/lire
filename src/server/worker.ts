@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { handle, rateLimitedBody, type FeedsCache } from "shared/bff/handle";
+import { handle, rateLimitedBody, type FeedsCache, type OnboardingStore } from "shared/bff/handle";
 import { encodeParams, type NewsblurFetch } from "shared/bff/upstream";
 import { matchRoute } from "shared/feedsApi/routes";
 import { AccessError, verifyAccess } from "./access";
@@ -262,6 +262,10 @@ const serve = async ({ request, env }: { request: Request; env: Env }): Promise<
     set: async (input) => auth.setFeedsCache(input),
     clear: async () => auth.clearFeedsCache(),
   };
+  const onboarding: OnboardingStore = {
+    get: async () => Promise.resolve(auth.getOnboarding()),
+    patch: async (patch) => Promise.resolve(auth.patchOnboarding(patch)),
+  };
   const run = async (current: StoredCredential) =>
     handle({
       route: match.route,
@@ -274,6 +278,7 @@ const serve = async ({ request, env }: { request: Request; env: Env }): Promise<
         geo: geoOf(request),
       },
       cache,
+      onboarding,
     });
   let result = await run(session);
   let used = session;

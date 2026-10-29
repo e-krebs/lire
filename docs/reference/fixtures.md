@@ -9,6 +9,10 @@ contract, as it does in the Worker. The fake keeps read state and folder changes
 stories by `page`. Mock mode also keeps the pending read marks in a memory set and registers no
 background sync, because the fixture state resets on reload and there is no `/api` to retry.
 
+The onboarding checklist state is not a NewsBlur answer, so it has no file. The fixture transport
+keeps it in `localStorage` under `lire.fixture.onboarding`, and `resetFixtureState` and the demo
+banner's Reset button both remove that key.
+
 ## Layout
 
 | Directory | Content | Tracked |

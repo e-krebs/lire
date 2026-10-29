@@ -56,6 +56,8 @@ folder title, an entry id is the story hash. A stream key is `all`, `read`, `fol
 | GET | `/api/search/feeds` | `?q`, answers `[{ feedUrl, title, subscribers? }]` |
 | GET | `/api/preferences` | The `lire.*` preferences, as a record of strings |
 | POST | `/api/preferences` | A partial record. `null` deletes a key |
+| GET | `/api/onboarding` | The signed-in reader's checklist state, `{ done, collapsed, dismissed }`. `done` holds the ticked step ids, and nothing stored reads as no step done, expanded and not dismissed |
+| PATCH | `/api/onboarding` | A partial [`OnboardingPatch`](../../src/shared/feedsApi/types.ts). A `done` entry `true` ticks a step and `false` unticks it, each entry merged on its own. Answers 200 with the stored state |
 | GET | `/api/newsletter-address` | `{ emailAddress }`, derived as `<username>-<share token>@newsletters.newsblur.com`. The username comes from the NewsBlur profile, the token from the feed list answer. 404 when either is empty |
 | GET | `/api/sun` | `?tz=<IANA zone>`, answers `{ phase: day\|dusk, nextChangeAt }` from the Cloudflare position when its zone matches `tz`, else the zone's city |
 
@@ -90,7 +92,7 @@ Names and roles only.
 | `ACCESS_TEAM_DOMAIN` | Worker var | Access team domain that issues the JWT |
 | `ACCESS_AUD` | Worker var | Expected JWT audience |
 | `ACCESS_ALLOWED_EMAIL` | Worker secret | Owner email pin, set by CI from a GitHub secret |
-| `NEWSBLUR_AUTH` | Worker binding | Durable Object namespace holding each user's NewsBlur grant, the hashes of the browser tokens and the feed-list cache |
+| `NEWSBLUR_AUTH` | Worker binding | Durable Object namespace holding each user's NewsBlur grant, the hashes of the browser tokens, the feed-list cache and the onboarding state |
 | `E2E_COVERAGE` | test | `1` turns on Playwright coverage |
 | `COVERAGE_DIR` | test | Output directory of the Vitest coverage scripts |
 

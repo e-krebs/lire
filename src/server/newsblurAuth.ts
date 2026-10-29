@@ -1,11 +1,17 @@
 import { z } from "zod";
 import { DurableObject } from "cloudflare:workers";
 import type { FeedsAnswer } from "shared/bff/upstream";
+import {
+  OnboardingStepIdSchema,
+  type OnboardingPatch,
+  type OnboardingState,
+} from "shared/feedsApi/types";
 import type { Env } from "./env";
 
 const SESSION_KEY = "session";
 const FEEDS_CACHE_KEY = "feedsCache";
 const FEEDS_GENERATION_KEY = "feedsGeneration";
+const ONBOARDING_KEY = "onboarding";
 const FEEDS_CACHE_TTL_MS = 5 * 60_000;
 const TOKENS_KEY = "tokens";
 const TOKEN_TTL_MS = 180 * 24 * 60 * 60_000;
@@ -178,6 +184,35 @@ export class NewsblurAuth extends DurableObject<Env> {
   clearFeedsCache(): void {
     this.ctx.storage.kv.put(FEEDS_GENERATION_KEY, this.feedsGeneration() + 1);
     this.ctx.storage.kv.delete(FEEDS_CACHE_KEY);
+  }
+
+  getOnboarding(): OnboardingState {
+    return (
+      this.ctx.storage.kv.get<OnboardingState>(ONBOARDING_KEY) ?? {
+        done: {},
+        collapsed: false,
+        dismissed: false,
+      }
+    );
+  }
+
+  patchOnboarding(patch: OnboardingPatch): OnboardingState {
+    return this.ctx.storage.transactionSync(() => {
+      const current = this.getOnboarding();
+      const done = { ...current.done };
+      for (const step of OnboardingStepIdSchema.options) {
+        const value = patch.done?.[step];
+        if (value === true) done[step] = true;
+        else if (value === false) delete done[step];
+      }
+      const next = {
+        done,
+        collapsed: patch.collapsed ?? current.collapsed,
+        dismissed: patch.dismissed ?? current.dismissed,
+      } satisfies OnboardingState;
+      this.ctx.storage.kv.put(ONBOARDING_KEY, next);
+      return next;
+    });
   }
 
   // The hash is awaited before storage is touched, so the read-change-write below has no await in it.

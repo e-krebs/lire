@@ -32,6 +32,15 @@ describe("matchRoute", () => {
     );
   });
 
+  it("matches onboarding reads and patches", () => {
+    expect(matchRoute({ method: "GET", pathname: "/api/onboarding" })?.route.path).toBe(
+      "/api/onboarding",
+    );
+    expect(matchRoute({ method: "PATCH", pathname: "/api/onboarding" })?.route.method).toBe(
+      "PATCH",
+    );
+  });
+
   it.for(["/api", "/api/unknown", "/api/feeds/42/extra", "/profile", "/api/entries/%E0%A4%A"])(
     "rejects %s",
     (pathname) => {
