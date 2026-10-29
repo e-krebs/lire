@@ -3,7 +3,12 @@ import type { Entry } from "shared/feedsApi/types";
 import { useT } from "client/i18n/useT";
 import { Switch } from "client/components/primitives/controls/Switch";
 import { MosaicTileCard } from "client/components/feed/mosaic/MosaicTile";
-import { HowToDialog, HowToWay, HowToWays } from "client/components/app/onboarding/HowToDialog";
+import {
+  HowToDialog,
+  HowToWay,
+  HowToWays,
+  ignore,
+} from "client/components/app/onboarding/HowToDialog";
 import { useElementWidth } from "client/hooks/useElementWidth";
 import { textCardHeight } from "client/utils/textHeight";
 import { submitClassName } from "client/components/subscriptions/feeds/feedPanelButtons";
@@ -16,8 +21,6 @@ interface OriginalSiteHowToProps {
 }
 
 type Tab = "setup" | "story";
-
-const ignore = (): void => undefined;
 
 // The per-feed switch of Subscriptions, real and local: it changes nothing but the example below.
 // The tile is the real one in the stream, inert, and opens nothing, so the example cannot navigate.

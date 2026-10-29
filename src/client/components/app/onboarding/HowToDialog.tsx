@@ -61,6 +61,9 @@ interface HowToDialogProps<Id extends string> {
   onSelectTab: (tab: Id) => void;
 }
 
+// The inert examples show real components whose handlers must exist but do nothing.
+export const ignore = (): void => undefined;
+
 // A native modal <dialog>: showModal() gives the focus trap, Escape and the return of focus to the
 // button that opened it. The owner holds the tab and the content; this shell holds the frame.
 export const HowToDialog = <Id extends string>({
@@ -165,7 +168,7 @@ export const HowToDialog = <Id extends string>({
               hidden={tab !== id}
               tabIndex={0}
             >
-              {content}
+              {open ? content : null}
             </div>
           ))}
         </div>

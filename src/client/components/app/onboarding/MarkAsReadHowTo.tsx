@@ -6,7 +6,12 @@ import { MosaicTileCard } from "client/components/feed/mosaic/MosaicTile";
 import type { TileSlot } from "client/components/feed/mosaic/MosaicTile";
 import { PullAction } from "client/components/feed/status/PullIndicator";
 import { ReaderHeader } from "client/components/reader/article/ReaderHeader";
-import { HowToDialog, HowToWay, HowToWays } from "client/components/app/onboarding/HowToDialog";
+import {
+  HowToDialog,
+  HowToWay,
+  HowToWays,
+  ignore,
+} from "client/components/app/onboarding/HowToDialog";
 import { useElementWidth } from "client/hooks/useElementWidth";
 import { layoutMasonry } from "client/utils/masonry";
 import { textCardHeight } from "client/utils/textHeight";
@@ -43,8 +48,6 @@ const sampleStories = ({ samples, turned, published }: SampleStoriesOptions): Sa
     const id = `sample-${index}`;
     return { entry: { id, feedId: "sample", title, published, unread: !turned.has(id) }, source };
   });
-
-const ignore = (): void => undefined;
 
 // The tile's mid-swipe hold, as the MosaicTile story shows it: the real card dragged past the commit
 // line with the finger still down. Synthetic, so no pointer is captured, and the example is inert.
