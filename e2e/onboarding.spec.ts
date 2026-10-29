@@ -402,26 +402,18 @@ test.describe("the onboarding checklist", () => {
       await page.goto("/");
       await expect(pageUi.card).toBeVisible();
 
-      await page.evaluate(() => {
-        const names: string[] = [];
-        document.addEventListener(
-          "animationend",
-          (event) => {
-            if (!(event.target instanceof HTMLElement)) return;
-            if (!event.target.classList.contains("card-absorb")) return;
-            names.push(event.animationName);
-            if (event.animationName === "toast-absorb-fade") {
-              document.body.dataset.flightNames = names.join(",");
-            }
-          },
-          { capture: true },
-        );
-      });
-
       await pageUi.dismissButton.click();
-      await expect
-        .poll(async () => page.evaluate(() => document.body.dataset.flightNames))
-        .toBe("toast-absorb-fade");
+      // Read while the card still flies: a slow runner can unmount it before an animationend.
+      const handle = await page.waitForFunction(() => {
+        const names = document
+          .getAnimations()
+          .flatMap((animation) =>
+            "animationName" in animation ? [String(animation.animationName)] : [],
+          )
+          .filter((name) => name.startsWith("toast-absorb"));
+        return names.length > 0 ? names : false;
+      });
+      expect(await handle.jsonValue()).toEqual(["toast-absorb-fade"]);
     });
   });
 });
