@@ -171,8 +171,10 @@ export const OnboardingStepIdSchema = z.enum([
   "markAsRead",
   "originalSite",
 ]);
+/** @public Read by the client in the next PR. */
 export type OnboardingStepId = z.infer<typeof OnboardingStepIdSchema>;
 
+/** @public Read by the client in the next PR. */
 export const OnboardingStateSchema = z
   .object({
     done: z.partialRecord(OnboardingStepIdSchema, z.literal(true)),
