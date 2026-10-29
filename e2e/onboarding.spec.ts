@@ -368,31 +368,29 @@ test.describe("the onboarding checklist", () => {
     await page.goto("/");
     await expect(pageUi.card).toBeVisible();
 
-    // Installed before the click, so it sees the move's animationend and not a race with the click.
-    await page.evaluate(() => {
+    await pageUi.dismissButton.click();
+    // Jumped to its end state, so a slow runner cannot unmount the card before the measure.
+    const gap = await page.evaluate(() => {
       const centre = (element: Element) => {
         const rect = element.getBoundingClientRect();
         return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
       };
-      document.addEventListener(
-        "animationend",
-        (event) => {
-          const cog = document.getElementById("account-menu-trigger");
-          if (event.animationName !== "toast-absorb-move" || !cog) return;
-          if (!(event.target instanceof Element)) return;
-          const from = centre(event.target);
-          const to = centre(cog);
-          document.body.dataset.flightGap = String(Math.hypot(from.x - to.x, from.y - to.y));
-        },
-        { capture: true },
-      );
+      const move = document
+        .getAnimations()
+        .find(
+          (animation) =>
+            "animationName" in animation && animation.animationName === "toast-absorb-move",
+        );
+      const cog = document.getElementById("account-menu-trigger");
+      const effect = move?.effect;
+      const target = effect instanceof KeyframeEffect ? effect.target : null;
+      if (!move || !cog || !target) return Number.NaN;
+      move.finish();
+      const from = centre(target);
+      const to = centre(cog);
+      return Math.hypot(from.x - to.x, from.y - to.y);
     });
-
-    await pageUi.dismissButton.click();
-    await expect
-      .poll(async () => page.evaluate(() => document.body.dataset.flightGap))
-      .toBeDefined();
-    expect(Number(await page.evaluate(() => document.body.dataset.flightGap))).toBeLessThan(1);
+    expect(gap).toBeLessThan(1);
     await expect(pageUi.card).toBeHidden();
   });
 
