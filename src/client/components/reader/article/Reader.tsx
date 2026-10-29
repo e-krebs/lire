@@ -245,6 +245,7 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
       <>
         <ReaderHeader
           entry={data}
+          originTitle={feeds.data?.find((feed) => feed.id === data.feedId)?.title ?? ""}
           minutes={minutes}
           openedUnread={openedUnread}
           onKeep={() => {

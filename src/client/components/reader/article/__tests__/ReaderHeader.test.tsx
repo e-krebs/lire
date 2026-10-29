@@ -42,7 +42,14 @@ const setup = async ({
   const onKeep = vi.fn<() => void>();
   const onMark = vi.fn<() => void>();
   const Pane = () => (
-    <ReaderHeader entry={entry} minutes={0} openedUnread={true} onKeep={onKeep} onMark={onMark} />
+    <ReaderHeader
+      entry={entry}
+      originTitle="Example Feed"
+      minutes={0}
+      openedUnread={true}
+      onKeep={onKeep}
+      onMark={onMark}
+    />
   );
   const rootRoute = createRootRoute();
   const streamRoute = createRoute({

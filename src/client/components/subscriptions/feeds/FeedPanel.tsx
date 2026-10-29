@@ -24,16 +24,7 @@ import { ConfirmDialog } from "client/components/primitives/overlays/ConfirmDial
 import { FeedTypeIcon, hostOf } from "client/components/subscriptions/feeds/FeedsTab";
 import { SidePanel } from "client/components/primitives/overlays/SidePanel";
 import { WebFeedVariants } from "./WebFeedVariants";
-
-const actionClassName = `
-  min-h-11 flex-1 rounded-xl px-4 text-sm font-semibold
-  focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent
-  disabled:cursor-default disabled:opacity-50
-  motion-safe:transition-colors
-`;
-const submitClassName = `${actionClassName} bg-accent text-on-accent not-disabled:hover:bg-accent/90 data-clearing:bg-danger data-clearing:text-surface data-clearing:not-disabled:hover:bg-danger/90`;
-const neutralClassName = `${actionClassName} bg-surface-2 text-ink`;
-const dangerSoftClassName = `${actionClassName} bg-danger-soft text-danger`;
+import { dangerSoftClassName, neutralClassName, submitClassName } from "./feedPanelButtons";
 
 const listFormats = new Map<Locale, Intl.ListFormat>();
 

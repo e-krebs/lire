@@ -22,6 +22,9 @@ export const ICON_NAMES = [
   "newsletter",
   "plus",
   "install",
+  "mouse",
+  "keyboard",
+  "touch",
 ] as const;
 
 type IconName = (typeof ICON_NAMES)[number];

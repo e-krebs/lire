@@ -6,7 +6,12 @@ import { STORAGE_KEY as BAR_POSITION_STORAGE_KEY } from "client/hooks/utils/barP
 import { STORAGE_KEY as READER_WIDTH_STORAGE_KEY } from "client/hooks/useResizablePanel";
 import { DemoBanner } from "../DemoBanner";
 
-const keys = [DIRECT_OPEN_STORAGE_KEY, BAR_POSITION_STORAGE_KEY, READER_WIDTH_STORAGE_KEY];
+const keys = [
+  DIRECT_OPEN_STORAGE_KEY,
+  BAR_POSITION_STORAGE_KEY,
+  READER_WIDTH_STORAGE_KEY,
+  "lire.fixture.onboarding",
+];
 
 const ui = {
   get resetButton() {

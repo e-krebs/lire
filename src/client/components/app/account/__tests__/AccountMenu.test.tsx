@@ -53,6 +53,12 @@ const ui = {
   get signInLink() {
     return screen.queryByRole("link", { name: "Sign in with NewsBlur", hidden: true });
   },
+  get showChecklistButton() {
+    return screen.findByRole("button", { name: "Show checklist", hidden: true });
+  },
+  get noShowChecklistButton() {
+    return screen.queryByRole("button", { name: "Show checklist", hidden: true });
+  },
 };
 
 const androidUserAgent = "Mozilla/5.0 (Linux; Android 14; Pixel 8) Chrome/130 Mobile Safari/537.36";
@@ -247,6 +253,45 @@ describe("AccountMenu", () => {
         expect(ui.androidAppLink).toBeInTheDocument();
       });
       expect(ui.installButton).toBeNull();
+    });
+  });
+
+  describe("when the menu has a show-checklist entry", () => {
+    beforeEach(() => {
+      vi.stubEnv("VITE_API_MODE", "real");
+      server.use(fixtureBackend);
+    });
+
+    it("is absent while the checklist shows", async () => {
+      renderApp({ url: "/subscriptions" });
+
+      expect(await ui.newsblurUsername).toBeInTheDocument();
+      expect(ui.noShowChecklistButton).toBeNull();
+    });
+
+    it("offers a button that restores the checklist and closes the menu", async () => {
+      // jsdom has no popover API.
+      const hidePopover = vi.fn<() => void>();
+      HTMLElement.prototype.hidePopover = hidePopover;
+      const patches = vi.fn<(body: unknown) => void>();
+      server.use(
+        http.get("*/api/onboarding", () =>
+          HttpResponse.json({ done: {}, collapsed: false, dismissed: true }),
+        ),
+        http.patch("*/api/onboarding", async ({ request }) => {
+          patches(await request.json());
+          return HttpResponse.json({ done: {}, collapsed: false, dismissed: false });
+        }),
+      );
+      renderApp({ url: "/subscriptions" });
+      await ui.accountButton;
+
+      await userEvent.click(await ui.showChecklistButton);
+
+      await vi.waitFor(() => {
+        expect(patches).toHaveBeenCalledWith({ dismissed: false });
+      });
+      expect(hidePopover).toHaveBeenCalledOnce();
     });
   });
 

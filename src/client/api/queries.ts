@@ -24,6 +24,7 @@ import {
   getEntry,
   getFeeds,
   getNewsletterAddress,
+  getOnboarding,
   getPreferences,
   getProfile,
   getStreamEntries,
@@ -35,6 +36,7 @@ import {
   searchFeeds,
   updateFeed,
   updatePreferences,
+  patchOnboarding,
   type EntryOrder,
 } from "client/api/client";
 import { useTier } from "client/hooks/useTier";
@@ -51,7 +53,10 @@ import type {
   Feed,
   Preferences,
   PreferencesUpdate,
+  OnboardingPatch,
+  OnboardingState,
 } from "shared/feedsApi/types";
+import { OnboardingStepIdSchema } from "shared/feedsApi/types";
 
 const FIVE_MINUTES_MS = 5 * 60 * 1000;
 
@@ -170,6 +175,50 @@ export const usePreferences = () =>
     staleTime: Infinity,
     refetchOnWindowFocus: false,
   });
+
+export const useOnboarding = () =>
+  useQuery({
+    queryKey: keys.onboarding,
+    queryFn: getOnboarding,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+  });
+
+export const useUpdateOnboarding = () => {
+  const client = useQueryClient();
+  const othersPending = () => client.isMutating({ mutationKey: keys.onboarding }) - 1;
+  return useMutation({
+    mutationKey: keys.onboarding,
+    mutationFn: patchOnboarding,
+    onMutate: async (patch: OnboardingPatch) => {
+      await client.cancelQueries({ queryKey: keys.onboarding });
+      const previous = client.getQueryData<OnboardingState>(keys.onboarding);
+      if (previous) {
+        const next: OnboardingState = { ...previous, done: { ...previous.done } };
+        for (const step of OnboardingStepIdSchema.options) {
+          const value = patch.done?.[step];
+          if (value === true) next.done[step] = true;
+          else if (value === false) delete next.done[step];
+        }
+        if (patch.collapsed !== undefined) next.collapsed = patch.collapsed;
+        if (patch.dismissed !== undefined) next.dismissed = patch.dismissed;
+        client.setQueryData(keys.onboarding, next);
+      }
+      return { previous };
+    },
+    onError: (_error, _patch, context) => {
+      if (othersPending() === 0 && context?.previous) {
+        client.setQueryData(keys.onboarding, context.previous);
+      }
+    },
+    onSuccess: (state) => {
+      if (othersPending() === 0) client.setQueryData(keys.onboarding, state);
+    },
+    onSettled: () => {
+      if (othersPending() === 0) void client.invalidateQueries({ queryKey: keys.onboarding });
+    },
+  });
+};
 
 // Holds the rows until the stored order is known, so they never show in API order first. A failed
 // load counts as settled: preferences fall back to API order, categories to no rows.

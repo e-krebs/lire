@@ -519,6 +519,20 @@ body {
   }
 }
 
+/* The onboarding card measures its own offsets at dismiss and sets `--absorb-x`/`--absorb-y`
+   inline. Its fade waits out the first 150ms, so it ends with the flight and the card's last frame
+   sits on the cog. */
+.card-absorb {
+  animation: toast-absorb-fade 150ms linear forwards;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .card-absorb {
+    animation:
+      toast-absorb-move 280ms cubic-bezier(0.2, 0.7, 0.3, 1) forwards,
+      toast-absorb-fade 130ms 150ms linear forwards;
+  }
+}
+
 /* The dot lands on the cog as the toast shrinks into it, so it pops in once the flight is done. */
 @media (prefers-reduced-motion: no-preference) {
   .update-dot {
@@ -568,17 +582,21 @@ body {
 /* The no-image card: the card surface in light, a solid block of the feed's hue in dark. The
    light lightness is 0.46, not 0.5: cyan around hue 200 only clears 4.5:1 on the white card from
    there down, and the label is 11px. */
-[data-entry-id]:not([data-has-image]) .tile-card {
+:is([data-entry-id], [data-preview]):not([data-has-image]) .tile-card {
   background: light-dark(var(--color-card), oklch(0.35 0.08 var(--hue)));
   --tile-label: light-dark(oklch(0.4 0.17 var(--hue)), oklch(0.85 0.15 var(--hue)));
 }
 /* B1 title: 19px at 1.2, the numbers `textCardHeight` (utils/textHeight.ts) measures with. */
-[data-entry-id]:not([data-has-image]) .tile-title {
+:is([data-entry-id], [data-preview]):not([data-has-image]) .tile-title {
   font-size: 19px;
   line-height: 1.2;
 }
+/* The preview title is not a link: its span must not take the click meant for the card. */
+[data-preview] .tile-title {
+  pointer-events: none;
+}
 /* A read text card goes nearly grayscale, keeping only a trace of its hue. */
-[data-entry-id][data-read]:not([data-has-image]) .tile-card {
+:is([data-entry-id], [data-preview])[data-read]:not([data-has-image]) .tile-card {
   background: light-dark(oklch(0.94 0.006 var(--hue)), oklch(0.27 0.012 var(--hue)));
   --tile-label: light-dark(oklch(0.5 0.05 var(--hue)), oklch(0.75 0.05 var(--hue)));
 }
@@ -699,7 +717,8 @@ body {
 }
 /* `line-height: 1` and symmetric padding keep the key cap's box centred on its own glyphs, so
    baseline alignment puts them on the label's baseline. */
-.tooltip kbd {
+.tooltip kbd,
+.how-to kbd {
   flex: none;
   min-width: 18px;
   padding: 3px 5px;
@@ -843,6 +862,9 @@ body {
   font-weight: 500;
   text-wrap: pretty;
   pointer-events: none;
+}
+.how-to kbd {
+  background: color-mix(in srgb, var(--color-ink) 10%, transparent);
 }
 .reader-scrim-label kbd {
   flex: none;

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import type { StreamKey } from "shared/feedsApi/streamKey";
 import { useT } from "client/i18n/useT";
@@ -23,6 +24,8 @@ interface MosaicGridProps {
   query?: string;
   /** The R shortcut belongs to the results alone, so it sleeps while the reader is open. */
   readerOpen?: boolean;
+  /** Not a result: rendered as the grid's first tile, or above the loading, error and empty states. */
+  leading?: ReactNode;
 }
 
 // Searching swaps the stream query for `GET /api/search`. Both hooks always run, since a hook
@@ -33,6 +36,7 @@ export const MosaicGrid = ({
   ranked,
   query = "",
   readerOpen = false,
+  leading,
 }: MosaicGridProps) => {
   const t = useT();
   const searching = query.trim() !== "";
@@ -55,12 +59,19 @@ export const MosaicGrid = ({
   // The search hook stays disabled below the minimum, so `isPending` would otherwise spin forever.
   if (searching && query.trim().length < MIN_SEARCH_LENGTH) {
     return (
-      <div className="flex flex-col items-start gap-3 p-4">
-        <p className="text-sm text-muted">{t.articles.typeAtLeast({ min: MIN_SEARCH_LENGTH })}</p>
-        <Link to="." search={(prev) => ({ ...prev, q: undefined })} className={actionClassName}>
-          {t.articles.clearSearch}
-        </Link>
-      </div>
+      <>
+        {leading ? (
+          <div className="px-3 pt-3">
+            <div className="mx-auto max-w-120">{leading}</div>
+          </div>
+        ) : null}
+        <div className="flex flex-col items-start gap-3 p-4">
+          <p className="text-sm text-muted">{t.articles.typeAtLeast({ min: MIN_SEARCH_LENGTH })}</p>
+          <Link to="." search={(prev) => ({ ...prev, q: undefined })} className={actionClassName}>
+            {t.articles.clearSearch}
+          </Link>
+        </div>
+      </>
     );
   }
 
@@ -74,6 +85,7 @@ export const MosaicGrid = ({
       queryKey={queryKey}
       readerOpen={readerOpen}
       searchQuery={searching ? query : undefined}
+      leading={leading}
     />
   );
 };

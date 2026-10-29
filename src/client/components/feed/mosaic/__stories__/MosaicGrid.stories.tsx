@@ -1,11 +1,15 @@
+import type { ComponentProps } from "react";
 import { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Decorator, Meta, StoryObj } from "@storybook/react-vite";
-import { expect, fireEvent, userEvent, waitFor, within } from "storybook/test";
+import { expect, fireEvent, fn, userEvent, waitFor, within } from "storybook/test";
 import { keys } from "client/api/keys";
+import { OnboardingCard } from "client/components/app/onboarding/OnboardingCard";
 import { MosaicGrid } from "client/components/feed/mosaic/MosaicGrid";
 import { withQueryClient, withRouteMatch } from "stories/decorators";
 import { swipe } from "client/components/feed/mosaic/__stories__/swipe";
+
+type OnboardingSteps = ComponentProps<typeof OnboardingCard>["steps"];
 
 const touch = ({ target, y }: { target: Element; y: number }) =>
   new Touch({ identifier: 1, target, clientX: 150, clientY: y });
@@ -261,5 +265,62 @@ export const PullGestures: Story = {
     fire({ target: pane, type: "touchmove", y: 300 });
     fire({ target: pane, type: "touchend" });
     await waitFor(async () => expect(pane.querySelector("[data-refreshing]")).toBeNull(), TIMEOUT);
+  },
+};
+
+const checklist: OnboardingSteps = [
+  { id: "addFeed", done: false, auto: true },
+  { id: "newsletter", done: false, auto: false },
+];
+
+const leadingCard = (
+  <OnboardingCard
+    steps={checklist}
+    collapsed={false}
+    onToggleCollapse={fn()}
+    onToggleStep={fn()}
+    onAction={fn()}
+    dismissing={false}
+    onDismissStart={fn()}
+    onDismiss={fn()}
+  />
+);
+
+// The card is one tile wide and sits clear of every tile.
+// The card mounts above the grid while it loads, then moves into the grid's tree, so it is read
+// only once the grid is up, and again on each try.
+const expectCardInGrid = async (root: HTMLElement) => {
+  await tiles(root);
+  await waitFor(async () => {
+    const card = within(root).getByRole("region", { name: "Get started with Lire" });
+    const box = card.getBoundingClientRect();
+    const tileBoxes = [...root.querySelectorAll("[data-entry-id]")].map((tile) =>
+      tile.getBoundingClientRect(),
+    );
+    for (const tile of tileBoxes) {
+      const overlaps =
+        tile.left < box.right &&
+        box.left < tile.right &&
+        tile.top < box.bottom &&
+        box.top < tile.bottom;
+      await expect(overlaps).toBe(false);
+    }
+    await expect(Math.abs(box.width - (tileBoxes[0]?.width ?? 0))).toBeLessThan(1);
+  }, TIMEOUT);
+};
+
+export const WithLeadingCard: Story = {
+  decorators: [Wide],
+  args: { leading: leadingCard },
+  play: async ({ canvasElement }) => {
+    await expectCardInGrid(canvasElement);
+  },
+};
+
+export const WithLeadingCardOnPhone: Story = {
+  decorators: [Narrow],
+  args: { leading: leadingCard },
+  play: async ({ canvasElement }) => {
+    await expectCardInGrid(canvasElement);
   },
 };

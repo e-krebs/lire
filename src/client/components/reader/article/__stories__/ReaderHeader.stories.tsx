@@ -11,6 +11,7 @@ const meta = {
   parameters: { layout: "fullscreen", url: "/stream/all" },
   args: {
     entry: ENTRY,
+    originTitle: "Example Feed",
     minutes: 6,
     openedUnread: true,
     onKeep: fn(),

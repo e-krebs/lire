@@ -1,5 +1,5 @@
 import type { KeyboardEvent } from "react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Link,
   useCanGoBack,
@@ -145,6 +145,18 @@ export const TopBar = () => {
       });
     }
   };
+
+  // The onboarding card opens the Navigator the way the `/` shortcut does.
+  useEffect(() => {
+    const openNavigator = (): void => {
+      setPanelOpen(true);
+      inputRef.current?.focus();
+    };
+    window.addEventListener("lire:open-navigator", openNavigator);
+    return () => {
+      window.removeEventListener("lire:open-navigator", openNavigator);
+    };
+  }, []);
 
   const goBack = (): void => {
     if (canGoBack) {

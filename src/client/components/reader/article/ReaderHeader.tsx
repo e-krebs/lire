@@ -2,7 +2,6 @@ import { Link, useParams } from "@tanstack/react-router";
 import type { CSSProperties } from "react";
 import { toStreamKey } from "shared/feedsApi/streamKey";
 import type { Entry } from "shared/feedsApi/types";
-import { useOriginTitle } from "client/hooks/useOriginTitle";
 import { feedHue } from "client/utils/feedHue";
 import { decodeEntities } from "client/utils/html";
 import { Icon } from "client/components/primitives/icons/icons";
@@ -13,6 +12,8 @@ import { tip } from "client/utils/tooltip";
 
 interface ReaderHeaderProps {
   entry: Entry;
+  /** The feed's name, from the feeds the caller already holds. */
+  originTitle: string;
   /** Estimated reading time in minutes; 0 when the body is too short to bother. */
   minutes: number;
   /** State the panel opened in, so optimistic flips keep the labels; undefined until resolved. */
@@ -29,13 +30,13 @@ const BUTTON_FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-2";
 // original. Sticky inside the panel's one scroll pane.
 export const ReaderHeader = ({
   entry,
+  originTitle,
   minutes,
   openedUnread,
   onKeep,
   onMark,
 }: ReaderHeaderProps) => {
   const t = useT();
-  const originTitle = useOriginTitle({ feedId: entry.feedId });
   const title = entry.title ? decodeEntities(entry.title) : t.articles.untitled;
   const openStreamKey = useParams({ strict: false }).streamKey;
   const feedKey = toStreamKey({ kind: "feed", feedId: entry.feedId });

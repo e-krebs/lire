@@ -97,6 +97,16 @@ describe("masonry", () => {
       expect(layout.positions.get("i1")?.x).toBe(64 + 492);
     });
 
+    it("counts a fixed card as an item when the grid is sparse", () => {
+      const layout = layoutMasonry({
+        containerWidth: 1100,
+        items: [{ id: "card", height: 200, navigable: false }, ...squares(1)],
+      });
+      expect(layout.columns).toBe(2);
+      expect(layout.positions.get("card")).toMatchObject({ column: 0, x: 64 });
+      expect(layout.positions.get("i0")).toMatchObject({ column: 1, x: 64 + 492, y: 0 });
+    });
+
     it("keeps the fitting column count when there are no items", () => {
       const layout = layoutMasonry({ containerWidth: 1100, items: [] });
       expect(layout.columns).toBe(2);
@@ -151,6 +161,21 @@ describe("masonry", () => {
         items: [{ id: "t", heightAt: () => 111 }],
       });
       expect(layout.positions.get("t")?.height).toBe(111);
+    });
+
+    it("places a fixed item at its own height and keeps it out of the neighbour walk", () => {
+      const layout = layoutMasonry({
+        containerWidth: 800,
+        items: [
+          { id: "card", height: 200, navigable: false },
+          { id: "a", aspect: 1 },
+          { id: "b", aspect: 1 },
+        ],
+      });
+      expect(layout.positions.get("card")).toMatchObject({ column: 0, y: 0, height: 200 });
+      expect(layout.positions.get("b")).toMatchObject({ column: 0, y: 212 });
+      expect(layout.columnItems).toEqual([["b"], ["a"]]);
+      expect(neighbourOf({ layout, id: "b", direction: "up" })).toBeUndefined();
     });
 
     it("balances columns across mixed image and text items", () => {

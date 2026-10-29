@@ -11,9 +11,12 @@ interface BeforeInstallPromptEvent extends Event {
 interface InstallState {
   deferred?: BeforeInstallPromptEvent;
   installed: boolean;
+  // Set once the browser has offered the prompt, and kept after the prompt is spent, so a row can
+  // stay until the app is installed.
+  offered: boolean;
 }
 
-const initialState: InstallState = { installed: false };
+const initialState: InstallState = { installed: false, offered: false };
 
 let state = initialState;
 
@@ -43,14 +46,15 @@ const isBeforeInstallPrompt = (event: Event): event is BeforeInstallPromptEvent 
 const onBeforeInstall = (event: Event): void => {
   event.preventDefault();
   if (!isBeforeInstallPrompt(event)) return;
-  update({ deferred: event, installed: false });
+  update({ deferred: event, installed: false, offered: true });
 };
 
 const onInstalled = (): void => {
-  update({ installed: true });
+  update({ installed: true, offered: false });
 };
 
 export const listenForInstallPrompt = (target: Window = window): (() => void) => {
+  update(initialState);
   target.addEventListener("beforeinstallprompt", onBeforeInstall);
   target.addEventListener("appinstalled", onInstalled);
   return () => {
@@ -62,7 +66,7 @@ export const listenForInstallPrompt = (target: Window = window): (() => void) =>
 const install = async (): Promise<void> => {
   const event = state.deferred;
   if (event === undefined) return;
-  update({ installed: state.installed });
+  update({ installed: state.installed, offered: state.offered });
   try {
     await event.prompt();
     await event.userChoice;
@@ -78,8 +82,13 @@ export const isInstalledApp = (): boolean =>
 export const useInstallPrompt = (): {
   canInstall: boolean;
   installed: boolean;
+  offered: boolean;
   install: () => Promise<void>;
 } => {
-  const { deferred, installed } = useSyncExternalStore(subscribe, getSnapshot, () => initialState);
-  return { canInstall: deferred !== undefined, installed, install };
+  const { deferred, installed, offered } = useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    () => initialState,
+  );
+  return { canInstall: deferred !== undefined, installed, offered, install };
 };
