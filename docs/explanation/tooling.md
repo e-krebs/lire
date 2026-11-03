@@ -174,7 +174,7 @@ gate after the demo build. The `e2e` and `storybook` jobs run the browser tests,
 `preflight` job then runs `check-access` and `provision-pages`. The deploy jobs for the SPA, demo,
 Storybook and Worker follow once their dependencies pass, and `check-live` runs after all four.
 Every job that installs dependencies uses the shared [setup action](../../.github/actions/setup/action.yml),
-which restores the Yarn cache. The `e2e` and `storybook` jobs run in the official Playwright
+which installs Corepack when the image's Node does not bundle it, then restores the Yarn cache. The `e2e` and `storybook` jobs run in the official Playwright
 container image, which ships the browsers and their system libraries. The runner then installs
 nothing with apt and downloads no browser, because a slow install once held the `e2e` job for 14
 minutes and a hung `install-deps` timed out other runs. The `changes` job reads the
