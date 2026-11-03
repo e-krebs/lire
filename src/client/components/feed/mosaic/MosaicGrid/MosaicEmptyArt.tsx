@@ -1,4 +1,5 @@
 import { useState } from "react";
+import sprites from "virtual:empty-sprites";
 import { useColorScheme } from "client/hooks/useColorScheme";
 import { useSunPhase } from "client/hooks/useSunPhase";
 import { useT } from "client/i18n/useT";
@@ -7,15 +8,19 @@ import type { EmptyScene } from "./emptyScenes";
 
 type Phase = "day" | "dusk";
 
-// Vite turns this template into a glob over the folder and bundles every match.
-const src = ({ scene, phase }: { scene: EmptyScene; phase: Phase }): string =>
-  new URL(
-    `../../../../assets/empty/${scene}-${phase === "day" ? "light" : "dark"}.webp`,
-    import.meta.url,
-  ).href;
+const cellStyle = ({ scene, phase }: { scene: EmptyScene; phase: Phase }) => {
+  const index = sprites.cells[scene] ?? 0;
+  const col = index % sprites.cols;
+  const row = Math.floor(index / sprites.cols);
+  return {
+    backgroundImage: `url(${sprites[phase]})`,
+    backgroundSize: `${sprites.cols * 100}% ${sprites.rows * 100}%`,
+    backgroundPosition: `${(col / (sprites.cols - 1)) * 100}% ${sprites.rows > 1 ? (row / (sprites.rows - 1)) * 100 : 0}%`,
+  };
+};
 
 const imageClassName =
-  "col-start-1 row-start-1 h-auto w-80 max-w-full motion-safe:transition-opacity motion-safe:duration-300";
+  "col-start-1 row-start-1 aspect-16/10 w-80 max-w-full bg-no-repeat motion-safe:transition-opacity motion-safe:duration-300";
 
 const pickScene = ({ not }: { not?: EmptyScene }): EmptyScene => {
   const pool = EMPTY_SCENES.filter((scene) => scene !== not);
@@ -63,14 +68,14 @@ export function MosaicEmptyArt({
       }}
       className="grid cursor-pointer rounded-lg focus-visible:outline-2 focus-visible:outline-accent"
     >
-      {/* Decorative (alt=""): the button carries the label, and the text below says the list is empty. */}
+      {/* Decorative (aria-hidden): the button carries the label, and the text below says the list is empty. */}
       {(["day", "dusk"] as const).map((phase) => (
-        <img
+        <div
           key={phase}
-          src={src({ scene, phase })}
-          alt=""
-          width={320}
-          height={200}
+          aria-hidden
+          data-scene={scene}
+          data-phase={phase}
+          style={cellStyle({ scene, phase })}
           className={`${imageClassName} ${phase === shown && !waitingForSun ? "" : "opacity-0"}`}
         />
       ))}

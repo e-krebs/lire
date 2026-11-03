@@ -3,6 +3,8 @@ import { render } from "@testing-library/react";
 import type { RenderResult } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import sprites from "virtual:empty-sprites";
+import { EMPTY_SCENES } from "../MosaicGrid/emptyScenes";
 import { MosaicEmptyArt } from "../MosaicGrid/MosaicEmptyArt";
 
 const ui = {
@@ -12,8 +14,8 @@ const ui = {
   labelled(view: RenderResult, name: string) {
     return view.getByRole("button", { name });
   },
-  hiddenSrc(view: RenderResult) {
-    return view.container.querySelector("img.opacity-0")?.getAttribute("src");
+  hiddenPhase(view: RenderResult) {
+    return view.container.querySelector<HTMLElement>(".opacity-0")?.dataset.phase;
   },
 };
 
@@ -30,20 +32,20 @@ const picking = ({ refreshedAt }: { refreshedAt: number }) => (
 );
 
 const sceneOf = (view: RenderResult) =>
-  view.container.querySelector("img")?.getAttribute("src")?.split("/").pop()?.split("-light")[0];
+  view.container.querySelector<HTMLElement>("[data-scene]")?.dataset.scene;
 
 describe("MosaicEmptyArt", () => {
   it("labels the button with the scene it would show", () => {
     const view = render(element("day"));
     expect(ui.labelled(view, "Show the dusk scene")).toBeInTheDocument();
-    expect(ui.hiddenSrc(view)).toContain("cat-dark");
+    expect(ui.hiddenPhase(view)).toBe("dusk");
   });
 
   it("swaps the visible image and the label on click", async () => {
     const view = render(element("dusk"));
     await userEvent.click(ui.labelled(view, "Show the day scene"));
     expect(ui.labelled(view, "Show the dusk scene")).toBeInTheDocument();
-    expect(ui.hiddenSrc(view)).toContain("cat-dark");
+    expect(ui.hiddenPhase(view)).toBe("dusk");
   });
 
   it("swaps on Enter", async () => {
@@ -66,7 +68,7 @@ describe("MosaicEmptyArt", () => {
     view.rerender(element("dusk"));
     view.rerender(element("day"));
     expect(ui.labelled(view, "Show the dusk scene")).toBeInTheDocument();
-    expect(ui.hiddenSrc(view)).toContain("cat-dark");
+    expect(ui.hiddenPhase(view)).toBe("dusk");
   });
 
   it("picks another scene when a refresh lands, and keeps it on an unrelated re-render", () => {
@@ -76,5 +78,9 @@ describe("MosaicEmptyArt", () => {
     expect(sceneOf(view)).toBe(first);
     view.rerender(picking({ refreshedAt: 2 }));
     expect(sceneOf(view)).not.toBe(first);
+  });
+
+  it("has a sprite cell for every scene", () => {
+    expect(Object.keys(sprites.cells).sort()).toEqual([...EMPTY_SCENES].sort());
   });
 });

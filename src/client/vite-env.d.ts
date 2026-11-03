@@ -12,3 +12,14 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+declare module "virtual:empty-sprites" {
+  const sprites: {
+    cols: number;
+    rows: number;
+    cells: Record<string, number>;
+    day: string;
+    dusk: string;
+  };
+  export default sprites;
+}

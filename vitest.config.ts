@@ -6,6 +6,7 @@ import react from "@vitejs/plugin-react";
 import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
 import tailwindcss from "@tailwindcss/vite";
 import { playwright } from "@vitest/browser-playwright";
+import { emptySprites } from "./scripts/vite/emptySprites.ts";
 
 export default defineConfig({
   test: {
@@ -39,7 +40,7 @@ export default defineConfig({
     },
     projects: [
       {
-        plugins: [react()],
+        plugins: [react(), emptySprites()],
         resolve: { tsconfigPaths: true },
         test: {
           name: "client",
@@ -74,7 +75,7 @@ export default defineConfig({
       },
       {
         // storybookTest does not load the Tailwind plugin, so the theme variables would be missing.
-        plugins: [tailwindcss(), storybookTest({ configDir: ".storybook" })],
+        plugins: [tailwindcss(), emptySprites(), storybookTest({ configDir: ".storybook" })],
         resolve: { tsconfigPaths: true },
         test: {
           name: "storybook",

@@ -4,6 +4,7 @@ import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
+import { emptySprites } from "./scripts/vite/emptySprites.ts";
 
 const appVersion = (() => {
   try {
@@ -35,6 +36,7 @@ export default defineConfig({
     }),
     viteReact(),
     tailwindcss(),
+    emptySprites(),
     VitePWA({
       strategies: "injectManifest",
       srcDir: "src/client",
