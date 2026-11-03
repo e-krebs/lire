@@ -464,12 +464,13 @@ A fresh visit without a signed-in status stays on the plain landing. Queries nev
 An empty article list shows one of the "doing nothing" scenes above its text, picked at random when
 the empty state mounts and again each time a refresh lands, never the same scene twice in a row ([MosaicEmptyArt.tsx](../../src/client/components/feed/mosaic/MosaicGrid/MosaicEmptyArt.tsx)).
 Each scene has a day and a dusk WebP (`-light` and `-dark`) in [src/client/assets/empty](../../src/client/assets/empty).
+The `emptySprites` Vite plugin ([emptySprites.ts](../../scripts/vite/emptySprites.ts)) packs them into two sheets, one per phase, behind the `virtual:empty-sprites` module. A build ships `empty-day-*.webp` and `empty-dusk-*.webp` instead of 46 files, and `index.html` gets a `prefetch` hint for each. The dev server serves the same sheets from `/__empty-sprites/`. Each image is a `div` that crops its cell with `background-position`.
 The phase comes from the sun: the client asks `GET /api/sun` for its time zone
 ([api.md](../reference/api.md)) and refetches when `nextChangeAt` passes, so the image swaps live
 at sunrise and sunset. While that loads, the image stays hidden, so a dark-scheme browser never shows dusk before day.
 If it fails offline or answers 404 (a zone with no coordinates), the phase follows
 `prefers-color-scheme` through `useColorScheme`. The image is
 a labelled button: a tap cross-fades to the other phase until the sun phase next changes. The image
-itself is decorative (`alt=""`), because the text below it already says the list is empty. The service worker precaches the WebP files with the other built
+itself is decorative (`aria-hidden`), because the text below it already says the list is empty. The service worker precaches the two sheets with the other built
 assets, so the art also shows offline. To add a scene, follow
 [add-an-empty-state-scene.md](../how-to/add-an-empty-state-scene.md).

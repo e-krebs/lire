@@ -31,7 +31,9 @@ picked and shown is in [architecture.md](../explanation/architecture.md#empty-st
 
    Repeat for `-dark`.
 6. Add the scene name to `EMPTY_SCENES` in
-   [emptyScenes.ts](../../src/client/components/feed/mosaic/MosaicGrid/emptyScenes.ts).
+   [emptyScenes.ts](../../src/client/components/feed/mosaic/MosaicGrid/emptyScenes.ts). The
+   `emptySprites` plugin packs every WebP in the folder into the day and dusk sheets, so a new
+   scene needs no other step. The `MosaicEmptyArt` test fails when a scene has no cell.
 7. Check both phases in the `Feed/Mosaic/MosaicEmptyArt` Gallery story (`yarn storybook`).
 
 ## Edit an existing scene
