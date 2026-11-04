@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { act, renderHook } from "@testing-library/react";
+import { act, render, renderHook, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   createMemoryHistory,
@@ -7,11 +7,14 @@ import {
   createRoute,
   createRouter,
   RouterContextProvider,
+  RouterProvider,
 } from "@tanstack/react-router";
 import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { OnboardingCard } from "client/components/app/onboarding/OnboardingCard";
+import { setLocalePreference } from "client/i18n/locale";
 import { keys } from "client/api/keys";
-import { listenForInstallPrompt } from "client/utils/installPrompt";
+import { listenForInstallPrompt, useInstallPrompt } from "client/utils/installPrompt";
 import { server } from "test/msw";
 import type { OnboardingState } from "shared/feedsApi/types";
 import { resetFixtureState } from "client/api/adapters/fixture";
@@ -70,6 +73,15 @@ const renderCard = ({
 
 const idsOf = (steps: { id: string }[]): string[] => steps.map((step) => step.id);
 
+const ui = {
+  get shareHint() {
+    return screen.getByText("Share, then Add to Home Screen.");
+  },
+  get installCheckbox() {
+    return screen.getByRole("checkbox", { name: "Install Lire" });
+  },
+};
+
 describe("useOnboardingCard", () => {
   let stop: () => void;
 
@@ -83,6 +95,7 @@ describe("useOnboardingCard", () => {
     });
     stop();
     vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
   });
 
   it("returns no steps while the state is loading", () => {
@@ -223,6 +236,64 @@ describe("useOnboardingCard", () => {
     expect(idsOf(renderCard().result.current.steps)).toContain("install");
   });
 
+  it("shows the iOS install row even after the landing hint is dismissed", () => {
+    vi.stubGlobal("matchMedia", () => ({ matches: false }));
+    vi.stubGlobal("navigator", { userAgent: "iPhone", platform: "iPhone", maxTouchPoints: 5 });
+    const { result: prompt } = renderHook(() => useInstallPrompt());
+    act(() => {
+      prompt.current.dismiss();
+    });
+
+    expect(prompt.current.iosHint).toBe(false);
+    expect(renderCard().result.current.steps.find((step) => step.id === "install")).toMatchObject({
+      done: false,
+      auto: true,
+      canInstall: false,
+      iosEligible: true,
+    });
+  });
+
+  it("renders the iOS hint and the installed tick", async () => {
+    setLocalePreference("en");
+    const props = {
+      steps: [{ id: "install" as const, done: false, auto: true, iosEligible: true }],
+      collapsed: false,
+      onToggleCollapse: vi.fn<() => void>(),
+      onToggleStep: vi.fn<() => void>(),
+      onAction: vi.fn<() => void>(),
+      dismissing: false,
+      onDismissStart: vi.fn<() => void>(),
+      onDismiss: vi.fn<() => void>(),
+    };
+    const root = createRootRoute({ component: () => <OnboardingCard {...props} /> });
+    const router = createRouter({
+      routeTree: root.addChildren([
+        createRoute({ getParentRoute: () => root, path: "/" }),
+        createRoute({ getParentRoute: () => root, path: "/subscriptions" }),
+        createRoute({ getParentRoute: () => root, path: "/stream/$streamKey" }),
+      ]),
+      history: createMemoryHistory({ initialEntries: ["/"] }),
+    });
+    await router.load();
+    const view = render(<RouterProvider router={router} />);
+    expect(ui.shareHint).toBeInTheDocument();
+    expect(ui.installCheckbox).not.toBeChecked();
+    props.steps[0] = { id: "install", done: true, auto: true, iosEligible: false };
+    view.unmount();
+    render(<RouterProvider router={router} />);
+    expect(ui.installCheckbox).toBeChecked();
+  });
+
+  it("ticks the install row in an installed iOS app", () => {
+    vi.stubGlobal("matchMedia", () => ({ matches: false }));
+    vi.stubGlobal("navigator", { userAgent: "iPhone", standalone: true });
+
+    expect(renderCard().result.current.steps.find((step) => step.id === "install")).toMatchObject({
+      done: true,
+      auto: true,
+    });
+  });
+
   it("marks the install row auto, so its checkbox is disabled", () => {
     fireBeforeInstall();
 
@@ -231,6 +302,7 @@ describe("useOnboardingCard", () => {
       done: false,
       auto: true,
       canInstall: true,
+      iosEligible: false,
     });
   });
 

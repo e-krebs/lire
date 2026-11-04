@@ -50,13 +50,14 @@ export const useOnboardingCard = () => {
           auto: false,
           search: linkSearch[id],
         })),
-        ...(installPrompt.offered || installed
+        ...(installPrompt.offered || installed || installPrompt.iosEligible
           ? [
               {
                 id: "install" as const,
                 done: installed,
                 auto: true,
                 canInstall: installPrompt.canInstall,
+                iosEligible: installPrompt.iosEligible,
               },
             ]
           : []),

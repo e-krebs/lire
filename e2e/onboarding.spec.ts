@@ -214,6 +214,8 @@ test.describe("the onboarding checklist", () => {
     const pageUi = ui(page);
     await page.goto("/");
     await expect(pageUi.card).toBeVisible();
+    // The grid remounts its body when its entry count settles, which would take the open dialog with it.
+    await expect(pageUi.firstTile).toBeVisible();
 
     await pageUi.originalSiteSeeHowButton.click();
     await expect(pageUi.originalSiteDialog).toBeVisible();

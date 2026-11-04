@@ -78,6 +78,12 @@ const ui = (page: Page) => ({
       name: "Install Lire from your browser and it opens like any other app.",
     });
   },
+  get installIosHint() {
+    return page.getByText("Share, then Add to Home Screen", { exact: true });
+  },
+  get dismissInstall() {
+    return page.getByRole("button", { name: "Dismiss", exact: true });
+  },
   get main() {
     return page.locator("main");
   },
@@ -206,6 +212,60 @@ test.describe("app-level states", () => {
     await expect(pageUi.signInLink).toBeVisible();
   });
 
+  test("dismisses the browser install button across reloads", async ({ page }) => {
+    const pageUi = ui(page);
+    await mockSignedOut(page);
+    await page.goto("/");
+    await expect(pageUi.signInLink).toBeVisible();
+    await offerInstall(page);
+
+    await expect(pageUi.installButton).toBeVisible();
+    await pageUi.dismissInstall.click();
+    await expect(pageUi.installButton).toHaveCount(0);
+    await expect(pageUi.dismissInstall).toHaveCount(0);
+    await page.reload();
+    await expect(pageUi.signInLink).toBeVisible();
+    await offerInstall(page);
+    await expect(pageUi.installButton).toHaveCount(0);
+    await expect(pageUi.dismissInstall).toHaveCount(0);
+  });
+
+  test.describe("when on iPhone", () => {
+    test.use({
+      userAgent:
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+    });
+
+    test("dismisses the iOS install hint across reloads", async ({ page }) => {
+      const pageUi = ui(page);
+      await mockSignedOut(page);
+      await page.goto("/");
+
+      await expect(pageUi.installIosHint).toBeVisible();
+      await pageUi.dismissInstall.click();
+      await expect(pageUi.installIosHint).toHaveCount(0);
+      await expect(pageUi.dismissInstall).toHaveCount(0);
+      await page.reload();
+      await expect(pageUi.signInLink).toBeVisible();
+      await expect(pageUi.installIosHint).toHaveCount(0);
+      await expect(pageUi.dismissInstall).toHaveCount(0);
+    });
+
+    test("hides the iOS install hint in standalone mode", async ({ page }) => {
+      const pageUi = ui(page);
+      await mockStandalone(page);
+      await mockSignedOut(page);
+      await page.goto("/");
+
+      await expect(pageUi.signInLink).toBeVisible();
+      await offerInstall(page);
+      await expect(pageUi.installIosHint).toHaveCount(0);
+      await expect(pageUi.installButton).toHaveCount(0);
+      await expect(pageUi.dismissInstall).toHaveCount(0);
+      await expect(pageUi.playBadge).toHaveCount(0);
+    });
+  });
+
   test("hides install prompts in standalone mode", async ({ page }) => {
     const pageUi = ui(page);
     await mockStandalone(page);
@@ -215,6 +275,8 @@ test.describe("app-level states", () => {
     await expect(pageUi.signInLink).toBeVisible();
     await offerInstall(page);
     await expect(pageUi.installButton).toHaveCount(0);
+    await expect(pageUi.installIosHint).toHaveCount(0);
+    await expect(pageUi.dismissInstall).toHaveCount(0);
     await expect(pageUi.playBadge).toHaveCount(0);
   });
 

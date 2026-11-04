@@ -71,6 +71,7 @@ export const en = {
   tablet: "Tablet",
   phone: "Phone",
   installCopy: "Install Lire from your browser and it opens like any other app.",
+  installIosHint: "Share, then Add to Home Screen",
   androidCopy: "Or use the Android app to open links in your browser.",
   googlePlayBadge: "Get it on Google Play",
   fluidResponsiveSmooth: "Fluid, responsive and smooth",
@@ -152,6 +153,7 @@ export const fr = {
   phone: "Téléphone",
   installCopy:
     "Installez Lire depuis votre navigateur : elle s'ouvre comme n'importe quelle autre appli.",
+  installIosHint: "Partager, puis Sur l'écran d'accueil",
   androidCopy: "Ou utilisez l'appli Android pour ouvrir les liens dans votre navigateur.",
   googlePlayBadge: "Disponible sur Google Play",
   fluidResponsiveSmooth: "Fluide, adaptatif et souple",

@@ -3,6 +3,7 @@ import {
   browserChoices,
   getPreferredBrowser,
   installExternalLinks,
+  isIOS,
   openExternal,
   setPreferredBrowser,
 } from "../externalLinks";
@@ -83,6 +84,15 @@ describe("externalLinks", () => {
     Reflect.deleteProperty(document, "referrer");
     assign.mockReset();
     document.body.innerHTML = "";
+  });
+
+  it("detects iPhone and touch-capable iPadOS, but not a Mac", () => {
+    for (const device of [IPHONE, IPAD]) {
+      vi.stubGlobal("navigator", device);
+      expect(isIOS()).toBe(true);
+    }
+    vi.stubGlobal("navigator", MAC);
+    expect(isIOS()).toBe(false);
   });
 
   it("offers browsers only in an installed iOS app, iPad included", () => {
