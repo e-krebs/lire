@@ -78,13 +78,13 @@ const InstallCopy = ({ text }: { text: string }) => (
 
 export const DeviceFigures = () => {
   const { shell } = useT();
-  const { canInstall, installed, install } = useInstallPrompt();
+  const { canInstall, installed, iosHint, dismissed, dismiss, install } = useInstallPrompt();
   // Once offered, the line stays a button: after the prompt is spent it is disabled, not swapped out.
   // Only an install in this tab swaps it for text, and the box stays the same.
   const installable = canInstall && !isInstalledApp();
   const [offered, setOffered] = useState(installable);
   if (installable && !offered) setOffered(true);
-  const showButton = offered && !installed && !isInstalledApp();
+  const showButton = offered && !dismissed && !installed && !isInstalledApp();
   return (
     <section className="flex w-full max-w-160 flex-col items-center gap-3">
       <h2 className="text-center text-base text-balance">{shell.worksAcrossDevices}</h2>
@@ -105,8 +105,18 @@ export const DeviceFigures = () => {
           </button>
         ) : (
           <span className={installLineClassName}>
-            <InstallCopy text={shell.installCopy} />
+            <InstallCopy text={iosHint ? shell.installIosHint : shell.installCopy} />
           </span>
+        )}
+        {(showButton || iosHint) && (
+          <button
+            type="button"
+            aria-label={shell.dismiss}
+            onClick={dismiss}
+            className="flex size-11 shrink-0 items-center justify-center rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-text"
+          >
+            <Icon name="close" className="size-4" />
+          </button>
         )}
       </p>
     </section>

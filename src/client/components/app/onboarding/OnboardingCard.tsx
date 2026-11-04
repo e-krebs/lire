@@ -36,6 +36,7 @@ interface OnboardingStep {
   search?: SubscriptionsSearch | undefined;
   // Set on the install row: true while the browser can still show its prompt.
   canInstall?: boolean;
+  iosEligible?: boolean;
 }
 
 interface OnboardingCardProps {
@@ -253,7 +254,9 @@ const OnboardingPanel = ({
               )}
               {step.id === "install" && !step.done && step.canInstall !== true && (
                 <p className="w-full pr-2 pb-3 pl-12 text-sm text-muted">
-                  {onboarding.rows.install.menuHint}
+                  {step.iosEligible
+                    ? onboarding.rows.install.iosHint
+                    : onboarding.rows.install.menuHint}
                 </p>
               )}
             </li>

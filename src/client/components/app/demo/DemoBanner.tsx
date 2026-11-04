@@ -16,6 +16,7 @@ const reset = async (): Promise<void> => {
   resetFixtureState();
   forget(DIRECT_OPEN_STORAGE_KEY);
   forget("lire.fixture.onboarding");
+  forget("lire.installHintDismissed");
   forget(BAR_POSITION_STORAGE_KEY);
   forget(READER_WIDTH_STORAGE_KEY);
   window.location.assign("/");

@@ -123,4 +123,53 @@ describe("useInstallPrompt", () => {
     expect(result.current.canInstall).toBe(false);
     stop = listenForInstallPrompt();
   });
+
+  it("shows an iOS hint unless installed or a browser prompt is available", () => {
+    vi.stubGlobal("navigator", { userAgent: "iPhone", platform: "iPhone", maxTouchPoints: 5 });
+    vi.stubGlobal("matchMedia", () => ({ matches: false }));
+    const { result, rerender } = renderHook(() => useInstallPrompt());
+    expect(result.current.iosEligible).toBe(true);
+    expect(result.current.iosHint).toBe(true);
+    fireBeforeInstall();
+    expect(result.current.iosEligible).toBe(false);
+    act(() => {
+      window.dispatchEvent(new Event("appinstalled"));
+    });
+    expect(result.current.iosHint).toBe(false);
+    stop();
+    stop = listenForInstallPrompt();
+    vi.stubGlobal("navigator", { userAgent: "iPhone", standalone: true });
+    rerender();
+    expect(result.current.iosEligible).toBe(false);
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps a dismissal when storage throws", async () => {
+    const blocked = (): never => {
+      throw new Error("blocked");
+    };
+    vi.stubGlobal("localStorage", { getItem: blocked, setItem: blocked });
+    vi.resetModules();
+    const fresh = await import("client/utils/installPrompt");
+    const { result } = renderHook(() => fresh.useInstallPrompt());
+    act(() => {
+      result.current.dismiss();
+    });
+    expect(result.current.dismissed).toBe(true);
+    vi.unstubAllGlobals();
+  });
+
+  it("persists a dismissal and restores it on a fresh module load", async () => {
+    window.localStorage.removeItem("lire.installHintDismissed");
+    const { result } = renderHook(() => useInstallPrompt());
+    act(() => {
+      result.current.dismiss();
+    });
+    expect(window.localStorage.getItem("lire.installHintDismissed")).toBe("true");
+    vi.resetModules();
+    const fresh = await import("client/utils/installPrompt");
+    const restored = renderHook(() => fresh.useInstallPrompt());
+    expect(restored.result.current.dismissed).toBe(true);
+    window.localStorage.removeItem("lire.installHintDismissed");
+  });
 });

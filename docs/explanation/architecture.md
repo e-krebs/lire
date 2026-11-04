@@ -131,7 +131,9 @@ under the same guard.
 The checklist card's install row follows the same prompt, but it stays once offered, so clicking it
 does not remove it. Its Install button shows only while the browser can still show the prompt. After
 a dismissed or spent prompt the row keeps its place with a hint to use the browser menu, and it is
-ticked on its own when the app is installed. It is absent in a browser that never offers the prompt.
+ticked on its own when the app is installed. On iOS and iPadOS Safari, which never offer the prompt,
+the row stays and carries the "Share, then Add to Home Screen" hint. It is absent in any other browser
+that never offers the prompt.
 The card's See how action opens a native `<dialog>` that lays out the real tile and masonry, fed with
 three local entries. Nothing in it queries or links: `MosaicTileCard` in
 [MosaicTile.tsx](../../src/client/components/feed/mosaic/MosaicTile.tsx) takes its feed title and
@@ -387,7 +389,11 @@ reloads on its own.
 The browser's install prompt is kept from the moment it fires, because it can fire before the
 landing mounts. [installPrompt.ts](../../src/client/utils/installPrompt.ts) listens from `main.tsx`
 and clears the kept event on `appinstalled` or once the prompt is answered. Where the browser offers
-it, the landing's install line is a button that shows it. Elsewhere the line stays plain text. Once
+it, the landing's install line is a button that shows it. On iOS and iPadOS Safari, which send no
+prompt event, the line reads "Share, then Add to Home Screen" instead. iPadOS reports itself as a Mac,
+so it is told apart by a touch-point check. A dismiss is saved per device under
+`lire.installHintDismissed` and hides both the iOS hint and the Chrome button. Elsewhere the line
+stays plain text. Once
 offered, the line stays a button: after the prompt is spent it is disabled, not swapped out, so the
 text does not move. After `appinstalled` in the same tab, the line becomes plain text in the same
 box, with no button.

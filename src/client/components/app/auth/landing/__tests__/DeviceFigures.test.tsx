@@ -26,6 +26,15 @@ const ui = {
   get androidCopy() {
     return screen.queryByText("Or use the Android app to open links in your browser.");
   },
+  get iosHint() {
+    return screen.getByText("Share, then Add to Home Screen");
+  },
+  get dismissButton() {
+    return screen.getByRole("button", { name: "Dismiss" });
+  },
+  get dismissButtonIfAny() {
+    return screen.queryByRole("button", { name: "Dismiss" });
+  },
 };
 
 const stubMatchMedia = (matches: (query: string) => boolean): void => {
@@ -188,5 +197,24 @@ describe("DeviceFigures", () => {
       expect(ui.installButton).toHaveClass("flex", "items-center", "gap-1.5", "text-left");
       expect(ui.installButton.className).toBe(className);
     });
+  });
+  it("shows the iOS hint and dismisses it across a remount", async () => {
+    const stop = listenForInstallPrompt();
+    stubMatchMedia(() => false);
+    vi.spyOn(navigator, "userAgent", "get").mockReturnValue("iPhone");
+    const { unmount } = render(<DeviceFigures />);
+
+    expect(ui.iosHint).toBeInTheDocument();
+    await userEvent.click(ui.dismissButton);
+    expect(ui.installCopy).toBeInTheDocument();
+    expect(window.localStorage.getItem("lire.installHintDismissed")).toBe("true");
+    unmount();
+    render(<DeviceFigures />);
+    expect(ui.installCopy).toBeInTheDocument();
+    expect(ui.dismissButtonIfAny).toBeNull();
+    stop();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+    window.localStorage.removeItem("lire.installHintDismissed");
   });
 });

@@ -49,7 +49,7 @@ const TWA_BROWSERS: Browser[] = [
 const IN_APP_HOSTS = ["cloudflareaccess.com"];
 
 // iPadOS reports itself as a Mac, so touch support tells them apart.
-const isIOS = (): boolean =>
+export const isIOS = (): boolean =>
   /iPad|iPhone|iPod/.test(navigator.userAgent) ||
   (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 

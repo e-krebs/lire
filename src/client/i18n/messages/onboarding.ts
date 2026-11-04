@@ -86,6 +86,7 @@ export const en = {
       hint: "Keep it on your home screen.",
       action: "Install",
       menuHint: "Use your browser’s menu to install Lire.",
+      iosHint: "Share, then Add to Home Screen.",
     },
   },
 } as const;
@@ -179,6 +180,7 @@ export const fr = {
       hint: "Ajouter Lire à l’écran d’accueil.",
       action: "Installer",
       menuHint: "Utilisez le menu de votre navigateur pour installer Lire.",
+      iosHint: "Touchez Partager, puis Sur l’écran d’accueil.",
     },
   },
 } satisfies Messages<typeof en>;

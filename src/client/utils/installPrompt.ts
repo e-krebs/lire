@@ -1,7 +1,7 @@
 // The browser's install prompt, kept from the moment it fires so a button can show it later.
 
 import { useSyncExternalStore } from "react";
-import { isInstalled, isTWA } from "client/utils/externalLinks";
+import { isIOS, isInstalled, isTWA } from "client/utils/externalLinks";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -15,6 +15,41 @@ interface InstallState {
   // stay until the app is installed.
   offered: boolean;
 }
+
+const DISMISS_STORAGE_KEY = "lire.installHintDismissed";
+
+const loadDismissed = (): boolean => {
+  try {
+    return window.localStorage.getItem(DISMISS_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+};
+
+let dismissed = loadDismissed();
+
+const dismissListeners = new Set<() => void>();
+
+const subscribeDismissed = (onChange: () => void): (() => void) => {
+  dismissListeners.add(onChange);
+  return () => {
+    dismissListeners.delete(onChange);
+  };
+};
+
+const notifyDismissed = (): void => {
+  for (const listener of dismissListeners) listener();
+};
+
+const dismiss = (): void => {
+  dismissed = true;
+  try {
+    window.localStorage.setItem(DISMISS_STORAGE_KEY, "true");
+  } catch {
+    // The choice still holds for this session.
+  }
+  notifyDismissed();
+};
 
 const initialState: InstallState = { installed: false, offered: false };
 
@@ -54,6 +89,8 @@ const onInstalled = (): void => {
 };
 
 export const listenForInstallPrompt = (target: Window = window): (() => void) => {
+  dismissed = loadDismissed();
+  notifyDismissed();
   update(initialState);
   target.addEventListener("beforeinstallprompt", onBeforeInstall);
   target.addEventListener("appinstalled", onInstalled);
@@ -83,6 +120,10 @@ export const useInstallPrompt = (): {
   canInstall: boolean;
   installed: boolean;
   offered: boolean;
+  iosEligible: boolean;
+  iosHint: boolean;
+  dismissed: boolean;
+  dismiss: () => void;
   install: () => Promise<void>;
 } => {
   const { deferred, installed, offered } = useSyncExternalStore(
@@ -90,5 +131,20 @@ export const useInstallPrompt = (): {
     getSnapshot,
     () => initialState,
   );
-  return { canInstall: deferred !== undefined, installed, offered, install };
+  const isDismissed = useSyncExternalStore(
+    subscribeDismissed,
+    () => dismissed,
+    () => false,
+  );
+  const iosEligible = isIOS() && !isInstalledApp() && !installed && deferred === undefined;
+  return {
+    canInstall: deferred !== undefined,
+    installed,
+    offered,
+    iosEligible,
+    iosHint: iosEligible && !isDismissed,
+    dismissed: isDismissed,
+    dismiss,
+    install,
+  };
 };
