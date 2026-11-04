@@ -82,7 +82,7 @@ the YouTube, Vimeo, X, Bluesky, Instagram, Threads and TikTok frame sources.
 A lint rule checks the hook
 file names. An external store and the hook that reads it live together in `utils`, as in `viewPrefs.ts` and `pwaUpdate.ts`
 (`usePwaUpdate`, which drives `SWToast`), and `installPrompt.ts` (`useInstallPrompt`, which
-drives the install line on the landing, the account menu's Install Lire row and the checklist's install row).
+drives the install line on the landing, including its iOS hint, the account menu's Install Lire row and the checklist's install row).
 
 ## Stories
 
