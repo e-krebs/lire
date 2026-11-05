@@ -85,6 +85,7 @@ const toFixtures = (files: Map<string, unknown>): FakeNewsblurFixtures => {
   };
 };
 
+/** @public Read by the MSW test handlers. */
 export const seedFixtures: FakeNewsblurFixtures = toFixtures(seedFiles);
 
 // `VITE_FIXTURES=seed` keeps the synthetic data even when a recording exists: e2e runs on it, and
@@ -123,6 +124,7 @@ const createMemoryCache = (): FeedsCache => {
 };
 
 // The BFF core over a fresh fake NewsBlur. Its state lives as long as the backend does.
+/** @public Read by the MSW test handlers. */
 export const createFixtureBackend = ({ fixtures }: { fixtures: FakeNewsblurFixtures }) => {
   const upstream = createFakeNewsblur({ fixtures });
   const cache = createMemoryCache();
