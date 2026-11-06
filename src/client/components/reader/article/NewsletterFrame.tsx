@@ -92,8 +92,21 @@ const STRIPPED_STYLE = [
   "code, pre { font-family: ui-monospace, monospace; font-size: 0.9em; background: light-dark(#f2f2f2, #222); border-radius: 0.25rem; } code { padding: 0.1em 0.3em; } pre { padding: 0.75em 1em; overflow-x: auto; } pre code { padding: 0; background: none; }",
 ].join(" ");
 
-const AUTHORED_DARK_STYLE =
-  "html { background: #fff; } @media (prefers-color-scheme: dark) { html { filter: invert(1) hue-rotate(180deg); } .lire-emoji { display: inline-block; } img, video, svg, .lire-emoji { filter: invert(1) hue-rotate(180deg); } }";
+// A plain invert is its own inverse, so the second pass restores media exactly. `hue-rotate` clips
+// saturated colors, so it would not.
+const SIDES = ["top", "right", "bottom", "left"] as const;
+
+// Each rule applies a color stored pre-inverted, so the page invert turns it back into the original.
+const KEPT_COLOR_RULES = [
+  ".lire-ink { color: var(--lire-ink) !important; }",
+  ".lire-bg { background-color: var(--lire-bg) !important; }",
+  ...SIDES.map(
+    (side) =>
+      `.lire-border-${side} { border-${side}-color: var(--lire-border-${side}) !important; }`,
+  ),
+].join(" ");
+
+const AUTHORED_DARK_STYLE = `html { background: #fff; } @media (prefers-color-scheme: dark) { html { filter: invert(1); } .lire-emoji { display: inline-block; } img, video, svg, .lire-emoji { filter: invert(1); } ${KEPT_COLOR_RULES} }`;
 
 // A bare pictograph like © stays text: only emoji presentation, a VS16 pair, a keycap, a flag or a
 // ZWJ sequence. Tag sequences (subdivision flags) and a trailing VS15 stay in the match.
@@ -102,20 +115,23 @@ const EMOJI =
 
 const SKIPPED_TEXT_PARENTS = new Set(["SCRIPT", "STYLE", "TEXTAREA", "TITLE"]);
 
-// Emoji are text nodes, so the page invert would darken them; a span takes the second invert.
-const wrapEmoji = (doc: Document): void => {
+const textNodes = (doc: Document): Text[] => {
   const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
   const nodes: Text[] = [];
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
     if (
       node instanceof doc.defaultView!.Text &&
       !SKIPPED_TEXT_PARENTS.has(node.parentElement?.tagName ?? "") &&
-      !node.parentElement?.closest("svg") &&
-      new RegExp(EMOJI).test(node.data)
+      !node.parentElement?.closest("svg")
     )
       nodes.push(node);
   }
-  for (const node of nodes) {
+  return nodes;
+};
+
+// Emoji are text nodes, so the page invert would darken them; a span takes the second invert.
+const wrapEmoji = (doc: Document): void => {
+  for (const node of textNodes(doc).filter((text) => new RegExp(EMOJI).test(text.data))) {
     const fragment = doc.createDocumentFragment();
     let last = 0;
     for (const match of node.data.matchAll(EMOJI)) {
@@ -128,6 +144,70 @@ const wrapEmoji = (doc: Document): void => {
     }
     fragment.append(node.data.slice(last));
     node.replaceWith(fragment);
+  }
+};
+
+// Below this channel spread a color reads as black, white or gray, and inverts like the page.
+const SPREAD_FLOOR = 48;
+// Below this luminance a text color would vanish on the black page, so it inverts instead.
+const INK_LUMINANCE_FLOOR = 0.15;
+// The browser's own link blue, which the invert turns yellow; the stored value inverts to #8ab4f8.
+const DEFAULT_LINK = "rgb(0, 0, 238)";
+const LIGHT_LINK_INVERSE = "rgb(117 75 7)";
+
+const isChromatic = ({ rgb }: Color): boolean =>
+  Math.max(...rgb) - Math.min(...rgb) >= SPREAD_FLOOR;
+
+const inverse = ({ rgb: [r, g, b], alpha }: Color): string =>
+  `rgb(${255 - r} ${255 - g} ${255 - b} / ${alpha})`;
+
+// Saturated colors keep their hue under the page invert: the element gets the inverse as a custom
+// property. Text inside a kept background keeps its color too, or white on blue would turn black.
+const keepColors = (doc: Document): void => {
+  const win = doc.defaultView!;
+  const keep = ({
+    element,
+    name,
+    color,
+  }: {
+    element: HTMLElement;
+    name: string;
+    color: string;
+  }) => {
+    element.classList.add(`lire-${name}`);
+    element.style.setProperty(`--lire-${name}`, color);
+  };
+  for (const element of doc.body.querySelectorAll<HTMLElement>("*")) {
+    if (element.closest("svg")) continue;
+    const style = win.getComputedStyle(element);
+    const background = parseColor(style.backgroundColor);
+    if (background && background.alpha > 0 && isChromatic(background))
+      keep({ element, name: "bg", color: inverse(background) });
+    for (const side of SIDES) {
+      const border = parseColor(style.getPropertyValue(`border-${side}-color`));
+      if (
+        border &&
+        border.alpha > 0 &&
+        isChromatic(border) &&
+        style.getPropertyValue(`border-${side}-style`) !== "none" &&
+        parseFloat(style.getPropertyValue(`border-${side}-width`)) > 0
+      )
+        keep({ element, name: `border-${side}`, color: inverse(border) });
+    }
+  }
+  for (const element of new Set(textNodes(doc).map((text) => text.parentElement))) {
+    if (!element || element.closest(".lire-emoji")) continue;
+    const color = win.getComputedStyle(element).color;
+    const ink = parseColor(color);
+    if (!ink) continue;
+    if (color === DEFAULT_LINK) {
+      keep({ element, name: "ink", color: LIGHT_LINK_INVERSE });
+    } else if (
+      element.closest(".lire-bg") ||
+      (isChromatic(ink) && luminance(ink) >= INK_LUMINANCE_FLOOR)
+    ) {
+      keep({ element, name: "ink", color: inverse(ink) });
+    }
   }
 };
 
@@ -190,7 +270,10 @@ export const NewsletterFrame = ({ html, dir, onDocument }: NewsletterFrameProps)
     if (!doc || !win || setupRef.current?.doc === doc) return;
     setupRef.current?.teardown();
     const root = doc.documentElement;
-    if (invertedRef.current) wrapEmoji(doc);
+    if (invertedRef.current) {
+      wrapEmoji(doc);
+      keepColors(doc);
+    }
 
     // `scrollHeight` never drops below the frame's own height, so the frame could not shrink. The
     // horizontal scrollbar is added so it never covers the last line.
