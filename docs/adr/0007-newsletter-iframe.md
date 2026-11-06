@@ -31,14 +31,19 @@ a black default would hide its text. The frame scans the sanitized HTML for a `s
 naming `color` or `background`, and for a `bgcolor` or `color` attribute, which covers
 `<font color>`. With none, the frame's `color-scheme` meta is `light dark` and its default page is
 `light-dark(#fff, #000)` with the opposite text color. With any and no page background of its own,
-the meta stays `light` and the page is white, and in the dark scheme an invert filter (`invert(1) hue-rotate(180deg)`) turns it
+the meta stays `light` and the page is white, and in the dark scheme an invert filter (`invert(1)`) turns it
 dark, while `img`, `video` and `svg` get the same filter again to restore their colors after the
-invert. Emoji in the text are wrapped in a span by the parent once the document is parsed, and that
+invert. A plain invert is its own inverse, so the restore is exact; a `hue-rotate` in the pair
+clipped saturated colors and shifted reds. Emoji in the text are wrapped in a span by the parent once the document is parsed, and that
 span gets the same filter, so its color survives; the pass runs only for a colored email. CSS
 background images stay inverted, and so does an emoji inside SVG text, which the pass skips. The band behind the frame follows the
-scheme too. The filter keeps the senders' colors and the white-page assumption intact through the
-invert. The second pass restores photos only approximately, because the hue rotate clips saturated
-colors. A false match only inverts an email that would have worked natively. An email with a page background
+scheme too. The filter keeps the white-page assumption intact through the
+invert. Saturated colors keep their hue: once the document is parsed, the parent gives an element a
+`--lire-ink`, `--lire-bg` or `--lire-border-<side>` property holding the inverse color, which the
+invert turns back into the original. This covers text, backgrounds and borders. Text inside a kept
+background keeps its color too, so white on a blue button stays white. A text color darker than 0.15
+relative luminance inverts with the page, as it would vanish on black, and so do grays. The
+browser's default link blue is stored as the inverse of `#8ab4f8`. A false match only inverts an email that would have worked natively. An email with a page background
 of its own, a non-white and opaque one, keeps its colors in the dark scheme with no invert. The
 page is read from the root table: the first top-level visible table, which skips a hidden preheader
 table, else the first element. Its inline `background-color` or `background` wins over `bgcolor`,
@@ -64,7 +69,8 @@ CSS `zoom`, unlike `transform`, changes layout size, so the height measure stays
   its colors.
 - A bright email with its own page in a dark UI stays bright, and the luminance test can misfire: a
   page just above the ceiling reads as white and is inverted, and a translucent page reads as none.
-- Brand colors shift by the hue rotate, and a logo image keeps its own colors.
+- Saturated colors keep their hue with no hue rotate, and grays invert. A gradient or a CSS
+  background image still inverts, and a dark text color on a plain background inverts to a light hue.
 - A dark logo on a transparent background, in an uncolored email, can fade into the dark page.
 - Height, key forwarding and the broken-image placeholder depend on `allow-same-origin`.
 - A zoomed email's text can get small, because the scale has no floor. `overflow-x: auto` stays on the

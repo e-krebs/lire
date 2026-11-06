@@ -300,10 +300,9 @@ describe("NewsletterFrame", () => {
 
       expect(ui.frame.srcdoc).toContain('<meta name="color-scheme" content="light">');
       expect(ui.frame.srcdoc).toContain("prefers-color-scheme: dark");
-      expect(ui.frame.srcdoc).toContain("html { filter: invert(1) hue-rotate(180deg); }");
-      expect(ui.frame.srcdoc).toContain(
-        "img, video, svg, .lire-emoji { filter: invert(1) hue-rotate(180deg); }",
-      );
+      expect(ui.frame.srcdoc).toContain("html { filter: invert(1); }");
+      expect(ui.frame.srcdoc).toContain("img, video, svg, .lire-emoji { filter: invert(1); }");
+      expect(ui.frame.srcdoc).not.toContain("hue-rotate");
     });
 
     const LES_JOURS =
@@ -400,6 +399,74 @@ describe("NewsletterFrame", () => {
       renderFrame('<TABLE class="a"><tr><td class="a">Hello</td></tr></TABLE>');
 
       expect(ui.frame.srcdoc).not.toContain("max-width: 42rem");
+    });
+  });
+
+  describe("when the email holds colored text", () => {
+    const load = (html: string) => {
+      render(<NewsletterFrame html={html} dir="ltr" />);
+      const doc = ui.frame.contentDocument!;
+      doc.body.innerHTML = html;
+      fireEvent.load(ui.frame);
+      return doc;
+    };
+
+    it("stores the inverse of a bright color so the invert restores it", () => {
+      const doc = load('<p style="color: #000">Plain <span style="color: #ff0000">Red</span></p>');
+
+      const red = doc.querySelector("span")!;
+      expect(red.classList.contains("lire-ink")).toBe(true);
+      expect(red.style.getPropertyValue("--lire-ink")).toBe("rgb(0 255 255 / 1)");
+    });
+
+    it.each([["#000"], ["#808080"], ["#fff"], ["#8b0000"]])("leaves %s to the invert", (color) => {
+      const doc = load(`<p style="color: #000"><span style="color: ${color}">Text</span></p>`);
+
+      expect(doc.querySelector(".lire-ink")).toBeNull();
+    });
+
+    it("stores the inverse of a saturated background and text inside it", () => {
+      const doc = load(
+        '<p style="color: #000"><span style="background-color: #0000ff; color: #fff">Buy</span></p>',
+      );
+
+      const button = doc.querySelector("span")!;
+      expect(button.style.getPropertyValue("--lire-bg")).toBe("rgb(255 255 0 / 1)");
+      expect(button.style.getPropertyValue("--lire-ink")).toBe("rgb(0 0 0 / 1)");
+    });
+
+    it("stores the inverse of a saturated border", () => {
+      const doc = load(
+        '<p style="color: #000"><span style="border-top: 2px solid #ff0000">Box</span></p>',
+      );
+
+      const box = doc.querySelector("span")!;
+      expect(box.style.getPropertyValue("--lire-border-top")).toBe("rgb(0 255 255 / 1)");
+      expect(box.classList.contains("lire-border-left")).toBe(false);
+    });
+
+    it("leaves a gray background to the invert", () => {
+      const doc = load(
+        '<p style="color: #000"><span style="background-color: #eee">Gray</span></p>',
+      );
+
+      expect(doc.querySelector(".lire-bg")).toBeNull();
+    });
+
+    it("lightens a default link", () => {
+      const doc = load(
+        '<p style="color: #000"><a href="#" style="color: rgb(0, 0, 238)">Go</a></p>',
+      );
+
+      expect(doc.querySelector("a")?.style.getPropertyValue("--lire-ink")).toBe("rgb(117 75 7)");
+    });
+
+    it("leaves an email with its own page background alone", () => {
+      const doc = load(
+        '<table bgcolor="#ba200c"><tr><td style="color: #ff0000">Red</td></tr></table>',
+      );
+
+      expect(doc.querySelector(".lire-ink")).toBeNull();
     });
   });
 
