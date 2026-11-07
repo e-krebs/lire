@@ -581,7 +581,7 @@ describe("MosaicGrid", () => {
       await waitFor(() => {
         expect(cards()).toBe(total);
       });
-      return { ...grid, cards, total, callbacks };
+      return { ...grid, client, cards, total, callbacks };
     };
     // Hidden for over a minute, then visible again.
     const returnToTheApp = () => {
@@ -702,6 +702,80 @@ describe("MosaicGrid", () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
       expect(cards()).toBe(total);
       expect(scrollTo).not.toHaveBeenCalled();
+    });
+
+    it("refetches the list once when newer counts name more unread than it holds", async () => {
+      const { client, cards, total } = await open();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      requests = [];
+      hold();
+      release();
+      server.use(
+        http.get("/api/counts", () => HttpResponse.json({ all: 1000, feeds: {}, categories: {} })),
+      );
+
+      await client.invalidateQueries({ queryKey: keys.counts });
+      await waitFor(() => {
+        expect(requests.length).toBeGreaterThan(0);
+      });
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      expect(requests.filter((url) => !url.searchParams.has("cursor"))).toHaveLength(1);
+      expect(cards()).toBe(total);
+    });
+
+    it("refetches the list once, not in a loop, when that refetch fails", async () => {
+      const { client } = await open();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      requests = [];
+      let fail = () => {};
+      const failing = new Promise<void>((resolve) => {
+        fail = resolve;
+      });
+      server.use(
+        http.get("/api/streams/:streamKey/entries", async ({ request }) => {
+          requests.push(new URL(request.url));
+          await failing;
+          return HttpResponse.json({}, { status: 500 });
+        }),
+        http.get("/api/counts", () => HttpResponse.json({ all: 1000, feeds: {}, categories: {} })),
+      );
+
+      await client.invalidateQueries({ queryKey: keys.counts });
+      await waitFor(() => {
+        expect(requests.length).toBeGreaterThan(0);
+      });
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      fail();
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
+      expect(requests.filter((url) => !url.searchParams.has("cursor"))).toHaveLength(1);
+    });
+
+    it("leaves the list alone for newer counts when unread-only is off", async () => {
+      const { client } = await open();
+      const params = { streamKey: "all", unreadOnly: false, order: "newest", count: 24 } as const;
+      const first = await getStreamEntries(params);
+      client.setQueryData<InfiniteData<EntryPage, string | undefined>>(keys.stream(params), {
+        pages: [{ ...first, cursor: undefined }],
+        pageParams: [undefined],
+      });
+      requests = [];
+      act(() => {
+        setViewPrefs({ unread: false });
+      });
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      requests = [];
+      server.use(
+        http.get("/api/streams/:streamKey/entries", ({ request }) => {
+          requests.push(new URL(request.url));
+        }),
+      );
+      client.setQueryData(keys.counts, { all: 1000, feeds: {}, categories: {} });
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      expect(requests).toHaveLength(0);
     });
 
     it("does not fetch the next page when the sentinel reports during the foreground refetch", async () => {
