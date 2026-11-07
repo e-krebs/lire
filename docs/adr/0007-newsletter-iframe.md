@@ -39,8 +39,10 @@ span gets the same filter, so its color survives; the pass runs only for a color
 background images stay inverted, and so does an emoji inside SVG text, which the pass skips. The band behind the frame follows the
 scheme too. The filter keeps the white-page assumption intact through the
 invert. Saturated colors keep their hue: once the document is parsed, the parent gives an element a
-`--lire-ink`, `--lire-bg` or `--lire-border-<side>` property holding the inverse color, which the
-invert turns back into the original. This covers text, backgrounds and borders. Text inside a kept
+`--lire-ink`, `--lire-bg`, `--lire-deco` or `--lire-border-<side>` property holding the inverse color,
+which the invert turns back into the original. This covers text, backgrounds, borders and underlines.
+An element that draws a line gets the same treatment as its text, as the line takes the color of the
+element that sets it, which can wrap the text's own parent. Text inside a kept
 background keeps its color too, so white on a blue button stays white. A text color darker than 0.15
 relative luminance inverts with the page, as it would vanish on black, and so do grays. The
 browser's default link blue is stored as the inverse of `#8ab4f8`. A false match only inverts an email that would have worked natively. An email with a page background
