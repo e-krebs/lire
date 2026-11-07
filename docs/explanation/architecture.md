@@ -347,6 +347,13 @@ settles after its list has unmounted. A mark with no source list marks every lis
 list already stale before the mark stays stale. A failed mark marks the other lists stale again at
 rollback and at settle.
 
+The counts and a list come from two NewsBlur calls, so the top bar can name more unread entries than
+the list holds. An unread-only, unsearched list that has every page in checks itself against the counts. When
+the counts landed after the list and name more unread entries than it holds, the list refetches in
+place, once. A list fetched after the counts never retriggers, so a story that NewsBlur counts but
+hides cannot loop. This covers a read mark, which refetches the counts, and an app open that finds a
+fresh list cache.
+
 Every user refresh behaves the same way: the top pull, the bottom pull, the button and the
 shortcut. The foreground return is the exception (see above). Each waits for the same writes (at most 3 seconds), trims the list to page 1,
 scrolls to the top and shows the mosaic skeleton until the first page lands. A user refresh that starts
