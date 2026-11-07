@@ -100,6 +100,7 @@ const SIDES = ["top", "right", "bottom", "left"] as const;
 const KEPT_COLOR_RULES = [
   ".lire-ink { color: var(--lire-ink) !important; }",
   ".lire-bg { background-color: var(--lire-bg) !important; }",
+  ".lire-deco { text-decoration-color: var(--lire-deco) !important; }",
   ...SIDES.map(
     (side) =>
       `.lire-border-${side} { border-${side}-color: var(--lire-border-${side}) !important; }`,
@@ -195,7 +196,30 @@ const keepColors = (doc: Document): void => {
         keep({ element, name: `border-${side}`, color: inverse(border) });
     }
   }
-  for (const element of new Set(textNodes(doc).map((text) => text.parentElement))) {
+  // A line is drawn in the color of the element that sets it, which can wrap the text's own parent.
+  const decorated = [...doc.body.querySelectorAll<HTMLElement>("*")].filter((element) => {
+    if (element.closest("svg")) return false;
+    const style = win.getComputedStyle(element);
+    // jsdom only: it leaves the longhand at `none` when the shorthand sets the line.
+    return /underline|line-through|overline/.test(
+      `${style.getPropertyValue("text-decoration-line")} ${style.getPropertyValue("text-decoration")}`,
+    );
+  });
+  for (const element of decorated) {
+    const style = win.getComputedStyle(element);
+    const line = parseColor(style.getPropertyValue("text-decoration-color"));
+    // A line that resolves from `currentcolor` follows the ink, which is kept below.
+    if (
+      line &&
+      line.alpha > 0 &&
+      style.getPropertyValue("text-decoration-color") !== style.color &&
+      isChromatic(line) &&
+      luminance(line) >= INK_LUMINANCE_FLOOR
+    )
+      keep({ element, name: "deco", color: inverse(line) });
+  }
+  const inkElements = new Set([...textNodes(doc).map((text) => text.parentElement), ...decorated]);
+  for (const element of inkElements) {
     if (!element || element.closest(".lire-emoji")) continue;
     const color = win.getComputedStyle(element).color;
     const ink = parseColor(color);

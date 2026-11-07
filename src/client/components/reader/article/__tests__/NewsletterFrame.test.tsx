@@ -461,6 +461,42 @@ describe("NewsletterFrame", () => {
       expect(doc.querySelector("a")?.style.getPropertyValue("--lire-ink")).toBe("rgb(117 75 7)");
     });
 
+    it("keeps the color of an underline set on a wrapper of the colored text", () => {
+      const doc = load(
+        '<p style="color: #000"><a href="#" style="color: #ff0000; text-decoration: underline"><span style="color: #ff0000">Go</span></a></p>',
+      );
+
+      expect(doc.querySelector("a")?.style.getPropertyValue("--lire-ink")).toBe(
+        "rgb(0 255 255 / 1)",
+      );
+    });
+
+    it("keeps a saturated underline color of its own", () => {
+      const doc = load(
+        '<p style="color: #000"><a href="#" style="text-decoration: underline; text-decoration-color: #ff0000">Go</a></p>',
+      );
+
+      expect(doc.querySelector("a")?.style.getPropertyValue("--lire-deco")).toBe(
+        "rgb(0 255 255 / 1)",
+      );
+    });
+
+    it("leaves the underline of a default link to its lightened ink", () => {
+      const doc = load(
+        '<p style="color: #000"><a href="#" style="color: rgb(0, 0, 238); text-decoration: underline">Go</a></p>',
+      );
+
+      expect(doc.querySelector(".lire-deco")).toBeNull();
+    });
+
+    it("leaves a dark underline color to the invert", () => {
+      const doc = load(
+        '<p style="color: #000"><a href="#" style="text-decoration: underline; text-decoration-color: #000080">Go</a></p>',
+      );
+
+      expect(doc.querySelector(".lire-deco")).toBeNull();
+    });
+
     it("leaves an email with its own page background alone", () => {
       const doc = load(
         '<table bgcolor="#ba200c"><tr><td style="color: #ff0000">Red</td></tr></table>',
