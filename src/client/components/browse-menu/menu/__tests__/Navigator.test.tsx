@@ -985,7 +985,7 @@ describe("Navigator", () => {
       ui.swipe({ target: ui.allArticles!, from: 300, to: 340 });
 
       expect(dialog).toHaveAttribute("open");
-      expect(dialog.style.translate).toBe("0 0px");
+      expect(dialog.style.translate).toBe("0px");
       fireEvent(dialog, new Event("transitionend"));
       expect(dialog.style.translate).toBe("");
     });

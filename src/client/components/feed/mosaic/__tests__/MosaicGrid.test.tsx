@@ -930,7 +930,7 @@ describe("MosaicGrid", () => {
       const leading = ui.leadingCard(view);
       const slot = leading.parentElement;
       const tile = ui.firstEntry(view);
-      expect(slot?.style.translate).toBe("0px 0px");
+      expect(slot?.style.translate).toBe("0px");
       expect(slot?.style.width).toBe(tile?.style.width);
       expect(leading.compareDocumentPosition(ui.links(view)[0])).toBe(
         Node.DOCUMENT_POSITION_FOLLOWING,
