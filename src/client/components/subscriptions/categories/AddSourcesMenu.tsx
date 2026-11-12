@@ -40,7 +40,9 @@ export const AddSourcesMenu = ({
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const pickedRef = useRef(false);
   const restoreFocusRef = useRef(false);
-  useOverlay({ id: `add-sources-${id}`, isOpen: open });
+  // Inside the modal sheet the page behind is blocked already, and an inert <main> would also take
+  // the sheet, which sits in it.
+  useOverlay({ id: `add-sources-${id}`, isOpen: open && portalTarget?.localName !== "dialog" });
   const overlayOpen = useOverlayOpen();
 
   useLayoutEffect(() => {
