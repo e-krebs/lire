@@ -407,7 +407,7 @@ describe("MosaicTile", () => {
       expect(await ui.indicator()).toHaveAttribute("data-side", "left");
       expect(await ui.reveal()).toBe("1");
       expect(wrapper).toHaveAttribute("data-armed");
-      expect((await ui.mover())?.style.translate).toBe("160px 0");
+      expect((await ui.mover())?.style.translate).toBe("160px");
       fireEvent.pointerUp(wrapper, {
         clientX: 310,
         clientY: 100,
@@ -415,7 +415,7 @@ describe("MosaicTile", () => {
         pointerType: "touch",
       });
       // The card keeps going past its slot; the grid hears about it only once it is out.
-      expect((await ui.mover())?.style.translate).toBe("324px 0");
+      expect((await ui.mover())?.style.translate).toBe("324px");
       expect(onToggleRead).not.toHaveBeenCalled();
       await act(async () => {
         await vi.advanceTimersByTimeAsync(200);
@@ -456,7 +456,7 @@ describe("MosaicTile", () => {
         pointerType: "touch",
       });
       expect(onToggleRead).toHaveBeenCalledTimes(1);
-      expect((await ui.mover())?.style.translate).toBe("0px 0");
+      expect((await ui.mover())?.style.translate).toBe("0px");
     });
 
     it("tints the action with the finger, then eases it back after a short swipe", async () => {
@@ -475,7 +475,7 @@ describe("MosaicTile", () => {
         pointerType: "touch",
       });
       expect(onToggleRead).not.toHaveBeenCalled();
-      expect((await ui.mover())?.style.translate).toBe("0px 0");
+      expect((await ui.mover())?.style.translate).toBe("0px");
       // The panel stays mounted and hands the fade to the stylesheet's transition.
       expect(await ui.reveal()).toBe("0");
       expect((await ui.action())?.style.transition).toBe("");
