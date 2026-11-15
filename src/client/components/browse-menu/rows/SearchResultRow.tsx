@@ -1,6 +1,6 @@
 import { Icon } from "client/components/primitives/icons/icons";
 import { useT } from "client/i18n/useT";
-import { enterHintClassName, rowButtonClassName, rowClassName } from "./shared";
+import { BrowseRow } from "./BrowseRow";
 
 interface SearchResultRowProps {
   /** Search text typed in the field. */
@@ -23,23 +23,19 @@ export const SearchResultRow = ({
 }: SearchResultRowProps) => {
   const t = useT().navigation;
   return (
-    <div data-selected={selected || undefined} className={rowClassName}>
-      <button type="button" onClick={onSelect} className={rowButtonClassName}>
-        <Icon name="search" className="size-4 flex-none text-faint" />
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-semibold text-ink">
-            {t.searchArticlesFor({ query })}
-          </span>
-          <span className="block truncate text-xs text-muted">
-            {t.inScope({ label: scopeLabel })}
-          </span>
+    <BrowseRow
+      selected={selected}
+      onSelect={onSelect}
+      leading={<Icon name="search" className="size-4 flex-none text-faint" />}
+    >
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-semibold text-ink">
+          {t.searchArticlesFor({ query })}
         </span>
-        {selected ? (
-          <span aria-hidden="true" className={enterHintClassName}>
-            ↵
-          </span>
-        ) : null}
-      </button>
-    </div>
+        <span className="block truncate text-xs text-muted">
+          {t.inScope({ label: scopeLabel })}
+        </span>
+      </span>
+    </BrowseRow>
   );
 };

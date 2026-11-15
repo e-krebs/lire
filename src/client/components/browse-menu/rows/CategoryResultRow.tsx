@@ -1,12 +1,6 @@
 import type { Category } from "shared/feedsApi/types";
-import { EditLink } from "./EditLink";
+import { BrowseRow } from "./BrowseRow";
 import { highlightMatch } from "./highlightMatch";
-import {
-  countBadgeClassName,
-  enterHintClassName,
-  rowButtonClassName,
-  rowClassName,
-} from "./shared";
 
 interface CategoryResultRowProps {
   category: Category;
@@ -33,34 +27,23 @@ export const CategoryResultRow = ({
   onSelect,
   onClose,
 }: CategoryResultRowProps) => (
-  <div
-    data-current={isCurrent || undefined}
-    data-selected={selected || undefined}
-    className={rowClassName}
+  <BrowseRow
+    isCurrent={isCurrent}
+    selected={selected}
+    count={count}
+    onSelect={onSelect}
+    edit={{
+      target: { kind: "category", categoryId: category.id },
+      title: category.label,
+      onClose,
+    }}
   >
-    <button type="button" onClick={onSelect} className={rowButtonClassName}>
-      <span
-        data-tip={category.label}
-        data-tip-overflow=""
-        className="min-w-0 flex-1 truncate text-sm font-bold text-ink"
-      >
-        {highlightMatch({ text: category.label, query: matchQuery })}
-      </span>
-      {count > 0 ? (
-        <span aria-hidden="true" className={countBadgeClassName}>
-          {count}
-        </span>
-      ) : null}
-      {selected ? (
-        <span aria-hidden="true" className={enterHintClassName}>
-          ↵
-        </span>
-      ) : null}
-    </button>
-    <EditLink
-      target={{ kind: "category", categoryId: category.id }}
-      title={category.label}
-      onClose={onClose}
-    />
-  </div>
+    <span
+      data-tip={category.label}
+      data-tip-overflow=""
+      className="min-w-0 flex-1 truncate text-sm font-bold text-ink"
+    >
+      {highlightMatch({ text: category.label, query: matchQuery })}
+    </span>
+  </BrowseRow>
 );

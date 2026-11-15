@@ -1,12 +1,6 @@
 import type { Feed } from "shared/feedsApi/types";
-import { EditLink } from "./EditLink";
+import { BrowseRow } from "./BrowseRow";
 import { highlightMatch } from "./highlightMatch";
-import {
-  countBadgeClassName,
-  enterHintClassName,
-  rowButtonClassName,
-  rowClassName,
-} from "./shared";
 
 interface FeedRowProps {
   feed: Feed;
@@ -33,39 +27,30 @@ export const FeedRow = ({
   onSelect,
   onClose,
 }: FeedRowProps) => (
-  <div
-    data-current={isCurrent || undefined}
-    data-selected={selected || undefined}
-    className={`group ${rowClassName}`}
-  >
-    <button type="button" onClick={onSelect} className={rowButtonClassName}>
+  <BrowseRow
+    isCurrent={isCurrent}
+    selected={selected}
+    count={count}
+    onSelect={onSelect}
+    leading={
       <span
         aria-hidden="true"
         className="flex size-6 flex-none items-center justify-center rounded-full bg-accent-soft text-[0.65rem] font-bold text-accent-text"
       >
         {feed.title.charAt(0).toUpperCase() || "?"}
       </span>
-      <span
-        data-tip={feed.title}
-        data-tip-overflow=""
-        className={`
-          min-w-0 flex-1 truncate text-sm font-medium text-ink
-          group-data-current:font-semibold group-data-current:text-accent-text
-        `}
-      >
-        {matchQuery ? highlightMatch({ text: feed.title, query: matchQuery }) : feed.title}
-      </span>
-      {count > 0 ? (
-        <span aria-hidden="true" className={countBadgeClassName}>
-          {count}
-        </span>
-      ) : null}
-      {selected ? (
-        <span aria-hidden="true" className={enterHintClassName}>
-          ↵
-        </span>
-      ) : null}
-    </button>
-    <EditLink target={{ kind: "feed", feedId: feed.id }} title={feed.title} onClose={onClose} />
-  </div>
+    }
+    edit={{ target: { kind: "feed", feedId: feed.id }, title: feed.title, onClose }}
+  >
+    <span
+      data-tip={feed.title}
+      data-tip-overflow=""
+      className={`
+        min-w-0 flex-1 truncate text-sm font-medium text-ink
+        group-data-current:font-semibold group-data-current:text-accent-text
+      `}
+    >
+      {matchQuery ? highlightMatch({ text: feed.title, query: matchQuery }) : feed.title}
+    </span>
+  </BrowseRow>
 );

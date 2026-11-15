@@ -1,13 +1,7 @@
 import type { Category } from "shared/feedsApi/types";
 import { Icon } from "client/components/primitives/icons/icons";
 import { useT } from "client/i18n/useT";
-import { EditLink } from "./EditLink";
-import {
-  countBadgeClassName,
-  enterHintClassName,
-  rowButtonClassName,
-  rowClassName,
-} from "./shared";
+import { BrowseRow } from "./BrowseRow";
 
 // Sits over the row button's left end, where the button leaves a 24px spacer for it. The hit
 // area stays 40px; the hover disc is the 28px `after` inside it, so it keeps clear of the label.
@@ -55,52 +49,43 @@ export const CategoryTreeRow = ({
 }: CategoryTreeRowProps) => {
   const t = useT().navigation;
   return (
-    <div
-      data-current={isCurrent || undefined}
-      data-selected={selected || undefined}
-      className={`group ${rowClassName}`}
+    <BrowseRow
+      isCurrent={isCurrent}
+      selected={selected}
+      count={count}
+      onSelect={onSelect}
+      leading={<span aria-hidden="true" className="size-6 flex-none" />}
+      aside={
+        expandable ? (
+          <button
+            type="button"
+            aria-label={t.toggle({ label: category.label })}
+            aria-expanded={!collapsed}
+            data-tip={collapsed ? t.expand : t.collapse}
+            data-collapsed={collapsed || undefined}
+            onClick={onToggleCollapse}
+            className={twistyClassName}
+          >
+            <Icon name="chevron" className="size-4" />
+          </button>
+        ) : null
+      }
+      edit={{
+        target: { kind: "category", categoryId: category.id },
+        title: category.label,
+        onClose,
+      }}
     >
-      <button type="button" onClick={onSelect} className={rowButtonClassName}>
-        <span aria-hidden="true" className="size-6 flex-none" />
-        <span
-          data-tip={category.label}
-          data-tip-overflow=""
-          className={`
-            min-w-0 flex-1 truncate text-sm font-bold text-ink
-            group-data-current:text-accent-text
-          `}
-        >
-          {category.label}
-        </span>
-        {count > 0 ? (
-          <span aria-hidden="true" className={countBadgeClassName}>
-            {count}
-          </span>
-        ) : null}
-        {selected ? (
-          <span aria-hidden="true" className={enterHintClassName}>
-            ↵
-          </span>
-        ) : null}
-      </button>
-      {expandable ? (
-        <button
-          type="button"
-          aria-label={t.toggle({ label: category.label })}
-          aria-expanded={!collapsed}
-          data-tip={collapsed ? t.expand : t.collapse}
-          data-collapsed={collapsed || undefined}
-          onClick={onToggleCollapse}
-          className={twistyClassName}
-        >
-          <Icon name="chevron" className="size-4" />
-        </button>
-      ) : null}
-      <EditLink
-        target={{ kind: "category", categoryId: category.id }}
-        title={category.label}
-        onClose={onClose}
-      />
-    </div>
+      <span
+        data-tip={category.label}
+        data-tip-overflow=""
+        className={`
+          min-w-0 flex-1 truncate text-sm font-bold text-ink
+          group-data-current:text-accent-text
+        `}
+      >
+        {category.label}
+      </span>
+    </BrowseRow>
   );
 };
