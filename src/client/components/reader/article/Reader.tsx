@@ -238,7 +238,9 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
         {t.articles.articleNotFound}
       </p>
     ) : (
-      <p className="p-4 text-sm text-faint">{t.common.loading}</p>
+      <p role="status" className="p-4 text-sm text-faint">
+        {t.common.loading}
+      </p>
     );
   } else {
     body = (

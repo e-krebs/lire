@@ -47,6 +47,9 @@ const ui = {
   async button(view: RenderResult, name: string) {
     return view.findByRole("button", { name });
   },
+  async status(view: RenderResult) {
+    return view.findByRole("status");
+  },
   queryText(view: RenderResult, content: string) {
     return view.queryByText(content);
   },
@@ -188,6 +191,12 @@ describe("Reader", () => {
     const distinct = setup({ entryId: HERO_ID });
     await ui.link(distinct.view, "Synthetic story 2 from feed 101");
     expect(hero(distinct.view)).toHaveLength(1);
+  });
+
+  it("announces the loading line as a status while the entry is pending", async () => {
+    const { view } = setup({ entryId: UNREAD_ID });
+
+    expect(await ui.status(view)).toHaveTextContent("Loading…");
   });
 
   it("drops the hero once it fails to load", async () => {
