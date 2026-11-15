@@ -29,12 +29,15 @@ const actionClassName = `
 export const primaryClassName = `${actionClassName} bg-accent text-on-accent not-disabled:hover:bg-accent/90`;
 const dangerSoftClassName = `${actionClassName} bg-danger-soft text-danger`;
 
+type CategoryRename = Pick<ReturnType<typeof useRenameCategory>, "mutate"> &
+  ({ isError: false; error?: null } | { isError: true; error: Error });
+
 interface CategoryNameFormProps {
   formId: string;
   category: Category;
   categories: Category[];
   // Owned by the panel, which holds the delete back while a rename runs.
-  rename: ReturnType<typeof useRenameCategory>;
+  rename: CategoryRename;
   onSaved: () => void;
 }
 
@@ -51,16 +54,16 @@ export const CategoryNameForm = ({
   const errorId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(category.label);
-  const [empty, setEmpty] = useState(false);
-  const [duplicate, setDuplicate] = useState(false);
+  const [nameError, setNameError] = useState<"empty" | "duplicate" | null>(null);
 
-  const message = empty
-    ? t.enterCategoryNameForPanel
-    : duplicate
-      ? t.categoryExists
-      : rename.isError
-        ? t.renameFailed({ message: rename.error.message })
-        : null;
+  const message =
+    nameError === "empty"
+      ? t.enterCategoryNameForPanel
+      : nameError === "duplicate"
+        ? t.categoryExists
+        : rename.isError
+          ? t.renameFailed({ message: rename.error.message })
+          : null;
 
   return (
     <form
@@ -71,12 +74,12 @@ export const CategoryNameForm = ({
         event.preventDefault();
         const label = name.trim();
         if (label === "") {
-          setEmpty(true);
+          setNameError("empty");
           inputRef.current?.focus();
           return;
         }
         if (categories.some((c) => c.id === label && c.id !== category.id)) {
-          setDuplicate(true);
+          setNameError("duplicate");
           inputRef.current?.focus();
           return;
         }
@@ -93,12 +96,11 @@ export const CategoryNameForm = ({
         autoComplete="off"
         enterKeyHint="done"
         value={name}
-        aria-invalid={empty || duplicate || undefined}
+        aria-invalid={nameError !== null || undefined}
         aria-describedby={message === null ? undefined : errorId}
         onChange={(event) => {
           setName(event.target.value);
-          setEmpty(false);
-          setDuplicate(false);
+          setNameError(null);
         }}
         className={`
           min-h-11 w-full rounded-xl bg-surface px-3 text-sm text-ink ring-1 ring-hairline
