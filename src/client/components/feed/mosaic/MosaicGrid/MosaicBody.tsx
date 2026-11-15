@@ -25,6 +25,7 @@ import { layoutMasonry, neighbourOf, tileAspect } from "client/utils/masonry";
 import type { Direction, MasonryItem, MasonryLayout } from "client/utils/masonry";
 import { textCardHeight } from "client/utils/textHeight";
 import { useLeavingTiles } from "client/hooks/useLeavingTiles";
+import { useHoldWhileCovered } from "client/hooks/useHoldWhileCovered";
 import { useElementHeight } from "client/hooks/useElementHeight";
 import { useElementWidth } from "client/hooks/useElementWidth";
 import { usePullToRefresh } from "client/hooks/usePullToRefresh";
@@ -37,11 +38,6 @@ import { MosaicFreshness } from "./MosaicFreshness";
 import { MosaicSentinel } from "./MosaicSentinel";
 import { MosaicSkeleton } from "./MosaicSkeleton";
 import { actionClassName } from "./shared";
-
-// Below `lg` the list is hidden while the reader is open, and the reader closes through a view
-// transition: a card turned read in there waits this long after the close before it leaves, so
-// the leave plays on a list the eye can see.
-const READER_SETTLE_MS = 300;
 
 // The leading card's layout id; entry ids never collide with it.
 const LEADING_ID = "leading";
@@ -199,23 +195,7 @@ export const MosaicBody = ({
   }, []);
   // The card to focus once the render that closed the focused one has committed.
   const [handoffId, setHandoffId] = useState<string>();
-  const [settling, setSettling] = useState(false);
-  const [wasCovered, setWasCovered] = useState(listCovered);
-  if (listCovered !== wasCovered) {
-    setWasCovered(listCovered);
-    if (!listCovered) setSettling(true);
-  }
-  // The pass that notices the uncovering still runs with the old `settling`, so it holds too.
-  const holdLeave = listCovered || settling || listCovered !== wasCovered;
-  useEffect(() => {
-    if (!settling) return undefined;
-    const timer = window.setTimeout(() => {
-      setSettling(false);
-    }, READER_SETTLE_MS);
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [settling]);
+  const holdLeave = useHoldWhileCovered({ covered: listCovered });
 
   // The sentinel's visibility is a signal from the browser, not derived state — an
   // IntersectionObserver Effect is the "synchronizing with an external system" carve-out.
