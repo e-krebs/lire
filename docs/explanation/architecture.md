@@ -484,6 +484,11 @@ An empty article list shows one of the "doing nothing" scenes above its text, pi
 the empty state mounts and again each time a refresh lands, never the same scene twice in a row ([MosaicEmptyArt.tsx](../../src/client/components/feed/mosaic/MosaicGrid/MosaicEmptyArt.tsx)).
 Each scene has a day and a dusk WebP (`-light` and `-dark`) in [src/client/assets/empty](../../src/client/assets/empty).
 The `emptySprites` Vite plugin ([emptySprites.ts](../../scripts/vite/emptySprites.ts)) packs them into two sheets, one per phase, behind the `virtual:empty-sprites` module. A build ships `empty-day-*.webp` and `empty-dusk-*.webp` instead of 46 files, and `index.html` gets a `prefetch` hint for each. The dev server serves the same sheets from `/__empty-sprites/`. Each image is a `div` that crops its cell with `background-position`.
+
+`public/_headers` sets `Cache-Control: public, max-age=31536000, immutable` on the two sprite
+sheets and the icon sprite (`/assets/empty-*` and `/assets/icons-*`). Their names carry a content
+hash, so each build ships new names and browsers can keep an old one for a year. Other images keep
+the Pages default. The demo and Storybook builds ship the same file, which is harmless.
 The phase comes from the sun: the client asks `GET /api/sun` for its time zone
 ([api.md](../reference/api.md)) and refetches when `nextChangeAt` passes, so the image swaps live
 at sunrise and sunset. While that loads, the image stays hidden, so a dark-scheme browser never shows dusk before day.
