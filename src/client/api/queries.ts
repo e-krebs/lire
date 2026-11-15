@@ -252,6 +252,7 @@ export const useUpdatePreferences = () => {
     mutationKey: keys.preferences,
     scope: { id: "preferences" },
     mutationFn: updatePreferences,
+    meta: { notifyOnFailure: true },
     onMutate: async (patch: PreferencesUpdate) => {
       const overlapped = othersPending() > 0;
       await client.cancelQueries({ queryKey: keys.preferences });
@@ -654,6 +655,7 @@ export const useMark = () => {
   return useMutation({
     mutationKey: MARK_KEY,
     mutationFn: sendMark,
+    meta: { notifyOnFailure: true },
     // Offline, a paused mutation would never reach the queue, so the read would not be stored.
     networkMode: "always",
     onMutate: async ({ entryIds, read, sourceKey }: MarkVariables) => {
@@ -929,6 +931,7 @@ export const useRenameCategory = () => {
   const client = useQueryClient();
   return useMutation({
     mutationFn: renameCategory,
+    meta: { notifyOnFailure: true },
     onMutate: async ({ categoryId, label }: { categoryId: string; label: string }) => {
       await cancelLibrary(client);
       const previous = client
@@ -1003,6 +1006,7 @@ export const useUpdateFeed = () => {
   return useMutation({
     mutationKey: UPDATE_FEED_KEY,
     mutationFn: updateFeed,
+    meta: { notifyOnFailure: true },
     onMutate: async (patch: { feedId: string; title?: string; categoryIds?: string[] }) => {
       await cancelLibrary(client);
       const previous = client

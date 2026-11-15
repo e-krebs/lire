@@ -18,10 +18,12 @@ import type {
 import { OnboardingPatchSchema, PreferencesUpdateSchema } from "shared/feedsApi/types";
 import { server } from "test/msw";
 import { seedCategories, seedCategoryId, seedCategoryKey } from "test/seedCategories";
+import { dismissWriteFailure, useWriteFailure } from "client/utils/writeFailure";
 import { FAKE_USER_ID } from "../adapters/fakeNewsblur";
 import { resetFixtureState } from "../adapters/fixture";
 import { ApiError, getFeeds } from "../client";
 import { markQueue } from "../markQueue";
+import { queryClient } from "../queryClient";
 import { keys } from "../keys";
 import { markStore } from "../markStore";
 import type { MatchCount } from "../queries";
@@ -83,7 +85,10 @@ const sentNow = async (promise: Promise<unknown>): Promise<void> => {
 const setup = () => {
   resetFixtureState();
   vi.stubEnv("VITE_API_MODE", "mock");
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+    mutationCache: queryClient.getMutationCache(),
+  });
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
   );
@@ -131,6 +136,7 @@ const categoryIdsOf = async (feedId: string): Promise<string[] | undefined> =>
 describe("queries", () => {
   beforeEach(async () => {
     await markQueue.setUser({ userId: FAKE_USER_ID });
+    dismissWriteFailure();
   });
 
   const counts: Counts = { all: 9, feeds: { "101": 4 }, categories: { Tech: 6 } };
@@ -2047,6 +2053,66 @@ describe("queries", () => {
       expect(client.getQueryState(otherFeed)?.isInvalidated).toBe(false);
       expect(client.getQueryState(allStream)?.isInvalidated).toBe(true);
       expect(client.getQueryState(folderSearch)?.isInvalidated).toBe(true);
+    });
+  });
+
+  describe("when a tagged write fails", () => {
+    it("reports a failed mark", async () => {
+      const { client, wrapper } = setup();
+      vi.stubEnv("VITE_API_MODE", "real");
+      client.setQueryData(keys.stream({ streamKey: techKey }), page([entry({ id: "101:a" })]));
+      server.use(
+        http.post("/api/entries/mark", () => HttpResponse.json({ error: "bad" }, { status: 400 })),
+      );
+      const { result } = renderHook(() => useMark(), { wrapper });
+      const failures = renderHook(() => useWriteFailure());
+
+      await act(async () => {
+        await sentNow(result.current.mutateAsync({ entryIds: ["101:a"], read: true })).catch(
+          () => {},
+        );
+      });
+
+      expect(failures.result.current.failureId).toBe(1);
+    });
+
+    it("reports a failed rename", async () => {
+      const { client, wrapper } = setup();
+      vi.stubEnv("VITE_API_MODE", "real");
+      seedLibrary(client);
+      server.use(
+        http.patch("/api/categories/:id", () =>
+          HttpResponse.json({ error: "boom" }, { status: 500 }),
+        ),
+      );
+      const { result } = renderHook(() => useRenameCategory(), { wrapper });
+      const failures = renderHook(() => useWriteFailure());
+
+      await act(async () => {
+        await result.current
+          .mutateAsync({ categoryId: "Design", label: "Design & UX" })
+          .catch(() => undefined);
+      });
+
+      expect(result.current.isError).toBe(true);
+      expect(failures.result.current.failureId).toBe(1);
+    });
+
+    it("does not report a failed onboarding update", async () => {
+      const { wrapper } = setup();
+      vi.stubEnv("VITE_API_MODE", "real");
+      server.use(
+        http.patch("/api/onboarding", () => HttpResponse.json({ error: "boom" }, { status: 500 })),
+      );
+      const { result } = renderHook(() => useUpdateOnboarding(), { wrapper });
+      const failures = renderHook(() => useWriteFailure());
+
+      await act(async () => {
+        await result.current.mutateAsync({ done: { addFeed: true } }).catch(() => undefined);
+      });
+
+      expect(result.current.isError).toBe(true);
+      expect(failures.result.current.failureId).toBe(0);
     });
   });
 });

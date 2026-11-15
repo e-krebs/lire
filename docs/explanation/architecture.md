@@ -390,6 +390,8 @@ Reload flushes the read-mark queue for at most 2 seconds, then tells the worker 
 the page reloads once the new worker controls it. The page reloads at once when no worker waits or
 the page has no controller, and 3 seconds after the request when the worker never takes control. The same toast announces once that the app opens offline.
 
+A user-initiated optimistic mutation tagged `meta.notifyOnFailure` reports its failure. The `MutationCache` in [queryClient.ts](../../src/client/api/queryClient.ts) calls `reportWriteFailure`, and `WriteFailureToast` shows a notice for 6 seconds. Onboarding writes are untagged on purpose, so a failure there stays silent. A rollback without the tag stays silent too.
+
 Later does not drop the update. The toast shrinks into the cog
 (a CSS animation, `.toast-absorb` in [styles.css](../../src/client/styles.css)), a dot marks the cog, and the cog menu
 keeps a "Reload to update" entry for as long as the update waits. The entry shows beside the toast
