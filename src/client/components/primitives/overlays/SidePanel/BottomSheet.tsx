@@ -1,5 +1,6 @@
-import { use, useCallback, useEffect, useLayoutEffect, useRef } from "react";
+import { use, useEffect, useLayoutEffect, useRef } from "react";
 import { useBackdropDismiss } from "client/components/primitives/overlays/ConfirmDialog";
+import { useModalDialog } from "client/hooks/useModalDialog";
 import { PanelExitContext } from "./PanelExitContext";
 import type { PanelShellProps } from "./shared";
 import { useAfterExit } from "./useAfterExit";
@@ -14,25 +15,15 @@ export const BottomSheet = ({
   children,
 }: PanelShellProps) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const onCloseRef = useRef(onClose);
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
   const onExited = use(PanelExitContext);
   const closing = onExited !== null;
   // A close the owner started is no close request.
   const closingRef = useRef(closing);
-
-  // jsdom has no showModal()/close(): fall back to the `open` attribute and call `onClose`
-  // ourselves, since removing it fires no "close" event.
-  const closeDialogElement = useCallback((dialog: HTMLDialogElement): void => {
-    if (typeof dialog.showModal === "function") {
-      dialog.close();
-    } else {
-      dialog.removeAttribute("open");
-      if (!closingRef.current) onCloseRef.current();
-    }
-  }, []);
+  const { show, close } = useModalDialog({
+    dialogRef,
+    onClose,
+    shouldNotify: () => !closingRef.current,
+  });
 
   // Closing keeps the sheet mounted: close() runs its exit transition (styles.css), and a reopen
   // during it shows the same sheet again.
@@ -41,32 +32,17 @@ export const BottomSheet = ({
     const dialog = dialogRef.current;
     if (!dialog) return;
     if (open && !closing) {
-      if (!dialog.open) {
-        if (typeof dialog.showModal === "function") dialog.showModal();
-        else dialog.setAttribute("open", "");
-      }
+      if (!dialog.open) show(dialog);
       focusHeading();
       return;
     }
-    if (dialog.open) closeDialogElement(dialog);
-  }, [open, closing, closeDialogElement, focusHeading]);
+    if (dialog.open) close(dialog);
+  }, [open, closing, show, close, focusHeading]);
   useAfterExit(dialogRef, onExited);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return undefined;
-    const handleClose = (): void => {
-      if (!closingRef.current) onCloseRef.current();
-    };
-    dialog.addEventListener("close", handleClose);
-    return () => {
-      dialog.removeEventListener("close", handleClose);
-    };
-  }, []);
 
   const requestClose = (): void => {
     const dialog = dialogRef.current;
-    if (dialog) closeDialogElement(dialog);
+    if (dialog) close(dialog);
   };
 
   useLayoutEffect(() => {
