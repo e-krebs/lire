@@ -24,6 +24,7 @@ import { useT } from "client/i18n/useT";
 import { layoutMasonry, neighbourOf, tileAspect } from "client/utils/masonry";
 import type { Direction, MasonryItem, MasonryLayout } from "client/utils/masonry";
 import { textCardHeight } from "client/utils/textHeight";
+import { useLeavingTiles } from "client/hooks/useLeavingTiles";
 import { useElementHeight } from "client/hooks/useElementHeight";
 import { useElementWidth } from "client/hooks/useElementWidth";
 import { usePullToRefresh } from "client/hooks/usePullToRefresh";
@@ -37,8 +38,6 @@ import { MosaicSentinel } from "./MosaicSentinel";
 import { MosaicSkeleton } from "./MosaicSkeleton";
 import { actionClassName } from "./shared";
 
-// Matches the leave transition of the tile.
-const LEAVE_MS = 200;
 // Below `lg` the list is hidden while the reader is open, and the reader closes through a view
 // transition: a card turned read in there waits this long after the close before it leaves, so
 // the leave plays on a list the eye can see.
@@ -188,8 +187,7 @@ export const MosaicBody = ({
   const mark = useMark();
   // A card marked read in an unread-only view goes through two states: `leaving`, fading out in
   // the slot it had, since the layout no longer places it; then `gone`, out of the layout for good.
-  const [leaving, setLeaving] = useState<ReadonlyMap<string, TileSlot>>(() => new Map());
-  const [gone, setGone] = useState<ReadonlySet<string>>(() => new Set());
+  const { leaving, gone, leave, remove, revive } = useLeavingTiles();
   // Entries this grid has shown unread. Only these can turn read under its eyes: one already read
   // when it arrived (closed before a remount, or read in another view) stays out.
   const [seenUnread, setSeenUnread] = useState<ReadonlySet<string>>(() => new Set());
@@ -269,17 +267,6 @@ export const MosaicBody = ({
     // oxlint-disable-next-line react/set-state-in-effect -- consume the one-shot hand-off
     setHandoffId(undefined);
   }, [frame, handoffId]);
-
-  useEffect(() => {
-    if (leaving.size === 0) return undefined;
-    const timer = window.setTimeout(() => {
-      setGone((prev) => new Set([...prev, ...leaving.keys()]));
-      setLeaving(new Map());
-    }, LEAVE_MS);
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [leaving]);
 
   const loadingLabel =
     searchQuery === undefined
@@ -499,9 +486,7 @@ export const MosaicBody = ({
       (entry) => entry.unread && (leaving.has(entry.id) || gone.has(entry.id)),
     );
     if (revived.length > 0) {
-      const ids = new Set(revived.map((entry) => entry.id));
-      setLeaving((prev) => new Map([...prev].filter(([id]) => !ids.has(id))));
-      setGone((prev) => new Set([...prev].filter((id) => !ids.has(id))));
+      revive({ ids: new Set(revived.map((entry) => entry.id)) });
     }
     const turned = placed.filter((entry) => !entry.unread);
     if (turned.length > 0) {
@@ -509,17 +494,15 @@ export const MosaicBody = ({
         const next = cardHasFocus(entry.id) ? leavingNeighbour(entry.id) : undefined;
         if (next !== undefined) setHandoffId(next);
       }
-      setLeaving((prev) => {
-        const next = new Map(prev);
-        for (const entry of turned) {
-          const slot = layout.positions.get(entry.id);
-          if (slot) next.set(entry.id, slot);
-        }
-        return next;
-      });
+      const slots = new Map<string, TileSlot>();
+      for (const entry of turned) {
+        const slot = layout.positions.get(entry.id);
+        if (slot) slots.set(entry.id, slot);
+      }
+      leave({ slots });
       const unplaced = turned.filter((entry) => !layout.positions.has(entry.id));
       if (unplaced.length > 0) {
-        setGone((prev) => new Set([...prev, ...unplaced.map((entry) => entry.id)]));
+        remove({ ids: new Set(unplaced.map((entry) => entry.id)) });
       }
     }
   }
