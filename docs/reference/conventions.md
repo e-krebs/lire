@@ -18,6 +18,8 @@ file. A folder with one public export holds the component in `index.tsx`. A fold
 public exports gets an `index.ts` barrel, one file per export. A lint rule rejects an `index.ts`
 that re-exports a single value.
 
+Route errors and unknown routes render through `RouteError` and `RouteNotFound` in `components/app/notices`.
+
 A component never defines JSX in a variable or a render helper inside another component. Make it
 a component with props. A lint rule checks this in `src/client`, tests and stories excluded. An
 exception takes an `oxlint-disable-next-line` with the reason.

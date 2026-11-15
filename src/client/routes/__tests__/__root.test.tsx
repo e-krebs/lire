@@ -1,14 +1,27 @@
-import { act, cleanup, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { onlineManager, type QueryClient } from "@tanstack/react-query";
+import {
+  Outlet,
+  RouterProvider,
+  createMemoryHistory,
+  createRoute,
+  createRootRoute,
+  createRouter,
+} from "@tanstack/react-router";
 import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { resetFixtureState } from "client/api/adapters/fixture";
 import { ApiError } from "client/api/client";
 import { keys } from "client/api/keys";
 import { markQueue } from "client/api/markQueue";
+import { RouteError } from "client/components/app/notices/RouteError";
 import { fixtureBackend } from "test/fixtureBackend";
 import { server } from "test/msw";
 import { renderApp } from "test/renderApp";
+
+const Broken = () => {
+  throw new Error("route failed");
+};
 
 const ui = {
   get signInLinks() {
@@ -43,6 +56,21 @@ const ui = {
   },
   get alert() {
     return screen.queryByRole("alert");
+  },
+  get notFoundTitle() {
+    return screen.findByText("This page doesn't exist.");
+  },
+  get backHomeLink() {
+    return screen.getByRole("link", { name: "Back to home" });
+  },
+  get routeErrorAlert() {
+    return screen.findByRole("alert");
+  },
+  get reloadButton() {
+    return screen.getByRole("button", { name: "Reload the page" });
+  },
+  get routeChrome() {
+    return screen.queryByText("Route chrome");
   },
 };
 
@@ -308,6 +336,56 @@ describe("root route", () => {
 
     expect(await ui.loadingArticles).toBeInTheDocument();
     expect(ui.signInLinks).toHaveLength(0);
+  });
+
+  describe("when a route fails", () => {
+    it("shows the not-found screen with a link home for an unknown path", async () => {
+      setup({ url: "/no/such/page" });
+
+      expect(await ui.notFoundTitle).toBeInTheDocument();
+      expect(ui.backHomeLink).toHaveAttribute("href", "/");
+    });
+
+    it("keeps the parent route chrome and offers a way back when a child route throws", async () => {
+      const root = createRootRoute({
+        component: () => (
+          <>
+            <p>Route chrome</p>
+            <Outlet />
+          </>
+        ),
+      });
+      const broken = createRoute({
+        getParentRoute: () => root,
+        path: "/broken",
+        component: Broken,
+      });
+      const router = createRouter({
+        routeTree: root.addChildren([broken]),
+        history: createMemoryHistory({ initialEntries: ["/broken"] }),
+        defaultErrorComponent: RouteError,
+      });
+      await router.load();
+      render(<RouterProvider router={router} />);
+
+      expect(await ui.routeErrorAlert).toHaveTextContent("Something went wrong.");
+      expect(ui.reloadButton).toBeInTheDocument();
+      expect(ui.routeChrome).toBeInTheDocument();
+    });
+
+    it("shows the error screen alone when the root route throws", async () => {
+      const router = createRouter({
+        routeTree: createRootRoute({ component: Broken }),
+        history: createMemoryHistory({ initialEntries: ["/"] }),
+        defaultErrorComponent: RouteError,
+      });
+      await router.load();
+      render(<RouterProvider router={router} />);
+
+      expect(await ui.routeErrorAlert).toHaveTextContent("Something went wrong.");
+      expect(ui.routeChrome).not.toBeInTheDocument();
+      expect(ui.topBar).not.toBeInTheDocument();
+    });
   });
 
   describe("when in the demo", () => {

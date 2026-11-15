@@ -43,6 +43,10 @@ styles, and Zod to parse every response against the schemas in
 `dist/`, and every data call goes through one module,
 [src/client/api/client.ts](../../src/client/api/client.ts).
 
+The router sets `RouteError` and `RouteNotFound` from [notices/](../../src/client/components/app/notices/)
+as its default error and not-found components. The reader route, `/stream/$streamKey/entry/$entryId`,
+has its own error component, so a failed article replaces only the reader and the list stays visible.
+
 The reader sanitizes every article body with DOMPurify. A blog post renders inline under
 `.prose-reader`. A newsletter, recognized by the `webfeeds--newsletter` wrapper in its HTML, renders
 in a sandboxed `srcdoc` iframe on a full-width band, so the sender's own layout and colors
