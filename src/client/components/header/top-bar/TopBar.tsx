@@ -15,6 +15,7 @@ import { AccountMenu } from "client/components/app/account/AccountMenu";
 import { backButtonClassName } from "client/components/primitives/controls/backButtonClassName";
 import { Icon } from "client/components/primitives/icons/icons";
 import { LocationBar } from "client/components/header/location/LocationBar";
+import type { LocationModel } from "client/components/header/location/locationModel";
 import { Navigator } from "client/components/browse-menu/menu/Navigator";
 import type { NavigatorPanelHandle } from "client/components/browse-menu/menu/Navigator";
 import { ViewToggles } from "client/components/header/views/ViewToggles";
@@ -166,6 +167,18 @@ export const TopBar = () => {
     void navigate({ to: "/" });
   };
 
+  const locationModel: LocationModel = {
+    scopeKey,
+    scopeLabel,
+    clearable,
+    count,
+    edit,
+    draft,
+    onDraftChange: setDraft,
+    onClearScope: clearScope,
+    onClearText: clearText,
+  };
+
   return (
     <header
       className={`
@@ -214,17 +227,10 @@ export const TopBar = () => {
           </Link>
           <LocationBar
             ref={barRef}
+            location={locationModel}
             onOpen={openPanel}
-            draft={draft}
-            onDraftChange={setDraft}
             onSearchKeyDown={handleSearchKeyDown}
             inputRef={inputRef}
-            clearable={clearable}
-            scopeLabel={scopeLabel}
-            count={count}
-            onClearScope={clearScope}
-            onClearText={clearText}
-            edit={edit}
             viewControls={
               // The recently-read stream is read entries, newest first: nothing to filter or sort.
               streamKey === undefined || streamKey === "read" ? undefined : (
@@ -236,15 +242,9 @@ export const TopBar = () => {
             open={panelOpen}
             onClose={closePanel}
             onRequestFocus={focusInput}
-            query={draft}
-            onQueryChange={setDraft}
             anchorRef={barRef}
             panelHandleRef={panelHandleRef}
-            clearable={clearable}
-            scopeKey={scopeKey}
-            scopeLabel={scopeLabel}
-            onClearScope={clearScope}
-            onClearText={clearText}
+            location={locationModel}
           />
         </>
       )}

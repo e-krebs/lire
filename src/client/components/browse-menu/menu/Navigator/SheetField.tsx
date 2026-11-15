@@ -1,31 +1,19 @@
 import type { RefObject } from "react";
 import type { NavigatorPanelHandle } from "client/components/browse-menu/menu/NavigatorPanel";
 import { ScopeChip } from "client/components/header/location/ScopeChip";
+import type { LocationModel } from "client/components/header/location/locationModel";
 import { Icon } from "client/components/primitives/icons/icons";
 import { useT } from "client/i18n/useT";
 import { tip } from "client/utils/tooltip";
 
 interface SheetFieldProps {
   inputRef: RefObject<HTMLInputElement | null>;
-  query: string;
-  onQueryChange: (value: string) => void;
   panelHandleRef: RefObject<NavigatorPanelHandle | null>;
-  clearable: boolean;
-  scopeLabel: string;
-  onClearScope: () => void;
-  onClearText: () => void;
+  location: LocationModel;
 }
 
-export const SheetField = ({
-  inputRef,
-  query,
-  onQueryChange,
-  panelHandleRef,
-  clearable,
-  scopeLabel,
-  onClearScope,
-  onClearText,
-}: SheetFieldProps) => {
+export const SheetField = ({ inputRef, panelHandleRef, location }: SheetFieldProps) => {
+  const { draft, onDraftChange, clearable, scopeLabel, onClearScope, onClearText } = location;
   const t = useT().navigation;
   return (
     <div className="flex-none border-b border-hairline px-3.5 py-3 bar-bottom:border-t bar-bottom:border-b-0">
@@ -40,9 +28,9 @@ export const SheetField = ({
         <input
           ref={inputRef}
           type="search"
-          value={query}
+          value={draft}
           onChange={(event) => {
-            onQueryChange(event.target.value);
+            onDraftChange(event.target.value);
           }}
           onKeyDown={(event) => {
             // Backspace at the very start eats the chip first, as in the desktop bar.
@@ -66,7 +54,7 @@ export const SheetField = ({
           [&::-webkit-search-cancel-button]:appearance-none
         `}
         />
-        {query === "" ? null : (
+        {draft === "" ? null : (
           <button
             type="button"
             {...tip({ label: t.clearSearchText })}

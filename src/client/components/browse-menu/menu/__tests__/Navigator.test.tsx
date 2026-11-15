@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { userEvent } from "@testing-library/user-event";
 import type { MatchCount } from "client/api/queries";
+import type { LocationModel } from "client/components/header/location/locationModel";
 import {
   Outlet,
   RouterProvider,
@@ -319,22 +320,27 @@ const Harness = ({ count }: { count: MatchCount | undefined }) => {
     }
   };
 
+  const location: LocationModel = {
+    scopeKey,
+    scopeLabel,
+    clearable: scopeKey !== "all",
+    count,
+    draft,
+    onDraftChange: setDraft,
+    onClearScope: clearScope,
+    onClearText: clearText,
+  };
+
   return (
     <>
       <LocationBar
         ref={barRef}
+        location={location}
         onOpen={openPanel}
-        draft={draft}
-        onDraftChange={setDraft}
         onSearchKeyDown={(event) => {
           panelHandleRef.current?.handleKeyDown(event);
         }}
         inputRef={inputRef}
-        clearable={scopeKey !== "all"}
-        scopeLabel={scopeLabel}
-        count={count}
-        onClearScope={clearScope}
-        onClearText={clearText}
       />
       <Navigator
         open={panelOpen}
@@ -342,15 +348,9 @@ const Harness = ({ count }: { count: MatchCount | undefined }) => {
           setPanelOpen(false);
         }}
         onRequestFocus={focusInput}
-        query={draft}
-        onQueryChange={setDraft}
         anchorRef={barRef}
         panelHandleRef={panelHandleRef}
-        clearable={scopeKey !== "all"}
-        scopeKey={scopeKey}
-        scopeLabel={scopeLabel}
-        onClearScope={clearScope}
-        onClearText={clearText}
+        location={location}
       />
     </>
   );

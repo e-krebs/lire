@@ -3,19 +3,15 @@ import type { MouseEvent, ReactNode, RefObject } from "react";
 import { useBarPosition } from "client/hooks/useBarPosition";
 import type { NavigatorPanelHandle } from "client/components/browse-menu/menu/NavigatorPanel";
 import { useT } from "client/i18n/useT";
+import type { LocationModel } from "client/components/header/location/locationModel";
 import { SheetField } from "./SheetField";
 import { SheetHandle } from "./SheetHandle";
 
 interface PhoneSheetProps {
   open: boolean;
   onClose: () => void;
-  query: string;
-  onQueryChange: (value: string) => void;
   panelHandleRef: RefObject<NavigatorPanelHandle | null>;
-  clearable: boolean;
-  scopeLabel: string;
-  onClearScope: () => void;
-  onClearText: () => void;
+  location: LocationModel;
   children: ReactNode;
 }
 
@@ -43,13 +39,8 @@ const sheetClassName = `
 export const PhoneSheet = ({
   open,
   onClose,
-  query,
-  onQueryChange,
   panelHandleRef,
-  clearable,
-  scopeLabel,
-  onClearScope,
-  onClearText,
+  location,
   children,
 }: PhoneSheetProps) => {
   const t = useT().navigation;
@@ -258,13 +249,8 @@ export const PhoneSheet = ({
               <SheetField
                 key="field"
                 inputRef={inputRef}
-                query={query}
-                onQueryChange={onQueryChange}
                 panelHandleRef={panelHandleRef}
-                clearable={clearable}
-                scopeLabel={scopeLabel}
-                onClearScope={onClearScope}
-                onClearText={onClearText}
+                location={location}
               />
             );
           }
