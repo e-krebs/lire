@@ -1,16 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ComponentProps, CSSProperties, KeyboardEvent, ReactNode } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { StreamKey } from "shared/feedsApi/streamKey";
 import type { Entry } from "shared/feedsApi/types";
-import { keys } from "client/api/keys";
 import {
   flattenStream,
   useFeeds,
   useMark,
-  unreadCountFor,
-  useCounts,
   useRefreshAllLists,
   useRefreshEntries,
 } from "client/api/queries";
@@ -30,6 +26,7 @@ import { useElementHeight } from "client/hooks/useElementHeight";
 import { useElementWidth } from "client/hooks/useElementWidth";
 import { usePullToRefresh } from "client/hooks/usePullToRefresh";
 import type { PullState } from "client/hooks/usePullToRefresh";
+import { useReconcileBehindCounts } from "client/hooks/useReconcileBehindCounts";
 import { useRefreshOnForeground } from "client/hooks/useRefreshOnForeground";
 import { useRefreshShortcut } from "client/hooks/useRefreshShortcut";
 import { useTier } from "client/hooks/useTier";
@@ -134,34 +131,15 @@ export const MosaicBody = ({
   useRefreshOnForeground({
     onForeground: async () => refreshAllLists({ queryKey, refreshList: reconcileList }),
   });
-  // The top bar count and the list come from two calls. Counts newer than the list that name more
-  // unread than a fully loaded list holds mean the list missed entries: refetch it once. A list
-  // fetched after the counts never retriggers, so entries NewsBlur counts but hides cause no loop.
-  const queryClient = useQueryClient();
-  const counts = useCounts({ enabled: unreadOnly && !searchQuery?.trim() });
-  // Counts as of the last reconcile's end: the reconcile refetches the counts first, so a
-  // failed list would otherwise find them newer and retry forever.
-  const reconciledCountsAt = useRef(0);
-  const listBehindCounts =
-    unreadOnly &&
-    !searchQuery?.trim() &&
-    counts.data !== undefined &&
-    !hasNextPage &&
-    !result.isFetching &&
-    counts.dataUpdatedAt > result.dataUpdatedAt &&
-    counts.dataUpdatedAt > reconciledCountsAt.current &&
-    entries.filter((entry) => entry.unread).length <
-      unreadCountFor({ counts: counts.data, streamKey });
-  useEffect(() => {
-    if (!listBehindCounts) return;
-    void reconcileList()
-      .catch(() => {})
-      .finally(() => {
-        reconciledCountsAt.current = queryClient.getQueryState(keys.counts)?.dataUpdatedAt ?? 0;
-      });
-    // `reconcileList` is a new closure each render, and only the flag decides.
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [listBehindCounts]);
+  useReconcileBehindCounts({
+    enabled: unreadOnly && !searchQuery?.trim(),
+    streamKey,
+    entries,
+    hasNextPage,
+    isFetching: result.isFetching,
+    dataUpdatedAt: result.dataUpdatedAt,
+    reconcile: reconcileList,
+  });
   // Pulling up past the end refreshes only once every page is in and settled, or it would race
   // the sentinel.
   const { attach: attachPull, pull } = usePullToRefresh({
