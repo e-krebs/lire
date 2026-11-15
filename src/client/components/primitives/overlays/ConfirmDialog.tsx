@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import type { MouseEvent, PointerEvent, ReactNode } from "react";
+import { useModalDialog } from "client/hooks/useModalDialog";
 import { useT } from "client/i18n/useT";
 
 // A click on a modal <dialog>'s ::backdrop targets the <dialog> itself, and so do a click on its
@@ -74,22 +75,19 @@ export const ConfirmDialog = ({
   const triggerRef = useRef<HTMLElement | null>(null);
   // Set while the caller closes it, so that close reads as neither cancel nor Escape.
   const closingFromPropRef = useRef(false);
-  const onCancelRef = useRef(onCancel);
-  useEffect(() => {
-    onCancelRef.current = onCancel;
-  }, [onCancel]);
-
-  const closeDialogElement = useCallback((dialog: HTMLDialogElement): void => {
-    if (typeof dialog.showModal === "function") {
-      dialog.close();
-      return;
-    }
-    // jsdom: no showModal()/close(), so no native "close" event and no focus restore either.
-    dialog.removeAttribute("open");
-    if (triggerRef.current?.isConnected) triggerRef.current.focus();
-    if (closingFromPropRef.current) closingFromPropRef.current = false;
-    else onCancelRef.current();
-  }, []);
+  // Escape and the Cancel button both end in "close".
+  const { show, close } = useModalDialog({
+    dialogRef,
+    onClose: onCancel,
+    shouldNotify: () => {
+      if (!closingFromPropRef.current) return true;
+      closingFromPropRef.current = false;
+      return false;
+    },
+    onFallbackClose: () => {
+      if (triggerRef.current?.isConnected) triggerRef.current.focus();
+    },
+  });
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -98,8 +96,7 @@ export const ConfirmDialog = ({
       if (dialog.open) return;
       triggerRef.current =
         document.activeElement instanceof HTMLElement ? document.activeElement : null;
-      if (typeof dialog.showModal === "function") dialog.showModal();
-      else dialog.setAttribute("open", "");
+      show(dialog);
       const trigger = triggerRef.current?.getBoundingClientRect();
       const box = dialog.getBoundingClientRect();
       dialog.style.transformOrigin = trigger
@@ -109,22 +106,8 @@ export const ConfirmDialog = ({
     }
     if (!dialog.open) return;
     closingFromPropRef.current = true;
-    closeDialogElement(dialog);
-  }, [open, closeDialogElement]);
-
-  // Escape and the Cancel button both end in "close".
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return undefined;
-    const handleClose = (): void => {
-      if (closingFromPropRef.current) closingFromPropRef.current = false;
-      else onCancelRef.current();
-    };
-    dialog.addEventListener("close", handleClose);
-    return () => {
-      dialog.removeEventListener("close", handleClose);
-    };
-  }, []);
+    close(dialog);
+  }, [open, show, close]);
 
   // Without fresh user activation, Chrome closes on Escape with no cancelable "cancel", and a
   // cancelled keydown never becomes a close request. On `document`, since focus can sit on `body`
@@ -143,7 +126,7 @@ export const ConfirmDialog = ({
   const backdropDismiss = useBackdropDismiss(() => {
     if (busy) return;
     const dialog = dialogRef.current;
-    if (dialog) closeDialogElement(dialog);
+    if (dialog) close(dialog);
   });
 
   return (
@@ -174,7 +157,7 @@ export const ConfirmDialog = ({
           disabled={busy}
           onClick={() => {
             const dialog = dialogRef.current;
-            if (dialog) closeDialogElement(dialog);
+            if (dialog) close(dialog);
           }}
           className={`${buttonClassName} bg-surface-2 text-ink hover:not-disabled:bg-hairline`}
         >

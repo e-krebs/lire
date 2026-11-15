@@ -1,6 +1,7 @@
-import { Fragment, useCallback, useEffect, useRef } from "react";
+import { Fragment, useEffect, useRef } from "react";
 import type { MouseEvent, ReactNode, RefObject } from "react";
 import { useBarPosition } from "client/hooks/useBarPosition";
+import { useModalDialog } from "client/hooks/useModalDialog";
 import type { NavigatorPanelHandle } from "client/components/browse-menu/menu/NavigatorPanel";
 import { useT } from "client/i18n/useT";
 import type { LocationModel } from "client/components/header/location/locationModel";
@@ -48,26 +49,9 @@ export const PhoneSheet = ({
   const atBottom = position === "bottom";
   const dialogRef = useRef<HTMLDialogElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  // The parent passes a fresh `onClose` every render; read it through a ref so the open/close
-  // Effect below runs on `open` alone and never re-focuses the field while someone types in a row.
-  const onCloseRef = useRef(onClose);
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
-
-  // jsdom (Vitest) doesn't implement showModal()/close() — falling back to the plain `open`
-  // attribute (and calling `onClose` ourselves, since removing it fires no native "close" event)
-  // keeps the component testable there; real browsers always take the modal path.
-  const closeDialogElement = useCallback((dialog: HTMLDialogElement): void => {
-    // Same feature flag as the open path: jsdom's partial `close()` exists but doesn't flip the
-    // `open` attribute or fire the "close" event, so it can't be trusted on its own.
-    if (typeof dialog.showModal === "function") {
-      dialog.close();
-    } else {
-      dialog.removeAttribute("open");
-      onCloseRef.current();
-    }
-  }, []);
+  // Reads `onClose` through a ref, so the open/close Effect below runs on `open` alone and never
+  // re-focuses the field while someone types in a row.
+  const { show, close } = useModalDialog({ dialogRef, onClose });
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -77,29 +61,16 @@ export const PhoneSheet = ({
         // A swipe-down close leaves the sheet translated off screen; back in place before it shows.
         dialog.style.transition = "";
         dialog.style.translate = "";
-        if (typeof dialog.showModal === "function") dialog.showModal();
-        else dialog.setAttribute("open", "");
+        show(dialog);
       }
       const raf = requestAnimationFrame(() => inputRef.current?.focus());
       return () => {
         cancelAnimationFrame(raf);
       };
     }
-    if (dialog.open) closeDialogElement(dialog);
+    if (dialog.open) close(dialog);
     return undefined;
-  }, [open, closeDialogElement]);
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return undefined;
-    const handleClose = (): void => {
-      onClose();
-    };
-    dialog.addEventListener("close", handleClose);
-    return () => {
-      dialog.removeEventListener("close", handleClose);
-    };
-  }, [onClose]);
+  }, [open, show, close]);
 
   // With the field at the sheet's bottom edge, an on-screen keyboard would cover it: `100dvh`
   // does not shrink for the keyboard on iOS, while Android shrinks the whole layout viewport (the
@@ -192,7 +163,7 @@ export const PhoneSheet = ({
         // back against the bar for a frame first. The open path clears these two.
         dialog.style.transition = "translate 150ms ease";
         dialog.style.translate = direction > 0 ? "0 100%" : "0 -100%";
-        closeDialogElement(dialog);
+        close(dialog);
         return;
       }
       dialog.style.transition = "translate 200ms ease";
@@ -211,11 +182,11 @@ export const PhoneSheet = ({
       dialog.removeEventListener("touchcancel", onTouchEnd);
       reset();
     };
-  }, [closeDialogElement, atBottom]);
+  }, [close, atBottom]);
 
   const requestClose = (): void => {
     const dialog = dialogRef.current;
-    if (dialog) closeDialogElement(dialog);
+    if (dialog) close(dialog);
   };
 
   const handleBackdropClick = (event: MouseEvent<HTMLDialogElement>): void => {
