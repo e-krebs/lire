@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useLayoutEffect, useRef } from "react";
+import { use, useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { PanelExitContext } from "./PanelExitContext";
 import type { PanelShellProps } from "./shared";
 import { useAfterExit } from "./useAfterExit";
@@ -39,7 +39,7 @@ export const FloatingPanel = ({
   useLayoutEffect(() => {
     closeRef.current = onClose;
   });
-  const onExited = useContext(PanelExitContext);
+  const onExited = use(PanelExitContext);
   const closing = onExited !== null;
   useAfterExit(panelRef, onExited);
   const closingRef = useRef(closing);

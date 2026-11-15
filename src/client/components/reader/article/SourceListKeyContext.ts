@@ -1,5 +1,5 @@
 import { hashKey } from "@tanstack/react-query";
-import { createContext, useContext, useLayoutEffect } from "react";
+import { createContext, use, useLayoutEffect } from "react";
 
 interface SourceListKeyStore {
   current: () => readonly unknown[] | undefined;
@@ -25,7 +25,7 @@ export const createSourceListKeyStore = (): SourceListKeyStore => {
 export const SourceListKeyContext = createContext<SourceListKeyStore | undefined>(undefined);
 
 export const useRegisterSourceListKey = (queryKey: readonly unknown[]): void => {
-  const store = useContext(SourceListKeyContext);
+  const store = use(SourceListKeyContext);
   const hash = hashKey(queryKey);
   // Keyed on the hash: `queryKey` is a fresh array each render.
   // oxlint-disable-next-line react-hooks/exhaustive-deps
