@@ -313,7 +313,7 @@ delays the first read but never blocks it. `flush()` also waits for batches alre
 a refetch never overtakes a mark. Every stream, search and counts fetch sends the waiting marks
 first, so a list or a count never comes back with a mark still held in the 10 s batch. The start
 replay and that send share the 3 second cap, so a read POST that hangs never holds the lists.
-A refresh waits for its writes too: `settleWrites` in [queries.ts](../../src/client/api/queries.ts)
+A refresh waits for its writes too: `settleWrites` in [queries/refresh.ts](../../src/client/api/queries/refresh.ts)
 flushes the queue and waits for running mutations, such as a mark unread or a feed edit, so the
 refetch never returns the state from before a write. Mark mutations, read and unread, are left out of the mutation wait,
 because the flush covers them. The flush and the wait share one 3 second cap, so a paused offline
@@ -330,7 +330,7 @@ A device that sat in the background holds stale lists, and nothing refetches on 
 time is ten minutes. [useRefreshOnForeground](../../src/client/hooks/useRefreshOnForeground.ts)
 fires when the page returns after more than 60 seconds hidden, and skips a refresh while another
 is still running. `useRefreshAllLists` in
-[queries.ts](../../src/client/api/queries.ts) then settles the writes (the queue flush and the
+[queries/refresh.ts](../../src/client/api/queries/refresh.ts) then settles the writes (the queue flush and the
 running mutations, for at most 3 seconds) and invalidates every stream,
 search and entry cache plus the counts. The reader's own list refetches in
 place, on every tier: it keeps its pages and position, with no trim, no scroll to the top and no
