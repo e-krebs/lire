@@ -1,5 +1,4 @@
 import type { RefObject } from "react";
-import type { NavigatorPanelHandle } from "client/components/browse-menu/menu/NavigatorPanel";
 import { ScopeChip } from "client/components/header/location/ScopeChip";
 import type { LocationModel } from "client/components/header/location/locationModel";
 import { Icon } from "client/components/primitives/icons/icons";
@@ -8,12 +7,19 @@ import { tip } from "client/utils/tooltip";
 
 interface SheetFieldProps {
   inputRef: RefObject<HTMLInputElement | null>;
-  panelHandleRef: RefObject<NavigatorPanelHandle | null>;
   location: LocationModel;
 }
 
-export const SheetField = ({ inputRef, panelHandleRef, location }: SheetFieldProps) => {
-  const { draft, onDraftChange, clearable, scopeLabel, onClearScope, onClearText } = location;
+export const SheetField = ({ inputRef, location }: SheetFieldProps) => {
+  const {
+    draft,
+    onDraftChange,
+    clearable,
+    scopeLabel,
+    onClearScope,
+    onClearText,
+    onSearchKeyDown,
+  } = location;
   const t = useT().navigation;
   return (
     <div className="flex-none border-b border-hairline px-3.5 py-3 bar-bottom:border-t bar-bottom:border-b-0">
@@ -44,7 +50,7 @@ export const SheetField = ({ inputRef, panelHandleRef, location }: SheetFieldPro
               onClearScope();
               return;
             }
-            panelHandleRef.current?.handleKeyDown(event);
+            onSearchKeyDown(event);
           }}
           placeholder={clearable ? t.searchScoped : t.searchAll}
           aria-label={t.searchArticlesAndFeeds}

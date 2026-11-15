@@ -12,7 +12,6 @@ import { useTier } from "client/hooks/useTier";
 interface LocationBarProps {
   location: LocationModel;
   onOpen: () => void;
-  onSearchKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
   inputRef: RefObject<HTMLInputElement | null>;
   // The view toggles, rendered behind a hairline at the pill's right end.
   viewControls?: ReactNode;
@@ -81,13 +80,21 @@ const PillDivider = ({ viewControls, inert }: PillDividerProps) =>
 export const LocationBar = ({
   location,
   onOpen,
-  onSearchKeyDown,
   inputRef,
   viewControls,
   ref,
 }: LocationBarProps) => {
-  const { draft, onDraftChange, clearable, scopeLabel, count, onClearScope, onClearText, edit } =
-    location;
+  const {
+    draft,
+    onDraftChange,
+    clearable,
+    scopeLabel,
+    count,
+    onClearScope,
+    onClearText,
+    edit,
+    onSearchKeyDown,
+  } = location;
   const t = useT().navigation;
   const tier = useTier();
   const locationId = useId();

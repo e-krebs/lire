@@ -1,8 +1,7 @@
 import { Fragment, useEffect, useRef } from "react";
-import type { MouseEvent, ReactNode, RefObject } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { useBarPosition } from "client/hooks/useBarPosition";
 import { useModalDialog } from "client/hooks/useModalDialog";
-import type { NavigatorPanelHandle } from "client/components/browse-menu/menu/NavigatorPanel";
 import { useT } from "client/i18n/useT";
 import type { LocationModel } from "client/components/header/location/locationModel";
 import { SheetField } from "./SheetField";
@@ -11,7 +10,6 @@ import { SheetHandle } from "./SheetHandle";
 interface PhoneSheetProps {
   open: boolean;
   onClose: () => void;
-  panelHandleRef: RefObject<NavigatorPanelHandle | null>;
   location: LocationModel;
   children: ReactNode;
 }
@@ -37,13 +35,7 @@ const sheetClassName = `
 // The sheet mirrors itself around the app bar: bar at the top, it hangs from the top edge with the
 // handle and the field above the results; bar at the bottom, it hangs from the bottom edge with
 // the results above them, so both stay under the thumb.
-export const PhoneSheet = ({
-  open,
-  onClose,
-  panelHandleRef,
-  location,
-  children,
-}: PhoneSheetProps) => {
+export const PhoneSheet = ({ open, onClose, location, children }: PhoneSheetProps) => {
   const t = useT().navigation;
   const position = useBarPosition();
   const atBottom = position === "bottom";
@@ -216,14 +208,7 @@ export const PhoneSheet = ({
         ).map((section) => {
           if (section === "handle") return <SheetHandle key="handle" />;
           if (section === "field") {
-            return (
-              <SheetField
-                key="field"
-                inputRef={inputRef}
-                panelHandleRef={panelHandleRef}
-                location={location}
-              />
-            );
+            return <SheetField key="field" inputRef={inputRef} location={location} />;
           }
           return <Fragment key="panel">{children}</Fragment>;
         })}

@@ -9,7 +9,10 @@ import { ViewToggles } from "client/components/header/views/ViewToggles";
 import { withRouter, withTier } from "stories/decorators";
 import type { Tier } from "stories/decorators";
 
-type Args = Omit<ComponentProps<typeof LocationBar>, "inputRef"> & { tier: Tier };
+type Args = Omit<ComponentProps<typeof LocationBar>, "inputRef"> & {
+  tier: Tier;
+  onSearchKeyDown: LocationModel["onSearchKeyDown"];
+};
 
 const locationArgs = (overrides: Partial<LocationModel> = {}): LocationModel => ({
   scopeKey: "all",
@@ -20,6 +23,7 @@ const locationArgs = (overrides: Partial<LocationModel> = {}): LocationModel => 
   onDraftChange: fn(),
   onClearScope: fn(),
   onClearText: fn(),
+  onSearchKeyDown: fn(),
   ...overrides,
 });
 
@@ -48,7 +52,7 @@ const meta: Meta<Args> = {
     onSearchKeyDown: fn(),
     viewControls: <ViewToggles search={{}} />,
   },
-  render: function Render({ tier: _tier, ...args }) {
+  render: function Render({ tier: _tier, onSearchKeyDown, ...args }) {
     const [, updateArgs] = useArgs();
     const inputRef = useRef<HTMLInputElement>(null);
     return (
@@ -57,6 +61,7 @@ const meta: Meta<Args> = {
         inputRef={inputRef}
         location={{
           ...args.location,
+          onSearchKeyDown,
           onDraftChange: (draft) => {
             updateArgs({ location: { ...args.location, draft } });
           },
