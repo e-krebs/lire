@@ -78,6 +78,10 @@ export const en = {
   demoReadCaption: "Read articles and newsletters",
   demoSwipeCaption: "Swipe a card to mark it read",
   demoReorderCaption: "Drag categories to reorder them",
+  routeErrorTitle: "Something went wrong.",
+  routeErrorReload: "Reload the page",
+  notFoundTitle: "This page doesn't exist.",
+  notFoundBackHome: "Back to home",
 } as const;
 
 export const fr = {
@@ -160,4 +164,8 @@ export const fr = {
   demoReadCaption: "Lisez articles et newsletters",
   demoSwipeCaption: "Balayez une carte pour la marquer comme lue",
   demoReorderCaption: "Glissez les catégories pour les réordonner",
+  routeErrorTitle: "Une erreur est survenue.",
+  routeErrorReload: "Recharger la page",
+  notFoundTitle: "Cette page n'existe pas.",
+  notFoundBackHome: "Retour à l'accueil",
 } satisfies Messages<typeof en>;
