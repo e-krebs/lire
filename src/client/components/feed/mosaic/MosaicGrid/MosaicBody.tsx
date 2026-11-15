@@ -22,6 +22,7 @@ import type { Direction, MasonryItem, MasonryLayout } from "client/utils/masonry
 import { textCardHeight } from "client/utils/textHeight";
 import { useLeavingTiles } from "client/hooks/useLeavingTiles";
 import { useHoldWhileCovered } from "client/hooks/useHoldWhileCovered";
+import { useFocusHandoff } from "client/hooks/useFocusHandoff";
 import { useElementHeight } from "client/hooks/useElementHeight";
 import { useElementWidth } from "client/hooks/useElementWidth";
 import { usePullToRefresh } from "client/hooks/usePullToRefresh";
@@ -171,8 +172,8 @@ export const MosaicBody = ({
   const markImageBroken = useCallback((url: string) => {
     setBrokenImages((prev) => (prev.has(url) ? prev : new Set(prev).add(url)));
   }, []);
-  // The card to focus once the render that closed the focused one has committed.
-  const [handoffId, setHandoffId] = useState<string>();
+  // Requested during the render that closes the focused card; focus lands after that commit.
+  const requestFocus = useFocusHandoff({ frame });
   const holdLeave = useHoldWhileCovered({ covered: listCovered });
 
   // The sentinel's visibility is a signal from the browser, not derived state — an
@@ -215,16 +216,6 @@ export const MosaicBody = ({
     isFetchNextPageError,
     fetchNextPage,
   ]);
-
-  useEffect(() => {
-    if (handoffId === undefined) return;
-    frame
-      ?.querySelector(`[data-entry-id="${CSS.escape(handoffId)}"]`)
-      ?.querySelector<HTMLElement>("a")
-      ?.focus();
-    // oxlint-disable-next-line react/set-state-in-effect -- consume the one-shot hand-off
-    setHandoffId(undefined);
-  }, [frame, handoffId]);
 
   const loadingLabel =
     searchQuery === undefined
@@ -450,7 +441,7 @@ export const MosaicBody = ({
     if (turned.length > 0) {
       for (const entry of turned) {
         const next = cardHasFocus(entry.id) ? leavingNeighbour(entry.id) : undefined;
-        if (next !== undefined) setHandoffId(next);
+        if (next !== undefined) requestFocus(next);
       }
       const slots = new Map<string, TileSlot>();
       for (const entry of turned) {

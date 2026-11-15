@@ -1,4 +1,4 @@
-import { render, waitFor, type RenderResult } from "@testing-library/react";
+import { act, render, waitFor, type RenderResult } from "@testing-library/react";
 import {
   RouterProvider,
   createMemoryHistory,
@@ -7,8 +7,10 @@ import {
   createRouter,
 } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { InfiniteData } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { EntryPage } from "shared/feedsApi/types";
 import { resetFixtureState } from "client/api/adapters/fixture";
 import { keys } from "client/api/keys";
 import { fixtureBackend } from "test/fixtureBackend";
@@ -75,6 +77,7 @@ describe("MosaicBody with an empty stream", () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
   });
 
   it("welcomes an account with no subscriptions and links to adding one", async () => {
@@ -103,5 +106,68 @@ describe("MosaicBody with an empty stream", () => {
 
     expect(await pageUi.emptyMessage).toBeInTheDocument();
     expect(pageUi.noWelcome).toBeNull();
+  });
+
+  it("moves focus to a neighbour when the focused card turns read through the cache", async () => {
+    // jsdom has no IntersectionObserver; the grid only uses it to page in more entries.
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        observe(): void {}
+        disconnect(): void {}
+      },
+    );
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: Number.POSITIVE_INFINITY } },
+    });
+    const rootRoute = createRootRoute();
+    const streamRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/",
+      component: () => <MosaicGrid streamKey="all" unreadOnly ranked="newest" />,
+    });
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([streamRoute]),
+      history: createMemoryHistory({ initialEntries: ["/"] }),
+    });
+    const view = render(
+      <QueryClientProvider client={client}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => {
+      expect(view.container.querySelectorAll("[data-entry-id]").length).toBeGreaterThan(1);
+    });
+    const [first] = view.container.querySelectorAll<HTMLElement>("[data-entry-id]");
+    const turnedId = first.dataset.entryId ?? "";
+    const turnedLink = first.querySelector("a");
+    if (!turnedLink) throw new Error("no card link");
+    act(() => {
+      turnedLink.focus();
+    });
+
+    const [query] = client.getQueryCache().findAll({ queryKey: ["stream", "all"] });
+    act(() => {
+      client.setQueryData<InfiniteData<EntryPage, string | undefined>>(
+        query.queryKey,
+        (prev) =>
+          prev && {
+            ...prev,
+            pages: prev.pages.map((page) => ({
+              ...page,
+              items: page.items.map((item) =>
+                item.id === turnedId ? { ...item, unread: false } : item,
+              ),
+            })),
+          },
+      );
+    });
+
+    await waitFor(() => {
+      const focusedId =
+        document.activeElement?.closest<HTMLElement>("[data-entry-id]")?.dataset.entryId;
+      expect(focusedId).toBeDefined();
+      expect(focusedId).not.toBe(turnedId);
+    });
   });
 });
