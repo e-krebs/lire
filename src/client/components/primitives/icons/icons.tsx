@@ -1,4 +1,5 @@
-// The glyphs live in public/icons.svg, a plain sprite the browser fetches and caches on its own.
+// The glyphs live in client/assets/icons.svg, a plain sprite the browser fetches and caches on its own.
+import iconsUrl from "client/assets/icons.svg?no-inline";
 /** @public Used by stories only. */
 export const ICON_NAMES = [
   "settings",
@@ -36,6 +37,6 @@ interface IconProps {
 
 export const Icon = ({ name, className }: IconProps) => (
   <svg width={22} height={22} className={className} aria-hidden="true">
-    <use href={`${import.meta.env.BASE_URL}icons.svg#${name}`} />
+    <use href={`${iconsUrl}#${name}`} />
   </svg>
 );
