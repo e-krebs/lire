@@ -1,5 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
+import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { dismissWriteFailure, useWriteFailure } from "client/utils/writeFailure";
 import { ApiError } from "../client";
 import { queryClient } from "../queryClient";
 
@@ -89,6 +91,56 @@ describe("queryClient", () => {
 
       await expect(settled).resolves.toMatchObject({ status: 429, code: "rate_limited" });
       expect(queryFn).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe("when a write fails", () => {
+    afterEach(() => {
+      dismissWriteFailure();
+    });
+
+    const runMutation = async ({
+      meta,
+      succeeds,
+    }: {
+      meta?: { notifyOnFailure?: boolean };
+      succeeds: boolean;
+    }) => {
+      const mutation = queryClient.getMutationCache().build(queryClient, {
+        mutationFn: async () => {
+          await Promise.resolve();
+          if (!succeeds) throw new Error("boom");
+          return "ok";
+        },
+        meta,
+      });
+      await act(async () => {
+        await mutation.execute(undefined).catch(() => undefined);
+      });
+    };
+
+    it("reports once when a tagged mutation fails", async () => {
+      const failures = renderHook(() => useWriteFailure());
+
+      await runMutation({ meta: { notifyOnFailure: true }, succeeds: false });
+
+      expect(failures.result.current.failureId).toBe(1);
+    });
+
+    it("does not report an untagged mutation that fails", async () => {
+      const failures = renderHook(() => useWriteFailure());
+
+      await runMutation({ succeeds: false });
+
+      expect(failures.result.current.failureId).toBe(0);
+    });
+
+    it("does not report a tagged mutation that succeeds", async () => {
+      const failures = renderHook(() => useWriteFailure());
+
+      await runMutation({ meta: { notifyOnFailure: true }, succeeds: true });
+
+      expect(failures.result.current.failureId).toBe(0);
     });
   });
 });
