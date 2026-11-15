@@ -3,7 +3,6 @@ import type { Entry } from "shared/feedsApi/types";
 import { useT } from "client/i18n/useT";
 import { Icon } from "client/components/primitives/icons/icons";
 import { MosaicTileCard } from "client/components/feed/mosaic/MosaicTile";
-import type { TileSlot } from "client/components/feed/mosaic/MosaicTile";
 import { PullAction } from "client/components/feed/status/PullIndicator";
 import { ReaderHeader } from "client/components/reader/article/ReaderHeader";
 import {
@@ -12,6 +11,7 @@ import {
   HowToWays,
   ignore,
 } from "client/components/app/onboarding/HowToDialog";
+import { useLeavingTiles } from "client/hooks/useLeavingTiles";
 import { useElementWidth } from "client/hooks/useElementWidth";
 import { layoutMasonry } from "client/utils/masonry";
 import { textCardHeight } from "client/utils/textHeight";
@@ -26,8 +26,6 @@ interface MarkAsReadHowToProps {
 
 type Tab = "mosaic" | "reader";
 
-// Matches the tile's leave transition, as the grid's own LEAVE_MS.
-const LEAVE_MS = 200;
 // The Reset button's touch height, held where the cards were.
 const RESET_HEIGHT = 44;
 
@@ -132,8 +130,7 @@ export const MarkAsReadHowTo = ({ open, onClose, returnFocusRef }: MarkAsReadHow
   const dialogRef = useRef<HTMLDialogElement>(null);
   // As in the grid, a card marked read goes through two states: `leaving`, fading out in its slot;
   // then `gone`, out of the layout until Reset.
-  const [leaving, setLeaving] = useState<ReadonlyMap<string, TileSlot>>(() => new Map());
-  const [gone, setGone] = useState<ReadonlySet<string>>(() => new Set());
+  const { leaving, gone, leave, reset } = useLeavingTiles();
   const resetRef = useRef<HTMLButtonElement>(null);
   // Set when the card with focus is the last one left: the focus then goes to Reset, once it shows.
   const resetFocusPending = useRef(false);
@@ -145,8 +142,7 @@ export const MarkAsReadHowTo = ({ open, onClose, returnFocusRef }: MarkAsReadHow
   if (open !== shownOpen) {
     setShownOpen(open);
     if (open) {
-      setLeaving(new Map());
-      setGone(new Set());
+      reset();
       setTab("mosaic");
     }
   }
@@ -188,29 +184,13 @@ export const MarkAsReadHowTo = ({ open, onClose, returnFocusRef }: MarkAsReadHow
       if (next) focusSample(next.entry.id);
       else resetFocusPending.current = true;
     }
-    setLeaving((prev) => new Map(prev).set(id, slot));
+    leave({ slots: new Map([[id, slot]]) });
   };
   useEffect(() => {
     if (shown.length > 0 || !resetFocusPending.current) return;
     resetFocusPending.current = false;
     resetRef.current?.focus();
   }, [shown.length]);
-  const reset = (): void => {
-    setLeaving(new Map());
-    setGone(new Set());
-  };
-
-  useEffect(() => {
-    if (leaving.size === 0) return undefined;
-    const timer = window.setTimeout(() => {
-      setGone((prev) => new Set([...prev, ...leaving.keys()]));
-      setLeaving(new Map());
-    }, LEAVE_MS);
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [leaving]);
-
   return (
     <HowToDialog
       open={open}

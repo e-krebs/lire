@@ -1,16 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ComponentProps, CSSProperties, KeyboardEvent, ReactNode } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import type { StreamKey } from "shared/feedsApi/streamKey";
 import type { Entry } from "shared/feedsApi/types";
-import { keys } from "client/api/keys";
 import {
   flattenStream,
   useFeeds,
   useMark,
-  unreadCountFor,
-  useCounts,
   useRefreshAllLists,
   useRefreshEntries,
 } from "client/api/queries";
@@ -24,10 +20,13 @@ import { useT } from "client/i18n/useT";
 import { layoutMasonry, neighbourOf, tileAspect } from "client/utils/masonry";
 import type { Direction, MasonryItem, MasonryLayout } from "client/utils/masonry";
 import { textCardHeight } from "client/utils/textHeight";
+import { useLeavingTiles } from "client/hooks/useLeavingTiles";
+import { useHoldWhileCovered } from "client/hooks/useHoldWhileCovered";
 import { useElementHeight } from "client/hooks/useElementHeight";
 import { useElementWidth } from "client/hooks/useElementWidth";
 import { usePullToRefresh } from "client/hooks/usePullToRefresh";
 import type { PullState } from "client/hooks/usePullToRefresh";
+import { useReconcileBehindCounts } from "client/hooks/useReconcileBehindCounts";
 import { useRefreshOnForeground } from "client/hooks/useRefreshOnForeground";
 import { useRefreshShortcut } from "client/hooks/useRefreshShortcut";
 import { useTier } from "client/hooks/useTier";
@@ -36,13 +35,6 @@ import { MosaicFreshness } from "./MosaicFreshness";
 import { MosaicSentinel } from "./MosaicSentinel";
 import { MosaicSkeleton } from "./MosaicSkeleton";
 import { actionClassName } from "./shared";
-
-// Matches the leave transition of the tile.
-const LEAVE_MS = 200;
-// Below `lg` the list is hidden while the reader is open, and the reader closes through a view
-// transition: a card turned read in there waits this long after the close before it leaves, so
-// the leave plays on a list the eye can see.
-const READER_SETTLE_MS = 300;
 
 // The leading card's layout id; entry ids never collide with it.
 const LEADING_ID = "leading";
@@ -139,34 +131,15 @@ export const MosaicBody = ({
   useRefreshOnForeground({
     onForeground: async () => refreshAllLists({ queryKey, refreshList: reconcileList }),
   });
-  // The top bar count and the list come from two calls. Counts newer than the list that name more
-  // unread than a fully loaded list holds mean the list missed entries: refetch it once. A list
-  // fetched after the counts never retriggers, so entries NewsBlur counts but hides cause no loop.
-  const queryClient = useQueryClient();
-  const counts = useCounts({ enabled: unreadOnly && !searchQuery?.trim() });
-  // Counts as of the last reconcile's end: the reconcile refetches the counts first, so a
-  // failed list would otherwise find them newer and retry forever.
-  const reconciledCountsAt = useRef(0);
-  const listBehindCounts =
-    unreadOnly &&
-    !searchQuery?.trim() &&
-    counts.data !== undefined &&
-    !hasNextPage &&
-    !result.isFetching &&
-    counts.dataUpdatedAt > result.dataUpdatedAt &&
-    counts.dataUpdatedAt > reconciledCountsAt.current &&
-    entries.filter((entry) => entry.unread).length <
-      unreadCountFor({ counts: counts.data, streamKey });
-  useEffect(() => {
-    if (!listBehindCounts) return;
-    void reconcileList()
-      .catch(() => {})
-      .finally(() => {
-        reconciledCountsAt.current = queryClient.getQueryState(keys.counts)?.dataUpdatedAt ?? 0;
-      });
-    // `reconcileList` is a new closure each render, and only the flag decides.
-    // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [listBehindCounts]);
+  useReconcileBehindCounts({
+    enabled: unreadOnly && !searchQuery?.trim(),
+    streamKey,
+    entries,
+    hasNextPage,
+    isFetching: result.isFetching,
+    dataUpdatedAt: result.dataUpdatedAt,
+    reconcile: reconcileList,
+  });
   // Pulling up past the end refreshes only once every page is in and settled, or it would race
   // the sentinel.
   const { attach: attachPull, pull } = usePullToRefresh({
@@ -188,8 +161,7 @@ export const MosaicBody = ({
   const mark = useMark();
   // A card marked read in an unread-only view goes through two states: `leaving`, fading out in
   // the slot it had, since the layout no longer places it; then `gone`, out of the layout for good.
-  const [leaving, setLeaving] = useState<ReadonlyMap<string, TileSlot>>(() => new Map());
-  const [gone, setGone] = useState<ReadonlySet<string>>(() => new Set());
+  const { leaving, gone, leave, remove, revive } = useLeavingTiles();
   // Entries this grid has shown unread. Only these can turn read under its eyes: one already read
   // when it arrived (closed before a remount, or read in another view) stays out.
   const [seenUnread, setSeenUnread] = useState<ReadonlySet<string>>(() => new Set());
@@ -201,23 +173,7 @@ export const MosaicBody = ({
   }, []);
   // The card to focus once the render that closed the focused one has committed.
   const [handoffId, setHandoffId] = useState<string>();
-  const [settling, setSettling] = useState(false);
-  const [wasCovered, setWasCovered] = useState(listCovered);
-  if (listCovered !== wasCovered) {
-    setWasCovered(listCovered);
-    if (!listCovered) setSettling(true);
-  }
-  // The pass that notices the uncovering still runs with the old `settling`, so it holds too.
-  const holdLeave = listCovered || settling || listCovered !== wasCovered;
-  useEffect(() => {
-    if (!settling) return undefined;
-    const timer = window.setTimeout(() => {
-      setSettling(false);
-    }, READER_SETTLE_MS);
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [settling]);
+  const holdLeave = useHoldWhileCovered({ covered: listCovered });
 
   // The sentinel's visibility is a signal from the browser, not derived state — an
   // IntersectionObserver Effect is the "synchronizing with an external system" carve-out.
@@ -269,17 +225,6 @@ export const MosaicBody = ({
     // oxlint-disable-next-line react/set-state-in-effect -- consume the one-shot hand-off
     setHandoffId(undefined);
   }, [frame, handoffId]);
-
-  useEffect(() => {
-    if (leaving.size === 0) return undefined;
-    const timer = window.setTimeout(() => {
-      setGone((prev) => new Set([...prev, ...leaving.keys()]));
-      setLeaving(new Map());
-    }, LEAVE_MS);
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, [leaving]);
 
   const loadingLabel =
     searchQuery === undefined
@@ -499,9 +444,7 @@ export const MosaicBody = ({
       (entry) => entry.unread && (leaving.has(entry.id) || gone.has(entry.id)),
     );
     if (revived.length > 0) {
-      const ids = new Set(revived.map((entry) => entry.id));
-      setLeaving((prev) => new Map([...prev].filter(([id]) => !ids.has(id))));
-      setGone((prev) => new Set([...prev].filter((id) => !ids.has(id))));
+      revive({ ids: new Set(revived.map((entry) => entry.id)) });
     }
     const turned = placed.filter((entry) => !entry.unread);
     if (turned.length > 0) {
@@ -509,17 +452,15 @@ export const MosaicBody = ({
         const next = cardHasFocus(entry.id) ? leavingNeighbour(entry.id) : undefined;
         if (next !== undefined) setHandoffId(next);
       }
-      setLeaving((prev) => {
-        const next = new Map(prev);
-        for (const entry of turned) {
-          const slot = layout.positions.get(entry.id);
-          if (slot) next.set(entry.id, slot);
-        }
-        return next;
-      });
+      const slots = new Map<string, TileSlot>();
+      for (const entry of turned) {
+        const slot = layout.positions.get(entry.id);
+        if (slot) slots.set(entry.id, slot);
+      }
+      leave({ slots });
       const unplaced = turned.filter((entry) => !layout.positions.has(entry.id));
       if (unplaced.length > 0) {
-        setGone((prev) => new Set([...prev, ...unplaced.map((entry) => entry.id)]));
+        remove({ ids: new Set(unplaced.map((entry) => entry.id)) });
       }
     }
   }
