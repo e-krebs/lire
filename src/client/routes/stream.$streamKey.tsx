@@ -82,7 +82,7 @@ function StreamLayout() {
     ) : undefined;
 
   return (
-    <SourceListKeyContext.Provider value={sourceListKey}>
+    <SourceListKeyContext value={sourceListKey}>
       <Panes
         list={
           <MosaicGrid
@@ -96,6 +96,6 @@ function StreamLayout() {
         }
         reader={readerOpen ? <Outlet /> : null}
       />
-    </SourceListKeyContext.Provider>
+    </SourceListKeyContext>
   );
 }

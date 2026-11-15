@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import DOMPurify from "dompurify";
 import { useNavigate } from "@tanstack/react-router";
@@ -123,7 +123,7 @@ export const Reader = ({ entryId, streamKey }: ReaderProps) => {
   const entry = useEntry(entryId);
   const feeds = useFeeds();
   const { mutate } = useMark();
-  const sourceKey = useContext(SourceListKeyContext);
+  const sourceKey = use(SourceListKeyContext);
   const navigate = useNavigate();
   const paneRef = useRef<HTMLDivElement>(null);
   const { width, separatorProps } = useResizablePanel();

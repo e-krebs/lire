@@ -1,4 +1,4 @@
-import { useCallback, useContext, useEffect, useLayoutEffect, useRef } from "react";
+import { use, useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { useBackdropDismiss } from "client/components/primitives/overlays/ConfirmDialog";
 import { PanelExitContext } from "./PanelExitContext";
 import type { PanelShellProps } from "./shared";
@@ -18,7 +18,7 @@ export const BottomSheet = ({
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
-  const onExited = useContext(PanelExitContext);
+  const onExited = use(PanelExitContext);
   const closing = onExited !== null;
   // A close the owner started is no close request.
   const closingRef = useRef(closing);

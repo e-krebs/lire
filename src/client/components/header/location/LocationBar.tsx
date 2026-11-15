@@ -1,5 +1,5 @@
-import { forwardRef, useEffect, useId } from "react";
-import type { KeyboardEvent, ReactNode, RefObject } from "react";
+import { useEffect, useId } from "react";
+import type { KeyboardEvent, ReactNode, Ref, RefObject } from "react";
 import { Link } from "@tanstack/react-router";
 import type { MatchCount } from "client/api/queries";
 import { Icon } from "client/components/primitives/icons/icons";
@@ -28,6 +28,7 @@ interface LocationBarProps {
   edit?: { search: SubscriptionsSearch; label: string };
   // The view toggles, rendered behind a hairline at the pill's right end.
   viewControls?: ReactNode;
+  ref?: Ref<HTMLDivElement>;
 }
 
 const isTypingTarget = (target: EventTarget | null): boolean => {
@@ -89,171 +90,167 @@ const PillDivider = ({ viewControls, inert }: PillDividerProps) =>
 // One model for every tier: the chip is the stream, the text is the article search. From `sm` up
 // the pill is the field itself (omnibox style, the Navigator popover anchors under it); below it,
 // the same pill is a button that opens the Navigator sheet instead.
-export const LocationBar = forwardRef<HTMLDivElement, LocationBarProps>(
-  (
-    {
-      onOpen,
-      draft,
-      onDraftChange,
-      onSearchKeyDown,
-      inputRef,
-      clearable,
-      scopeLabel,
-      count,
-      onClearScope,
-      onClearText,
-      edit,
-      viewControls,
-    },
-    ref,
-  ) => {
-    const t = useT().navigation;
-    const tier = useTier();
-    const locationId = useId();
-    // Behind an open panel the pill goes inert, save the input when the panel is the Navigator.
-    const activeOverlay = useActiveOverlay();
-    const pillInert = activeOverlay !== null || undefined;
-    const fieldInert = (activeOverlay !== null && activeOverlay !== "navigator") || undefined;
+export const LocationBar = ({
+  onOpen,
+  draft,
+  onDraftChange,
+  onSearchKeyDown,
+  inputRef,
+  clearable,
+  scopeLabel,
+  count,
+  onClearScope,
+  onClearText,
+  edit,
+  viewControls,
+  ref,
+}: LocationBarProps) => {
+  const t = useT().navigation;
+  const tier = useTier();
+  const locationId = useId();
+  // Behind an open panel the pill goes inert, save the input when the panel is the Navigator.
+  const activeOverlay = useActiveOverlay();
+  const pillInert = activeOverlay !== null || undefined;
+  const fieldInert = (activeOverlay !== null && activeOverlay !== "navigator") || undefined;
 
-    useEffect(() => {
-      const handleKeyDown = (event: globalThis.KeyboardEvent): void => {
-        // The input is inert then, and light dismiss closes the menu on the next click anyway.
-        if (fieldInert) return;
-        const withModifier = event.metaKey || event.ctrlKey;
-        if (withModifier && event.key.toLowerCase() === "k") {
-          event.preventDefault();
-          onOpen();
-          inputRef.current?.focus();
-          return;
-        }
-        if (event.key === "/" && !isTypingTarget(event.target)) {
-          event.preventDefault();
-          onOpen();
-          inputRef.current?.focus();
-        }
-      };
-      window.addEventListener("keydown", handleKeyDown);
-      return () => {
-        window.removeEventListener("keydown", handleKeyDown);
-      };
-    }, [onOpen, inputRef, fieldInert]);
-
-    const text = draft;
-    const placeholder = clearable ? t.searchScoped : t.searchAll;
-    const chipLabel = clearable ? scopeLabel : t.all;
-
-    const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
-      // Backspace at the very start eats the chip first, like a mail composer's recipient token.
-      if (
-        event.key === "Backspace" &&
-        clearable &&
-        event.currentTarget.selectionStart === 0 &&
-        event.currentTarget.selectionEnd === 0
-      ) {
+  useEffect(() => {
+    const handleKeyDown = (event: globalThis.KeyboardEvent): void => {
+      // The input is inert then, and light dismiss closes the menu on the next click anyway.
+      if (fieldInert) return;
+      const withModifier = event.metaKey || event.ctrlKey;
+      if (withModifier && event.key.toLowerCase() === "k") {
         event.preventDefault();
-        onClearScope();
+        onOpen();
+        inputRef.current?.focus();
         return;
       }
-      // Focus alone never opens the panel (a row activation hands focus back here, and that must
-      // not reopen it); a key does, the way a combobox opens on ArrowDown.
-      if (event.key === "ArrowDown") onOpen();
-      onSearchKeyDown(event);
+      if (event.key === "/" && !isTypingTarget(event.target)) {
+        event.preventDefault();
+        onOpen();
+        inputRef.current?.focus();
+      }
     };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onOpen, inputRef, fieldInert]);
 
-    if (tier === "phone") {
-      return (
-        <div className="flex min-w-0 flex-1 justify-center">
-          <div ref={ref} role="group" aria-label={t.location} className={pillClassName}>
-            {/* The opener is stretched under the pill's left part, padding included, so its ring
+  const text = draft;
+  const placeholder = clearable ? t.searchScoped : t.searchAll;
+  const chipLabel = clearable ? scopeLabel : t.all;
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
+    // Backspace at the very start eats the chip first, like a mail composer's recipient token.
+    if (
+      event.key === "Backspace" &&
+      clearable &&
+      event.currentTarget.selectionStart === 0 &&
+      event.currentTarget.selectionEnd === 0
+    ) {
+      event.preventDefault();
+      onClearScope();
+      return;
+    }
+    // Focus alone never opens the panel (a row activation hands focus back here, and that must
+    // not reopen it); a key does, the way a combobox opens on ArrowDown.
+    if (event.key === "ArrowDown") onOpen();
+    onSearchKeyDown(event);
+  };
+
+  if (tier === "phone") {
+    return (
+      <div className="flex min-w-0 flex-1 justify-center">
+        <div ref={ref} role="group" aria-label={t.location} className={pillClassName}>
+          {/* The opener is stretched under the pill's left part, padding included, so its ring
                 lines up with the pill's own left edge, and the chip's × (a button cannot nest in
                 a button) paints above it, against the chip. The chip drops its 40% cap here and
                 takes the room before the placeholder, never narrower than its badge, and under
                 384px the search icon gives way too. */}
-            <div className="relative flex h-10 min-w-0 flex-1 items-center gap-2.5 pr-1.5 pl-3.5 max-[24rem]:pl-1.5">
-              <button
-                type="button"
-                onClick={onOpen}
-                inert={fieldInert}
-                {...tip({ label: t.openNavigator })}
-                aria-describedby={locationId}
-                className="absolute inset-0 rounded-full focus-visible:outline-2 focus-visible:outline-accent"
-              />
-              <Icon name="search" className="size-4 flex-none text-faint max-[24rem]:hidden" />
-              <span inert={pillInert} className="contents">
-                <ScopeChip
-                  label={chipLabel}
-                  count={count}
-                  onClear={clearable ? onClearScope : undefined}
-                  fluid
-                />
-              </span>
-              <span
-                id={locationId}
-                data-empty={text === "" || undefined}
-                className="min-w-0 flex-1 basis-12 truncate text-sm font-semibold text-ink data-empty:basis-0 data-empty:font-normal data-empty:text-faint"
-              >
-                {text === "" ? placeholder : text}
-              </span>
-            </div>
-            <PillEditLink edit={edit} inert={pillInert} />
-            <PillDivider viewControls={viewControls} inert={pillInert} />
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="flex min-w-0 flex-1 justify-center">
-        <div ref={ref} role="group" aria-label={t.location} className={pillClassName}>
-          <div className="flex h-10 min-w-0 flex-1 items-center gap-2.5 pl-3.5">
-            <Icon name="search" className="size-4 flex-none text-faint" />
-            {/* `contents` keeps the chip's 40% cap measured against the pill. */}
+          <div className="relative flex h-10 min-w-0 flex-1 items-center gap-2.5 pr-1.5 pl-3.5 max-[24rem]:pl-1.5">
+            <button
+              type="button"
+              onClick={onOpen}
+              inert={fieldInert}
+              {...tip({ label: t.openNavigator })}
+              aria-describedby={locationId}
+              className="absolute inset-0 rounded-full focus-visible:outline-2 focus-visible:outline-accent"
+            />
+            <Icon name="search" className="size-4 flex-none text-faint max-[24rem]:hidden" />
             <span inert={pillInert} className="contents">
               <ScopeChip
                 label={chipLabel}
                 count={count}
                 onClear={clearable ? onClearScope : undefined}
+                fluid
               />
             </span>
-            <input
-              ref={inputRef}
-              type="search"
-              value={text}
-              inert={fieldInert}
-              onClick={onOpen}
-              onChange={(event) => {
-                // Opening first, so the draft the panel reads is the character just typed.
-                onOpen();
-                onDraftChange(event.target.value);
-              }}
-              onKeyDown={handleKeyDown}
-              placeholder={placeholder}
-              aria-label={t.searchArticlesAndFeeds}
-              aria-keyshortcuts="/ Meta+K"
-              data-tip={t.searchArticlesAndFeeds}
-              className={`
-                min-w-0 flex-1 bg-transparent text-sm text-ink outline-none
-                placeholder:text-faint
-                [&::-webkit-search-cancel-button]:appearance-none
-              `}
-            />
-            {text === "" ? null : (
-              <button
-                type="button"
-                {...tip({ label: t.clearSearchText })}
-                inert={pillInert}
-                onClick={onClearText}
-                className={clearButtonClassName}
-              >
-                <Icon name="close" className="size-4" />
-              </button>
-            )}
+            <span
+              id={locationId}
+              data-empty={text === "" || undefined}
+              className="min-w-0 flex-1 basis-12 truncate text-sm font-semibold text-ink data-empty:basis-0 data-empty:font-normal data-empty:text-faint"
+            >
+              {text === "" ? placeholder : text}
+            </span>
           </div>
           <PillEditLink edit={edit} inert={pillInert} />
           <PillDivider viewControls={viewControls} inert={pillInert} />
         </div>
       </div>
     );
-  },
-);
+  }
+
+  return (
+    <div className="flex min-w-0 flex-1 justify-center">
+      <div ref={ref} role="group" aria-label={t.location} className={pillClassName}>
+        <div className="flex h-10 min-w-0 flex-1 items-center gap-2.5 pl-3.5">
+          <Icon name="search" className="size-4 flex-none text-faint" />
+          {/* `contents` keeps the chip's 40% cap measured against the pill. */}
+          <span inert={pillInert} className="contents">
+            <ScopeChip
+              label={chipLabel}
+              count={count}
+              onClear={clearable ? onClearScope : undefined}
+            />
+          </span>
+          <input
+            ref={inputRef}
+            type="search"
+            value={text}
+            inert={fieldInert}
+            onClick={onOpen}
+            onChange={(event) => {
+              // Opening first, so the draft the panel reads is the character just typed.
+              onOpen();
+              onDraftChange(event.target.value);
+            }}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+            aria-label={t.searchArticlesAndFeeds}
+            aria-keyshortcuts="/ Meta+K"
+            data-tip={t.searchArticlesAndFeeds}
+            className={`
+                min-w-0 flex-1 bg-transparent text-sm text-ink outline-none
+                placeholder:text-faint
+                [&::-webkit-search-cancel-button]:appearance-none
+              `}
+          />
+          {text === "" ? null : (
+            <button
+              type="button"
+              {...tip({ label: t.clearSearchText })}
+              inert={pillInert}
+              onClick={onClearText}
+              className={clearButtonClassName}
+            >
+              <Icon name="close" className="size-4" />
+            </button>
+          )}
+        </div>
+        <PillEditLink edit={edit} inert={pillInert} />
+        <PillDivider viewControls={viewControls} inert={pillInert} />
+      </div>
+    </div>
+  );
+};
 LocationBar.displayName = "LocationBar";
