@@ -1,3 +1,5 @@
+import iconsUrl from "client/assets/icons.svg?no-inline";
+
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 interface BrokenImageLabels {
@@ -32,7 +34,7 @@ export const replaceBrokenImage = ({
   icon.setAttribute("height", "1.25em");
   icon.style.opacity = "0.6";
   const use = doc.createElementNS(SVG_NS, "use");
-  use.setAttribute("href", `${import.meta.env.BASE_URL}icons.svg#image-off`);
+  use.setAttribute("href", `${iconsUrl}#image-off`);
   icon.append(use);
 
   const label = doc.createElement("span");

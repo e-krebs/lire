@@ -45,6 +45,6 @@ describe("replaceBrokenImage", () => {
   it("draws the icon with an SVG-namespaced use", () => {
     const use = setup({ alt: "x" }).querySelector("use");
     expect(use?.namespaceURI).toBe(SVG_NS);
-    expect(use?.getAttribute("href")).toMatch(/icons\.svg#image-off$/);
+    expect(use?.getAttribute("href")).toMatch(/icons\.svg(\?[^#]*)?#image-off$/);
   });
 });
