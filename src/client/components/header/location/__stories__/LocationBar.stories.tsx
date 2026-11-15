@@ -4,11 +4,24 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useArgs } from "storybook/preview-api";
 import { expect, fn, mocked, userEvent, within } from "storybook/test";
 import { LocationBar } from "client/components/header/location/LocationBar";
+import type { LocationModel } from "client/components/header/location/locationModel";
 import { ViewToggles } from "client/components/header/views/ViewToggles";
 import { withRouter, withTier } from "stories/decorators";
 import type { Tier } from "stories/decorators";
 
 type Args = Omit<ComponentProps<typeof LocationBar>, "inputRef"> & { tier: Tier };
+
+const locationArgs = (overrides: Partial<LocationModel> = {}): LocationModel => ({
+  scopeKey: "all",
+  scopeLabel: "All articles",
+  clearable: false,
+  edit: { search: {}, label: "Edit Technology" },
+  draft: "",
+  onDraftChange: fn(),
+  onClearScope: fn(),
+  onClearText: fn(),
+  ...overrides,
+});
 
 const meta: Meta<Args> = {
   title: "Header/Location/LocationBar",
@@ -25,22 +38,14 @@ const meta: Meta<Args> = {
     tier: { control: "inline-radio", options: ["phone", "desktop"] },
     viewControls: { control: false },
     onOpen: { control: false },
-    onDraftChange: { control: false },
     onSearchKeyDown: { control: false },
-    onClearScope: { control: false },
-    onClearText: { control: false },
+    location: { control: false },
   },
   args: {
     tier: "desktop",
-    edit: { search: {}, label: "Edit Technology" },
-    draft: "",
-    clearable: false,
-    scopeLabel: "All articles",
+    location: locationArgs(),
     onOpen: fn(),
-    onDraftChange: fn(),
     onSearchKeyDown: fn(),
-    onClearScope: fn(),
-    onClearText: fn(),
     viewControls: <ViewToggles search={{}} />,
   },
   render: function Render({ tier: _tier, ...args }) {
@@ -50,8 +55,11 @@ const meta: Meta<Args> = {
       <LocationBar
         {...args}
         inputRef={inputRef}
-        onDraftChange={(draft) => {
-          updateArgs({ draft });
+        location={{
+          ...args.location,
+          onDraftChange: (draft) => {
+            updateArgs({ location: { ...args.location, draft } });
+          },
         }}
       />
     );
@@ -64,7 +72,7 @@ type Story = StoryObj<Args>;
 export const Default: Story = {};
 
 export const Typing: Story = {
-  args: { clearable: true, scopeLabel: "Tech", draft: "rss" },
+  args: { location: locationArgs({ clearable: true, scopeLabel: "Tech", draft: "rss" }) },
   play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     const field = canvas.getByRole("searchbox", { name: "Search articles and feeds" });
@@ -74,10 +82,10 @@ export const Typing: Story = {
     await userEvent.keyboard("{ArrowDown}");
     await expect(args.onSearchKeyDown).toHaveBeenCalled();
     await userEvent.click(canvas.getByRole("button", { name: "Clear search text" }));
-    await expect(args.onClearText).toHaveBeenCalled();
+    await expect(args.location.onClearText).toHaveBeenCalled();
     await userEvent.click(field);
     await userEvent.keyboard("{Home}{Backspace}");
-    await expect(args.onClearScope).toHaveBeenCalled();
+    await expect(args.location.onClearScope).toHaveBeenCalled();
   },
 };
 
@@ -96,7 +104,10 @@ export const Shortcuts: Story = {
 };
 
 export const Phone: Story = {
-  args: { tier: "phone", draft: "rss", clearable: true, scopeLabel: "Tech" },
+  args: {
+    tier: "phone",
+    location: locationArgs({ draft: "rss", clearable: true, scopeLabel: "Tech" }),
+  },
   play: async ({ canvasElement, args }) => {
     await userEvent.click(within(canvasElement).getByRole("button", { name: "Open navigator" }));
     await expect(args.onOpen).toHaveBeenCalled();
@@ -105,25 +116,43 @@ export const Phone: Story = {
 
 export const PhoneEmpty: Story = { args: { tier: "phone" } };
 
-export const AllWithBadge: Story = { args: { count: { count: 50, capped: true } } };
+export const AllWithBadge: Story = {
+  args: { location: locationArgs({ count: { count: 50, capped: true } }) },
+};
 
 export const NarrowedWithBadge: Story = {
-  args: { clearable: true, scopeLabel: "Tech", count: { count: 12, capped: false } },
+  args: {
+    location: locationArgs({
+      clearable: true,
+      scopeLabel: "Tech",
+      count: { count: 12, capped: false },
+    }),
+  },
 };
 
 export const PhoneNarrowedWithBadge: Story = {
-  args: { tier: "phone", clearable: true, scopeLabel: "Tech", count: { count: 12, capped: false } },
+  args: {
+    tier: "phone",
+    location: locationArgs({
+      clearable: true,
+      scopeLabel: "Tech",
+      count: { count: 12, capped: false },
+    }),
+  },
   play: async ({ canvasElement, args }) => {
     await userEvent.click(
       within(canvasElement).getByRole("button", { name: "Search everywhere instead of Tech" }),
     );
-    await expect(args.onClearScope).toHaveBeenCalled();
+    await expect(args.location.onClearScope).toHaveBeenCalled();
     await expect(args.onOpen).not.toHaveBeenCalled();
   },
 };
 
 export const PhoneCategoryScope: Story = {
-  args: { tier: "phone", clearable: true, scopeLabel: "Technology" },
+  args: {
+    tier: "phone",
+    location: locationArgs({ clearable: true, scopeLabel: "Technology" }),
+  },
   decorators: [
     (Story) => (
       <div className="w-97.5">
@@ -137,7 +166,7 @@ export const PhoneCategoryScope: Story = {
     const label = canvas.getByText("Technology");
     await expect(label.closest("[data-clearable]")).toContainElement(clear);
     await userEvent.click(clear);
-    await expect(args.onClearScope).toHaveBeenCalled();
+    await expect(args.location.onClearScope).toHaveBeenCalled();
     await expect(args.onOpen).not.toHaveBeenCalled();
     // A tap hits whatever paints on top: the × above the stretched opener, the opener elsewhere.
     const hit = (element: Element): Element | null => {

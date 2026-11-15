@@ -4,6 +4,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useArgs } from "storybook/preview-api";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { Navigator } from "client/components/browse-menu/menu/Navigator";
+import type { LocationModel } from "client/components/header/location/locationModel";
 import { setBarPosition } from "client/hooks/utils/barPosition";
 import { withQueryClient, withRouteMatch, withTier } from "stories/decorators";
 import type { Tier } from "stories/decorators";
@@ -11,6 +12,17 @@ import type { Tier } from "stories/decorators";
 type Args = Omit<ComponentProps<typeof Navigator>, "anchorRef"> & {
   tier: Tier;
 };
+
+const locationArgs = (overrides: Partial<LocationModel> = {}): LocationModel => ({
+  scopeKey: "all",
+  scopeLabel: "All articles",
+  clearable: false,
+  draft: "",
+  onDraftChange: fn(),
+  onClearScope: fn(),
+  onClearText: fn(),
+  ...overrides,
+});
 
 const meta: Meta<Args> = {
   title: "Browse menu/Menu/Navigator",
@@ -21,22 +33,15 @@ const meta: Meta<Args> = {
     panelHandleRef: { control: false },
     onClose: { control: false },
     onRequestFocus: { control: false },
-    onClearScope: { control: false },
-    onClearText: { control: false },
+    location: { control: false },
   },
   args: {
     tier: "desktop",
     open: true,
-    query: "",
-    clearable: false,
-    scopeKey: "all",
-    scopeLabel: "All articles",
+    location: locationArgs(),
     panelHandleRef: createRef(),
     onClose: fn(),
     onRequestFocus: fn(),
-    onQueryChange: fn(),
-    onClearScope: fn(),
-    onClearText: fn(),
   },
   render: function Render({ tier: _tier, ...args }) {
     const anchorRef = useRef<HTMLDivElement>(null);
@@ -50,8 +55,11 @@ const meta: Meta<Args> = {
         <Navigator
           {...args}
           anchorRef={anchorRef}
-          onQueryChange={(query) => {
-            updateArgs({ query });
+          location={{
+            ...args.location,
+            onDraftChange: (draft) => {
+              updateArgs({ location: { ...args.location, draft } });
+            },
           }}
         />
       </div>
@@ -95,7 +103,7 @@ const swipe = ({ target, from, to }: { target: Element; from: number; to: number
 };
 
 export const DesktopDismiss: Story = {
-  args: { tier: "desktop", query: "tech" },
+  args: { tier: "desktop", location: locationArgs({ draft: "tech" }) },
   play: async ({ args }) => {
     const body = within(document.body);
     await body.findByRole("group", { name: "Navigator" });
@@ -126,7 +134,10 @@ export const DesktopFocusOut: Story = {
 export const Phone: Story = { args: { tier: "phone" } };
 
 export const PhoneSearching: Story = {
-  args: { tier: "phone", query: "tech", clearable: true, scopeLabel: "Tech" },
+  args: {
+    tier: "phone",
+    location: locationArgs({ draft: "tech", clearable: true, scopeLabel: "Tech" }),
+  },
   play: async ({ args }) => {
     const body = within(document.body);
     const field = await body.findByRole("searchbox", { name: "Search articles and feeds" });
@@ -136,9 +147,9 @@ export const PhoneSearching: Story = {
     if (!(field instanceof HTMLInputElement)) throw new Error("expected an input");
     field.setSelectionRange(0, 0);
     await userEvent.keyboard("{Backspace}");
-    await expect(args.onClearScope).toHaveBeenCalled();
+    await expect(args.location.onClearScope).toHaveBeenCalled();
     await userEvent.click(body.getByRole("button", { name: "Clear search text" }));
-    await expect(args.onClearText).toHaveBeenCalled();
+    await expect(args.location.onClearText).toHaveBeenCalled();
     await userEvent.keyboard("{Escape}");
     await waitFor(async () => {
       await expect(args.onClose).toHaveBeenCalled();

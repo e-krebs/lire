@@ -3,6 +3,7 @@ import type { NavigatorPanelHandle } from "client/components/browse-menu/menu/Na
 import { NavigatorPanel } from "client/components/browse-menu/menu/NavigatorPanel";
 import { useReparentedContent } from "client/hooks/useReparentedContent";
 import { useTier } from "client/hooks/useTier";
+import type { LocationModel } from "client/components/header/location/locationModel";
 import { DesktopPopover } from "./DesktopPopover";
 import { PhoneSheet } from "./PhoneSheet";
 
@@ -14,17 +15,11 @@ interface NavigatorProps {
   // Escape and row activation hand focus back to the location bar's field; a click outside or a
   // focus-out must not move focus at all.
   onRequestFocus: () => void;
-  query: string;
-  onQueryChange: (value: string) => void;
   anchorRef: RefObject<HTMLElement | null>;
   panelHandleRef: RefObject<NavigatorPanelHandle | null>;
-  // The stream the route points at, as its route key, with its label, whether it is narrower
-  // than every article, and a way to widen both the view and the next search back out.
-  clearable: boolean;
-  scopeKey: string;
-  scopeLabel: string;
-  onClearScope: () => void;
-  onClearText: () => void;
+  // The stream the route points at, with its label, whether it is narrower than every article,
+  // the search text, and a way to widen both the view and the next search back out.
+  location: LocationModel;
 }
 
 // Below `sm`, the location bar opens this as a full-height bottom sheet with its own search
@@ -34,23 +29,18 @@ export const Navigator = ({
   open,
   onClose,
   onRequestFocus,
-  query,
-  onQueryChange,
   anchorRef,
   panelHandleRef,
-  clearable,
-  scopeKey,
-  scopeLabel,
-  onClearScope,
-  onClearText,
+  location,
 }: NavigatorProps) => {
   const phone = useTier() === "phone";
+  const { draft, onDraftChange, scopeKey, scopeLabel } = location;
   const { portal, slot } = useReparentedContent(
     open ? (
       <NavigatorPanel
         ref={panelHandleRef}
-        query={query}
-        onQueryChange={onQueryChange}
+        query={draft}
+        onQueryChange={onDraftChange}
         onClose={
           phone
             ? onClose
@@ -71,13 +61,8 @@ export const Navigator = ({
         <PhoneSheet
           open={open}
           onClose={onClose}
-          query={query}
-          onQueryChange={onQueryChange}
           panelHandleRef={panelHandleRef}
-          clearable={clearable}
-          scopeLabel={scopeLabel}
-          onClearScope={onClearScope}
-          onClearText={onClearText}
+          location={location}
         >
           {slot}
         </PhoneSheet>

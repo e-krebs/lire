@@ -1,31 +1,19 @@
 import { useEffect, useId } from "react";
 import type { KeyboardEvent, ReactNode, Ref, RefObject } from "react";
 import { Link } from "@tanstack/react-router";
-import type { MatchCount } from "client/api/queries";
 import { Icon } from "client/components/primitives/icons/icons";
 import { useT } from "client/i18n/useT";
 import { ScopeChip } from "client/components/header/location/ScopeChip";
+import type { LocationModel } from "client/components/header/location/locationModel";
 import { tip } from "client/utils/tooltip";
 import { useActiveOverlay } from "client/hooks/useOverlay";
-import type { SubscriptionsSearch } from "client/utils/subscriptionsSearch";
 import { useTier } from "client/hooks/useTier";
 
 interface LocationBarProps {
+  location: LocationModel;
   onOpen: () => void;
-  draft: string;
-  onDraftChange: (value: string) => void;
   onSearchKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
   inputRef: RefObject<HTMLInputElement | null>;
-  // Whether the scope is narrower than every article — the chip names it and gets a ×, and
-  // Backspace eats it. On All the chip still shows, as "All".
-  clearable: boolean;
-  scopeLabel: string;
-  // The match count; undefined shows no badge.
-  count?: MatchCount | undefined;
-  onClearScope: () => void;
-  onClearText: () => void;
-  // The current feed or category's Subscriptions panel; absent for streams without one.
-  edit?: { search: SubscriptionsSearch; label: string };
   // The view toggles, rendered behind a hairline at the pill's right end.
   viewControls?: ReactNode;
   ref?: Ref<HTMLDivElement>;
@@ -52,7 +40,7 @@ const iconButtonClassName = `
 const clearButtonClassName = `${iconButtonClassName} text-faint`;
 
 interface PillEditLinkProps {
-  edit: LocationBarProps["edit"];
+  edit: LocationModel["edit"];
   inert: true | undefined;
 }
 
@@ -91,20 +79,15 @@ const PillDivider = ({ viewControls, inert }: PillDividerProps) =>
 // the pill is the field itself (omnibox style, the Navigator popover anchors under it); below it,
 // the same pill is a button that opens the Navigator sheet instead.
 export const LocationBar = ({
+  location,
   onOpen,
-  draft,
-  onDraftChange,
   onSearchKeyDown,
   inputRef,
-  clearable,
-  scopeLabel,
-  count,
-  onClearScope,
-  onClearText,
-  edit,
   viewControls,
   ref,
 }: LocationBarProps) => {
+  const { draft, onDraftChange, clearable, scopeLabel, count, onClearScope, onClearText, edit } =
+    location;
   const t = useT().navigation;
   const tier = useTier();
   const locationId = useId();
