@@ -85,6 +85,7 @@ A lint rule checks the hook
 file names. An external store and the hook that reads it live together in `utils`, as in `viewPrefs.ts` and `pwaUpdate.ts`
 (`usePwaUpdate`, which drives `SWToast`), and `installPrompt.ts` (`useInstallPrompt`, which
 drives the install line on the landing, including its iOS hint, the account menu's Install Lire row and the checklist's install row).
+`writeFailure.ts` is another store in `utils`: `useWriteFailure` reads it, `reportWriteFailure` records a failure and `dismissWriteFailure` clears it. Tag a user-initiated optimistic mutation with `meta: { notifyOnFailure: true }` so its failure reaches the user; an untagged mutation fails silently.
 
 ## Stories
 

@@ -1,5 +1,12 @@
-import { QueryClient } from "@tanstack/react-query";
+import { MutationCache, QueryClient } from "@tanstack/react-query";
 import { ApiError } from "client/api/client";
+import { reportWriteFailure } from "client/utils/writeFailure";
+
+declare module "@tanstack/react-query" {
+  interface Register {
+    mutationMeta: { notifyOnFailure?: boolean };
+  }
+}
 
 const TEN_MINUTES_MS = 10 * 60 * 1000;
 const THIRTY_MINUTES_MS = 30 * 60 * 1000;
@@ -23,7 +30,15 @@ const retryDelay = (failureCount: number, error: unknown): number => {
   return Math.min(1000 * 2 ** failureCount, 30 * 1000);
 };
 
+const createMutationCache = (): MutationCache =>
+  new MutationCache({
+    onError: (_error, _variables, _context, mutation) => {
+      if (mutation.meta?.notifyOnFailure) reportWriteFailure();
+    },
+  });
+
 export const queryClient = new QueryClient({
+  mutationCache: createMutationCache(),
   defaultOptions: {
     queries: {
       staleTime: TEN_MINUTES_MS,

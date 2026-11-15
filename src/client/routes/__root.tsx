@@ -4,6 +4,7 @@ import { AppShell } from "client/components/app/shell/AppShell";
 import { SignIn } from "client/components/app/auth/SignIn";
 import { DemoBanner } from "client/components/app/demo/DemoBanner";
 import { SWToast } from "client/components/app/notices/SWToast";
+import { WriteFailureToast } from "client/components/app/notices/WriteFailureToast";
 import { markQueue } from "client/api/markQueue";
 import { useAuthStatus } from "client/api/queries";
 import { useSignedOut } from "client/hooks/useSignedOut";
@@ -53,6 +54,7 @@ const RootComponent = () => {
         </div>
       </div>
       <SWToast />
+      <WriteFailureToast />
     </AppShell>
   );
 };
