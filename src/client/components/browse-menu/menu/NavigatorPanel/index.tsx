@@ -1,10 +1,10 @@
-import { useEffect, useImperativeHandle, useRef, useState } from "react";
-import type { KeyboardEvent, Ref } from "react";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { useEffect, useRef } from "react";
+import { Link, useParams } from "@tanstack/react-router";
 import { useViewPrefs } from "client/utils/viewPrefs";
-import { parseStreamKey, toStreamKey } from "shared/feedsApi/streamKey";
-import type { Category, Feed } from "shared/feedsApi/types";
-import { unreadCountFor, useCounts, useFeeds, useOrderedCategories } from "client/api/queries";
+import { parseStreamKey } from "shared/feedsApi/streamKey";
+import { unreadCountFor, useCounts } from "client/api/queries";
+import { categoryStreamKey, feedStreamKey } from "client/hooks/useNavigatorModel";
+import type { NavigatorModel } from "client/hooks/useNavigatorModel";
 import { Icon } from "client/components/primitives/icons/icons";
 import { useT } from "client/i18n/useT";
 import { CategoryResultRow } from "client/components/browse-menu/rows/CategoryResultRow";
@@ -13,7 +13,6 @@ import { CategoryTreeRow } from "client/components/browse-menu/rows/CategoryTree
 import { FeedRow } from "client/components/browse-menu/rows/FeedRow";
 import { SearchResultRow } from "client/components/browse-menu/rows/SearchResultRow";
 import {
-  NO_ROW,
   SUBSCRIPTIONS_ROW_KEY,
   builtInIconClassName,
   builtInRowClassName,
@@ -23,94 +22,47 @@ import {
   sectionHeadingClassName,
 } from "client/components/browse-menu/rows/shared";
 
-type ResultRow =
-  | { kind: "search" }
-  | { kind: "category"; category: Category }
-  | { kind: "feed"; feed: Feed };
-
-const categoryStreamKey = (categoryId: string) =>
-  toStreamKey({ kind: "folder", label: categoryId });
-const feedStreamKey = (feedId: string) => toStreamKey({ kind: "feed", feedId });
-
-// One visible row of the browse tree, in render order. `expandId` marks the rows that
-// ArrowRight/ArrowLeft can open and close; `parentId` is the group a feed row sits in, so
-// ArrowLeft can collapse it from the inside. `kind: "link"` is the footer's Manage subscriptions
-// entry, which has neither.
-interface BrowseRow {
-  key: string;
-  kind?: "link";
-  streamKey?: string;
-  expandId?: string;
-  parentId?: string;
-}
-
-export interface NavigatorPanelHandle {
-  handleKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
-}
-
 interface NavigatorPanelProps {
-  /** Text typed in the location bar field. */
-  query: string;
-  onQueryChange: (value: string) => void;
+  model: NavigatorModel;
+  /** Display label of the search scope, for the search row's second line. */
+  scopeLabel: string;
   /** Panel should close, e.g. after a selection. */
   onClose: () => void;
-  /** Route key of the stream a search is limited to: "all", `folder:<label>` or `feed:<id>`. */
-  scopeKey: string;
-  /** Display label of that stream, for the search row's second line. */
-  scopeLabel: string;
-  ref?: Ref<NavigatorPanelHandle>;
 }
 
 // The tree/results/row-actions body, shared by the phone bottom sheet and the desktop/tablet
-// omnibox popover — both mount this once they're open and drive it through the same `query` and
+// omnibox popover — both mount this once they're open and drive it through the same model and
 // keyboard events, so the two surfaces behave identically.
-export const NavigatorPanel = ({
-  query,
-  onQueryChange,
-  onClose,
-  scopeKey,
-  scopeLabel,
-  ref,
-}: NavigatorPanelProps) => {
+export const NavigatorPanel = ({ model, scopeLabel, onClose }: NavigatorPanelProps) => {
   const t = useT().navigation;
-  const navigate = useNavigate();
   const params = useParams({ strict: false });
   const unreadOnly = useViewPrefs().unread;
 
-  const { categories: categoryList, ready: categoriesReady } = useOrderedCategories();
-  const feedsQuery = useFeeds();
+  const {
+    query,
+    selectedIndex,
+    activeIndex,
+    selectedBrowseKey,
+    expandedIds,
+    toggleExpanded,
+    categoriesReady,
+    visibleCategories,
+    feedsInCategory,
+    canExpand,
+    trimmedQuery,
+    leadingRows,
+    categoryMatches,
+    feedMatches,
+    noMatches,
+    goToKey,
+    activate,
+  } = model;
   const counts = useCounts();
 
   const currentStreamKey = params.streamKey;
   const currentStream = currentStreamKey === undefined ? null : parseStreamKey(currentStreamKey);
   const currentIsAll = currentStream?.kind === "all";
   const currentIsRead = currentStream?.kind === "read";
-
-  // The group the current stream lives in: the category itself, or a feed's first category.
-  const currentGroupId = ((): string | undefined => {
-    if (currentStream?.kind === "folder") return currentStream.label;
-    if (currentStream?.kind !== "feed") return undefined;
-    return feedsQuery.data?.find((item) => item.id === currentStream.feedId)?.categoryIds[0];
-  })();
-
-  // Browsing starts with no row highlighted: a highlight there reads as "selected" on a touch
-  // screen, where no arrow key will ever move it. A typed query highlights its top row, so
-  // Enter has a target.
-  const initialIndex = (value: string): number => (value.trim() === "" ? NO_ROW : 0);
-  const [selectedIndex, setSelectedIndex] = useState(() => initialIndex(query));
-  // Groups start collapsed; only the group holding the current stream opens on its own.
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(
-    () => new Set(currentGroupId === undefined ? [] : [currentGroupId]),
-  );
-
-  // Re-selecting the first result on every keystroke belongs to the `query` transition itself,
-  // not to an Effect reacting to it afterwards — the react.dev "adjusting state when a prop
-  // changes" pattern.
-  const [lastQuery, setLastQuery] = useState(query);
-  if (query !== lastQuery) {
-    setLastQuery(query);
-    setSelectedIndex(initialIndex(query));
-  }
 
   // Scrolling the highlighted row back into the viewport drives a DOM node the render doesn't
   // own; jsdom has no scrollIntoView, hence the same feature check the Navigator surfaces use.
@@ -126,188 +78,7 @@ export const NavigatorPanel = ({
     }
   }, [selectedIndex, query]);
 
-  const toggleExpanded = (id: string): void => {
-    setExpandedIds((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const feedList = feedsQuery.data ?? [];
-  // Until the feeds arrive every category may hold feeds, so the twisty stays put rather than
-  // flashing in once they load.
-  const canExpand = (feeds: Feed[]): boolean => feedsQuery.data === undefined || feeds.length > 0;
-  const feedsInCategory = (categoryId: string): Feed[] =>
-    feedList.filter((feed) => feed.categoryIds.includes(categoryId));
-
   const globalCount = unreadCountFor({ counts: counts.data, streamKey: "all" });
-
-  const visibleCategories = categoriesReady ? categoryList : [];
-  const trimmedQuery = query.trim();
-
-  const categoryMatches =
-    trimmedQuery === ""
-      ? []
-      : visibleCategories.filter((category) =>
-          category.label.toLowerCase().includes(trimmedQuery.toLowerCase()),
-        );
-  const feedMatches =
-    trimmedQuery === ""
-      ? []
-      : feedList.filter((feed) => feed.title.toLowerCase().includes(trimmedQuery.toLowerCase()));
-
-  // Any typed text leads with the article-search row, so Enter searches straight away and the
-  // feed/category matches stay one ArrowDown below.
-  const showSearchRow = trimmedQuery !== "";
-  const leadingRows = showSearchRow ? 1 : 0;
-  const noMatches = categoryMatches.length === 0 && feedMatches.length === 0;
-
-  const results: ResultRow[] = [
-    ...(showSearchRow ? [{ kind: "search" as const }] : []),
-    ...categoryMatches.map((category) => ({ kind: "category" as const, category })),
-    ...feedMatches.map((feed) => ({ kind: "feed" as const, feed })),
-  ];
-
-  // The browse tree as the keyboard sees it, in render order. It stays browsable while text is
-  // typed, so it is always built and always rendered — below the matches, never instead of them.
-  const browseRows: BrowseRow[] = [
-    { key: "all", streamKey: "all" },
-    { key: "read", streamKey: "read" },
-  ];
-  for (const category of visibleCategories) {
-    const feeds = feedsInCategory(category.id);
-    browseRows.push({
-      key: categoryRowKey(category.id),
-      streamKey: categoryStreamKey(category.id),
-      ...(canExpand(feeds) ? { expandId: category.id } : {}),
-    });
-    if (expandedIds.has(category.id)) {
-      for (const feed of feeds) {
-        browseRows.push({
-          key: feedRowKey(feed.id),
-          streamKey: feedStreamKey(feed.id),
-          parentId: category.id,
-        });
-      }
-    }
-  }
-  // The footer link closes the browse order, and exists only while the footer does.
-  if (trimmedQuery === "") {
-    browseRows.push({ key: SUBSCRIPTIONS_ROW_KEY, kind: "link" });
-  }
-
-  // One continuous highlight order: the result rows first (the search row, then the
-  // matches), then the browse tree. Collapsing a group shrinks the list under the highlight, so
-  // the index is clamped rather than reset — the row that was highlighted keeps its place
-  // whenever it survives.
-  const totalRows = results.length + browseRows.length;
-  // NO_ROW stays NO_ROW: nothing below it resolves to a row.
-  const activeIndex = Math.min(selectedIndex, totalRows - 1);
-  const selectedBrowseKey =
-    activeIndex >= results.length ? browseRows[activeIndex - results.length]?.key : undefined;
-
-  const goToKey = (streamKeyToOpen: string): void => {
-    void navigate({
-      to: "/stream/$streamKey",
-      params: { streamKey: streamKeyToOpen },
-      search: (prev) => ({ ...prev, q: undefined }),
-    });
-    onQueryChange("");
-    onClose();
-  };
-
-  const activate = (row: ResultRow | undefined): void => {
-    if (!row) return;
-    if (row.kind === "search") {
-      void navigate({
-        to: "/stream/$streamKey",
-        params: { streamKey: scopeKey },
-        search: (prev) => ({ ...prev, q: trimmedQuery }),
-      });
-      onClose();
-      return;
-    }
-    if (row.kind === "category") {
-      goToKey(categoryStreamKey(row.category.id));
-      return;
-    }
-    goToKey(feedStreamKey(row.feed.id));
-  };
-
-  const goToSubscriptions = (): void => {
-    void navigate({ to: "/subscriptions" });
-    onClose();
-  };
-
-  useImperativeHandle(ref, () => ({
-    handleKeyDown: (event) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        onClose();
-        return;
-      }
-      if (totalRows === 0) return;
-      const resultRow = activeIndex < results.length ? results[activeIndex] : undefined;
-      const browseIndex = activeIndex - results.length;
-      const browseRow = browseIndex < 0 ? undefined : browseRows[browseIndex];
-
-      if (event.key === "ArrowDown") {
-        event.preventDefault();
-        setSelectedIndex(Math.min(activeIndex + 1, totalRows - 1));
-        return;
-      }
-      if (event.key === "ArrowUp") {
-        event.preventDefault();
-        setSelectedIndex(Math.max(activeIndex - 1, 0));
-        return;
-      }
-      // Space is a second Enter only in browse mode, where there is nothing to type into yet.
-      if (event.key === "Enter" || (event.key === " " && trimmedQuery === "")) {
-        event.preventDefault();
-        if (resultRow) {
-          activate(resultRow);
-        } else if (browseRow?.kind === "link") {
-          goToSubscriptions();
-        } else if (browseRow?.streamKey !== undefined) {
-          goToKey(browseRow.streamKey);
-        } else if (browseRow?.expandId !== undefined) {
-          toggleExpanded(browseRow.expandId);
-        }
-        return;
-      }
-      if (!browseRow) return;
-      if (event.key === "ArrowRight") {
-        if (browseRow.expandId === undefined) return;
-        if (!expandedIds.has(browseRow.expandId)) {
-          event.preventDefault();
-          toggleExpanded(browseRow.expandId);
-        } else if (browseRows[browseIndex + 1]?.parentId === browseRow.expandId) {
-          // Already open: step into the group, onto its first feed.
-          event.preventDefault();
-          setSelectedIndex(activeIndex + 1);
-        }
-        return;
-      }
-      if (event.key === "ArrowLeft") {
-        if (browseRow.expandId !== undefined) {
-          if (expandedIds.has(browseRow.expandId)) {
-            event.preventDefault();
-            toggleExpanded(browseRow.expandId);
-          }
-          return;
-        }
-        if (browseRow.parentId === undefined) return;
-        const parentIndex = browseRows.findIndex((row) => row.expandId === browseRow.parentId);
-        if (parentIndex === -1) return;
-        // Out of a feed: close the group around it and land on the group's own row.
-        event.preventDefault();
-        toggleExpanded(browseRow.parentId);
-        setSelectedIndex(results.length + parentIndex);
-      }
-    },
-  }));
 
   // Closes over most of the panel's state, so a component would take about 14 props.
   // oxlint-disable-next-line code-conventions/no-render-helper

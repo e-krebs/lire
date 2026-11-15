@@ -1,17 +1,53 @@
-import { useRef } from "react";
 import type { ComponentProps } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useArgs } from "storybook/preview-api";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { NavigatorPanel } from "client/components/browse-menu/menu/NavigatorPanel";
-import type { NavigatorPanelHandle } from "client/components/browse-menu/menu/NavigatorPanel";
+import { useNavigatorModel } from "client/hooks/useNavigatorModel";
 import { withQueryClient, withRouteMatch } from "stories/decorators";
 
 const LOADED = { timeout: 10_000 };
 
+type StoryArgs = Omit<ComponentProps<typeof NavigatorPanel>, "model"> & {
+  query: string;
+  scopeKey: string;
+};
+
+// A component of its own: the model's React hooks cannot share a render function with `useArgs`.
+const Harness = ({
+  query,
+  scopeKey,
+  onQueryChange,
+  ...args
+}: StoryArgs & { onQueryChange: (value: string) => void }) => {
+  const model = useNavigatorModel({
+    open: true,
+    query,
+    onQueryChange: fn(),
+    onClose: args.onClose,
+    scopeKey,
+  });
+  return (
+    <>
+      <input
+        type="search"
+        aria-label="Search"
+        value={query}
+        onChange={(event) => {
+          onQueryChange(event.target.value);
+        }}
+        onKeyDown={(event) => {
+          model.handleKeyDown(event);
+        }}
+        className="m-2 rounded-lg border border-hairline px-2 py-1"
+      />
+      <NavigatorPanel {...args} model={model} />
+    </>
+  );
+};
+
 const meta = {
   title: "Browse menu/Menu/NavigatorPanel",
-  component: NavigatorPanel,
   decorators: [
     withRouteMatch,
     withQueryClient,
@@ -24,33 +60,24 @@ const meta = {
   argTypes: { onClose: { control: false } },
   args: {
     query: "",
-    onQueryChange: fn(),
     scopeKey: "all",
     scopeLabel: "All articles",
     onClose: fn(),
   },
-  render: function Render(args: ComponentProps<typeof NavigatorPanel>) {
+  render: function Render({ query, scopeKey, ...args }: StoryArgs) {
     const [, updateArgs] = useArgs();
-    const handleRef = useRef<NavigatorPanelHandle>(null);
     return (
-      <>
-        <input
-          type="search"
-          aria-label="Search"
-          value={args.query}
-          onChange={(event) => {
-            updateArgs({ query: event.target.value });
-          }}
-          onKeyDown={(event) => {
-            handleRef.current?.handleKeyDown(event);
-          }}
-          className="m-2 rounded-lg border border-hairline px-2 py-1"
-        />
-        <NavigatorPanel {...args} ref={handleRef} />
-      </>
+      <Harness
+        {...args}
+        query={query}
+        scopeKey={scopeKey}
+        onQueryChange={(value) => {
+          updateArgs({ query: value });
+        }}
+      />
     );
   },
-} satisfies Meta<typeof NavigatorPanel>;
+} satisfies Meta<StoryArgs>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

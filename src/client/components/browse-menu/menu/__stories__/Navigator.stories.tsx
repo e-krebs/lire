@@ -1,15 +1,16 @@
-import { createRef, useRef } from "react";
+import { useRef } from "react";
 import type { ComponentProps } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useArgs } from "storybook/preview-api";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import { Navigator } from "client/components/browse-menu/menu/Navigator";
 import type { LocationModel } from "client/components/header/location/locationModel";
+import { useNavigatorModel } from "client/hooks/useNavigatorModel";
 import { setBarPosition } from "client/hooks/utils/barPosition";
 import { withQueryClient, withRouteMatch, withTier } from "stories/decorators";
 import type { Tier } from "stories/decorators";
 
-type Args = Omit<ComponentProps<typeof Navigator>, "anchorRef"> & {
+type Args = Omit<ComponentProps<typeof Navigator>, "anchorRef" | "model"> & {
   tier: Tier;
 };
 
@@ -21,8 +22,42 @@ const locationArgs = (overrides: Partial<LocationModel> = {}): LocationModel => 
   onDraftChange: fn(),
   onClearScope: fn(),
   onClearText: fn(),
+  onSearchKeyDown: fn(),
   ...overrides,
 });
+
+// A component of its own: the model's React hooks cannot share a render function with `useArgs`.
+const Harness = ({
+  tier,
+  onDraftChange,
+  ...args
+}: Args & { onDraftChange: (draft: string) => void }) => {
+  const anchorRef = useRef<HTMLDivElement>(null);
+  const model = useNavigatorModel({
+    open: args.open,
+    query: args.location.draft,
+    onQueryChange: onDraftChange,
+    onClose: () => {
+      args.onClose();
+      if (tier !== "phone") args.onRequestFocus();
+    },
+    scopeKey: args.location.scopeKey,
+  });
+  return (
+    <div className="h-screen p-4">
+      <div
+        ref={anchorRef}
+        className="mx-auto h-10 w-xl max-w-full rounded-full border border-hairline"
+      />
+      <Navigator
+        {...args}
+        anchorRef={anchorRef}
+        model={model}
+        location={{ ...args.location, onSearchKeyDown: model.handleKeyDown, onDraftChange }}
+      />
+    </div>
+  );
+};
 
 const meta: Meta<Args> = {
   title: "Browse menu/Menu/Navigator",
@@ -30,7 +65,6 @@ const meta: Meta<Args> = {
   parameters: { layout: "fullscreen" },
   argTypes: {
     tier: { control: "inline-radio", options: ["phone", "desktop"] },
-    panelHandleRef: { control: false },
     onClose: { control: false },
     onRequestFocus: { control: false },
     location: { control: false },
@@ -39,30 +73,19 @@ const meta: Meta<Args> = {
     tier: "desktop",
     open: true,
     location: locationArgs(),
-    panelHandleRef: createRef(),
     onClose: fn(),
     onRequestFocus: fn(),
   },
-  render: function Render({ tier: _tier, ...args }) {
-    const anchorRef = useRef<HTMLDivElement>(null);
+  render: function Render({ tier, ...args }) {
     const [, updateArgs] = useArgs();
     return (
-      <div className="h-screen p-4">
-        <div
-          ref={anchorRef}
-          className="mx-auto h-10 w-xl max-w-full rounded-full border border-hairline"
-        />
-        <Navigator
-          {...args}
-          anchorRef={anchorRef}
-          location={{
-            ...args.location,
-            onDraftChange: (draft) => {
-              updateArgs({ location: { ...args.location, draft } });
-            },
-          }}
-        />
-      </div>
+      <Harness
+        {...args}
+        tier={tier}
+        onDraftChange={(draft) => {
+          updateArgs({ location: { ...args.location, draft } });
+        }}
+      />
     );
   },
 };
@@ -71,12 +94,7 @@ export default meta;
 type Story = StoryObj<Args>;
 
 export const Default: Story = {
-  args: {
-    tier: "desktop",
-    panelHandleRef: {
-      current: { handleKeyDown: fn() },
-    },
-  },
+  args: { tier: "desktop" },
 };
 
 const LOADED = { timeout: 10_000 };

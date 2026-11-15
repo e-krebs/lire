@@ -33,9 +33,9 @@ import { fixtureBackend } from "test/fixtureBackend";
 import { server } from "test/msw";
 import { seedCategoryId, seedCategoryKey } from "test/seedCategories";
 import { markQueue } from "client/api/markQueue";
+import { useNavigatorModel } from "client/hooks/useNavigatorModel";
 import { LocationBar } from "client/components/header/location/LocationBar";
 import { Navigator } from "../Navigator";
-import type { NavigatorPanelHandle } from "../Navigator";
 
 const TECH_KEY = seedCategoryKey("Tech");
 const FEED_KEY = "feed:101";
@@ -250,6 +250,13 @@ const setup = ({
 const searchParamsOf = (link: HTMLElement): URLSearchParams =>
   new URL(link.getAttribute("href") ?? "", location.origin).searchParams;
 
+// Counts `focus()` calls on one element and still moves the real focus.
+const spyFocus = (element: HTMLElement) => {
+  const spy = vi.fn<() => void>(element.focus.bind(element));
+  Object.defineProperty(element, "focus", { configurable: true, value: spy });
+  return spy;
+};
+
 // Prints the search string too, so a test can tell an article search (`?q=…`) from a plain
 // stream navigation.
 const ReceivedStreamKey = () => {
@@ -278,7 +285,6 @@ const Harness = ({ count }: { count: MatchCount | undefined }) => {
   const [draft, setDraft] = useState(articleQuery ?? "");
   const barRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const panelHandleRef = useRef<NavigatorPanelHandle>(null);
 
   const scopeKey = streamKey ?? "all";
   const scopeStream = parseStreamKey(scopeKey) ?? { kind: "all" as const };
@@ -320,6 +326,17 @@ const Harness = ({ count }: { count: MatchCount | undefined }) => {
     }
   };
 
+  const model = useNavigatorModel({
+    open: panelOpen,
+    query: draft,
+    onQueryChange: setDraft,
+    onClose: () => {
+      setPanelOpen(false);
+      focusInput();
+    },
+    scopeKey,
+  });
+
   const location: LocationModel = {
     scopeKey,
     scopeLabel,
@@ -329,19 +346,12 @@ const Harness = ({ count }: { count: MatchCount | undefined }) => {
     onDraftChange: setDraft,
     onClearScope: clearScope,
     onClearText: clearText,
+    onSearchKeyDown: model.handleKeyDown,
   };
 
   return (
     <>
-      <LocationBar
-        ref={barRef}
-        location={location}
-        onOpen={openPanel}
-        onSearchKeyDown={(event) => {
-          panelHandleRef.current?.handleKeyDown(event);
-        }}
-        inputRef={inputRef}
-      />
+      <LocationBar ref={barRef} location={location} onOpen={openPanel} inputRef={inputRef} />
       <Navigator
         open={panelOpen}
         onClose={() => {
@@ -349,7 +359,7 @@ const Harness = ({ count }: { count: MatchCount | undefined }) => {
         }}
         onRequestFocus={focusInput}
         anchorRef={barRef}
-        panelHandleRef={panelHandleRef}
+        model={model}
         location={location}
       />
     </>
@@ -731,6 +741,24 @@ describe("Navigator", () => {
       expect(ui.dialog).not.toBeInTheDocument();
       expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument();
     });
+
+    it("keeps the highlight and the open groups, then closes on the new tier", async () => {
+      const { user, switchTier } = setup();
+      await user.click(await ui.toggle("Tech"));
+      await waitFor(() => expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument());
+      await user.click(await ui.search);
+      await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
+      await waitFor(() => expect(ui.selected).toHaveTextContent("Tech"));
+
+      switchTier("desktop");
+
+      expect(ui.dialog).not.toBeInTheDocument();
+      expect(ui.selected).toHaveTextContent("Tech");
+      expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument();
+      await user.click(await ui.search);
+      await user.keyboard("{Escape}");
+      await waitFor(() => expect(ui.queryButton("Tech")).not.toBeInTheDocument());
+    });
   });
 
   describe("when on desktop or tablet (anchored popover)", () => {
@@ -766,6 +794,18 @@ describe("Navigator", () => {
       await user.keyboard("{Backspace}");
 
       expect(await ui.text("received:all")).toBeInTheDocument();
+    });
+
+    it("hands focus back to the field when Escape closes the panel", async () => {
+      const { user } = setup({ tier: "desktop" });
+      const field = await ui.search;
+      await user.click(field);
+      await waitFor(() => expect(ui.queryButton("Tech")).toBeInTheDocument());
+      const focus = spyFocus(field);
+
+      await user.keyboard("{Escape}");
+
+      expect(focus).toHaveBeenCalled();
     });
 
     it("drops the typed text when a matched category is picked", async () => {
@@ -953,6 +993,18 @@ describe("Navigator", () => {
       await user.keyboard("{Backspace}");
 
       expect(await ui.text("received:all")).toBeInTheDocument();
+    });
+
+    it("does not hand focus back to the field when Escape closes the sheet", async () => {
+      const { user } = setup();
+      const field = await ui.search;
+      await user.click(field);
+      const focus = spyFocus(field);
+
+      await user.keyboard("{Escape}");
+
+      await waitFor(() => expect(ui.dialog).not.toBeInTheDocument());
+      expect(focus).not.toHaveBeenCalled();
     });
   });
 

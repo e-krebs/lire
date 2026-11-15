@@ -1,3 +1,4 @@
+import type { KeyboardEvent } from "react";
 import type { MatchCount } from "client/api/queries";
 import type { SubscriptionsSearch } from "client/utils/subscriptionsSearch";
 
@@ -11,4 +12,5 @@ export interface LocationModel {
   onDraftChange: (value: string) => void;
   onClearScope: () => void;
   onClearText: () => void;
+  onSearchKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void;
 }

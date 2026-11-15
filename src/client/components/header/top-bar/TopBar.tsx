@@ -1,4 +1,3 @@
-import type { KeyboardEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import {
   Link,
@@ -17,11 +16,12 @@ import { Icon } from "client/components/primitives/icons/icons";
 import { LocationBar } from "client/components/header/location/LocationBar";
 import type { LocationModel } from "client/components/header/location/locationModel";
 import { Navigator } from "client/components/browse-menu/menu/Navigator";
-import type { NavigatorPanelHandle } from "client/components/browse-menu/menu/Navigator";
 import { ViewToggles } from "client/components/header/views/ViewToggles";
 import { useT } from "client/i18n/useT";
 import { tip } from "client/utils/tooltip";
+import { useNavigatorModel } from "client/hooks/useNavigatorModel";
 import { useActiveOverlay } from "client/hooks/useOverlay";
+import { useTier } from "client/hooks/useTier";
 import { streamLabel } from "client/utils/streamLabel";
 import type { StreamLabel } from "client/utils/streamLabel";
 import { panelSearch } from "client/utils/subscriptionsSearch";
@@ -72,7 +72,6 @@ export const TopBar = () => {
   }
   const barRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const panelHandleRef = useRef<NavigatorPanelHandle>(null);
 
   // Off a stream route (Subscriptions) the bar still names the widest scope.
   const scopeKey = streamKey ?? "all";
@@ -119,9 +118,20 @@ export const TopBar = () => {
   const focusInput = (): void => {
     inputRef.current?.focus();
   };
-  const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
-    panelHandleRef.current?.handleKeyDown(event);
-  };
+  // Row activation and Escape hand focus back to the field on desktop; the phone sheet has its own.
+  const phone = useTier() === "phone";
+  const model = useNavigatorModel({
+    open: panelOpen,
+    query: draft,
+    onQueryChange: setDraft,
+    onClose: phone
+      ? closePanel
+      : () => {
+          closePanel();
+          focusInput();
+        },
+    scopeKey,
+  });
 
   // Widening the scope is a navigation, not a bar state: everything else (q, unread, ranked)
   // rides along.
@@ -177,6 +187,7 @@ export const TopBar = () => {
     onDraftChange: setDraft,
     onClearScope: clearScope,
     onClearText: clearText,
+    onSearchKeyDown: model.handleKeyDown,
   };
 
   return (
@@ -229,7 +240,6 @@ export const TopBar = () => {
             ref={barRef}
             location={locationModel}
             onOpen={openPanel}
-            onSearchKeyDown={handleSearchKeyDown}
             inputRef={inputRef}
             viewControls={
               // The recently-read stream is read entries, newest first: nothing to filter or sort.
@@ -243,7 +253,7 @@ export const TopBar = () => {
             onClose={closePanel}
             onRequestFocus={focusInput}
             anchorRef={barRef}
-            panelHandleRef={panelHandleRef}
+            model={model}
             location={locationModel}
           />
         </>
