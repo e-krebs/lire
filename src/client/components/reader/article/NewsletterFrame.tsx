@@ -219,11 +219,14 @@ const keepColors = (doc: Document): void => {
       keep({ element, name: "deco", color: inverse(line) });
   }
   const inkElements = new Set([...textNodes(doc).map((text) => text.parentElement), ...decorated]);
-  for (const element of inkElements) {
-    if (!element || element.closest(".lire-emoji")) continue;
+  // Read every ink color before the first ink write: a kept ancestor's `!important` color would otherwise be inherited, and inverted again.
+  const inks = [...inkElements].flatMap((element) => {
+    if (!element || element.closest(".lire-emoji")) return [];
     const color = win.getComputedStyle(element).color;
     const ink = parseColor(color);
-    if (!ink) continue;
+    return ink ? [{ element, color, ink }] : [];
+  });
+  for (const { element, color, ink } of inks) {
     if (color === DEFAULT_LINK) {
       keep({ element, name: "ink", color: LIGHT_LINK_INVERSE });
     } else if (

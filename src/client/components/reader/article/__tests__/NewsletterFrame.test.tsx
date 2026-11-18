@@ -471,6 +471,20 @@ describe("NewsletterFrame", () => {
       );
     });
 
+    it("stores the same inverse for a child that inherits a kept color", () => {
+      const html =
+        '<p style="color: #000"><a href="#" style="color: #12b5e5">Go <code>x</code></a></p>';
+      render(<NewsletterFrame html={html} dir="ltr" />);
+      const doc = ui.frame.contentDocument!;
+      doc.head.innerHTML = "<style>.lire-ink { color: rgb(237, 74, 26) !important; }</style>";
+      doc.body.innerHTML = html;
+      fireEvent.load(ui.frame);
+
+      expect(doc.querySelector("code")?.style.getPropertyValue("--lire-ink")).toBe(
+        "rgb(237 74 26 / 1)",
+      );
+    });
+
     it("keeps a saturated underline color of its own", () => {
       const doc = load(
         '<p style="color: #000"><a href="#" style="text-decoration: underline; text-decoration-color: #ff0000">Go</a></p>',
