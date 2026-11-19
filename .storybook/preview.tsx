@@ -23,6 +23,18 @@ const preview: Preview = {
   initialGlobals: { locale: "en" },
   beforeEach: ({ globals }) => {
     setLocalePreference(globals.locale === "fr" ? "fr" : "en");
+    // Headless Chromium 159 crashes the page on the first view transition (Playwright 1.65.1).
+    document.startViewTransition = (update) => {
+      const done = Promise.resolve(typeof update === "function" ? update() : undefined).then(
+        () => {},
+      );
+      return {
+        finished: done,
+        ready: done,
+        updateCallbackDone: done,
+        skipTransition: () => {},
+      } as ViewTransition;
+    };
   },
   parameters: {
     layout: "centered",
