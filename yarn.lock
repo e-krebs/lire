@@ -4110,21 +4110,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@testing-library/user-event@npm:^14.6.11":
+"@testing-library/user-event@npm:^14.6.11, @testing-library/user-event@npm:^14.6.3":
   version: 14.6.11
   resolution: "@testing-library/user-event@npm:14.6.11"
   peerDependencies:
     "@testing-library/dom": ">=7.21.4"
   checksum: 10c0/ab0330cfa7fbec9c2e893fb833e1f7d2f01e6614cf730cf92ec5d0234eca113866b4dfe6a072909529584edbcb646dcdf032760f0c2ba50fb6b84fa65cd1004d
-  languageName: node
-  linkType: hard
-
-"@testing-library/user-event@npm:^14.6.3":
-  version: 14.6.8
-  resolution: "@testing-library/user-event@npm:14.6.8"
-  peerDependencies:
-    "@testing-library/dom": ">=7.21.4"
-  checksum: 10c0/374bbf9f477fdc278f4bf56d6a27f88b1801c90cce9dffc414777dbf33fb1e421efc7341ee169cb286435bb742076a7899bb463c9927d2acca95aafaa5324820
   languageName: node
   linkType: hard
 
