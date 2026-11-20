@@ -33,14 +33,16 @@ let navigating = false;
 // Same-origin fetch to the Worker — credentials ride the session cookie.
 export const httpTransport: Transport = async ({ method, path, query, body, keepalive }) => {
   const url = new URL(`${path}${toSearch(query)}`, location.origin);
+  // The Worker rejects a POST or PATCH without a JSON Content-Type, so a bodiless one sends `{}`.
+  const hasBody = method === "POST" || method === "PATCH";
   const response = await fetch(url, {
     method,
     credentials: "same-origin",
     redirect: "manual",
     cache: "no-store",
     ...(keepalive ? { keepalive } : {}),
-    ...(body !== undefined
-      ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
+    ...(body !== undefined || hasBody
+      ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body ?? {}) }
       : {}),
   });
   if (response.type === "opaqueredirect") {
