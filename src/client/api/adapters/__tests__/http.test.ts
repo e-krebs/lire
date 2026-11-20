@@ -116,6 +116,37 @@ describe("httpTransport", () => {
     expect(replace).toHaveBeenCalledExactlyOnceWith("/api/auth/login");
   });
 
+  it("sends an empty JSON body for a POST without one", async () => {
+    const { fetchMock, httpTransport } = await setup();
+    fetchMock.mockResolvedValue({
+      type: "basic",
+      status: 204,
+      text: async () => {
+        await Promise.resolve();
+        return "";
+      },
+    });
+    await httpTransport({ method: "POST", path: "/api/feeds/refresh" });
+    expect(fetchMock.mock.calls[0]?.[1]).toMatchObject({
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    });
+  });
+
+  it("sends no body for a GET", async () => {
+    const { fetchMock, httpTransport } = await setup();
+    fetchMock.mockResolvedValue({
+      type: "basic",
+      status: 200,
+      text: async () => {
+        await Promise.resolve();
+        return "{}";
+      },
+    });
+    await httpTransport(get);
+    expect(fetchMock.mock.calls[0]?.[1]).not.toHaveProperty("body");
+  });
+
   it("keeps the ids of a keepalive mark in the store when the guard answers 401", async () => {
     sessionStorage.setItem("lire:access-login", String(Date.now()));
     const { fetchMock, httpTransport } = await setup();
