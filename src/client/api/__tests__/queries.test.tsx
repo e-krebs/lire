@@ -37,6 +37,7 @@ import {
   useCounts,
   useCategories,
   useCreateWebFeed,
+  useFeedPreview,
   useFeeds,
   useDeleteCategoryAndMove,
   useMark,
@@ -409,6 +410,47 @@ describe("queries", () => {
 
     expect(result.current.fetchStatus).toBe("idle");
     expect(result.current.data).toBeUndefined();
+  });
+
+  describe("when previewing a feed the user does not follow", () => {
+    const previewUrl = "https://preview.example.test/feed.xml";
+
+    it("stays idle without a feed url", () => {
+      const { wrapper } = setup();
+
+      const { result } = renderHook(() => useFeedPreview({ feedUrl: undefined }), { wrapper });
+
+      expect(result.current.fetchStatus).toBe("idle");
+      expect(result.current.data).toBeUndefined();
+    });
+
+    it("answers the two latest entries of the feed", async () => {
+      const { wrapper } = setup();
+
+      const { result } = renderHook(() => useFeedPreview({ feedUrl: previewUrl }), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.isSuccess).toBe(true);
+      });
+      expect(result.current.data?.entries.map((entry) => entry.title)).toEqual([
+        "Preview: the sidebar moves to the left",
+        "Preview: offline reading comes back",
+      ]);
+    });
+
+    it("errors on an address no feed matches, without a retry", async () => {
+      const { wrapper } = setup();
+
+      const { result } = renderHook(
+        () => useFeedPreview({ feedUrl: "https://nowhere.example.test/feed.xml" }),
+        { wrapper },
+      );
+
+      await waitFor(() => {
+        expect(result.current.isError).toBe(true);
+      });
+      expect(result.current.failureCount).toBe(1);
+    });
   });
 
   it("trims the cache to the first page and refetches the counts on refresh", async () => {

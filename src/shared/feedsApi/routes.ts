@@ -26,6 +26,7 @@ export const ROUTES = [
   { method: "POST", path: "/api/entries/mark" },
   { method: "GET", path: "/api/search/entries" },
   { method: "GET", path: "/api/search/feeds" },
+  { method: "GET", path: "/api/feeds/preview" },
   { method: "GET", path: "/api/preferences" },
   { method: "POST", path: "/api/preferences" },
   { method: "GET", path: "/api/onboarding" },

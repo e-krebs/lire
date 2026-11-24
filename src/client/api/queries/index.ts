@@ -33,6 +33,7 @@ export {
   useAnalyzeWebFeed,
   useCreateWebFeed,
   useFeedLookup,
+  useFeedPreview,
   useNewsletterAddress,
   useReanalyzeWebFeed,
   useSubscribe,

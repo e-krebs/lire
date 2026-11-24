@@ -1,0 +1,35 @@
+{
+  "feeds": [
+    {
+      "address": "https://preview.example.test/feed.xml",
+      "search": {
+        "id": 901,
+        "feed_title": "Example Preview Weekly",
+        "feed_address": "https://preview.example.test/feed.xml",
+        "feed_link": "https://preview.example.test",
+        "is_webfeed": false,
+        "last_story_date": "2026-11-09 09:00:00"
+      },
+      "stories": [
+        {
+          "story_hash": "901:c1a2b3",
+          "story_feed_id": 901,
+          "story_title": "Preview: the sidebar moves to the left",
+          "story_content": "<p>A synthetic preview entry. The sidebar now sits beside the list.</p>",
+          "story_permalink": "https://preview.example.test/posts/sidebar-left",
+          "story_timestamp": "1794214800",
+          "image_urls": []
+        },
+        {
+          "story_hash": "901:d4e5f6",
+          "story_feed_id": 901,
+          "story_title": "Preview: offline reading comes back",
+          "story_content": "<p>A second synthetic preview entry, for the two-entry preview.</p>",
+          "story_permalink": "https://preview.example.test/posts/offline-back",
+          "story_timestamp": "1793610000",
+          "image_urls": []
+        }
+      ]
+    }
+  ]
+}

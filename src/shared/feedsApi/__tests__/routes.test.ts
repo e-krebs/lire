@@ -32,6 +32,14 @@ describe("matchRoute", () => {
     );
   });
 
+  it("matches the feed preview read apart from the feed id routes", () => {
+    expect(matchRoute({ method: "GET", pathname: "/api/feeds/preview" })?.route).toEqual({
+      method: "GET",
+      path: "/api/feeds/preview",
+    });
+    expect(matchRoute({ method: "POST", pathname: "/api/feeds/preview" })).toBeNull();
+  });
+
   it("matches onboarding reads and patches", () => {
     expect(matchRoute({ method: "GET", pathname: "/api/onboarding" })?.route.path).toBe(
       "/api/onboarding",

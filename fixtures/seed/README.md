@@ -6,6 +6,7 @@ Synthetic NewsBlur answers, replayed by `createFakeNewsblur` (`src/client/api/ad
 - `read_stories.json`: `/reader/read_stories`, newest first. Its hashes match the stories whose `read_status` is 1.
 - `webfeed_analyze.json`: the `variants_data` of `/webfeed/analyze/status`, two variants ("Release entries", "Sidebar links") with previews. The fake answers it once a status poll turns `done`.
 - `feed_autocomplete.json`: `/rss_feeds/feed_autocomplete`.
+- `feed_preview.json`: `/rss_feeds/search_feed` and `/reader/feed/<id>` for a feed not followed, `https://preview.example.test/feed.xml` (id 901, two stories). Any other address answers NewsBlur's not-found.
 - `preferences.json`: `/profile/get_preference`. Lire values are JSON-encoded strings.
 - `profile.json`: `/social/load_user_profile`. Its `username` is the first half of the derived newsletter address.
 

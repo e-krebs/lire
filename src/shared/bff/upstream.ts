@@ -82,6 +82,14 @@ export const StoriesAnswerSchema = z.object({
   has_more: z.boolean().optional(),
 });
 
+// `/rss_feeds/search_feed?address=`. An address NewsBlur cannot read answers HTTP 200 with a `code`
+// and no `id`.
+export const SearchFeedAnswerSchema = z.object({
+  id: z.number().optional(),
+  code: z.number().optional(),
+  message: z.string().nullish(),
+});
+
 // `/rss_feeds/feed_autocomplete?v=2`.
 export const FeedAutocompleteAnswerSchema = z.object({
   feeds: z.array(

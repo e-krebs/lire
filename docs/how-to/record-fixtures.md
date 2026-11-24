@@ -23,6 +23,10 @@ password from `.env.local`. The Worker signs in through OAuth and never reads th
 pages of stories per feed, and writes `fixtures/real/`, which is gitignored. A wrong password
 answers `200` with `code: -1`, and the script stops on it. Never run it in CI.
 
+The recorder also writes `feed_preview.json`, which the add-feed preview reads. It runs
+`search_feed` for the address of the first followed feed with an `http` address, then reads that
+feed's first page. When no followed feed qualifies, the file is skipped and the seed copy stands in.
+
 The recorder writes into `fixtures/real.tmp/` first. When every required file has been written,
 it deletes `fixtures/real/` and renames the scratch directory into its place. A run that fails
 partway leaves the previous `fixtures/real/` untouched.

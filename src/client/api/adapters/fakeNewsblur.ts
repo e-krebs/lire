@@ -54,6 +54,11 @@ export interface FakeNewsblurFixtures {
   stories: Record<string, unknown[]>;
   readStories: unknown[];
   feedAutocomplete: { feeds: { value: string; label: string; num_subscribers?: number }[] };
+  // Feeds not followed: `/rss_feeds/search_feed` answers `search` for `address`, and `/reader/feed/`
+  // answers `stories` for its id.
+  feedPreview: {
+    feeds: { address: string; search: Record<string, unknown>; stories: unknown[] }[];
+  };
   preferences: { payload: Record<string, unknown> };
   profile: unknown;
   // The `/webfeed/status` answer of a finished analysis, minus `code` and `type`.
@@ -140,6 +145,11 @@ export const createFakeNewsblur = ({
     for (const story of parsed) stories.set(story.story_hash, story);
   }
   const feedStories = (feedId: string) => byFeed.get(feedId) ?? [];
+  const previews = fixtures.feedPreview.feeds;
+  const previewStories = (feedId: string): Story[] =>
+    parseStories(
+      previews.find((candidate) => String(candidate.search.id) === feedId)?.stories ?? [],
+    );
 
   // Newest read first.
   const readLog = parseStories(fixtures.readStories).map((story) => story.story_hash);
@@ -347,8 +357,16 @@ export const createFakeNewsblur = ({
       return paged({ list, params });
     }
     if (path.startsWith("/reader/feed/")) {
-      const list = feedStories(path.slice("/reader/feed/".length));
+      const feedId = path.slice("/reader/feed/".length);
+      const list = byFeed.get(feedId) ?? previewStories(feedId);
       return paged({ list, params, fixedSize: FEED_PAGE_SIZE });
+    }
+    if (path === "/rss_feeds/search_feed") {
+      const address = one({ params, key: "address" });
+      const preview = previews.find((candidate) => candidate.address === address);
+      return preview
+        ? { ...preview.search }
+        : { code: -1, message: "No feed found matching that XML or website address." };
     }
     if (path === "/reader/river_stories") {
       const hashes = many({ params, key: "h" });

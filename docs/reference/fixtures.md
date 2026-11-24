@@ -32,10 +32,15 @@ The layout, one file per upstream call, is:
 | `read_stories.json` | `/reader/read_stories` |
 | `webfeed_analyze.json` | `variants_data` of the web feed analysis status; optional, falls back to the seed copy |
 | `feed_autocomplete.json` | `/rss_feeds/feed_autocomplete` |
+| `feed_preview.json` | `/rss_feeds/search_feed` and `/reader/feed/<id>` for a feed not followed: `{ feeds: [{ address, search, stories }] }`, optional, falls back to the seed copy |
 | `preferences.json` | `/profile/get_preference` |
 
 Recording writes `fixtures/real/` through [record-fixtures.ts](../../scripts/record-fixtures.ts).
 The steps are in [../how-to/record-fixtures.md](../how-to/record-fixtures.md).
+
+The fake answers `/rss_feeds/search_feed` for an address in `feed_preview.json` with that entry's
+`search`, and any other address with NewsBlur's not-found answer. `/reader/feed/<id>` answers the
+entry's `stories` when no followed feed has that id.
 
 ## Selection rule
 
