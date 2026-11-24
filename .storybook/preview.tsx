@@ -58,7 +58,7 @@ const preview: Preview = {
           "Reader",
           ["Article"],
           "Subscriptions",
-          ["Manager", "Feeds", "Categories"],
+          ["Manager", "Feeds", "Categories", "Add"],
         ],
       },
     },

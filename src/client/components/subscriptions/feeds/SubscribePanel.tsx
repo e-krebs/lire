@@ -11,8 +11,8 @@ import {
 import { useT } from "client/i18n/useT";
 import type { Category } from "shared/feedsApi/types";
 import { CategoryPicker } from "client/components/subscriptions/categories/CategoryPicker";
-import { primaryClassName } from "client/components/subscriptions/categories/CategoryPanel";
-import { hostOf } from "client/components/subscriptions/feeds/FeedsTab";
+import { primaryClassName } from "client/components/primitives/controls/buttonClassNames";
+import { hostOf } from "client/utils/hostOf";
 import { SidePanel } from "client/components/primitives/overlays/SidePanel";
 import { WebFeedVariants } from "client/components/subscriptions/feeds/WebFeedVariants";
 

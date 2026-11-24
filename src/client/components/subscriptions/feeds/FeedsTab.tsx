@@ -5,6 +5,7 @@ import { tip } from "client/utils/tooltip";
 import { feedHue } from "client/utils/feedHue";
 import { Icon } from "client/components/primitives/icons/icons";
 import type { Category, Feed } from "shared/feedsApi/types";
+import { hostOf } from "client/utils/hostOf";
 import { ChipSet } from "client/components/primitives/controls/ChipSet";
 import { markPanelOrigin } from "client/components/primitives/overlays/SidePanel";
 
@@ -68,15 +69,6 @@ export const listRowClassName = `
 export const EmptyLine = ({ children }: { children: ReactNode }) => (
   <p className="px-3 py-4 text-sm text-pretty text-muted">{children}</p>
 );
-
-export const hostOf = (website: string | undefined): string | undefined => {
-  if (website === undefined) return undefined;
-  try {
-    return new URL(website).hostname;
-  } catch {
-    return website;
-  }
-};
 
 export const HueDot = ({ feedId }: { feedId: string }) => {
   const style: CSSProperties = { backgroundColor: `oklch(0.65 0.15 ${feedHue(feedId)})` };

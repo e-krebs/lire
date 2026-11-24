@@ -72,6 +72,13 @@ The stream route replaces a `feed:<id>` key with `all` once the feeds list has l
 holds that feed, so Back, a deep link or a stale tab after an unsubscribe never lands on a dead
 stream. Unsubscribing also drops that feed's cached streams and searches.
 
+Adding a feed is a three-step flow (find, name, categories) rendered by `AddFeed`
+([AddFeed](../../src/client/components/subscriptions/add/AddFeed/index.tsx)). The current step is a
+`step` prop, so a route can give each step its own URL. The name step previews the feed's two latest
+entries through `GET /api/feeds/preview`; a web feed shows its variants there instead. Next stays
+enabled on an incomplete step: pressing it shows the error on the field (`aria-invalid`,
+`aria-describedby`) and focuses it. The flow state lives in `useAddFeedFlow`.
+
 The mosaic places every entry card absolutely from a known height, so an entry card never waits on a
 measuring pass. A card with an image keeps a fixed 3:2 shape. A card without one is as high as its
 content: [textHeight.ts](../../src/client/utils/textHeight.ts) counts the title's lines (one to

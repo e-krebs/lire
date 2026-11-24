@@ -185,6 +185,12 @@ describe("MosaicTile", () => {
     expect(pill).toHaveClass("absolute");
   });
 
+  it("shows no age when the entry has no date", async () => {
+    const { ui } = setup({ entry: makeEntry({ published: 0 }) });
+    expect(await ui.wrapper()).toHaveTextContent("A test entry");
+    expect(await ui.age()).toBeNull();
+  });
+
   it("marks a read entry with a data attribute", async () => {
     const { ui } = setup({ entry: makeEntry({ unread: false }) });
     expect(await ui.wrapper()).toHaveAttribute("data-read");

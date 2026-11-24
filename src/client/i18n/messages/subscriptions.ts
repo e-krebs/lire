@@ -190,6 +190,22 @@ export const en = {
   apply: "Apply",
   applyVariantFailed: ({ message }: { message: string }) =>
     `Could not apply that variant. ${message}`,
+  addSteps: "Steps",
+  stepFind: "Find",
+  stepName: "Name and preview",
+  stepCategories: "Categories",
+  stepCount: ({ current, total }: { current: number; total: number }) =>
+    `Step ${current} of ${total}`,
+  stepDone: "completed",
+  stepTodo: "not completed",
+  next: "Next",
+  previous: "Previous",
+  latestEntries: "Latest entries",
+  noEntriesYet: "No entries yet",
+  previewUnavailable: "Preview unavailable. You can still subscribe.",
+  pickFeedRequired: "Pick a feed from the results, or make a web feed.",
+  nameRequired: "Enter a name.",
+  pickVariantRequired: "Pick a variant.",
 } as const;
 
 export const fr = {
@@ -384,4 +400,19 @@ export const fr = {
   reanalyze: "Réanalyser",
   apply: "Appliquer",
   applyVariantFailed: ({ message }) => `Impossible d'appliquer cette variante. ${message}`,
+  addSteps: "Étapes",
+  stepFind: "Trouver",
+  stepName: "Nom et aperçu",
+  stepCategories: "Catégories",
+  stepCount: ({ current, total }) => `Étape ${current} sur ${total}`,
+  stepDone: "terminée",
+  stepTodo: "pas encore faite",
+  next: "Suivant",
+  previous: "Précédent",
+  latestEntries: "Derniers articles",
+  noEntriesYet: "Aucun article",
+  previewUnavailable: "Aperçu indisponible. Vous pouvez quand même vous abonner.",
+  pickFeedRequired: "Choisissez un flux dans les résultats, ou créez un flux web.",
+  nameRequired: "Saisissez un nom.",
+  pickVariantRequired: "Choisissez une variante.",
 } satisfies Messages<typeof en>;
