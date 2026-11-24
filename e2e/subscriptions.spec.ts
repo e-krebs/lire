@@ -83,6 +83,91 @@ const ui = (page: Page) => ({
   },
 });
 
+const addUi = (page: Page) => ({
+  get urlField() {
+    return page.getByRole("textbox", { name: "Feed or site URL", exact: true });
+  },
+  get nameField() {
+    return page.getByRole("textbox", { name: "Name", exact: true });
+  },
+  get urlError() {
+    return page.getByText("Enter a feed or site URL.");
+  },
+  get nameError() {
+    return page.getByText("Enter a name.");
+  },
+  get categoryError() {
+    return page.getByText("Pick at least one category for this feed.").first();
+  },
+  get variantError() {
+    return page.getByText("Pick a variant.");
+  },
+  get nextButton() {
+    return page.getByRole("button", { name: "Next", exact: true });
+  },
+  get subscribeButton() {
+    return page.getByRole("button", { name: "Subscribe", exact: true });
+  },
+  get steps() {
+    return page.getByRole("navigation", { name: "Steps", exact: true });
+  },
+  stepHeading(name: string): Locator {
+    return page.getByRole("heading", { name, exact: true });
+  },
+  stepCount(text: string): Locator {
+    return page.getByText(text, { exact: true });
+  },
+  previewText(text: string): Locator {
+    return page.getByText(text);
+  },
+  categoryCheckbox(name: string): Locator {
+    return page.getByRole("checkbox", { name, exact: true });
+  },
+  get makeWebFeedButton() {
+    return page.getByRole("button", { name: "Make a web feed", exact: true });
+  },
+  get techDailyRadio() {
+    return page.getByRole("radio", { name: /^Example Tech Daily/ });
+  },
+  get previewWeeklyRadio() {
+    return page.getByRole("radio", { name: /^Example Preview Weekly/ });
+  },
+  get sidebarLinksRadio() {
+    return page.getByRole("radio", { name: /Sidebar links/ });
+  },
+});
+
+// Below `sm` (640px) the stepper list is hidden behind a count line; from `sm` up the count line
+// is hidden and the labeled list shows the current step.
+const expectStepper = async ({
+  page,
+  phone,
+  current,
+  count,
+}: {
+  page: Page;
+  phone: boolean;
+  current: string;
+  count: string;
+}): Promise<void> => {
+  const add = addUi(page);
+  const steps = add.steps;
+  if (phone) {
+    await expect(add.stepCount(count)).toBeVisible();
+    await expect(steps.getByRole("list")).toBeHidden();
+  } else {
+    await expect(add.stepCount(count)).toBeHidden();
+    await expect(steps.getByRole("listitem")).toHaveCount(3);
+    await expect(steps.locator('[aria-current="step"]')).toContainText(current);
+  }
+};
+
+const openAddFlow = async (page: Page): Promise<void> => {
+  await page.goto("/subscriptions");
+  await ui(page).addWebsiteButton.click();
+  await expect(page).toHaveURL(/\/subscriptions\/add\?step=find$/);
+};
+
 test.describe("Subscriptions manager", () => {
   test("opens on the feeds tab, and a category row opens the panel", async ({ page }, testInfo) => {
     const phone = testInfo.project.name === "pixel-9-pro";
@@ -272,29 +357,109 @@ test.describe("Subscriptions manager", () => {
     await pageUi.navigatorOrder({ phone: false });
   });
 
-  test("makes a web feed from a page that is not a feed", async ({ page }, testInfo) => {
+  test("opens the add flow from the subscriptions page and subscribes through three steps", async ({
+    page,
+  }, testInfo) => {
     const phone = testInfo.project.name === "pixel-9-pro";
     const pageUi = ui(page);
+    const add = addUi(page);
+
+    await openAddFlow(page);
+    await add.nextButton.click();
+    await expect(add.urlError).toBeVisible();
+    await add.urlField.fill("tech.example.test");
+    await add.techDailyRadio.check();
+    await expect(add.nextButton).toBeEnabled();
+    await add.nextButton.click();
+
+    await expect(add.stepHeading("Name and preview")).toBeFocused();
+    await expect(add.nameField).toHaveValue("Example Tech Daily");
+    await expect(add.previewText("Preview unavailable. You can still subscribe.")).toBeVisible();
+    await expectStepper({ page, phone, current: "Name and preview", count: "Step 2 of 3" });
+    if (!phone) {
+      await add.steps.getByRole("button", { name: /Find/ }).click();
+      await expect(page).toHaveURL(/step=find$/);
+      await add.nextButton.click();
+      await expect(add.stepHeading("Name and preview")).toBeVisible();
+    }
+
+    await add.nameField.fill("");
+    await add.nextButton.click();
+    await expect(add.nameError).toBeVisible();
+    await add.nameField.fill("Tech Daily");
+    await add.nextButton.click();
+
+    await expect(add.stepHeading("Categories")).toBeFocused();
+    await add.subscribeButton.click();
+    await expect(add.categoryError).toBeVisible();
+    await add.categoryCheckbox("Tech").check();
+    await expect(add.subscribeButton).toBeEnabled();
+    await add.subscribeButton.click();
+
+    await expect(page).toHaveURL(/\/subscriptions$/);
+    await expect(pageUi.feedRow("Tech Daily")).toBeVisible();
+  });
+
+  test("shows the two latest entries of a picked feed", async ({ page }) => {
+    const add = addUi(page);
+
+    await openAddFlow(page);
+    await add.urlField.fill("https://preview.example.test/feed.xml");
+    await add.previewWeeklyRadio.check();
+    await add.nextButton.click();
+
+    await expect(add.stepHeading("Name and preview")).toBeFocused();
+    await expect(add.nameField).toHaveValue("Example Preview Weekly");
+    await expect(add.previewText("Preview: the sidebar moves to the left")).toBeVisible();
+    await expect(add.previewText("Preview: offline reading comes back")).toBeVisible();
+  });
+
+  test("browser Back from the name step keeps the draft", async ({ page }) => {
+    const add = addUi(page);
+
+    await openAddFlow(page);
+    await add.urlField.fill("tech.example.test");
+    const result = add.techDailyRadio;
+    await result.check();
+    await add.nextButton.click();
+    await add.nameField.fill("Tech Daily");
+
+    await page.goBack();
+    await expect(page).toHaveURL(/step=find/);
+    await expect(add.urlField).toHaveValue("tech.example.test");
+    await expect(result).toBeChecked();
+
+    await add.nextButton.click();
+    await expect(add.nameField).toHaveValue("Tech Daily");
+  });
+
+  test("makes a web feed from a page that is not a feed and applies a variant", async ({
+    page,
+  }, testInfo) => {
+    const phone = testInfo.project.name === "pixel-9-pro";
+    const pageUi = ui(page);
+    const add = addUi(page);
     // The seed already holds one web feed with this title, the new one makes two.
     const changelogRows = pageUi.feedRow("Example Changelog");
 
-    await page.goto("/subscriptions?tab=categories");
-    await pageUi.feedsTab.click();
-    await expect(changelogRows).toHaveCount(1);
-    await pageUi.addWebsiteButton.click();
+    await openAddFlow(page);
+    await expect(changelogRows).toHaveCount(0);
+    await add.urlField.fill("https://news.example.test/releases");
+    await add.makeWebFeedButton.click();
 
-    const panel = pageUi.panel({ phone, title: "Add a feed" });
-    await expect(panel).toBeVisible();
-    await panel.getByLabel("Feed or site URL").fill("https://news.example.test/releases");
-    await panel.getByRole("button", { name: "Make a web feed" }).click();
+    await expect(add.stepHeading("Name and preview")).toBeFocused();
+    await expect(add.nameField).toHaveValue("Example Changelog");
+    await add.nextButton.click();
+    await expect(add.variantError).toBeVisible();
+    await add.sidebarLinksRadio.check();
+    await expect(add.nextButton).toBeEnabled();
+    await expectStepper({ page, phone, current: "Name and preview", count: "Step 2 of 3" });
+    await add.nextButton.click();
 
-    await panel.getByRole("radio", { name: /Release entries/ }).check();
-    await panel.getByRole("checkbox", { name: "Design", exact: true }).check();
-    const subscribe = panel.getByRole("button", { name: "Subscribe" });
-    await expect(subscribe).toBeEnabled();
-    await subscribe.click();
+    await add.categoryCheckbox("Design").check();
+    await add.subscribeButton.click();
 
-    await expect(panel).toBeHidden();
+    await expect(page).toHaveURL(/\/subscriptions$/);
     await expect(changelogRows).toHaveCount(2);
   });
 

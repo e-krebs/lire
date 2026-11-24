@@ -316,7 +316,7 @@ export const MosaicBody = ({
               <p className="text-base text-muted">{t.articles.welcomeTitle}</p>
               <p>{t.articles.welcomeBody}</p>
               <div className="flex flex-wrap justify-center gap-3">
-                <Link to="/subscriptions" search={{ add: true }} className={actionClassName}>
+                <Link to="/subscriptions/add" search={{ step: "find" }} className={actionClassName}>
                   {t.articles.addFirstFeed}
                 </Link>
                 <Link to="/subscriptions" search={{ newsletter: true }} className={actionClassName}>

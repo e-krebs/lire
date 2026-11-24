@@ -159,13 +159,10 @@ export const en = {
     `Could not load your address. ${message}`,
 
   addFeedTitle: "Add a feed",
-  feedStep1: "Step 1 of 2 · find the feed or page",
-  feedStep2: "Step 2 of 2 · pick where it lands",
   feedUrlLabel: "Feed or site URL",
   searching: "Searching…",
   resultCount: ({ count }: { count: number }) =>
     enPlural({ count, one: () => "1 result", other: (n) => `${n} results` }),
-  enterUrl: "Enter a feed or site URL.",
   lookupFailed: ({ message }: { message: string }) => `Could not look up that URL. ${message}`,
   subscribeFeedFailed: ({ message }: { message: string }) =>
     `Could not subscribe to that feed. ${message}`,
@@ -203,6 +200,7 @@ export const en = {
   latestEntries: "Latest entries",
   noEntriesYet: "No entries yet",
   previewUnavailable: "Preview unavailable. You can still subscribe.",
+  enterUrl: "Enter a feed or site URL.",
   pickFeedRequired: "Pick a feed from the results, or make a web feed.",
   nameRequired: "Enter a name.",
   pickVariantRequired: "Pick a variant.",
@@ -366,8 +364,6 @@ export const fr = {
   loadAddressFailed: ({ message }) => `Impossible de charger votre adresse. ${message}`,
 
   addFeedTitle: "Ajouter un flux",
-  feedStep1: "Étape 1 sur 2 · trouver le flux ou la page",
-  feedStep2: "Étape 2 sur 2 · choisir où il arrive",
   feedUrlLabel: "URL du flux ou du site",
   searching: "Recherche…",
   resultCount: ({ count }) =>
@@ -376,7 +372,6 @@ export const fr = {
       one: (n) => `${n} résultat`,
       other: (n) => `${n} résultats`,
     }),
-  enterUrl: "Saisissez l'URL d'un flux ou d'un site.",
   lookupFailed: ({ message }) => `Impossible de rechercher cette URL. ${message}`,
   subscribeFeedFailed: ({ message }) => `Impossible de s'abonner à ce flux. ${message}`,
   results: "Résultats",
@@ -412,6 +407,7 @@ export const fr = {
   latestEntries: "Derniers articles",
   noEntriesYet: "Aucun article",
   previewUnavailable: "Aperçu indisponible. Vous pouvez quand même vous abonner.",
+  enterUrl: "Saisissez l'URL d'un flux ou d'un site.",
   pickFeedRequired: "Choisissez un flux dans les résultats, ou créez un flux web.",
   nameRequired: "Saisissez un nom.",
   pickVariantRequired: "Choisissez une variante.",

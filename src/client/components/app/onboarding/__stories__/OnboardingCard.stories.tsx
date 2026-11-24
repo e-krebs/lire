@@ -8,9 +8,19 @@ type OnboardingSteps = ComponentProps<typeof OnboardingCard>["steps"];
 
 const steps: OnboardingSteps = [
   { id: "language", done: false, auto: false },
-  { id: "addFeed", done: false, auto: false, search: { add: true } },
-  { id: "newsletter", done: false, auto: false, search: { newsletter: true } },
-  { id: "folders", done: false, auto: false, search: { tab: "categories" } },
+  { id: "addFeed", done: false, auto: false, link: { to: "/subscriptions/add" } },
+  {
+    id: "newsletter",
+    done: false,
+    auto: false,
+    link: { to: "/subscriptions", search: { newsletter: true } },
+  },
+  {
+    id: "folders",
+    done: false,
+    auto: false,
+    link: { to: "/subscriptions", search: { tab: "categories" } },
+  },
   { id: "categories", done: false, auto: false },
   { id: "markAsRead", done: false, auto: false },
   { id: "originalSite", done: false, auto: false },

@@ -188,7 +188,7 @@ test.describe("the onboarding checklist", () => {
     await expect.poll(async () => storedOnboarding(page)).not.toContain('"addFeed":true');
 
     await pageUi.addFeedLink.click();
-    await expect(page).toHaveURL(/\/subscriptions\?add=true$/);
+    await expect(page).toHaveURL(/\/subscriptions\/add\?step=find$/);
     expect(await storedOnboarding(page)).not.toContain('"addFeed":true');
   });
 

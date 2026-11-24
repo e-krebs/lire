@@ -1,10 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": [
-    "src/client/routeTree.gen.ts!",
-    "scripts/check-credits-libraries.ts!",
-    "src/client/components/subscriptions/add/AddFeed/index.tsx!"
-  ],
+  "entry": ["src/client/routeTree.gen.ts!", "scripts/check-credits-libraries.ts!"],
   "project": [
     "src/**/*.{ts,tsx,css}!",
     "!src/test/**!",
@@ -13,13 +9,6 @@
     "scripts/**/*.ts",
     "e2e/**/*.ts"
   ],
-  "ignore": [
-    "src/client/components/primitives/controls/Stepper.tsx",
-    "src/client/components/primitives/controls/StepPanel.tsx",
-    "src/client/hooks/useStepFocus.ts",
-    "src/client/utils/steps.ts"
-  ],
   "ignoreDependencies": ["cloudflare", "@vitest/expect"],
-  "ignoreBinaries": ["vite"],
-  "ignoreIssues": { "src/client/components/subscriptions/add/AddFeed/shared.ts": ["exports"] }
+  "ignoreBinaries": ["vite"]
 }

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ComponentProps } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 import { resetFixtureState } from "client/api/adapters/fixture";
 import { SubscriptionsManager } from "client/components/subscriptions/manager/SubscriptionsManager";
 import { withQueryClient, withRouter, withTier } from "stories/decorators";
@@ -12,7 +12,7 @@ type Args = ComponentProps<typeof SubscriptionsManager> & { tier: Tier };
 type Props = ComponentProps<typeof SubscriptionsManager>;
 
 // The story owns the state the app keeps in the URL; `useArgs` does not update in the test runner.
-const Controlled = ({ tab: initialTab, panel: initialPanel }: Props) => {
+const Controlled = ({ tab: initialTab, panel: initialPanel, onAddFeed }: Props) => {
   const [tab, setTab] = useState(initialTab);
   const [panel, setPanel] = useState(initialPanel);
   return (
@@ -25,6 +25,7 @@ const Controlled = ({ tab: initialTab, panel: initialPanel }: Props) => {
           setPanel(undefined);
         }}
         onPanelChange={setPanel}
+        onAddFeed={onAddFeed}
       />
     </div>
   );
@@ -41,8 +42,9 @@ const meta: Meta<Args> = {
     tier: { control: "inline-radio", options: ["phone", "desktop"] },
     onTabChange: { control: false },
     onPanelChange: { control: false },
+    onAddFeed: { control: false },
   },
-  args: { tier: "desktop", tab: "categories", panel: undefined },
+  args: { tier: "desktop", tab: "categories", panel: undefined, onAddFeed: fn() },
   beforeEach: () => {
     resetFixtureState();
   },
@@ -67,10 +69,10 @@ export const ListCentred: Story = {
 };
 
 export const ListBesidePanel: Story = {
-  args: { panel: { kind: "add", categoryId: undefined } },
+  args: { panel: { kind: "newsletter", categoryId: undefined } },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await screen.findByRole("complementary", { name: "Add a feed" }, SLOW);
+    await screen.findByRole("complementary", { name: "Add a newsletter" }, SLOW);
     const column = (await canvas.findByRole("tab", { name: /Categories/ }, SLOW)).closest(
       "div.scroll-pane",
     )!;
@@ -129,7 +131,7 @@ export const RenameCategory: Story = {
 };
 
 export const CreateCategory: Story = {
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await canvas.findByRole("button", { name: "Design" }, SLOW);
     await userEvent.click(canvas.getByRole("button", { name: "＋ New" }));
@@ -141,7 +143,7 @@ export const CreateCategory: Story = {
     await expect(screen.getByText("No feeds in this category yet.")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "＋ Add sources" }));
     await userEvent.click(await screen.findByRole("button", { name: "Add website" }));
-    await screen.findByRole("complementary", { name: "Add a feed" }, SLOW);
+    await expect(args.onAddFeed).toHaveBeenCalledWith(expect.any(String));
   },
 };
 
@@ -293,29 +295,13 @@ export const UnsubscribeFromFeed: Story = {
   },
 };
 
-export const SubscribeByUrl: Story = {
+export const AddWebsiteFromFeeds: Story = {
   args: { tab: "feeds" },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement);
     await canvas.findByRole("button", { name: "Example Daily News" }, SLOW);
     await userEvent.click(canvas.getByRole("button", { name: "Add website" }));
-    const panel = await screen.findByRole("complementary", { name: "Add a feed" }, SLOW);
-    const url = within(panel).getByRole("textbox", { name: "Feed or site URL" });
-    await userEvent.type(url, "https://gardening.example.test/rss");
-    await within(panel).findByRole("radio", { name: /Example Gardening/ }, SLOW);
-    await userEvent.click(within(panel).getByRole("radio", { name: /Example Gardening/ }));
-    await userEvent.click(within(panel).getByRole("checkbox", { name: "Design" }));
-    const fast = userEvent.setup({ delay: null });
-    await fast.clear(url);
-    await fast.type(url, "ab");
-    await fast.click(within(panel).getByRole("button", { name: "Subscribe" }));
-    await expect(await within(panel).findByText("Enter a feed or site URL.")).toBeVisible();
-    await fast.type(url, "{Backspace}{Backspace}https://gardening.example.test/rss");
-    await fast.click(within(panel).getByRole("button", { name: "Subscribe" }));
-    await within(panel).findByRole("radio", { name: /Example Gardening/ }, SLOW);
-    await userEvent.click(within(panel).getByRole("radio", { name: /Example Gardening/ }));
-    await userEvent.click(within(panel).getByRole("button", { name: "Subscribe" }));
-    await canvas.findByRole("button", { name: "Example Gardening" }, SLOW);
+    await expect(args.onAddFeed).toHaveBeenCalledOnce();
   },
 };
 

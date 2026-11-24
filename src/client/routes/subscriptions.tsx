@@ -11,12 +11,11 @@ import { noViewTransitionRunning } from "client/utils/viewTransition";
 export const Route = createFileRoute("/subscriptions")({
   validateSearch: (search: Record<string, unknown>): SubscriptionsSearch => {
     const tab = search.tab === "feeds" || search.tab === "categories" ? search.tab : undefined;
-    const add = search.add === true ? true : text(search.add);
     const newsletter = search.newsletter === true ? true : text(search.newsletter);
     return {
       tab,
       ...searchOf(
-        panelOf({ feed: text(search.feed), category: text(search.category), add, newsletter }),
+        panelOf({ feed: text(search.feed), category: text(search.category), newsletter }),
       ),
     };
   },
@@ -33,6 +32,12 @@ function SubscriptionsPage() {
       <SubscriptionsManager
         tab={search.tab ?? "feeds"}
         panel={panelOf(search)}
+        onAddFeed={(categoryId) => {
+          void navigate({
+            to: "/subscriptions/add",
+            search: { step: "find", category: categoryId },
+          });
+        }}
         onTabChange={(tab) => {
           void navigate({
             search: (prev) => ({ ...prev, tab, ...searchOf(undefined) }),

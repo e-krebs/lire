@@ -8,7 +8,6 @@ import { FeedPanel } from "client/components/subscriptions/feeds/FeedPanel";
 import { FeedsTab } from "client/components/subscriptions/feeds/FeedsTab";
 import { NewsletterPanel } from "client/components/subscriptions/feeds/NewsletterPanel";
 import { PanelExitContext, markPanelOrigin } from "client/components/primitives/overlays/SidePanel";
-import { SubscribePanel } from "client/components/subscriptions/feeds/SubscribePanel";
 import { Tabs, tabId, tabPanelId } from "client/components/primitives/controls/Tabs";
 import { useTier } from "client/hooks/useTier";
 import { useT } from "client/i18n/useT";
@@ -18,7 +17,6 @@ export type SubscriptionsTab = "categories" | "feeds";
 export type SubscriptionsPanel =
   | { kind: "feed"; feedId: string }
   | { kind: "category"; categoryId: string }
-  | { kind: "add"; categoryId: string | undefined }
   | { kind: "newsletter"; categoryId: string | undefined };
 
 const panelKey = (panel: SubscriptionsPanel | undefined): string | undefined =>
@@ -35,6 +33,8 @@ interface SubscriptionsManagerProps {
   onTabChange: (tab: SubscriptionsTab) => void;
   /** Panel opened, switched or closed (undefined). */
   onPanelChange: (panel: SubscriptionsPanel | undefined) => void;
+  /** Add-a-feed flow opened, with the category it preselects. */
+  onAddFeed: (categoryId: string | undefined) => void;
 }
 
 const CategoryRowsSkeleton = () => {
@@ -64,6 +64,7 @@ export const SubscriptionsManager = ({
   panel,
   onTabChange,
   onPanelChange,
+  onAddFeed,
 }: SubscriptionsManagerProps) => {
   const t = useT().subscriptions;
   const phone = useTier() === "phone";
@@ -95,15 +96,12 @@ export const SubscriptionsManager = ({
     shownPanel?.kind === "category"
       ? categoryList.find((category) => category.id === shownPanel.categoryId)
       : undefined;
-  const addPanel =
-    shownPanel?.kind === "add" && categoriesQuery.data !== undefined ? shownPanel : undefined;
   const newsletterPanel = shownPanel?.kind === "newsletter" ? shownPanel : undefined;
   // Gone meanwhile, e.g. an unsubscribed feed: nothing is left to animate.
   if (
     closing !== undefined &&
     openFeed === undefined &&
     openCategory === undefined &&
-    !addPanel &&
     !newsletterPanel
   ) {
     setClosing(undefined);
@@ -114,7 +112,7 @@ export const SubscriptionsManager = ({
   // Not opened from a row, so no row name morphs into its heading.
   const openSubscribe = (categoryId: string | undefined): void => {
     markPanelOrigin(null);
-    onPanelChange({ kind: "add", categoryId });
+    onAddFeed(categoryId);
   };
   const openNewsletter = (categoryId: string | undefined): void => {
     markPanelOrigin(null);
@@ -231,15 +229,6 @@ export const SubscriptionsManager = ({
             onAddNewsletter={() => {
               openNewsletter(openCategory.id);
             }}
-          />
-        )}
-        {/* Waits for the categories, so the preselected one is known on mount. */}
-        {addPanel === undefined ? null : (
-          <SubscribePanel
-            key={addPanel.categoryId ?? ""}
-            categories={categoryList}
-            categoryId={addPanel.categoryId}
-            onClose={closePanel}
           />
         )}
         {newsletterPanel === undefined ? null : <NewsletterPanel onClose={closePanel} />}

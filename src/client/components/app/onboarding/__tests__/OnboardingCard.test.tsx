@@ -20,9 +20,19 @@ const DISMISS_AFTER_MS = 330;
 
 const steps: OnboardingSteps = [
   { id: "language", done: false, auto: false },
-  { id: "addFeed", done: false, auto: true, search: { add: true } },
-  { id: "newsletter", done: false, auto: false, search: { newsletter: true } },
-  { id: "folders", done: false, auto: false, search: { tab: "categories" } },
+  { id: "addFeed", done: false, auto: true, link: { to: "/subscriptions/add" } },
+  {
+    id: "newsletter",
+    done: false,
+    auto: false,
+    link: { to: "/subscriptions", search: { newsletter: true } },
+  },
+  {
+    id: "folders",
+    done: false,
+    auto: false,
+    link: { to: "/subscriptions", search: { tab: "categories" } },
+  },
   { id: "categories", done: false, auto: false },
   { id: "markAsRead", done: false, auto: false },
   { id: "originalSite", done: false, auto: false },

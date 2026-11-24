@@ -19,6 +19,9 @@ const ui = {
   get feedRow() {
     return screen.findByRole("button", { name: "Example Tech Daily" });
   },
+  get sidePanel() {
+    return screen.queryByRole("complementary");
+  },
 };
 
 const subscriptionsSearch = (router: ReturnType<typeof renderApp>["router"]) =>
@@ -46,11 +49,12 @@ describe("/subscriptions", () => {
     expect(subscriptionsSearch(router)).toMatchObject({ tab: "feeds", feed: FEED_ID });
   });
 
-  it("drops an unknown tab and keeps the add flag", async () => {
+  it("drops an unknown tab and ignores the retired add flag", async () => {
     const { router } = renderApp({ url: "/subscriptions?tab=nope&add=true" });
 
     await ui.categoriesTab;
-    expect(subscriptionsSearch(router)).toMatchObject({ tab: undefined, add: true });
+    expect(subscriptionsSearch(router)).toMatchObject({ tab: undefined });
+    expect(ui.sidePanel).toBeNull();
   });
 
   it("keeps the newsletter flag", async () => {
