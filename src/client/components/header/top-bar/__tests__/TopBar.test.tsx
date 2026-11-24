@@ -85,16 +85,12 @@ const OpenMenu = () => {
 
 // jsdom has no matchMedia either; a desktop stub keeps the pill an input with its toggles.
 const stubTier = (tier: "desktop" | "phone"): void => {
-  // oxlint-disable typescript/no-unsafe-type-assertion -- test stub: useTier only reads
-  // `matches` and (de)registers listeners, never the rest of MediaQueryList.
-  window.matchMedia = (query: string) =>
-    ({
-      matches: tier === "desktop",
-      media: query,
-      addEventListener: () => {},
-      removeEventListener: () => {},
-    }) as unknown as MediaQueryList;
-  // oxlint-enable typescript/no-unsafe-type-assertion
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    matches: tier === "desktop",
+    media: query,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+  }));
 };
 
 const setup = ({
