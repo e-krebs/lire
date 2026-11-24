@@ -49,6 +49,9 @@ NewsBlur.
   when the page is hidden, with `keepalive`. Pending ids are stored and sent again after a failed
   send or at the next start, see [0011](0011-persisted-mark-read-queue.md). The optimistic cache
   update stays instant.
+- **Preview.** `GET /api/feeds/preview` is the one route that reads a feed's stories without the
+  reader following it. It finds the feed by address through NewsBlur's feed search, then returns the
+  first two stories of its first page, mapped to the entry fields and nothing else.
 
 ## Consequences
 

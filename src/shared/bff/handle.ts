@@ -12,6 +12,7 @@ import {
   OnboardingPatchSchema,
   OnboardingStepIdSchema,
   PreferencesUpdateSchema,
+  PreviewFeedQuerySchema,
   SearchEntriesQuerySchema,
   SearchFeedsQuerySchema,
   StreamEntriesQuerySchema,
@@ -26,6 +27,7 @@ import {
   type Entry,
   type EntryPage,
   type Feed,
+  type FeedPreview,
   type FeedSearchResult,
   type OnboardingPatch,
   type OnboardingState,
@@ -53,6 +55,7 @@ import {
   FeedAutocompleteAnswerSchema,
   FeedsAnswerSchema,
   PreferencesAnswerSchema,
+  SearchFeedAnswerSchema,
   RefreshFeedsAnswerSchema,
   SessionFieldsSchema,
   StoriesAnswerSchema,
@@ -513,6 +516,17 @@ const toVariant = (variant: UpstreamWebFeedVariant): WebFeedVariant => ({
   })),
 });
 
+// A preview is the first two stories NewsBlur reads for the feed, which the caller has not
+// subscribed to. Only the mapped fields leave the Worker.
+const PREVIEW_COUNT = 2;
+const toPreviewEntry = (story: Story): FeedPreview["entries"][number] => ({
+  title: story.story_title ?? "",
+  url: story.story_permalink ?? "",
+  summary: text(story.story_content),
+  imageUrl: story.image_urls?.[0],
+  publishedAt: new Date(story.story_timestamp * 1000).toISOString(),
+});
+
 // An id with no event yet stays pending: NewsBlur answers the same for a task the queue has not
 // started and for one past its lifetime, and the client stops polling on its own deadline.
 const toWebFeedStatus = (answer: WebFeedStatusAnswer): WebFeedStatus => {
@@ -957,6 +971,22 @@ const HANDLERS: Record<RouteKey, Handler> = {
         subscribers: feed.num_subscribers,
       })),
     );
+  },
+
+  "GET /api/feeds/preview": async ({ ctx, query }) => {
+    const { url } = parseInput({ schema: PreviewFeedQuerySchema, value: query });
+    const search = await call({
+      ctx,
+      request: { method: "GET", path: "/rss_feeds/search_feed", query: { address: url } },
+      schema: SearchFeedAnswerSchema,
+    });
+    if (search.id === undefined) throw notFound();
+    const { stories } = await call({
+      ctx,
+      request: { method: "GET", path: `/reader/feed/${search.id}`, query: { page: "1" } },
+      schema: StoriesAnswerSchema,
+    });
+    return ok({ entries: stories.slice(0, PREVIEW_COUNT).map(toPreviewEntry) });
   },
 
   "GET /api/preferences": async ({ ctx }) => ok(await readPreferences(ctx)),

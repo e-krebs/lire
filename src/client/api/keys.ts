@@ -40,5 +40,6 @@ export const keys = {
   }) => ["search", streamKey, query, { unreadOnly: unreadOnly ?? false, count }] as const,
   entry: (entryId: string) => ["entry", entryId] as const,
   feedLookup: (query: string) => ["feedLookup", query] as const,
+  feedPreview: (url: string) => ["feedPreview", url] as const,
   webFeedStatus: (requestId: string) => ["webFeedStatus", requestId] as const,
 };

@@ -63,6 +63,15 @@ const FeedAutocompleteSchema = z.object({
     z.object({ value: z.string(), label: z.string(), num_subscribers: z.number().optional() }),
   ),
 });
+const FeedPreviewFixtureSchema = z.object({
+  feeds: z.array(
+    z.object({
+      address: z.string(),
+      search: z.object({ id: z.number() }).loose(),
+      stories: z.array(z.unknown()),
+    }),
+  ),
+});
 const PreferencesAnswerSchema = z.object({ payload: z.record(z.string(), z.unknown()) });
 
 // The optional files fall back to the seed's copy, or to an empty answer.
@@ -79,6 +88,7 @@ const toFixtures = (files: Map<string, unknown>): FakeNewsblurFixtures => {
     stories,
     readStories: z.array(z.unknown()).parse(files.get("read_stories.json") ?? []),
     feedAutocomplete: FeedAutocompleteSchema.parse(file("feed_autocomplete.json")),
+    feedPreview: FeedPreviewFixtureSchema.parse(file("feed_preview.json")),
     preferences: PreferencesAnswerSchema.parse(files.get("preferences.json") ?? { payload: {} }),
     profile: file("profile.json"),
     webfeedAnalyze: file("webfeed_analyze.json"),

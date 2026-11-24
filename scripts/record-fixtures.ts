@@ -6,6 +6,7 @@ import {
   FeedsAnswerSchema,
   PreferencesAnswerSchema,
   RefreshFeedsAnswerSchema,
+  SearchFeedAnswerSchema,
   StoriesAnswerSchema,
   UserProfileAnswerSchema,
 } from "../src/shared/bff/upstream.ts";
@@ -149,6 +150,35 @@ if (term) {
   write({ relPath: "feed_autocomplete.json", data: autocomplete });
 } else {
   console.log("no feed title to search with — skipping feed_autocomplete");
+}
+
+// The preview of an unfollowed feed makes the same two calls, so one followed feed stands in.
+const previewable = Object.values(feedsAnswer.feeds).find(
+  (feed) => !feed.is_webfeed && feed.feed_address.startsWith("http"),
+);
+if (previewable) {
+  const search = await call({
+    path: "/rss_feeds/search_feed",
+    query: { address: previewable.feed_address },
+  });
+  const previewId = SearchFeedAnswerSchema.parse(search).id;
+  if (previewId === undefined) fatal(`search_feed gave no id for ${previewable.feed_address}.`);
+  const raw = await call({ path: `/reader/feed/${previewId}`, query: { page: 1 } });
+  StoriesAnswerSchema.parse(raw);
+  write({
+    relPath: "feed_preview.json",
+    data: {
+      feeds: [
+        {
+          address: previewable.feed_address,
+          search,
+          stories: (raw as { stories: unknown[] }).stories,
+        },
+      ],
+    },
+  });
+} else {
+  console.log("no followed feed with an http address to preview — skipping feed_preview");
 }
 
 const preferences = PreferencesAnswerSchema.parse(await call({ path: "/profile/get_preference" }));

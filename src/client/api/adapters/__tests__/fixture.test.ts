@@ -3,6 +3,7 @@ import {
   CategoriesSchema,
   CountsSchema,
   EntryPageSchema,
+  FeedPreviewSchema,
   FeedsSchema,
   NewsletterAddressSchema,
   OnboardingStateSchema,
@@ -53,6 +54,14 @@ describe("fixtureTransport", () => {
       "Newsletters",
     ]);
     expect(categories[0]?.feedIds).toEqual(["101", "102", "103", "113"]);
+  });
+
+  it("previews an unfollowed feed from the seed", async () => {
+    const preview = FeedPreviewSchema.parse(
+      await get("/api/feeds/preview", { url: "https://preview.example.test/feed.xml" }),
+    );
+
+    expect(preview.entries).toHaveLength(2);
   });
 
   it("scopes a folder stream to its feeds, nested folders included", async () => {

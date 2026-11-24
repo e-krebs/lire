@@ -403,6 +403,99 @@ describe("handle reads", () => {
     expect(upstream.calls[0].query).toEqual({ term: "a", v: "2" });
   });
 
+  describe("when a feed is previewed", () => {
+    const url = "https://julesblom.com/rss.xml";
+    const previewUrl = `/api/feeds/preview?url=${encodeURIComponent(url)}`;
+    const searchFound = { "GET /rss_feeds/search_feed": { id: 9565335, feed_title: "Jules" } };
+
+    it("answers the first two stories of the feed", async () => {
+      const upstream = fakeUpstream({
+        ...searchFound,
+        "GET /reader/feed/9565335": {
+          stories: [
+            story(),
+            story({
+              story_title: undefined,
+              story_permalink: null,
+              story_content: undefined,
+              image_urls: [],
+            }),
+            story({ story_title: "Third" }),
+          ],
+        },
+      });
+      expect(await send({ url: previewUrl, upstream })).toEqual({
+        status: 200,
+        body: {
+          entries: [
+            {
+              title: "Hello",
+              url: "https://a.example/hello",
+              summary: "<p>Body</p>",
+              imageUrl: "https://a.example/1.png",
+              publishedAt: "2023-11-14T22:13:20.000Z",
+            },
+            { title: "", url: "", publishedAt: "2023-11-14T22:13:20.000Z" },
+          ],
+        },
+      });
+      expect(upstream.calls.map(({ path, query }) => ({ path, query }))).toEqual([
+        { path: "/rss_feeds/search_feed", query: { address: url } },
+        { path: "/reader/feed/9565335", query: { page: "1" } },
+      ]);
+    });
+
+    it("answers no entries for a feed with no stories", async () => {
+      const upstream = fakeUpstream({
+        ...searchFound,
+        "GET /reader/feed/9565335": { stories: [] },
+      });
+      expect(await send({ url: previewUrl, upstream })).toEqual({
+        status: 200,
+        body: { entries: [] },
+      });
+    });
+
+    it("answers 404 for a feed NewsBlur cannot read", async () => {
+      const upstream = fakeUpstream({
+        "GET /rss_feeds/search_feed": {
+          code: -1,
+          message: "No feed found matching that XML or website address.",
+        },
+      });
+      expect(await send({ url: previewUrl, upstream })).toEqual({
+        status: 404,
+        body: { error: "not_found" },
+      });
+      expect(upstream.calls).toHaveLength(1);
+    });
+
+    it("answers 502 when NewsBlur fails the search or the read", async () => {
+      const failedSearch = fakeUpstream({
+        "GET /rss_feeds/search_feed": new Response("boom", { status: 500 }),
+      });
+      expect(await send({ url: previewUrl, upstream: failedSearch })).toEqual({
+        status: 502,
+        body: { error: "upstream_error" },
+      });
+      const failedRead = fakeUpstream({
+        ...searchFound,
+        "GET /reader/feed/9565335": new Response("<html></html>", { status: 404 }),
+      });
+      expect(await send({ url: previewUrl, upstream: failedRead })).toEqual({
+        status: 502,
+        body: { error: "upstream_error" },
+      });
+    });
+
+    it("rejects a missing or malformed url before calling NewsBlur", async () => {
+      const upstream = fakeUpstream({});
+      expect((await send({ url: "/api/feeds/preview", upstream })).status).toBe(400);
+      expect((await send({ url: "/api/feeds/preview?url=not-a-url", upstream })).status).toBe(400);
+      expect(upstream.calls).toHaveLength(0);
+    });
+  });
+
   it("keeps only decodable lire. preferences", async () => {
     const upstream = fakeUpstream({
       "GET /profile/get_preference": {

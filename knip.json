@@ -16,5 +16,9 @@
     "src/client/utils/steps.ts"
   ],
   "ignoreDependencies": ["cloudflare", "@vitest/expect"],
-  "ignoreBinaries": ["vite"]
+  "ignoreBinaries": ["vite"],
+  "ignoreIssues": {
+    "src/client/api/queries/index.ts": ["exports"],
+    "src/client/api/queries/subscribe.ts": ["exports"]
+  }
 }

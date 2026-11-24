@@ -7,6 +7,7 @@ import {
   deleteFeed,
   getNewsletterAddress,
   getWebFeedStatus,
+  previewFeed,
   reanalyzeWebFeed,
   searchFeeds,
 } from "client/api/client";
@@ -20,6 +21,14 @@ export const useFeedLookup = (query: string) =>
     queryKey: keys.feedLookup(query),
     queryFn: async () => searchFeeds(query),
     enabled: query.trim().length > 3,
+  });
+
+export const useFeedPreview = ({ feedUrl }: { feedUrl: string | undefined }) =>
+  useQuery({
+    queryKey: keys.feedPreview(feedUrl ?? ""),
+    queryFn: async () => previewFeed(feedUrl ?? ""),
+    enabled: feedUrl !== undefined,
+    retry: false,
   });
 
 export const useSubscribe = () => {

@@ -9,6 +9,7 @@ import {
   CountsSchema,
   EntryPageSchema,
   EntrySchema,
+  FeedPreviewSchema,
   FeedSearchResultsSchema,
   FeedsSchema,
   NewsletterAddressSchema,
@@ -19,6 +20,7 @@ import {
   WebFeedStatusSchema,
 } from "shared/feedsApi/types";
 import feedAutocomplete from "fixtures/seed/feed_autocomplete.json";
+import feedPreview from "fixtures/seed/feed_preview.json";
 import feedsFixture from "fixtures/seed/feeds.json";
 import preferences from "fixtures/seed/preferences.json";
 import profile from "fixtures/seed/profile.json";
@@ -43,6 +45,7 @@ const fixtures: FakeNewsblurFixtures = {
   stories,
   readStories,
   feedAutocomplete,
+  feedPreview,
   preferences,
   profile,
   webfeedAnalyze,
@@ -296,6 +299,27 @@ describe("createFakeNewsblur through handle", () => {
       "lire.directOpen.106": "visit",
       "lire.directOpen.7": "true",
     });
+  });
+
+  it("previews an unfollowed feed without adding it to the library", async () => {
+    const { send } = setup();
+    const preview = await send({
+      url: `/api/feeds/preview?url=${encodeURIComponent("https://preview.example.test/feed.xml")}`,
+    });
+    expect(preview.status).toBe(200);
+    expect(
+      parse({ schema: FeedPreviewSchema, body: preview.body }).entries.map((entry) => entry.title),
+    ).toEqual(["Preview: the sidebar moves to the left", "Preview: offline reading comes back"]);
+    const feeds = parse({ schema: FeedsSchema, body: (await send({ url: "/api/feeds" })).body });
+    expect(feeds.find((feed) => feed.id === "901")).toBeUndefined();
+  });
+
+  it("answers an address no feed matches as the route's not-found", async () => {
+    const { send } = setup();
+    const preview = await send({
+      url: `/api/feeds/preview?url=${encodeURIComponent("https://nowhere.example.test/feed.xml")}`,
+    });
+    expect(preview.status).toBe(404);
   });
 
   describe("when handling web feeds", () => {

@@ -216,6 +216,27 @@ export const SearchEntriesQuerySchema = z
 
 export const SearchFeedsQuerySchema = z.object({ q: z.string().min(1) }).loose();
 
+export const PreviewFeedQuerySchema = z.object({ url: z.url() }).loose();
+
+// `publishedAt` is ISO 8601. Fields follow a web-feed variant's `previews`, so one tile mapping
+// serves both.
+export const FeedPreviewSchema = z
+  .object({
+    entries: z.array(
+      z
+        .object({
+          title: z.string(),
+          url: z.string(),
+          summary: z.string().optional(),
+          imageUrl: z.string().optional(),
+          publishedAt: z.iso.datetime().optional(),
+        })
+        .loose(),
+    ),
+  })
+  .loose();
+export type FeedPreview = z.infer<typeof FeedPreviewSchema>;
+
 export const SunQuerySchema = z
   .object({
     tz: z

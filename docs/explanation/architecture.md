@@ -210,6 +210,10 @@ signed-out 403. A feed panel's reanalyze starts a new analysis, and applying a v
 `POST /api/webfeeds` with the same page URL. The route shapes are in
 [../reference/api.md](../reference/api.md).
 
+The preview route needs no analysis. `GET /api/feeds/preview?url=` runs NewsBlur's feed search for
+an address the reader does not follow, reads the feed's first page and answers its two latest
+stories, so the client can show entries before a subscription.
+
 The Durable Object also caches the folder tree (`/reader/feeds`) for five minutes, since most
 reads need it, and drops it on every subscription or folder write. A refresh drops it too
 (`POST /api/feeds/refresh`), because NewsBlur adds a feed by itself when a new newsletter sender

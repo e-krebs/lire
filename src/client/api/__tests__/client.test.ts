@@ -16,6 +16,7 @@ import {
   getStreamEntries,
   getWebFeedStatus,
   markEntries,
+  previewFeed,
   reanalyzeWebFeed,
   searchEntries,
   patchOnboarding,
@@ -164,6 +165,26 @@ describe("client (http adapter)", () => {
       q: "battery",
       unreadOnly: "false",
     });
+  });
+
+  it("sends the feed url as `url` and parses the preview entries", async () => {
+    setup();
+    const seen: URL[] = [];
+    server.use(
+      http.get("/api/feeds/preview", ({ request }) => {
+        seen.push(new URL(request.url));
+        return HttpResponse.json({
+          entries: [{ title: "One", url: "https://preview.example.test/one" }],
+        });
+      }),
+    );
+
+    const preview = await previewFeed("https://preview.example.test/feed.xml");
+
+    expect(preview).toEqual({
+      entries: [{ title: "One", url: "https://preview.example.test/one" }],
+    });
+    expect(seen[0]?.searchParams.get("url")).toBe("https://preview.example.test/feed.xml");
   });
 
   it("posts the ids and resolves on a 204 with no body", async () => {

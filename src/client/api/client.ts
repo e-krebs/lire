@@ -5,6 +5,7 @@ import {
   CountsSchema,
   EntryPageSchema,
   EntrySchema,
+  FeedPreviewSchema,
   FeedSearchResultsSchema,
   FeedsSchema,
   NewsletterAddressSchema,
@@ -23,6 +24,7 @@ import type {
   Entry,
   EntryPage,
   Feed,
+  FeedPreview,
   FeedSearchResult,
   NewsletterAddress,
   OnboardingPatch,
@@ -202,6 +204,11 @@ export const searchEntries = async ({
 export const searchFeeds = async (query: string): Promise<FeedSearchResult[]> =>
   FeedSearchResultsSchema.parse(
     await request({ method: "GET", path: "/api/search/feeds", query: { q: query } }),
+  );
+
+export const previewFeed = async (url: string): Promise<FeedPreview> =>
+  FeedPreviewSchema.parse(
+    await request({ method: "GET", path: "/api/feeds/preview", query: { url } }),
   );
 
 // An empty list is left out of the body. `userId` is the user the batch was queued for.
