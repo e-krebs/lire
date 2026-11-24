@@ -28,12 +28,16 @@ type HowId = "markAsRead" | "originalSite";
 
 const isHowId = (id: OnboardingStepId): id is HowId => id === "markAsRead" || id === "originalSite";
 
+export type OnboardingLink =
+  | { to: "/subscriptions/add" }
+  | { to: "/subscriptions"; search: SubscriptionsSearch };
+
 interface OnboardingStep {
   id: OnboardingStepId;
   done: boolean;
   auto: boolean;
-  // Set on the rows whose action is a link to Subscriptions, with the panel it opens.
-  search?: SubscriptionsSearch | undefined;
+  // Set on the rows whose action is a link, with the page or panel it opens.
+  link?: OnboardingLink | undefined;
   // Set on the install row: true while the browser can still show its prompt.
   canInstall?: boolean;
   iosEligible?: boolean;
@@ -225,10 +229,20 @@ const OnboardingPanel = ({
                   <span className="text-[0.8125rem] wrap-break-word text-muted">{copy.hint}</span>
                 </span>
               </label>
-              {step.search !== undefined ? (
-                <Link to="/subscriptions" search={step.search} className={actionClassName}>
-                  {copy.action}
-                </Link>
+              {step.link !== undefined ? (
+                step.link.to === "/subscriptions/add" ? (
+                  <Link
+                    to="/subscriptions/add"
+                    search={{ step: "find" }}
+                    className={actionClassName}
+                  >
+                    {copy.action}
+                  </Link>
+                ) : (
+                  <Link to="/subscriptions" search={step.link.search} className={actionClassName}>
+                    {copy.action}
+                  </Link>
+                )
               ) : howId !== undefined ? (
                 <button
                   type="button"

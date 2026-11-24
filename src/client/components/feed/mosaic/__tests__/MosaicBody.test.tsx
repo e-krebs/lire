@@ -86,7 +86,7 @@ describe("MosaicBody with an empty stream", () => {
 
     expect(await pageUi.welcome).toBeInTheDocument();
     expect(pageUi.noEmptyMessage).toBeNull();
-    expect(pageUi.addFirstFeedLink).toHaveAttribute("href", "/subscriptions?add=true");
+    expect(pageUi.addFirstFeedLink).toHaveAttribute("href", "/subscriptions/add?step=find");
     expect(pageUi.newsletterLink).toHaveAttribute("href", "/subscriptions?newsletter=true");
     expect(pageUi.showAllLink).toBeNull();
   });

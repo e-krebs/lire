@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useOnboarding, useUpdateOnboarding } from "client/api/queries";
-import type { OnboardingStepId as CardStepId } from "client/components/app/onboarding/OnboardingCard";
+import type {
+  OnboardingLink,
+  OnboardingStepId as CardStepId,
+} from "client/components/app/onboarding/OnboardingCard";
 import type { OnboardingPatch, OnboardingStepId } from "shared/feedsApi/types";
 import { isInstalledApp, useInstallPrompt } from "client/utils/installPrompt";
-import type { SubscriptionsSearch } from "client/utils/subscriptionsSearch";
 
 const storedSteps = [
   "language",
@@ -15,11 +17,11 @@ const storedSteps = [
   "originalSite",
 ] as const satisfies readonly OnboardingStepId[];
 
-// The rows that are links to Subscriptions, with the panel each one opens. The rest are buttons.
-const linkSearch: Partial<Record<CardStepId, SubscriptionsSearch>> = {
-  addFeed: { add: true },
-  newsletter: { newsletter: true },
-  folders: { tab: "categories" },
+// The rows that are links, with the page or panel each one opens. The rest are buttons.
+const linkOf: Partial<Record<CardStepId, OnboardingLink>> = {
+  addFeed: { to: "/subscriptions/add" },
+  newsletter: { to: "/subscriptions", search: { newsletter: true } },
+  folders: { to: "/subscriptions", search: { tab: "categories" } },
 };
 
 export const useOnboardingCard = () => {
@@ -48,7 +50,7 @@ export const useOnboardingCard = () => {
           id,
           done: onboarding.data.done[id] === true,
           auto: false,
-          search: linkSearch[id],
+          link: linkOf[id],
         })),
         ...(installPrompt.offered || installed || installPrompt.iosEligible
           ? [

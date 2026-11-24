@@ -35,6 +35,9 @@ const ui = {
   get backButton() {
     return screen.findByRole("button", { name: "Go back" });
   },
+  get subscriptionsTitle() {
+    return screen.getByRole("heading", { name: "Subscriptions" });
+  },
   get noViewGroup() {
     return screen.queryByRole("group", { name: "View" });
   },
@@ -128,8 +131,13 @@ const setup = ({
     path: "/subscriptions",
     component: () => null,
   });
+  const subscriptionsAddRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: "/subscriptions/add",
+    component: () => null,
+  });
   const router = createRouter({
-    routeTree: rootRoute.addChildren([streamRoute, subscriptionsRoute]),
+    routeTree: rootRoute.addChildren([streamRoute, subscriptionsRoute, subscriptionsAddRoute]),
     history: createMemoryHistory({ initialEntries: history, initialIndex: history.length - 1 }),
   });
 
@@ -471,6 +479,22 @@ describe("TopBar", () => {
 
     await waitFor(() => {
       expect(view.router.state.location.pathname).toBe(TECH_PATH);
+    });
+  });
+
+  it("shows Back and the title on the add flow, and steps back through it", async () => {
+    const view = setup({
+      path: "/subscriptions/add",
+      history: ["/subscriptions", "/subscriptions/add"],
+    });
+    const user = userEvent.setup();
+
+    expect(await ui.backButton).toBeInTheDocument();
+    expect(ui.subscriptionsTitle).toBeInTheDocument();
+    await user.click(await ui.backButton);
+
+    await waitFor(() => {
+      expect(view.router.state.location.pathname).toBe("/subscriptions");
     });
   });
 

@@ -184,6 +184,11 @@ const mount = (url: string) => {
       validateSearch: SubscriptionsRoute.options.validateSearch,
       component: SubscriptionsRoute.options.component,
     }),
+    createRoute({
+      getParentRoute: () => rootRoute,
+      path: "/subscriptions/add",
+      component: () => null,
+    }),
   ]);
   const router = createRouter({
     routeTree,
@@ -1058,14 +1063,16 @@ describe("SubscriptionsManager", () => {
       expect(page.router.state.location.search).toMatchObject({ newsletter: true });
     });
 
-    it("opens the website panel from an empty category panel", async () => {
+    it("opens the add flow from an empty category panel", async () => {
       const page = await setup();
       await ui.panel.createPodcasts(page);
 
       await page.user.click(ui.menuItem({ scope: document.body, name: "Add website" }));
-      await ui.findPanel("Add a feed");
 
-      expect(page.router.state.location.search).toHaveProperty("add");
+      await waitFor(() => {
+        expect(page.router.state.location.pathname).toBe("/subscriptions/add");
+      });
+      expect(page.router.state.location.search).toHaveProperty("category");
     });
 
     it("opens the newsletter panel from an empty category panel", async () => {
@@ -1078,54 +1085,31 @@ describe("SubscriptionsManager", () => {
       expect(page.router.state.location.search).toHaveProperty("newsletter");
     });
 
-    it("opens the website panel from a category panel", async () => {
+    it("opens the add flow with the category preselected", async () => {
       const page = await setup();
       await ui.panel.open({ page, label: "Design" });
 
       await page.user.click(ui.menuItem({ scope: document.body, name: "Add website" }));
-      await ui.findPanel("Add a feed");
 
-      expect(page.router.state.location.search).toMatchObject({ add: DESIGN });
+      await waitFor(() => {
+        expect(page.router.state.location.pathname).toBe("/subscriptions/add");
+      });
+      expect(page.router.state.location.search).toEqual({ step: "find", category: DESIGN });
     });
   });
 
-  describe("when subscribing to a feed", () => {
-    it("keeps Subscribe disabled until a category is picked, and subscribes into a created one", async () => {
+  describe("when adding a feed from the Feeds tab", () => {
+    it("opens the add flow with no category preselected", async () => {
       const page = await setup();
-      const { user } = page;
       await ui.openFeedsTab(page);
       await waitFor(() => expect(ui.queryRow("Add website")).toBeInTheDocument());
-      await user.click(ui.menuItem({ scope: document.body, name: "Add website" }));
-      await ui.findPanel("Add a feed");
-      const panel = ui.panel;
-      expect(page.router.state.location.search).toMatchObject({ add: true });
 
-      await user.type(panel.textbox("Feed or site URL"), "gardening.example.test");
-      await user.click(await panel.findRadio("Example Gardeninggardening.example.test"));
-      const subscribe = panel.queryRow("Subscribe")!;
-      expect(subscribe).toBeDisabled();
-
-      await user.type(panel.searchbox("Filter categories"), "Podcasts");
-      await user.click(panel.queryRow("Create “Podcasts”")!);
-      expect(await waitFor(() => panel.checkbox("Podcasts"))).toBeChecked();
-      expect(subscribe).toBeEnabled();
-      requests.clear();
-      await user.click(subscribe);
+      await page.user.click(ui.menuItem({ scope: document.body, name: "Add website" }));
 
       await waitFor(() => {
-        expect(ui.queryRow("Example Gardening")).toBeInTheDocument();
-        expect(ui.panel.panel).not.toBeInTheDocument();
-      }, SETTLED);
-      const posts = await requests.find({ method: "POST", path: "/api/feeds" });
-      expect(posts.map((post) => post.body)).toEqual([
-        {
-          feedUrl: "https://gardening.example.test/rss",
-          title: "Example Gardening",
-          categoryIds: ["Podcasts"],
-        },
-      ]);
-      const created = (await getFeeds()).find((feed) => feed.title === "Example Gardening");
-      expect(created?.categoryIds).toEqual(["Podcasts"]);
-    }, 10_000);
+        expect(page.router.state.location.pathname).toBe("/subscriptions/add");
+      });
+      expect(page.router.state.location.search).toEqual({ step: "find" });
+    });
   });
 });

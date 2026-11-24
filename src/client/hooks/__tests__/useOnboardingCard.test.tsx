@@ -537,18 +537,18 @@ describe("useOnboardingCard", () => {
     expect(result.current.steps.find((step) => step.id === "originalSite")?.done).toBe(false);
   });
 
-  it("gives each link row the Subscriptions search it opens, and no other row one", () => {
+  it("gives each link row the route it opens, and no other row one", () => {
     const { result } = renderCard();
 
-    const searchOf = (id: string) => {
+    const linkOf = (id: string) => {
       const step = result.current.steps.find((candidate) => candidate.id === id);
-      return step !== undefined && "search" in step ? step.search : undefined;
+      return step !== undefined && "link" in step ? step.link : undefined;
     };
-    expect(searchOf("addFeed")).toEqual({ add: true });
-    expect(searchOf("newsletter")).toEqual({ newsletter: true });
-    expect(searchOf("folders")).toEqual({ tab: "categories" });
-    expect(searchOf("categories")).toBeUndefined();
-    expect(searchOf("markAsRead")).toBeUndefined();
-    expect(searchOf("language")).toBeUndefined();
+    expect(linkOf("addFeed")).toEqual({ to: "/subscriptions/add" });
+    expect(linkOf("newsletter")).toEqual({ to: "/subscriptions", search: { newsletter: true } });
+    expect(linkOf("folders")).toEqual({ to: "/subscriptions", search: { tab: "categories" } });
+    expect(linkOf("categories")).toBeUndefined();
+    expect(linkOf("markAsRead")).toBeUndefined();
+    expect(linkOf("language")).toBeUndefined();
   });
 });

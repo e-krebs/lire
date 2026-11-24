@@ -59,7 +59,7 @@ export const TopBar = () => {
   const anyOverlay = activeOverlay !== null || undefined;
   const menuInert = (activeOverlay !== null && activeOverlay !== "account-menu") || undefined;
   const streamKey = params.streamKey;
-  const onSubscriptions = location.pathname === "/subscriptions";
+  const onSubscriptions = ["/subscriptions", "/subscriptions/add"].includes(location.pathname);
   const articleQuery = typeof search.q === "string" ? search.q : undefined;
   const [panelOpen, setPanelOpen] = useState(false);
   // The typed text. A navigation that changes `q` replaces it (react.dev's "adjusting state when
