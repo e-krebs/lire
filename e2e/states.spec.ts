@@ -187,7 +187,7 @@ test.describe("app-level states", () => {
     await page.goto("/");
 
     await expect(pageUi.welcomeTitle).toBeVisible();
-    await expect(pageUi.addFeedLink).toHaveAttribute("href", "/subscriptions?add=true");
+    await expect(pageUi.addFeedLink).toHaveAttribute("href", "/subscriptions/add?step=find");
     await expect(pageUi.newsletterLink).toHaveAttribute("href", "/subscriptions?newsletter=true");
     await expect(pageUi.entriesRegion).toBeVisible();
   });

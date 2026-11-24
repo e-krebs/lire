@@ -45,6 +45,33 @@ const ui = (page: Page) => ({
   get addWebsiteButton() {
     return page.getByRole("button", { name: "Add website" });
   },
+  get addFeedUrlField() {
+    return page.getByRole("textbox", { name: "Feed or site URL", exact: true });
+  },
+  addFeedRadio(title: string): Locator {
+    return page.getByRole("radio", { name: new RegExp(title) });
+  },
+  get addUrlError() {
+    return page.getByText("Enter a feed or site URL.");
+  },
+  get addCategoryError() {
+    return page.getByText("Pick at least one category for this feed.").first();
+  },
+  get addNextButton() {
+    return page.getByRole("button", { name: "Next", exact: true });
+  },
+  get addSubscribeButton() {
+    return page.getByRole("button", { name: "Subscribe", exact: true });
+  },
+  get addNameHeading() {
+    return page.getByRole("heading", { name: "Name and preview", exact: true });
+  },
+  get addCategoriesHeading() {
+    return page.getByRole("heading", { name: "Categories", exact: true });
+  },
+  get addDesignCheckbox() {
+    return page.getByRole("checkbox", { name: "Design", exact: true });
+  },
   // Below `sm` the Navigator is a bottom sheet behind a button, from `sm` up a popover under the field.
   async openNavigator({ phone }: { phone: boolean }): Promise<Locator> {
     if (phone) {
@@ -152,24 +179,40 @@ test.describe("flows", () => {
 
     await pageUi.feedsTab.click();
     await pageUi.addWebsiteButton.click();
-    const addPanel = feedPanel("Add a feed");
-    await expect(addPanel).toBeVisible();
+    await expect(page).toHaveURL(/\/subscriptions\/add\?step=find$/);
 
-    const subscribe = addPanel.getByRole("button", { name: "Subscribe" });
-    await expect(subscribe).toBeDisabled();
-    await addPanel.getByLabel("Feed or site URL").fill("gardening");
-    await addPanel.getByRole("radio", { name: new RegExp(feedTitle) }).check();
-    await addPanel.getByRole("checkbox", { name: "Design", exact: true }).check();
-    await expect(subscribe).toBeEnabled();
-    await subscribe.click();
-    await expect(addPanel).toBeHidden();
+    await pageUi.addNextButton.click();
+    await expect(pageUi.addUrlError).toBeVisible();
+    await pageUi.addFeedUrlField.fill("gardening");
+    await pageUi.addFeedRadio(feedTitle).check();
+    await pageUi.addNextButton.click();
+    await expect(pageUi.addNameHeading).toBeFocused();
+    await pageUi.addNextButton.click();
+    await expect(pageUi.addCategoriesHeading).toBeFocused();
+    await pageUi.addSubscribeButton.click();
+    await expect(pageUi.addCategoryError).toBeVisible();
+    await pageUi.addDesignCheckbox.check();
+    await expect(pageUi.addSubscribeButton).toBeEnabled();
+    await pageUi.addSubscribeButton.click();
+    await expect(page).toHaveURL(/\/subscriptions$/);
 
     const feedRow = pageUi.feedRow(feedTitle);
     await expect(feedRow).toBeVisible();
 
     const navigatorHas = async (count: number): Promise<void> => {
-      await pageUi.goBackButton.click();
-      await expect(page).toHaveURL(/\/stream\//);
+      // The add-flow steps stay in history, so the stream is several Backs away, some on the same URL; wait out each by history index.
+      while (!page.url().includes("/stream/")) {
+        const index = async (): Promise<number> =>
+          page.evaluate(() => {
+            const state: unknown = history.state;
+            return typeof state === "object" && state !== null && "__TSR_index" in state
+              ? Number(state.__TSR_index)
+              : -1;
+          });
+        const from = await index();
+        await page.goBack();
+        await expect.poll(index).toBeLessThan(from);
+      }
       const scope = await pageUi.openNavigator({ phone });
       await pageUi.searchField.fill("gardening");
       await expect(scope.getByRole("button", { name: feedTitle, exact: true })).toHaveCount(count);
