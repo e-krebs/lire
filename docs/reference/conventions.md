@@ -87,6 +87,20 @@ file names. An external store and the hook that reads it live together in `utils
 drives the install line on the landing, including its iOS hint, the account menu's Install Lire row and the checklist's install row).
 `writeFailure.ts` is another store in `utils`: `useWriteFailure` reads it, `reportWriteFailure` records a failure and `dismissWriteFailure` clears it. Tag a user-initiated optimistic mutation with `meta: { notifyOnFailure: true }` so its failure reaches the user; an untagged mutation fails silently.
 
+## Stepper and step URLs
+
+`Stepper` ([controls/Stepper.tsx](../../src/client/components/primitives/controls/Stepper.tsx)) is
+the step list of a multi-step flow: numbered circles joined by a line that sweeps with color from
+one number to the next and then clears, with the labels kept as screen-reader text. The flow
+animates the step content out, then in, toward the side of the move (`StepPanel`). Its statuses come from `stepStatuses`, and `furthestStep` gives
+the furthest step a draft allows, both in [utils/steps.ts](../../src/client/utils/steps.ts). A flow
+keeps its current step in a search param validated against its step ids, such as `step=name` on
+`/subscriptions/add`, so each step is a URL. `useStepFocus` moves focus to the heading of a step
+once the step changes. `Stepper` is controlled: the caller owns `current`, only done steps are
+clickable and the list is hidden below `sm`, so the caller provides a back path there (add-feed has
+its Previous button). The add-feed flow is the `subscriptions/add` group, with its route in
+`routes/subscriptions_.add.tsx`.
+
 ## Stories
 
 A story sits in the `__stories__` folder of its group, like tests in `__tests__`

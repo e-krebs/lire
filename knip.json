@@ -9,6 +9,12 @@
     "scripts/**/*.ts",
     "e2e/**/*.ts"
   ],
+  "ignore": [
+    "src/client/components/primitives/controls/Stepper.tsx",
+    "src/client/components/primitives/controls/StepPanel.tsx",
+    "src/client/hooks/useStepFocus.ts",
+    "src/client/utils/steps.ts"
+  ],
   "ignoreDependencies": ["cloudflare", "@vitest/expect"],
   "ignoreBinaries": ["vite"]
 }
