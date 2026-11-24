@@ -3,7 +3,8 @@ import { useRenameCategory } from "client/api/queries";
 import { useT } from "client/i18n/useT";
 import type { Category, Feed } from "shared/feedsApi/types";
 import { AddSourcesMenu } from "client/components/subscriptions/categories/AddSourcesMenu";
-import { CategoryActions, CategoryNameForm, primaryClassName } from "./CategoryPanel";
+import { primaryClassName } from "client/components/primitives/controls/buttonClassNames";
+import { CategoryActions, CategoryNameForm } from "./CategoryPanel";
 import { DeleteCategoryDialog } from "client/components/subscriptions/categories/DeleteCategoryDialog";
 import { SidePanel } from "client/components/primitives/overlays/SidePanel";
 

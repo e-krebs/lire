@@ -3,6 +3,11 @@ import { useRenameCategory, useUpdateFeed, useUnsubscribe } from "client/api/que
 import { feedsInCategory, orphansOf } from "client/api/selectors";
 import { Icon } from "client/components/primitives/icons/icons";
 import { useT } from "client/i18n/useT";
+import {
+  actionClassName,
+  primaryClassName,
+} from "client/components/primitives/controls/buttonClassNames";
+import { hostOf } from "client/utils/hostOf";
 import { tip } from "client/utils/tooltip";
 import type { Category, Feed } from "shared/feedsApi/types";
 import { AddSourcesMenu } from "client/components/subscriptions/categories/AddSourcesMenu";
@@ -14,19 +19,11 @@ import {
   FilterRow,
   HueDot,
   addButtonClassName,
-  hostOf,
   listRowClassName,
   matchesFilter,
 } from "client/components/subscriptions/feeds/FeedsTab";
 import { SidePanel, markPanelOrigin } from "client/components/primitives/overlays/SidePanel";
 
-const actionClassName = `
-  min-h-11 flex-1 rounded-xl px-4 text-sm font-semibold
-  focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent
-  disabled:cursor-default disabled:opacity-50
-  motion-safe:transition-colors
-`;
-export const primaryClassName = `${actionClassName} bg-accent text-on-accent not-disabled:hover:bg-accent/90`;
 const dangerSoftClassName = `${actionClassName} bg-danger-soft text-danger`;
 
 type CategoryRename = Pick<ReturnType<typeof useRenameCategory>, "mutate"> &

@@ -8,7 +8,7 @@ How `src/client` is laid out and which rules a linter checks. Test style lives i
 Components live three levels deep under `src/client/components`, as `<root>/<group>/<component>`.
 The seven roots are `primitives` (controls, feedback, icons, overlays), `app` (account, auth, demo
 banner, notices, shell), `header` (top bar, location, views), `browse-menu` (menu, rows), `feed`
-(mosaic, status), `reader` and `subscriptions` (manager, feeds, categories). Folder names are lowercase kebab-case. A new component goes in the group of the
+(mosaic, status), `reader` and `subscriptions` (manager, feeds, categories, add). Folder names are lowercase kebab-case. A new component goes in the group of the
 screen area it serves, not in a new top-level file. A `__stories__` and a `__tests__` folder sit at
 the group level, not beside each component.
 
@@ -56,6 +56,9 @@ Formatters take the active locale, cached per locale.
 
 - The back link class is `backButtonClassName` in `components/primitives/controls/`. The top bar's
   back button and `BackLink` both use it. A new back link renders `BackLink`, not a copy of the class.
+- The action buttons are `primaryClassName` and `secondaryClassName` in
+  `components/primitives/controls/buttonClassNames.ts`. A new button imports them, never a sibling
+  panel's copy. The secondary class carries no `flex-1`: the caller sizes it.
 - Motion sits inside `@media (prefers-reduced-motion: no-preference)` or behind Tailwind's
   `motion-safe:`, so a reader who asked for less sees none. The landing demos follow this.
 

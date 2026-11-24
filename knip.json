@@ -1,6 +1,10 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": ["src/client/routeTree.gen.ts!", "scripts/check-credits-libraries.ts!"],
+  "entry": [
+    "src/client/routeTree.gen.ts!",
+    "scripts/check-credits-libraries.ts!",
+    "src/client/components/subscriptions/add/AddFeed/index.tsx!"
+  ],
   "project": [
     "src/**/*.{ts,tsx,css}!",
     "!src/test/**!",
@@ -17,8 +21,5 @@
   ],
   "ignoreDependencies": ["cloudflare", "@vitest/expect"],
   "ignoreBinaries": ["vite"],
-  "ignoreIssues": {
-    "src/client/api/queries/index.ts": ["exports"],
-    "src/client/api/queries/subscribe.ts": ["exports"]
-  }
+  "ignoreIssues": { "src/client/components/subscriptions/add/AddFeed/shared.ts": ["exports"] }
 }

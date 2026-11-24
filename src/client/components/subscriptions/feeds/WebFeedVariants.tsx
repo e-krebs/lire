@@ -18,6 +18,8 @@ interface WebFeedVariantsProps {
   selected: number | undefined;
   onSelect: (index: number) => void;
   onRetry: () => void;
+  /** Id of the error that explains why the pick is missing. */
+  describedBy?: string | undefined;
 }
 
 export const WebFeedVariants = ({
@@ -27,6 +29,7 @@ export const WebFeedVariants = ({
   selected,
   onSelect,
   onRetry,
+  describedBy,
 }: WebFeedVariantsProps) => {
   const { subscriptions: t, common } = useT();
   const groupName = useId();
@@ -56,7 +59,7 @@ export const WebFeedVariants = ({
   }
 
   return (
-    <fieldset className="flex flex-col gap-2">
+    <fieldset aria-describedby={describedBy} className="flex flex-col gap-2">
       <legend className="sr-only">{t.variantsLabel}</legend>
       <div className="flex items-baseline justify-between gap-2" aria-hidden="true">
         <span className="text-xs font-semibold text-muted">{t.variantsLabel}</span>

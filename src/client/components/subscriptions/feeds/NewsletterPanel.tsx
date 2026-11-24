@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNewsletterAddress } from "client/api/queries";
 import { useT } from "client/i18n/useT";
 import { Icon } from "client/components/primitives/icons/icons";
-import { primaryClassName } from "client/components/subscriptions/categories/CategoryPanel";
+import { primaryClassName } from "client/components/primitives/controls/buttonClassNames";
 import { SidePanel } from "client/components/primitives/overlays/SidePanel";
 
 const secondaryClassName = `
