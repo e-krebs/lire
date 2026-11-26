@@ -96,7 +96,9 @@ const ui = {
       return within(this.panel).queryByRole("button", { name: title });
     },
     async open({ page, label }: { page: Page; label: string }) {
-      await waitFor(() => expect(ui.queryRow(label)).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryRow(label)).toBeInTheDocument();
+      });
       await page.user.click(ui.queryRow(label)!);
       await ui.findPanel(label);
       return this;
@@ -109,10 +111,14 @@ const ui = {
       return panel;
     },
     async createPodcasts(page: Page) {
-      await waitFor(() => expect(ui.queryRow("＋ New")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryRow("＋ New")).toBeInTheDocument();
+      });
       await page.user.click(ui.queryRow("＋ New")!);
       await page.user.type(await ui.textbox("New category name"), "Podcasts");
-      await waitFor(() => expect(ui.queryRow("Create category")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryRow("Create category")).toBeInTheDocument();
+      });
       await page.user.click(ui.queryRow("Create category")!);
       await ui.findPanel("Podcasts");
       return this;
@@ -366,7 +372,9 @@ describe("SubscriptionsManager", () => {
 
       await page.user.keyboard("{Escape}");
 
-      await waitFor(() => expect(ui.panel.panel).toHaveAttribute("data-closing"));
+      await waitFor(() => {
+        expect(ui.panel.panel).toHaveAttribute("data-closing");
+      });
       expect(await column()).toHaveAttribute("data-panel-open");
       finishExit();
       await page.closed();
@@ -402,7 +410,9 @@ describe("SubscriptionsManager", () => {
             toJSON: () => ({}),
           }) satisfies DOMRect;
       }
-      await waitFor(() => expect(ui.queryRow(`Reorder ${label}`)).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryRow(`Reorder ${label}`)).toBeInTheDocument();
+      });
       ui.queryRow(`Reorder ${label}`)!.focus();
       await page.user.keyboard(" ");
     };
@@ -904,7 +914,9 @@ describe("SubscriptionsManager", () => {
   describe("when creating a category", () => {
     it("refuses a label already taken", async () => {
       const page = await setup();
-      await waitFor(() => expect(ui.queryRow("＋ New")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryRow("＋ New")).toBeInTheDocument();
+      });
 
       await page.user.click(ui.queryRow("＋ New")!);
       await page.user.type(await ui.textbox("New category name"), "Tech{Enter}");
@@ -1055,7 +1067,9 @@ describe("SubscriptionsManager", () => {
     it("opens the newsletter panel from the Feeds tab", async () => {
       const page = await setup();
       await ui.openFeedsTab(page);
-      await waitFor(() => expect(ui.queryRow("Add newsletter")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryRow("Add newsletter")).toBeInTheDocument();
+      });
 
       await page.user.click(ui.menuItem({ scope: document.body, name: "Add newsletter" }));
       await ui.findPanel("Add a newsletter");
@@ -1102,7 +1116,9 @@ describe("SubscriptionsManager", () => {
     it("opens the add flow with no category preselected", async () => {
       const page = await setup();
       await ui.openFeedsTab(page);
-      await waitFor(() => expect(ui.queryRow("Add website")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryRow("Add website")).toBeInTheDocument();
+      });
 
       await page.user.click(ui.menuItem({ scope: document.body, name: "Add website" }));
 

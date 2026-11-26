@@ -284,7 +284,9 @@ describe("root route", () => {
         });
     });
 
-    await waitFor(() => expect(ui.alert).toHaveTextContent("Your session ended."));
+    await waitFor(() => {
+      expect(ui.alert).toHaveTextContent("Your session ended.");
+    });
   });
 
   it("explains when a previously signed-in session ends", async () => {
@@ -301,7 +303,9 @@ describe("root route", () => {
         });
     });
 
-    await waitFor(() => expect(ui.alert).toHaveTextContent("Your session ended."));
+    await waitFor(() => {
+      expect(ui.alert).toHaveTextContent("Your session ended.");
+    });
   });
 
   it("tells the mark queue the signed-in user from the auth status", async () => {
