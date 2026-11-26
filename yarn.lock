@@ -4127,21 +4127,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@testing-library/user-event@npm:^14.6.13":
+"@testing-library/user-event@npm:^14.6.13, @testing-library/user-event@npm:^14.6.3":
   version: 14.6.13
   resolution: "@testing-library/user-event@npm:14.6.13"
   peerDependencies:
     "@testing-library/dom": ">=7.21.4"
   checksum: 10c0/29cb1c17275ac8b0be3800fbcbcfd3b87c2fc7134aa91df4dc404e3962c4204e720c2286d654d15669eb9e0ee9428a9e246e162149ef9704ea6082b5e303ba85
-  languageName: node
-  linkType: hard
-
-"@testing-library/user-event@npm:^14.6.3":
-  version: 14.6.11
-  resolution: "@testing-library/user-event@npm:14.6.11"
-  peerDependencies:
-    "@testing-library/dom": ">=7.21.4"
-  checksum: 10c0/ab0330cfa7fbec9c2e893fb833e1f7d2f01e6614cf730cf92ec5d0234eca113866b4dfe6a072909529584edbcb646dcdf032760f0c2ba50fb6b84fa65cd1004d
   languageName: node
   linkType: hard
 
@@ -7236,16 +7227,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"magic-string@npm:^1.1.0, magic-string@npm:^1.4.3":
-  version: 1.4.3
-  resolution: "magic-string@npm:1.4.3"
-  dependencies:
-    "@jridgewell/sourcemap-codec": "npm:^1.6.0"
-  checksum: 10c0/857743a1e7039d2e867505bb272a57cc605f610b90f6bf9ef6cbf9654e9cd64330ec35e564a58ca455350529872c3ecc01f37da934da130391237f9f593cc565
-  languageName: node
-  linkType: hard
-
-"magic-string@npm:^1.4.5":
+"magic-string@npm:^1.1.0, magic-string@npm:^1.4.3, magic-string@npm:^1.4.5":
   version: 1.4.5
   resolution: "magic-string@npm:1.4.5"
   dependencies:
