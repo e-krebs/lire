@@ -375,23 +375,31 @@ describe("Navigator", () => {
         expect(ui.allArticles?.textContent).toMatch(/\d+/);
       });
 
-      await waitFor(() => expect(ui.queryButton("Tech")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryButton("Tech")).toBeInTheDocument();
+      });
       // Groups start collapsed: the feed shows only after its category is expanded.
       expect(ui.queryButton("Example Tech Daily")).not.toBeInTheDocument();
       await user.click(await ui.toggle("Tech"));
-      await waitFor(() => expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument();
+      });
     });
 
     it("filters on typing, pre-selecting the article-search row", async () => {
       const { user, feedsLoaded } = setup();
       // Wait for both the categories and the feeds queries to resolve — typing "tech"
       // before then would filter over an empty tree and match nothing.
-      await waitFor(() => expect(ui.queryButton("Tech")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryButton("Tech")).toBeInTheDocument();
+      });
       await feedsLoaded();
 
       await user.type(await ui.search, "tech");
 
-      await waitFor(() => expect(ui.selected).toHaveTextContent("Search articles for “tech”"));
+      await waitFor(() => {
+        expect(ui.selected).toHaveTextContent("Search articles for “tech”");
+      });
       // The scope's name needs the profile (the route carries only the stream key), so it can
       // land a tick after the row itself.
       expect(await ui.text("in All articles")).toBeInTheDocument();
@@ -403,14 +411,18 @@ describe("Navigator", () => {
 
     it("reaches the browse tree with ArrowDown past the matches of a typed query", async () => {
       const { user, feedsLoaded } = setup();
-      await waitFor(() => expect(ui.queryButton("Tech")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryButton("Tech")).toBeInTheDocument();
+      });
       await feedsLoaded();
 
       await user.type(await ui.search, "tech");
       // The search row, then the two matches — "Tech" and "Example Tech Daily".
       await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
 
-      await waitFor(() => expect(ui.selected).toHaveTextContent("All articles"));
+      await waitFor(() => {
+        expect(ui.selected).toHaveTextContent("All articles");
+      });
     });
 
     it("collapses the surrounding collection when ArrowLeft leaves a feed row", async () => {
@@ -418,14 +430,18 @@ describe("Navigator", () => {
       await feedsLoaded();
 
       await user.click(await ui.toggle("Tech"));
-      await waitFor(() => expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument();
+      });
 
       await user.click(await ui.search);
       // All articles, Recently read, Tech, then the collection's first feed.
       await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowLeft}");
 
       expect(ui.queryButton("Example Tech Daily")).not.toBeInTheDocument();
-      await waitFor(() => expect(ui.selected).toHaveTextContent("Tech"));
+      await waitFor(() => {
+        expect(ui.selected).toHaveTextContent("Tech");
+      });
     });
 
     it("keeps only Manage subscriptions in the footer", async () => {
@@ -440,7 +456,9 @@ describe("Navigator", () => {
       const { user, feedsLoaded } = setup();
       await feedsLoaded();
       await user.click(await ui.toggle("Tech"));
-      await waitFor(() => expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument();
+      });
 
       expect(ui.editLink("Example Tech Daily")).toBeInTheDocument();
       const names = ui.buttons.map(
@@ -454,7 +472,9 @@ describe("Navigator", () => {
       const { user, feedTitled, feedsLoaded } = setup();
       await feedsLoaded();
       await user.click(await ui.toggle("Tech"));
-      await waitFor(() => expect(ui.editLink("Example Tech Daily")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.editLink("Example Tech Daily")).toBeInTheDocument();
+      });
 
       const params = searchParamsOf(ui.editLink("Example Tech Daily")!);
       expect(params.get("tab")).toBe("feeds");
@@ -465,7 +485,9 @@ describe("Navigator", () => {
     it("links a category row to its panel on the subscriptions page", async () => {
       const { categoryLabeled, feedsLoaded } = setup();
       await feedsLoaded();
-      await waitFor(() => expect(ui.editLink("Tech")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.editLink("Tech")).toBeInTheDocument();
+      });
 
       const params = searchParamsOf(ui.editLink("Tech")!);
       expect(params.get("tab")).toBe("categories");
@@ -475,7 +497,9 @@ describe("Navigator", () => {
     it("gives All articles and Recently read no edit link", async () => {
       const { feedsLoaded } = setup();
       await feedsLoaded();
-      await waitFor(() => expect(ui.editLink("Tech")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.editLink("Tech")).toBeInTheDocument();
+      });
 
       expect(ui.editLink("All articles")).not.toBeInTheDocument();
       expect(ui.editLink("Recently read")).not.toBeInTheDocument();
@@ -485,7 +509,9 @@ describe("Navigator", () => {
     it("keeps the edit link's gutter on every row, so the counts line up", async () => {
       const { user, feedsLoaded } = setup();
       await feedsLoaded();
-      await waitFor(() => expect(ui.queryButton("Tech")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryButton("Tech")).toBeInTheDocument();
+      });
 
       expect(ui.allArticles).toHaveClass("pr-10");
       expect(ui.queryButton("Recently read")).toHaveClass("pr-10");
@@ -499,7 +525,9 @@ describe("Navigator", () => {
 
     it("links both rows of a typed match to the same panel", async () => {
       const { user, categoryLabeled, feedsLoaded } = setup();
-      await waitFor(() => expect(ui.queryButton("Tech")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryButton("Tech")).toBeInTheDocument();
+      });
       await feedsLoaded();
 
       await user.type(await ui.search, "tech");
@@ -515,7 +543,9 @@ describe("Navigator", () => {
       const { user, router, feedTitled, feedsLoaded } = setup();
       await feedsLoaded();
       await user.click(await ui.toggle("Tech"));
-      await waitFor(() => expect(ui.editLink("Example Tech Daily")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.editLink("Example Tech Daily")).toBeInTheDocument();
+      });
 
       await user.click(ui.editLink("Example Tech Daily")!);
 
@@ -531,7 +561,9 @@ describe("Navigator", () => {
 
     it("searches articles in the scope when Enter follows a typed query", async () => {
       const { user, feedsLoaded } = setup();
-      await waitFor(() => expect(ui.queryButton("Tech")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryButton("Tech")).toBeInTheDocument();
+      });
       await feedsLoaded();
 
       await user.type(await ui.search, "tech");
@@ -548,7 +580,9 @@ describe("Navigator", () => {
       expect(ui.selected).toBeNull();
 
       await user.keyboard("{ArrowDown}");
-      await waitFor(() => expect(ui.selected).toHaveTextContent("All articles"));
+      await waitFor(() => {
+        expect(ui.selected).toHaveTextContent("All articles");
+      });
     });
 
     it("walks the browse rows with ArrowDown when no query narrows the panel", async () => {
@@ -558,7 +592,9 @@ describe("Navigator", () => {
       await user.click(await ui.search);
       await user.keyboard("{ArrowDown}{ArrowDown}");
 
-      await waitFor(() => expect(ui.selected).toHaveTextContent("Recently read"));
+      await waitFor(() => {
+        expect(ui.selected).toHaveTextContent("Recently read");
+      });
 
       await user.keyboard("{Enter}");
 
@@ -603,7 +639,9 @@ describe("Navigator", () => {
 
     it("activates a feed result with ArrowDown then Enter, dropping the text", async () => {
       const { user, feedsLoaded } = setup();
-      await waitFor(() => expect(ui.queryButton("Tech")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryButton("Tech")).toBeInTheDocument();
+      });
       await feedsLoaded();
 
       await user.type(await ui.search, "Longform");
@@ -655,7 +693,9 @@ describe("Navigator", () => {
       const { user } = setup({ streamKey: TECH_KEY });
       await user.click(await ui.search);
       await user.keyboard("{Escape}");
-      await waitFor(() => expect(ui.dialog).not.toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.dialog).not.toBeInTheDocument();
+      });
 
       const clear = await (
         await ui.pill()
@@ -700,7 +740,9 @@ describe("Navigator", () => {
       const stored = ["Newsletters", "News", "Design", "Tech"];
       await updatePreferences({ [CATEGORY_ORDER_KEY]: JSON.stringify(stored.map(seedCategoryId)) });
 
-      await waitFor(() => expect(ui.allArticles).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.allArticles).toBeInTheDocument();
+      });
       await feedsLoaded();
       expect(ui.loadingCategories).toHaveAttribute("aria-busy", "true");
       expect(ui.queryButton("Tech")).not.toBeInTheDocument();
@@ -726,7 +768,9 @@ describe("Navigator", () => {
       expect(ui.manageLink).toHaveAttribute("data-selected");
       release();
       // A request still held when the test ends would fall through to handlers already reset.
-      await waitFor(() => expect(ui.loadingCategories).not.toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.loadingCategories).not.toBeInTheDocument();
+      });
     });
   });
 
@@ -734,7 +778,9 @@ describe("Navigator", () => {
     it("keeps the panel's state", async () => {
       const { user, switchTier } = setup();
       await user.click(await ui.toggle("Tech"));
-      await waitFor(() => expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument();
+      });
 
       switchTier("desktop");
 
@@ -745,10 +791,14 @@ describe("Navigator", () => {
     it("keeps the highlight and the open groups, then closes on the new tier", async () => {
       const { user, switchTier } = setup();
       await user.click(await ui.toggle("Tech"));
-      await waitFor(() => expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument();
+      });
       await user.click(await ui.search);
       await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
-      await waitFor(() => expect(ui.selected).toHaveTextContent("Tech"));
+      await waitFor(() => {
+        expect(ui.selected).toHaveTextContent("Tech");
+      });
 
       switchTier("desktop");
 
@@ -757,7 +807,9 @@ describe("Navigator", () => {
       expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument();
       await user.click(await ui.search);
       await user.keyboard("{Escape}");
-      await waitFor(() => expect(ui.queryButton("Tech")).not.toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryButton("Tech")).not.toBeInTheDocument();
+      });
     });
   });
 
@@ -778,7 +830,9 @@ describe("Navigator", () => {
       expect(ui.dialog).not.toBeInTheDocument();
       const field = await ui.search;
       await user.click(field);
-      await waitFor(() => expect(ui.queryButton("Tech")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryButton("Tech")).toBeInTheDocument();
+      });
 
       await user.keyboard("{Escape}");
 
@@ -800,7 +854,9 @@ describe("Navigator", () => {
       const { user } = setup({ tier: "desktop" });
       const field = await ui.search;
       await user.click(field);
-      await waitFor(() => expect(ui.queryButton("Tech")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryButton("Tech")).toBeInTheDocument();
+      });
       const focus = spyFocus(field);
 
       await user.keyboard("{Escape}");
@@ -810,7 +866,9 @@ describe("Navigator", () => {
 
     it("drops the typed text when a matched category is picked", async () => {
       const { user, router, feedsLoaded } = setup({ tier: "desktop" });
-      await waitFor(() => expect(ui.queryButton("Tech")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryButton("Tech")).toBeInTheDocument();
+      });
       await feedsLoaded();
 
       await user.type(await ui.search, "tech");
@@ -929,13 +987,19 @@ describe("Navigator", () => {
 
       await user.click(await ui.search);
       await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowRight}");
-      await waitFor(() => expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument();
+      });
 
       await user.keyboard("{ArrowRight}");
-      await waitFor(() => expect(ui.selected).toHaveTextContent("Example Tech Daily"));
+      await waitFor(() => {
+        expect(ui.selected).toHaveTextContent("Example Tech Daily");
+      });
 
       await user.keyboard("{ArrowUp}{ArrowLeft}");
-      await waitFor(() => expect(ui.queryButton("Example Tech Daily")).not.toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryButton("Example Tech Daily")).not.toBeInTheDocument();
+      });
     });
 
     it("expands a group with ArrowRight, and leaves a feed row with Enter", async () => {
@@ -944,7 +1008,9 @@ describe("Navigator", () => {
 
       await user.click(await ui.search);
       await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowRight}");
-      await waitFor(() => expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryButton("Example Tech Daily")).toBeInTheDocument();
+      });
       await user.keyboard("{ArrowRight}{Enter}");
 
       const feed = feedTitled("Example Tech Daily");
@@ -1003,7 +1069,9 @@ describe("Navigator", () => {
 
       await user.keyboard("{Escape}");
 
-      await waitFor(() => expect(ui.dialog).not.toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.dialog).not.toBeInTheDocument();
+      });
       expect(focus).not.toHaveBeenCalled();
     });
   });
@@ -1011,7 +1079,9 @@ describe("Navigator", () => {
   describe("when the sheet is handled", () => {
     it("closes on a click of its backdrop", async () => {
       setup();
-      await waitFor(() => expect(ui.allArticles).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.allArticles).toBeInTheDocument();
+      });
       const dialog = ui.dialog!;
 
       fireEvent.click(dialog);
@@ -1021,7 +1091,9 @@ describe("Navigator", () => {
 
     it("closes when the dialog reports a native close", async () => {
       setup();
-      await waitFor(() => expect(ui.allArticles).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.allArticles).toBeInTheDocument();
+      });
       const dialog = ui.dialog!;
 
       fireEvent(dialog, new Event("close"));
@@ -1031,7 +1103,9 @@ describe("Navigator", () => {
 
     it("springs back from a short swipe", async () => {
       setup();
-      await waitFor(() => expect(ui.allArticles).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.allArticles).toBeInTheDocument();
+      });
       const dialog = ui.dialog!;
 
       ui.swipe({ target: ui.allArticles!, from: 300, to: 340 });
@@ -1044,7 +1118,9 @@ describe("Navigator", () => {
 
     it("leaves a swipe towards the bar to the list", async () => {
       setup();
-      await waitFor(() => expect(ui.allArticles).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.allArticles).toBeInTheDocument();
+      });
       const dialog = ui.dialog!;
 
       ui.swipe({ target: ui.allArticles!, from: 300, to: 250 });
@@ -1057,7 +1133,9 @@ describe("Navigator", () => {
       const viewport = Object.assign(new EventTarget(), { offsetTop: 0, height: 700 });
       vi.stubGlobal("visualViewport", viewport);
       setup({ barPosition: "bottom" });
-      await waitFor(() => expect(ui.allArticles).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.allArticles).toBeInTheDocument();
+      });
       const dialog = ui.dialog!;
       expect(dialog.style.height).toBe("700px");
       expect(dialog).not.toHaveAttribute("data-keyboard");
@@ -1081,7 +1159,9 @@ describe("Navigator", () => {
   describe("when the app bar is at the bottom", () => {
     it("stands the popover on the location pill instead of hanging it below", async () => {
       setup({ tier: "desktop", barPosition: "bottom" });
-      await waitFor(() => expect(ui.queryButton("Tech")).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.queryButton("Tech")).toBeInTheDocument();
+      });
 
       // jsdom measures the pill as a zero box at the origin, so its top edge is the viewport's.
       expect(ui.popover.style.bottom).toBe(`${window.innerHeight + POPOVER_GAP}px`);
@@ -1090,10 +1170,14 @@ describe("Navigator", () => {
 
     it("puts the sheet's field below the results", async () => {
       setup({ barPosition: "bottom" });
-      await waitFor(() => expect(ui.dialog).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.dialog).toBeInTheDocument();
+      });
 
       const field = await ui.search;
-      await waitFor(() => expect(ui.allArticles).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.allArticles).toBeInTheDocument();
+      });
       // The field follows the panel's first row in the DOM, so the reading order matches the paint.
       expect(
         ui.allArticles!.compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING,
@@ -1102,7 +1186,9 @@ describe("Navigator", () => {
 
     it("closes the sheet on a swipe up, and leaves it open on a swipe down", async () => {
       setup({ barPosition: "bottom" });
-      await waitFor(() => expect(ui.allArticles).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.allArticles).toBeInTheDocument();
+      });
       const dialog = ui.dialog!;
       const row = ui.allArticles!;
 
@@ -1121,7 +1207,9 @@ describe("Navigator", () => {
   describe("when the app bar is at the top", () => {
     it("closes the sheet on a swipe down, and leaves it open on a swipe up", async () => {
       setup();
-      await waitFor(() => expect(ui.allArticles).toBeInTheDocument());
+      await waitFor(() => {
+        expect(ui.allArticles).toBeInTheDocument();
+      });
       const dialog = ui.dialog!;
       const row = ui.allArticles!;
 

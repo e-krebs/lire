@@ -83,7 +83,9 @@ describe("useSigninFailure", () => {
 
     failQueryWithSignInRequired(client);
 
-    await waitFor(() => expect(ui.failureNow).toHaveTextContent("ended"));
+    await waitFor(() => {
+      expect(ui.failureNow).toHaveTextContent("ended");
+    });
   });
 
   it("does not call a fresh visit ended", async () => {

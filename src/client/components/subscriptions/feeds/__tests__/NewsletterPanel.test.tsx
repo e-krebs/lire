@@ -124,11 +124,11 @@ describe("NewsletterPanel", () => {
         clipboard: { writeText: async () => Promise.reject(new Error("denied")) },
       });
       fireEvent.click(ui.copy);
-      await waitFor(() =>
+      await waitFor(() => {
         expect(ui.copied).toHaveTextContent(
           "Could not copy. Select the address and copy it by hand.",
-        ),
-      );
+        );
+      });
     });
   });
 
